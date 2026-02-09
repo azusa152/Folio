@@ -1,13 +1,15 @@
 """
-Gooaye Radar — Streamlit 前端 Dashboard
+Azusa Radar — Streamlit 前端 Dashboard
 透過 Backend API 顯示追蹤股票、技術指標與觀點版控。
 """
 
 import json
 import os
 
+import pandas as pd
 import requests
 import streamlit as st
+from streamlit_sortables import sort_items
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 
@@ -16,15 +18,15 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="股癌投資雷達 Gooaye Radar",
+    page_title="投資雷達 Azusa Radar",
     page_icon="📡",
     layout="wide",
 )
 
-st.title("📡 股癌投資雷達 Gooaye Radar")
+st.title("📡 投資雷達 Azusa Radar")
 st.caption("V2.0 — 三層漏斗 + 籌碼面訊號")
 
-with st.expander("📖 股癌雷達：使用說明書 (SOP)", expanded=False):
+with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
     st.markdown("""
 ### 四步看盤邏輯
 
@@ -45,7 +47,7 @@ with st.expander("📖 股癌雷達：使用說明書 (SOP)", expanded=False):
 
 #### 2. 檢查護城河 (Moat Health)
 
-這是股癌的**核心濾網**，用來區分「**錯殺**」還是「**該殺**」。
+這是**核心濾網**，用來區分「**錯殺**」還是「**該殺**」。
 
 - 📈 **毛利成長**：股價跌但毛利往上 → **錯殺機會**，護城河還在，可以考慮佈局。
 - 📉 **毛利衰退**：股價跌且毛利往下 → **護城河破裂 (Thesis Broken)**，切勿接刀！
@@ -116,10 +118,32 @@ def api_patch(path: str, json_data: dict) -> dict | None:
         return None
 
 
+def api_put(path: str, json_data: dict) -> dict | None:
+    """PUT 請求 Backend API。"""
+    try:
+        resp = requests.put(f"{BACKEND_URL}{path}", json=json_data, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        st.error(f"❌ API 請求失敗：{e}")
+        return None
+
+
 @st.cache_data(ttl=300, show_spinner="載入股票資料中...")
 def fetch_stocks() -> list | None:
-    """取得所有追蹤股票（含技術指標），結果快取 5 分鐘。"""
+    """取得所有追蹤股票（僅 DB 資料），結果快取 5 分鐘。"""
     return api_get("/stocks")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_signals(ticker: str) -> dict | None:
+    """取得單一股票的技術訊號（yfinance），結果快取 5 分鐘。"""
+    try:
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/signals", timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
 
 
 @st.cache_data(ttl=300, show_spinner="載入已移除股票...")
@@ -141,11 +165,12 @@ with st.sidebar:
         new_ticker = st.text_input("股票代號", placeholder="例如 AAPL, TSM, NVDA")
         new_category = st.selectbox(
             "分類",
-            options=["Trend_Setter", "Moat", "Growth"],
+            options=["Trend_Setter", "Moat", "Growth", "ETF"],
             format_func=lambda x: {
                 "Trend_Setter": "🌊 風向球 (Trend Setter)",
                 "Moat": "🏰 護城河 (Moat)",
                 "Growth": "🚀 成長夢想 (Growth)",
+                "ETF": "🧺 ETF",
             }.get(x, x),
         )
         new_thesis = st.text_area("初始觀點", placeholder="寫下你對這檔股票的看法...")
@@ -236,7 +261,7 @@ with st.sidebar:
         st.download_button(
             label="📥 下載 JSON",
             data=export_json,
-            file_name="gooaye_watchlist.json",
+            file_name="azusa_watchlist.json",
             mime="application/json",
             use_container_width=True,
         )
@@ -270,6 +295,7 @@ category_map = {
     "Trend_Setter": [],
     "Moat": [],
     "Growth": [],
+    "ETF": [],
 }
 for stock in (stocks_data or []):
     cat = stock.get("category", "Growth")
@@ -278,10 +304,11 @@ for stock in (stocks_data or []):
 
 removed_list = removed_data or []
 
-tab_trend, tab_moat, tab_growth, tab_archive = st.tabs([
+tab_trend, tab_moat, tab_growth, tab_etf, tab_archive = st.tabs([
     f"🌊 風向球 ({len(category_map['Trend_Setter'])})",
     f"🏰 護城河 ({len(category_map['Moat'])})",
     f"🚀 成長夢想 ({len(category_map['Growth'])})",
+    f"🧺 ETF ({len(category_map['ETF'])})",
     f"📦 已移除 ({len(removed_list)})",
 ])
 
@@ -289,7 +316,7 @@ tab_trend, tab_moat, tab_growth, tab_archive = st.tabs([
 def render_stock_card(stock: dict) -> None:
     """渲染單一股票卡片，包含技術指標與觀點編輯。"""
     ticker = stock["ticker"]
-    signals = stock.get("signals") or {}
+    signals = fetch_signals(ticker) or {}
 
     with st.container(border=True):
         col1, col2 = st.columns([1, 2])
@@ -350,7 +377,7 @@ def render_stock_card(stock: dict) -> None:
                     use_container_width=True,
                 )
                 st.caption(
-                    "💡 股癌心法：點擊按鈕查看機構持倉。重點觀察"
+                    "💡 投資心法：點擊按鈕查看機構持倉。重點觀察"
                     "波克夏 (Berkshire)、橋水 (Bridgewater) 等大基金"
                     "是 'New Buy/Add' (佈局) 還是 'Sold Out' (離場)。"
                     "跟單要跟「新增」而非庫存。"
@@ -363,6 +390,68 @@ def render_stock_card(stock: dict) -> None:
                 else:
                     st.info(
                         "⚠️ 機構持倉資料暫時無法取得，請點擊上方按鈕前往 WhaleWisdom 查看完整 13F 報告。"
+                    )
+
+            # -- 護城河檢測 (Moat Health Check) --
+            with st.expander(f"🏰 護城河檢測 — {ticker}", expanded=False):
+                moat_data = api_get(f"/ticker/{ticker}/moat")
+
+                if moat_data and moat_data.get("moat") != "N/A":
+                    # 1) 毛利率指標 + YoY 變化
+                    curr_margin = moat_data.get("current_margin")
+                    margin_change = moat_data.get("change")
+
+                    if curr_margin is not None and margin_change is not None:
+                        st.metric(
+                            "最新毛利率 (Gross Margin)",
+                            f"{curr_margin:.1f}%",
+                            delta=f"{margin_change:+.2f} pp (YoY)",
+                        )
+                    else:
+                        st.metric("最新毛利率 (Gross Margin)", "N/A")
+
+                    # 2) 5 季走勢折線圖
+                    trend = moat_data.get("margin_trend", [])
+                    valid_trend = [t for t in trend if t.get("value") is not None]
+                    if valid_trend:
+                        df = pd.DataFrame(valid_trend).set_index("date")
+                        df.columns = ["毛利率 (%)"]
+                        st.line_chart(df)
+                    else:
+                        st.caption("⚠️ 毛利率趨勢資料不足，無法繪圖。")
+
+                    # 3) 投資診斷 (Azusa Diagnosis)
+                    bias_val = signals.get("bias")
+                    price_is_weak = bias_val is not None and bias_val < -5
+                    margin_is_strong = (
+                        margin_change is not None and margin_change > 0
+                    )
+                    margin_is_bad = (
+                        margin_change is not None and margin_change < -2
+                    )
+
+                    if margin_is_bad:
+                        st.error(
+                            "🔴 **警報 (Thesis Broken)**："
+                            "護城河受損（毛利 YoY 衰退超過 2 個百分點），"
+                            "基本面轉差，勿接刀。"
+                        )
+                    elif price_is_weak and margin_is_strong:
+                        st.success(
+                            "🟢 **錯殺機會 (Contrarian Buy)**："
+                            "股價回檔但護城河變寬（毛利升），"
+                            "基本面強勁，可留意佈局時機。"
+                        )
+                    else:
+                        st.info("⚪ **觀察中**：護城河數據持平，持續觀察。")
+
+                    # 補充詳情
+                    details = moat_data.get("details", "")
+                    if details:
+                        st.caption(f"📊 {details}")
+                else:
+                    st.warning(
+                        "⚠️ 無法取得財報數據（可能是 ETF 或新股），請稍後再試。"
                     )
 
         with col2:
@@ -436,13 +525,14 @@ def render_stock_card(stock: dict) -> None:
             # -- 切換分類 --
             with st.expander(f"🔄 切換分類 — {ticker}", expanded=False):
                 current_cat = stock.get("category", "Growth")
-                all_categories = ["Trend_Setter", "Moat", "Growth"]
+                all_categories = ["Trend_Setter", "Moat", "Growth", "ETF"]
                 other_categories = [c for c in all_categories if c != current_cat]
 
                 cat_labels = {
                     "Trend_Setter": "🌊 風向球 (Trend Setter)",
                     "Moat": "🏰 護城河 (Moat)",
                     "Growth": "🚀 成長夢想 (Growth)",
+                    "ETF": "🧺 ETF",
                 }
                 current_label = cat_labels.get(current_cat, current_cat)
                 st.caption(f"目前分類：**{current_label}**")
@@ -486,9 +576,28 @@ def render_stock_card(stock: dict) -> None:
                         st.warning("⚠️ 請輸入移除原因。")
 
 
+def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None:
+    """渲染拖曳排序區塊。"""
+    if len(stocks_in_cat) < 2:
+        return
+    with st.expander("↕️ 拖曳排序", expanded=False):
+        ticker_list = [s["ticker"] for s in stocks_in_cat]
+        sorted_tickers = sort_items(ticker_list, key=f"sort_{category_key}")
+        if sorted_tickers != ticker_list:
+            if st.button("💾 儲存排序", key=f"save_order_{category_key}"):
+                result = api_put("/stocks/reorder", {"ordered_tickers": sorted_tickers})
+                if result:
+                    st.success(result.get("message", "✅ 排序已儲存"))
+                    st.cache_data.clear()
+                    st.rerun()
+        else:
+            st.caption("拖曳股票代號以調整顯示順序。")
+
+
 # -- 渲染各 Tab --
 with tab_trend:
     if category_map["Trend_Setter"]:
+        render_reorder_section("Trend_Setter", category_map["Trend_Setter"])
         for stock in category_map["Trend_Setter"]:
             render_stock_card(stock)
     else:
@@ -496,6 +605,7 @@ with tab_trend:
 
 with tab_moat:
     if category_map["Moat"]:
+        render_reorder_section("Moat", category_map["Moat"])
         for stock in category_map["Moat"]:
             render_stock_card(stock)
     else:
@@ -503,10 +613,19 @@ with tab_moat:
 
 with tab_growth:
     if category_map["Growth"]:
+        render_reorder_section("Growth", category_map["Growth"])
         for stock in category_map["Growth"]:
             render_stock_card(stock)
     else:
         st.info("📭 尚無成長夢想類股票，請在左側面板新增。")
+
+with tab_etf:
+    if category_map["ETF"]:
+        render_reorder_section("ETF", category_map["ETF"])
+        for stock in category_map["ETF"]:
+            render_stock_card(stock)
+    else:
+        st.info("📭 尚無 ETF 類股票，請在左側面板新增。")
 
 with tab_archive:
     if removed_list:
@@ -521,6 +640,7 @@ with tab_archive:
                         "Trend_Setter": "🌊 風向球",
                         "Moat": "🏰 護城河",
                         "Growth": "🚀 成長夢想",
+                        "ETF": "🧺 ETF",
                     }.get(removed.get("category", ""), removed.get("category", ""))
                     st.caption(f"分類：{category_label}")
                     removed_at = removed.get("removed_at", "")

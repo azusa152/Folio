@@ -1,5 +1,5 @@
 """
-Gooaye Radar — FastAPI 應用程式進入點。
+Azusa Radar — FastAPI 應用程式進入點。
 負責建立 App、註冊路由、管理生命週期。
 所有業務邏輯已移至 application/services.py。
 """
@@ -25,11 +25,11 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.info("Gooaye Radar 後端啟動中 — 初始化資料庫...")
+    logger.info("Azusa Radar 後端啟動中 — 初始化資料庫...")
     create_db_and_tables()
     logger.info("資料庫初始化完成，服務就緒。")
     yield
-    logger.info("Gooaye Radar 後端關閉中...")
+    logger.info("Azusa Radar 後端關閉中...")
 
 
 # ---------------------------------------------------------------------------
@@ -37,8 +37,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="Gooaye Radar API",
-    description="股癌投資雷達 — V2.0 三層漏斗",
+    title="Azusa Radar API",
+    description="投資雷達 — V2.0 三層漏斗",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -51,7 +51,7 @@ app = FastAPI(
 
 @app.get("/health")
 def health_check() -> dict:
-    return {"status": "ok", "service": "gooaye-radar-backend"}
+    return {"status": "ok", "service": "azusa-radar-backend"}
 
 
 # ---------------------------------------------------------------------------

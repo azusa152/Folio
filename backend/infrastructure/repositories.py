@@ -20,8 +20,12 @@ def find_stock_by_ticker(session: Session, ticker: str) -> Stock | None:
 
 
 def find_active_stocks(session: Session) -> list[Stock]:
-    """查詢所有啟用中的股票。"""
-    statement = select(Stock).where(Stock.is_active == True)  # noqa: E712
+    """查詢所有啟用中的股票（依 display_order 排序）。"""
+    statement = (
+        select(Stock)
+        .where(Stock.is_active == True)  # noqa: E712
+        .order_by(Stock.display_order, Stock.ticker)
+    )
     return list(session.exec(statement).all())
 
 
@@ -29,10 +33,14 @@ def find_active_stocks_by_category(
     session: Session,
     category: StockCategory,
 ) -> list[Stock]:
-    """查詢指定分類中所有啟用的股票。"""
-    statement = select(Stock).where(
-        Stock.is_active == True,  # noqa: E712
-        Stock.category == category,
+    """查詢指定分類中所有啟用的股票（依 display_order 排序）。"""
+    statement = (
+        select(Stock)
+        .where(
+            Stock.is_active == True,  # noqa: E712
+            Stock.category == category,
+        )
+        .order_by(Stock.display_order, Stock.ticker)
     )
     return list(session.exec(statement).all())
 

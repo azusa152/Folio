@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 # TTL 快取：避免每次頁面載入都重複呼叫 yfinance（預設 5 分鐘）
 # ---------------------------------------------------------------------------
 _signals_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
-_moat_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
+_moat_cache: TTLCache = TTLCache(maxsize=200, ttl=3600)  # 1 小時：季報不會頻繁變動
 
 
 def _get_session() -> cffi_requests.Session:
@@ -155,8 +155,8 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
 
 def analyze_moat_trend(ticker: str) -> dict:
     """
-    比較最近一季 vs 去年同期的毛利率 (YoY)。
-    回傳結構化結果，含 moat 狀態欄位。結果快取 5 分鐘。
+    分析護城河趨勢：回傳最近 5 季毛利率走勢、YoY 變化與 moat 狀態。
+    結果快取 1 小時（季報不會頻繁變動）。
     """
     cached = _moat_cache.get(ticker)
     if cached is not None:
@@ -176,14 +176,11 @@ def analyze_moat_trend(ticker: str) -> dict:
 
         columns = financials.columns.tolist()
 
-        if len(columns) < 5:
-            logger.warning("%s 季報資料不足（%d 季），需至少 5 季。", ticker, len(columns))
+        if len(columns) < 2:
+            logger.warning("%s 季報資料不足（%d 季），無法分析。", ticker, len(columns))
             result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
             _moat_cache[ticker] = result
             return result
-
-        latest_col = columns[0]
-        yoy_col = columns[4]
 
         def _get_gross_margin(col) -> Optional[float]:
             try:
@@ -195,14 +192,41 @@ def analyze_moat_trend(ticker: str) -> dict:
                 pass
             return None
 
+        def _quarter_label(col) -> str:
+            if hasattr(col, "month"):
+                q = (col.month - 1) // 3 + 1
+                return f"{col.year}Q{q}"
+            return str(col)[:7]
+
+        # --- 5 季毛利率走勢（防呆：取實際可用筆數與 5 取小）---
+        quarters_to_fetch = min(len(columns), 5)
+        margin_trend: list[dict] = []
+        for col in columns[:quarters_to_fetch]:
+            gm = _get_gross_margin(col)
+            margin_trend.append({"date": _quarter_label(col), "value": gm})
+        margin_trend.reverse()  # 最舊在左，最新在右（圖表用）
+
+        # --- YoY 比較 ---
+        latest_col = columns[0]
         current_margin = _get_gross_margin(latest_col)
+
+        # 優先拿第 5 季（去年同期），不足則拿最舊一季
+        if len(columns) >= 5:
+            yoy_col = columns[4]
+        else:
+            yoy_col = columns[-1]
         previous_margin = _get_gross_margin(yoy_col)
 
         # 使用 domain 層的純判定函式
         moat_status, change = determine_moat_status(current_margin, previous_margin)
 
         if moat_status == MoatStatus.NOT_AVAILABLE:
-            result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
+            result = {
+                "ticker": ticker,
+                "moat": MoatStatus.NOT_AVAILABLE.value,
+                "details": "N/A failed to get new data",
+                "margin_trend": margin_trend,
+            }
             _moat_cache[ticker] = result
             return result
 
@@ -214,6 +238,7 @@ def analyze_moat_trend(ticker: str) -> dict:
             "previous_margin": previous_margin,
             "change": change,
             "moat": moat_status.value,
+            "margin_trend": margin_trend,
         }
 
         if moat_status == MoatStatus.DETERIORATING:

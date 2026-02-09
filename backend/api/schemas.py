@@ -43,6 +43,12 @@ class DeactivateRequest(BaseModel):
     reason: str
 
 
+class ReorderRequest(BaseModel):
+    """PUT /stocks/reorder 請求 Body。"""
+
+    ordered_tickers: list[str]
+
+
 # ---------------------------------------------------------------------------
 # Response Schemas
 # ---------------------------------------------------------------------------
@@ -55,6 +61,7 @@ class StockResponse(BaseModel):
     category: StockCategory
     current_thesis: str
     current_tags: list[str] = []
+    display_order: int = 0
     is_active: bool
     signals: Optional[dict] = None
 

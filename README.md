@@ -168,7 +168,7 @@ azusa-stock/
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API
 │   └── data/
-│       └── gooaye_watchlist.json     # 預設觀察名單（24 檔）
+│       └── azusa_watchlist.json      # 預設觀察名單（24 檔）
 │
 └── logs/                             # 日誌檔案（bind-mount 自動產生）
     ├── radar.log                     # 當日日誌
@@ -219,5 +219,5 @@ tail -f logs/radar.log
 ```
 
 - `ticker` — 股票代號（美股）
-- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth` 之一
+- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`ETF` 之一
 - `thesis` — 初始觀點

@@ -100,25 +100,23 @@ def create_stock(
     return stock
 
 
-def list_active_stocks_with_signals(session: Session) -> list[dict]:
-    """取得所有啟用中的追蹤股票，含最新技術訊號。"""
+def list_active_stocks(session: Session) -> list[dict]:
+    """取得所有啟用中的追蹤股票（僅 DB 資料，不含技術訊號）。"""
     logger.info("取得所有追蹤股票清單...")
     stocks = repo.find_active_stocks(session)
-    logger.info("共 %d 檔追蹤中股票，開始取得技術訊號。", len(stocks))
+    logger.info("共 %d 檔追蹤中股票。", len(stocks))
 
-    results: list[dict] = []
-    for stock in stocks:
-        signals = get_technical_signals(stock.ticker)
-        results.append({
+    return [
+        {
             "ticker": stock.ticker,
             "category": stock.category,
             "current_thesis": stock.current_thesis,
             "current_tags": _str_to_tags(stock.current_tags),
+            "display_order": stock.display_order,
             "is_active": stock.is_active,
-            "signals": signals,
-        })
-
-    return results
+        }
+        for stock in stocks
+    ]
 
 
 def update_stock_category(session: Session, ticker: str, new_category: StockCategory) -> dict:
@@ -208,6 +206,18 @@ def export_stocks(session: Session) -> list[dict]:
         }
         for stock in stocks
     ]
+
+
+def update_display_order(session: Session, ordered_tickers: list[str]) -> dict:
+    """批次更新股票顯示順位。ordered_tickers 的 index 即為新順位。"""
+    logger.info("更新顯示順位，共 %d 檔股票。", len(ordered_tickers))
+    for index, ticker in enumerate(ordered_tickers):
+        stock = repo.find_stock_by_ticker(session, ticker.upper())
+        if stock:
+            stock.display_order = index
+            repo.update_stock(session, stock)
+    session.commit()
+    return {"message": f"✅ 已更新 {len(ordered_tickers)} 檔股票的顯示順位。"}
 
 
 def list_removed_stocks(session: Session) -> list[dict]:
@@ -406,13 +416,13 @@ def run_scan(session: Session) -> dict:
     non_normal = [r for r in results if r["signal"] != ScanSignal.NORMAL.value]
     if non_normal:
         logger.warning("掃描發現 %d 檔異常股票。", len(non_normal))
-        header = f"🔔 <b>Gooaye Radar V2 掃描</b>\n市場情緒：{market_status_value}\n\n"
+        header = f"🔔 <b>Azusa Radar V2 掃描</b>\n市場情緒：{market_status_value}\n\n"
         lines = [a for r in non_normal for a in r["alerts"]]
         send_telegram_message(header + "\n".join(lines))
     else:
         logger.info("掃描完成，所有股票狀態正常。")
         send_telegram_message(
-            f"✅ Gooaye Radar V2 掃描完成\n市場情緒：{market_status_value}\n目前全部正常。"
+            f"✅ Azusa Radar V2 掃描完成\n市場情緒：{market_status_value}\n目前全部正常。"
         )
 
     return {"market_status": market_sentiment, "results": results}
