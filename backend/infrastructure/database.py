@@ -1,5 +1,5 @@
 """
-Gooaye Radar — 資料庫連線與 Session 管理。
+Infrastructure — 資料庫連線與 Session 管理。
 使用 SQLite (透過 SQLModel / SQLAlchemy)。
 """
 
@@ -23,6 +23,9 @@ logger.info("資料庫連線位置：%s", DATABASE_URL)
 
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在）。"""
+    # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
+    import domain.entities  # noqa: F401
+
     logger.info("建立資料表（若不存在）...")
     SQLModel.metadata.create_all(engine)
     logger.info("資料表就緒。")

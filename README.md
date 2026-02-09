@@ -1,6 +1,5 @@
-# Gooaye Radar 股癌投資雷達
+# 投資雷達
 
-基於謝孟恭（股癌）投資哲學打造的 Dockerized 投資分析系統。
 透過三層分類架構，系統化追蹤股票、管理觀點演進、並自動掃描技術面與基本面異常。
 
 ## 核心邏輯
@@ -109,39 +108,81 @@ curl -X POST http://localhost:8000/ticker/NVDA/thesis \
 curl -X POST http://localhost:8000/scan
 ```
 
-## 專案結構
+## 專案結構（Clean Architecture）
+
+後端採用 Clean Architecture 四層架構，依賴方向由外向內，各層職責明確：
+
+```mermaid
+graph TB
+  subgraph layers [Backend 架構]
+    API["api/ — 薄控制器"]
+    APP["application/ — 服務編排"]
+    DOMAIN["domain/ — 純業務邏輯"]
+    INFRA["infrastructure/ — 外部適配器"]
+  end
+  API --> APP
+  APP --> DOMAIN
+  APP --> INFRA
+  INFRA --> DOMAIN
+```
 
 ```
 azusa-stock/
-├── .env                          # Telegram Bot 憑證
-├── .gitignore                    # 排除 logs/, .env, .venv/, __pycache__/
-├── .cursorrules                  # Cursor AI 架構師指引
-├── docker-compose.yml            # Backend + Frontend 服務定義
-├── README.md                     # 本文件
+├── .env                              # Telegram Bot 憑證
+├── .gitignore
+├── .cursorrules                      # Cursor AI 架構師指引
+├── docker-compose.yml                # Backend + Frontend 服務定義
+├── README.md
 │
 ├── backend/
-│   ├── Dockerfile                # Python 3.12-slim, uvicorn 進入點
-│   ├── requirements.txt          # fastapi, sqlmodel, yfinance, curl_cffi...
-│   ├── main.py                   # FastAPI 路由 + Telegram 通知
-│   ├── models.py                 # SQLModel 資料表 + Pydantic schemas
-│   ├── database.py               # SQLite engine + session 管理
-│   ├── logic.py                  # RSI(14), MA 趨勢, 毛利率 YoY 檢查
-│   └── logging_config.py         # 集中式日誌設定（每日輪替，保留 3 天）
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── main.py                       # 進入點：建立 App、註冊路由
+│   ├── logging_config.py             # 集中式日誌（跨層共用）
+│   │
+│   ├── domain/                       # 領域層：純業務邏輯，無框架依賴
+│   │   ├── enums.py                  #   分類、狀態列舉 + 常數
+│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog)
+│   │   └── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
+│   │
+│   ├── application/                  # 應用層：Use Case 編排
+│   │   └── services.py               #   Stock / Thesis / Scan 服務
+│   │
+│   ├── infrastructure/               # 基礎設施層：外部適配器
+│   │   ├── database.py               #   SQLite engine + session 管理
+│   │   ├── repositories.py           #   Repository Pattern（集中 DB 查詢）
+│   │   ├── market_data.py            #   yfinance 適配器（含快取）
+│   │   └── notification.py           #   Telegram Bot 適配器
+│   │
+│   └── api/                          # API 層：薄控制器
+│       ├── schemas.py                #   Pydantic 請求/回應 Schema
+│       ├── stock_routes.py           #   股票管理路由
+│       ├── thesis_routes.py          #   觀點版控路由
+│       └── scan_routes.py            #   三層漏斗掃描路由
 │
 ├── frontend/
-│   ├── Dockerfile                # Python 3.12-slim, streamlit 進入點
-│   ├── requirements.txt          # streamlit, requests
-│   └── app.py                    # Dashboard：三分頁 + 觀點編輯器
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app.py                        # Dashboard：三分頁 + 觀點編輯器
 │
 ├── scripts/
-│   ├── import_stocks.py          # 從 JSON 匯入股票至 API
+│   ├── import_stocks.py              # 從 JSON 匯入股票至 API
 │   └── data/
-│       └── gooaye_watchlist.json # 預設觀察名單（24 檔）
+│       └── gooaye_watchlist.json     # 預設觀察名單（24 檔）
 │
-└── logs/                         # 日誌檔案（bind-mount 自動產生）
-    ├── radar.log                 # 當日日誌
-    └── radar.log.YYYY-MM-DD     # 歷史日誌（保留 3 天）
+└── logs/                             # 日誌檔案（bind-mount 自動產生）
+    ├── radar.log                     # 當日日誌
+    └── radar.log.YYYY-MM-DD         # 歷史日誌（保留 3 天）
 ```
+
+**各層職責：**
+
+| 層 | 目錄 | 職責 | 依賴 |
+|----|------|------|------|
+| **Domain** | `domain/` | 純業務規則、計算、列舉。不依賴框架，可獨立單元測試。 | 無 |
+| **Application** | `application/` | Use Case 編排：協調 Repository 與 Adapter 完成業務流程。 | Domain, Infrastructure |
+| **Infrastructure** | `infrastructure/` | 外部適配器：DB、yfinance、Telegram。可替換不影響業務。 | Domain |
+| **API** | `api/` | 薄控制器：解析 HTTP 請求 → 呼叫 Service → 回傳回應。 | Application |
 
 ## 日誌管理
 

@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 st.title("📡 股癌投資雷達 Gooaye Radar")
-st.caption("Phase 1 MVP — 追蹤風向球、護城河、成長夢想")
+st.caption("V2.0 — 三層漏斗 + 籌碼面訊號")
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +43,17 @@ def api_post(path: str, json_data: dict) -> dict | None:
     """POST 請求 Backend API。"""
     try:
         resp = requests.post(f"{BACKEND_URL}{path}", json=json_data, timeout=60)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        st.error(f"❌ API 請求失敗：{e}")
+        return None
+
+
+def api_patch(path: str, json_data: dict) -> dict | None:
+    """PATCH 請求 Backend API。"""
+    try:
+        resp = requests.patch(f"{BACKEND_URL}{path}", json=json_data, timeout=30)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
@@ -102,20 +113,55 @@ with st.sidebar:
 
     st.divider()
 
-    # -- 全域掃描 --
-    st.subheader("🔍 全域掃描")
+    # -- 全域掃描 (V2 三層漏斗) --
+    st.subheader("🔍 三層漏斗掃描")
     if st.button("🚀 執行掃描", use_container_width=True):
-        with st.spinner("掃描中，請稍候..."):
-            scan_results = api_post("/scan", {})
-        if scan_results:
-            alert_count = sum(len(r.get("alerts", [])) for r in scan_results)
-            if alert_count > 0:
-                st.warning(f"⚠️ 發現 {alert_count} 項警報！（已發送 Telegram 通知）")
-                for r in scan_results:
-                    for alert in r.get("alerts", []):
-                        st.write(alert)
+        with st.spinner("三層漏斗掃描中，請稍候..."):
+            scan_response = api_post("/scan", {})
+        if scan_response:
+            # 顯示整體市場情緒
+            ms = scan_response.get("market_status", {})
+            ms_status = ms.get("status", "POSITIVE")
+            ms_details = ms.get("details", "")
+            ms_pct = ms.get("below_60ma_pct", 0)
+
+            if ms_status == "CAUTION":
+                st.error(f"🔴 市場情緒：CAUTION（{ms_pct}% 跌破 60MA）")
             else:
-                st.success("✅ 掃描完成，目前無異常警報。")
+                st.success(f"🟢 市場情緒：POSITIVE（{ms_pct}% 跌破 60MA）")
+            st.caption(ms_details)
+
+            st.divider()
+
+            # 逐股掃描結果 — signal badges
+            results = scan_response.get("results", [])
+            non_normal = [r for r in results if r.get("signal") != "NORMAL"]
+
+            if non_normal:
+                st.markdown(f"**發現 {len(non_normal)} 檔異常股票：**")
+                for r in non_normal:
+                    sig = r.get("signal", "NORMAL")
+                    tkr = r.get("ticker", "?")
+                    alerts = r.get("alerts", [])
+
+                    if sig == "THESIS_BROKEN":
+                        st.error(f"🔴 **THESIS_BROKEN** — {tkr}")
+                    elif sig == "CONTRARIAN_BUY":
+                        st.success(f"🟢 **CONTRARIAN_BUY** — {tkr}")
+                    elif sig == "OVERHEATED":
+                        st.warning(f"🟠 **OVERHEATED** — {tkr}")
+
+                    for a in alerts:
+                        st.caption(f"  {a}")
+            else:
+                st.success("✅ 掃描完成，所有股票狀態正常。")
+
+            # 顯示所有 NORMAL 股票的簡要列表
+            normal_stocks = [r for r in results if r.get("signal") == "NORMAL"]
+            if normal_stocks:
+                with st.expander(f"⚪ NORMAL 股票（{len(normal_stocks)} 檔）", expanded=False):
+                    for r in normal_stocks:
+                        st.info(f"⚪ **NORMAL** — {r.get('ticker', '?')}")
 
     st.divider()
 
@@ -178,6 +224,8 @@ def render_stock_card(stock: dict) -> None:
                 rsi = signals.get("rsi", "N/A")
                 ma200 = signals.get("ma200", "N/A")
                 ma60 = signals.get("ma60", "N/A")
+                bias = signals.get("bias")
+                volume_ratio = signals.get("volume_ratio")
 
                 metrics_col1, metrics_col2 = st.columns(2)
                 with metrics_col1:
@@ -186,6 +234,29 @@ def render_stock_card(stock: dict) -> None:
                 with metrics_col2:
                     st.metric("200MA", f"${ma200}" if ma200 else "N/A")
                     st.metric("60MA", f"${ma60}" if ma60 else "N/A")
+
+                # 籌碼面指標
+                chip_col1, chip_col2 = st.columns(2)
+                with chip_col1:
+                    if bias is not None:
+                        bias_color = "🔴" if bias > 20 else ("🟢" if bias < -20 else "⚪")
+                        st.metric(f"{bias_color} 乖離率 Bias", f"{bias}%")
+                    else:
+                        st.metric("乖離率 Bias", "N/A")
+                with chip_col2:
+                    if volume_ratio is not None:
+                        st.metric("量比 Vol Ratio", f"{volume_ratio}x")
+                    else:
+                        st.metric("量比 Vol Ratio", "N/A")
+
+                # WhaleWisdom fallback
+                institutional = signals.get("institutional")
+                if institutional and "N/A failed to get new data" in str(institutional):
+                    st.caption(f"⚠️ {institutional}")
+                    st.link_button(
+                        f"🐋 WhaleWisdom 查詢 {ticker}",
+                        f"https://whalewisdom.com/stock/{ticker.lower()}",
+                    )
 
                 # 狀態列表
                 for s in signals.get("status", []):
@@ -233,6 +304,37 @@ def render_stock_card(stock: dict) -> None:
                             st.rerun()
                     else:
                         st.warning("⚠️ 請輸入觀點內容。")
+
+            # -- 切換分類 --
+            with st.expander(f"🔄 切換分類 — {ticker}", expanded=False):
+                current_cat = stock.get("category", "Growth")
+                all_categories = ["Trend_Setter", "Moat", "Growth"]
+                other_categories = [c for c in all_categories if c != current_cat]
+
+                cat_labels = {
+                    "Trend_Setter": "🌊 風向球 (Trend Setter)",
+                    "Moat": "🏰 護城河 (Moat)",
+                    "Growth": "🚀 成長夢想 (Growth)",
+                }
+                current_label = cat_labels.get(current_cat, current_cat)
+                st.caption(f"目前分類：**{current_label}**")
+
+                new_cat = st.selectbox(
+                    "新分類",
+                    options=other_categories,
+                    format_func=lambda x: cat_labels.get(x, x),
+                    key=f"cat_select_{ticker}",
+                    label_visibility="collapsed",
+                )
+                if st.button("確認切換", key=f"cat_btn_{ticker}"):
+                    result = api_patch(
+                        f"/ticker/{ticker}/category",
+                        {"category": new_cat},
+                    )
+                    if result:
+                        st.success(result.get("message", "✅ 分類已切換"))
+                        st.cache_data.clear()
+                        st.rerun()
 
             # -- 移除追蹤 --
             with st.expander(f"🗑️ 移除追蹤 — {ticker}", expanded=False):

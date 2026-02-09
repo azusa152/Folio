@@ -1,0 +1,366 @@
+"""
+Application — Service Layer (Use Cases)。
+編排業務流程，協調 Repository 與 Infrastructure Adapter。
+不包含 HTTP/框架邏輯。
+"""
+
+from sqlmodel import Session
+
+from domain.analysis import determine_scan_signal
+from domain.entities import RemovalLog, Stock, ThesisLog
+from domain.enums import CATEGORY_LABEL, MoatStatus, ScanSignal, StockCategory
+from infrastructure import repositories as repo
+from infrastructure.market_data import (
+    analyze_market_sentiment,
+    analyze_moat_trend,
+    get_technical_signals,
+)
+from infrastructure.notification import send_telegram_message
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
+
+# ===========================================================================
+# Stock Service
+# ===========================================================================
+
+
+class StockNotFoundError(Exception):
+    """股票不存在。"""
+
+
+class StockAlreadyExistsError(Exception):
+    """股票已存在。"""
+
+
+class StockAlreadyInactiveError(Exception):
+    """股票已是停用狀態。"""
+
+
+class CategoryUnchangedError(Exception):
+    """分類相同，無需變更。"""
+
+
+def create_stock(session: Session, ticker: str, category: StockCategory, thesis: str) -> Stock:
+    """
+    新增股票到追蹤清單，同時建立第一筆觀點紀錄。
+    """
+    ticker_upper = ticker.upper()
+    logger.info("新增股票：%s（分類：%s）", ticker_upper, category.value)
+
+    existing = repo.find_stock_by_ticker(session, ticker_upper)
+    if existing:
+        raise StockAlreadyExistsError(f"股票 {ticker_upper} 已存在追蹤清單中。")
+
+    stock = Stock(
+        ticker=ticker_upper,
+        category=category,
+        current_thesis=thesis,
+        is_active=True,
+    )
+    session.add(stock)
+
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=thesis,
+        version=1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+
+    session.commit()
+    session.refresh(stock)
+
+    logger.info("股票 %s 已成功新增至追蹤清單。", ticker_upper)
+    return stock
+
+
+def list_active_stocks_with_signals(session: Session) -> list[dict]:
+    """取得所有啟用中的追蹤股票，含最新技術訊號。"""
+    logger.info("取得所有追蹤股票清單...")
+    stocks = repo.find_active_stocks(session)
+    logger.info("共 %d 檔追蹤中股票，開始取得技術訊號。", len(stocks))
+
+    results: list[dict] = []
+    for stock in stocks:
+        signals = get_technical_signals(stock.ticker)
+        results.append({
+            "ticker": stock.ticker,
+            "category": stock.category,
+            "current_thesis": stock.current_thesis,
+            "is_active": stock.is_active,
+            "signals": signals,
+        })
+
+    return results
+
+
+def update_stock_category(session: Session, ticker: str, new_category: StockCategory) -> dict:
+    """
+    切換股票分類，並在觀點歷史中記錄變更。
+    """
+    ticker_upper = ticker.upper()
+    logger.info("分類變更請求：%s → %s", ticker_upper, new_category.value)
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    old_category = stock.category
+    if old_category == new_category:
+        old_label = CATEGORY_LABEL.get(old_category.value, old_category.value)
+        raise CategoryUnchangedError(f"股票 {ticker_upper} 已經是 {old_label} 分類。")
+
+    stock.category = new_category
+    repo.update_stock(session, stock)
+
+    # 審計紀錄
+    max_version = repo.get_max_thesis_version(session, ticker_upper)
+    old_label = CATEGORY_LABEL.get(old_category.value, old_category.value)
+    new_label = CATEGORY_LABEL.get(new_category.value, new_category.value)
+
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=f"[分類變更] {old_label} → {new_label}",
+        version=max_version + 1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+
+    session.commit()
+    logger.info("股票 %s 分類已從 %s 變更為 %s。", ticker_upper, old_label, new_label)
+
+    return {
+        "message": f"✅ {ticker_upper} 分類已從「{old_label}」變更為「{new_label}」。",
+        "old_category": old_category.value,
+        "new_category": new_category.value,
+    }
+
+
+def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
+    """
+    移除追蹤股票，記錄移除原因與觀點版控。
+    """
+    ticker_upper = ticker.upper()
+    logger.info("移除追蹤：%s", ticker_upper)
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+    if not stock.is_active:
+        raise StockAlreadyInactiveError(f"股票 {ticker_upper} 已經是移除狀態。")
+
+    stock.is_active = False
+    repo.update_stock(session, stock)
+
+    removal_log = RemovalLog(stock_ticker=ticker_upper, reason=reason)
+    repo.create_removal_log(session, removal_log)
+
+    max_version = repo.get_max_thesis_version(session, ticker_upper)
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=f"[已移除] {reason}",
+        version=max_version + 1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+
+    session.commit()
+    logger.info("股票 %s 已移除追蹤（原因：%s）。", ticker_upper, reason)
+
+    return {"message": f"✅ {ticker_upper} 已從追蹤清單移除。", "reason": reason}
+
+
+def list_removed_stocks(session: Session) -> list[dict]:
+    """取得所有已移除的股票，含最新移除原因。"""
+    logger.info("取得已移除股票清單...")
+    stocks = repo.find_inactive_stocks(session)
+
+    results: list[dict] = []
+    for stock in stocks:
+        latest_removal = repo.find_latest_removal(session, stock.ticker)
+        results.append({
+            "ticker": stock.ticker,
+            "category": stock.category,
+            "current_thesis": stock.current_thesis,
+            "removal_reason": latest_removal.reason if latest_removal else "未知",
+            "removed_at": (
+                latest_removal.created_at.isoformat()
+                if latest_removal and latest_removal.created_at
+                else None
+            ),
+        })
+
+    logger.info("共 %d 檔已移除股票。", len(results))
+    return results
+
+
+def get_removal_history(session: Session, ticker: str) -> list[dict]:
+    """取得指定股票的完整移除紀錄歷史。"""
+    ticker_upper = ticker.upper()
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    logs = repo.find_removal_history(session, ticker_upper)
+    return [
+        {
+            "reason": log.reason,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in logs
+    ]
+
+
+# ===========================================================================
+# Thesis Service
+# ===========================================================================
+
+
+def add_thesis(session: Session, ticker: str, content: str) -> dict:
+    """為指定股票新增觀點，自動遞增版本號。"""
+    ticker_upper = ticker.upper()
+    logger.info("更新觀點：%s", ticker_upper)
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    max_version = repo.get_max_thesis_version(session, ticker_upper)
+    new_version = max_version + 1
+
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=content,
+        version=new_version,
+    )
+    repo.create_thesis_log(session, thesis_log)
+
+    stock.current_thesis = content
+    repo.update_stock(session, stock)
+    session.commit()
+
+    logger.info("股票 %s 觀點已更新至第 %d 版。", ticker_upper, new_version)
+
+    return {
+        "message": f"✅ {ticker_upper} 觀點已更新至第 {new_version} 版。",
+        "version": new_version,
+        "content": content,
+    }
+
+
+def get_thesis_history(session: Session, ticker: str) -> list[dict]:
+    """取得指定股票的完整觀點版控歷史。"""
+    ticker_upper = ticker.upper()
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    logs = repo.find_thesis_history(session, ticker_upper)
+    return [
+        {
+            "version": log.version,
+            "content": log.content,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in logs
+    ]
+
+
+# ===========================================================================
+# Scan Service
+# ===========================================================================
+
+
+def run_scan(session: Session) -> dict:
+    """
+    V2 三層漏斗掃描：
+    Layer 1: 市場情緒（風向球跌破 60MA 比例）
+    Layer 2: 護城河趨勢（毛利率 YoY）
+    Layer 3: 技術面訊號（RSI, Bias, Volume Ratio）
+    Decision Engine 產生每檔股票的 signal，並透過 Telegram 通知。
+    """
+    logger.info("三層漏斗掃描啟動...")
+
+    # === Layer 1: 市場情緒 ===
+    trend_stocks = repo.find_active_stocks_by_category(session, StockCategory.TREND_SETTER)
+    trend_tickers = [s.ticker for s in trend_stocks]
+    logger.info("Layer 1 — 風向球股票：%s", trend_tickers)
+
+    market_sentiment = analyze_market_sentiment(trend_tickers)
+    market_status_value = market_sentiment.get("status", "POSITIVE")
+    logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_sentiment.get("details", ""))
+
+    # === Layer 2 & 3: 逐股分析 + Decision Engine ===
+    all_stocks = repo.find_active_stocks(session)
+    logger.info("掃描對象：%d 檔股票。", len(all_stocks))
+
+    results: list[dict] = []
+    all_alerts: list[str] = []
+
+    for stock in all_stocks:
+        ticker = stock.ticker
+        alerts: list[str] = []
+
+        moat_result = analyze_moat_trend(ticker)
+        moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
+        moat_details = moat_result.get("details", "")
+
+        signals = get_technical_signals(ticker)
+        rsi: float | None = None
+        bias: float | None = None
+        volume_ratio: float | None = None
+
+        if signals and "error" not in signals:
+            rsi = signals.get("rsi")
+            bias = signals.get("bias")
+            volume_ratio = signals.get("volume_ratio")
+        elif signals and "error" in signals:
+            alerts.append(signals["error"])
+
+        # Domain 層純函式決策
+        signal = determine_scan_signal(moat_value, market_status_value, rsi, bias)
+
+        if signal == ScanSignal.THESIS_BROKEN:
+            alerts.append(f"🔴 {ticker} 護城河鬆動！{moat_details}")
+        elif signal == ScanSignal.CONTRARIAN_BUY:
+            alerts.append(f"🟢 {ticker} 逆勢買入訊號（RSI={rsi}，市場正面）")
+        elif signal == ScanSignal.OVERHEATED:
+            alerts.append(f"🟠 {ticker} 乖離率過熱（Bias={bias}%）")
+
+        if moat_value == MoatStatus.STABLE.value and moat_details:
+            alerts.append(f"🟢 {ticker} {moat_details}")
+        if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
+            alerts.append(f"⚠️ {ticker} {moat_details}")
+
+        logger.info(
+            "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
+            ticker, signal.value, moat_value, rsi, bias, volume_ratio,
+        )
+
+        results.append({
+            "ticker": ticker,
+            "category": stock.category,
+            "signal": signal.value,
+            "alerts": alerts,
+            "moat": moat_value,
+            "bias": bias,
+            "volume_ratio": volume_ratio,
+            "market_status": market_status_value,
+        })
+        all_alerts.extend(alerts)
+
+    # === 通知 ===
+    non_normal = [r for r in results if r["signal"] != ScanSignal.NORMAL.value]
+    if non_normal:
+        logger.warning("掃描發現 %d 檔異常股票。", len(non_normal))
+        header = f"🔔 <b>Gooaye Radar V2 掃描</b>\n市場情緒：{market_status_value}\n\n"
+        lines = [a for r in non_normal for a in r["alerts"]]
+        send_telegram_message(header + "\n".join(lines))
+    else:
+        logger.info("掃描完成，所有股票狀態正常。")
+        send_telegram_message(
+            f"✅ Gooaye Radar V2 掃描完成\n市場情緒：{market_status_value}\n目前全部正常。"
+        )
+
+    return {"market_status": market_sentiment, "results": results}
