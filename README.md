@@ -1,0 +1,182 @@
+# Gooaye Radar 股癌投資雷達
+
+基於謝孟恭（股癌）投資哲學打造的 Dockerized 投資分析系統。
+透過三層分類架構，系統化追蹤股票、管理觀點演進、並自動掃描技術面與基本面異常。
+
+## 核心邏輯
+
+| 分類 | 說明 | 掃描規則 |
+|------|------|----------|
+| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | RSI < 30 或跌破 200MA |
+| **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 毛利率 YoY 衰退 |
+| **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 跌破 60MA（動能消失） |
+
+## 技術架構
+
+```mermaid
+graph LR
+  subgraph docker [Docker Compose]
+    FE["Streamlit Frontend :8501"]
+    BE["FastAPI Backend :8000"]
+    DB[("SQLite radar.db")]
+  end
+  YF["yfinance API"]
+  TG["Telegram Bot API"]
+  FE -->|"HTTP requests"| BE
+  BE -->|"read/write"| DB
+  BE -->|"fetch market data"| YF
+  BE -->|"send alerts"| TG
+```
+
+- **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
+- **Frontend** — Streamlit Dashboard，分頁顯示三類股票與觀點編輯
+- **Database** — SQLite，透過 Docker Volume 持久化
+- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護）
+- **通知** — Telegram Bot API
+
+## 快速開始
+
+### 前置需求
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) 已安裝並啟動
+- Python 3（僅限本機執行匯入腳本時需要）
+
+### 1. 設定環境變數
+
+編輯專案根目錄的 `.env` 檔案，填入 Telegram Bot 憑證：
+
+```env
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
+TELEGRAM_CHAT_ID=your-telegram-chat-id-here
+```
+
+> 若不需要 Telegram 通知，保留預設值即可，系統會自動跳過發送。
+
+### 2. 啟動服務
+
+```bash
+docker compose up --build
+```
+
+- **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
+- **Frontend Dashboard** — http://localhost:8501
+
+### 3. 匯入觀察名單
+
+```bash
+# 建立虛擬環境（首次）
+python3 -m venv .venv
+source .venv/bin/activate
+pip install requests
+
+# 匯入預設觀察名單（24 檔股票）
+python scripts/import_stocks.py
+
+# 或指定自訂 JSON 檔案
+python scripts/import_stocks.py path/to/custom_list.json
+```
+
+## API 參考
+
+| Method | Path | 說明 |
+|--------|------|------|
+| `GET` | `/health` | Health check（Docker 健康檢查用） |
+| `POST` | `/ticker` | 新增追蹤股票（含初始觀點） |
+| `POST` | `/ticker/{ticker}/thesis` | 新增觀點（自動版控，version +1） |
+| `GET` | `/ticker/{ticker}/thesis` | 取得指定股票的觀點歷史 |
+| `GET` | `/stocks` | 取得所有追蹤股票（含最新技術指標） |
+| `POST` | `/scan` | 全域掃描 + Telegram 警報通知 |
+
+### 範例：新增股票
+
+```bash
+curl -X POST http://localhost:8000/ticker \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "NVDA", "category": "Moat", "thesis": "賣鏟子給巨頭的王。"}'
+```
+
+### 範例：更新觀點
+
+```bash
+curl -X POST http://localhost:8000/ticker/NVDA/thesis \
+  -H "Content-Type: application/json" \
+  -d '{"content": "GB200 需求超預期，上調目標價。"}'
+```
+
+### 範例：觸發掃描
+
+```bash
+curl -X POST http://localhost:8000/scan
+```
+
+## 專案結構
+
+```
+azusa-stock/
+├── .env                          # Telegram Bot 憑證
+├── .gitignore                    # 排除 logs/, .env, .venv/, __pycache__/
+├── .cursorrules                  # Cursor AI 架構師指引
+├── docker-compose.yml            # Backend + Frontend 服務定義
+├── README.md                     # 本文件
+│
+├── backend/
+│   ├── Dockerfile                # Python 3.12-slim, uvicorn 進入點
+│   ├── requirements.txt          # fastapi, sqlmodel, yfinance, curl_cffi...
+│   ├── main.py                   # FastAPI 路由 + Telegram 通知
+│   ├── models.py                 # SQLModel 資料表 + Pydantic schemas
+│   ├── database.py               # SQLite engine + session 管理
+│   ├── logic.py                  # RSI(14), MA 趨勢, 毛利率 YoY 檢查
+│   └── logging_config.py         # 集中式日誌設定（每日輪替，保留 3 天）
+│
+├── frontend/
+│   ├── Dockerfile                # Python 3.12-slim, streamlit 進入點
+│   ├── requirements.txt          # streamlit, requests
+│   └── app.py                    # Dashboard：三分頁 + 觀點編輯器
+│
+├── scripts/
+│   ├── import_stocks.py          # 從 JSON 匯入股票至 API
+│   └── data/
+│       └── gooaye_watchlist.json # 預設觀察名單（24 檔）
+│
+└── logs/                         # 日誌檔案（bind-mount 自動產生）
+    ├── radar.log                 # 當日日誌
+    └── radar.log.YYYY-MM-DD     # 歷史日誌（保留 3 天）
+```
+
+## 日誌管理
+
+日誌檔案透過 bind-mount 映射至專案根目錄的 `logs/` 資料夾，可直接在本機存取。
+
+```bash
+# 即時追蹤日誌
+tail -f logs/radar.log
+
+# 或直接在 Cursor / VS Code 中開啟 logs/radar.log
+```
+
+**輪替規則：**
+- 每日 UTC 午夜自動輪替
+- 保留最近 3 天的歷史日誌，超過自動刪除
+- 格式：`2026-02-09 14:30:00 | INFO     | main | 股票 TSLA 已成功新增至追蹤清單。`
+
+**環境變數調整：**
+- `LOG_LEVEL` — 日誌等級，預設 `INFO`（可設為 `DEBUG` 取得更詳細資訊）
+- `LOG_DIR` — 日誌目錄，預設 `/app/data/logs`
+
+## 資料檔案格式
+
+匯入用的 JSON 檔案格式如下：
+
+```json
+[
+  {
+    "ticker": "NVDA",
+    "category": "Moat",
+    "thesis": "你對這檔股票的觀點。"
+  }
+]
+```
+
+- `ticker` — 股票代號（美股）
+- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth` 之一
+- `thesis` — 初始觀點
