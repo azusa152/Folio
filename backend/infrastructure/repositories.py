@@ -3,9 +3,11 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
+from datetime import datetime
+
 from sqlmodel import Session, func, select
 
-from domain.entities import RemovalLog, Stock, ThesisLog
+from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import StockCategory
 
 
@@ -130,3 +132,94 @@ def find_removal_history(session: Session, ticker: str) -> list[RemovalLog]:
         .order_by(RemovalLog.created_at.desc())  # type: ignore[union-attr]
     )
     return list(session.exec(statement).all())
+
+
+# ===========================================================================
+# ScanLog Repository
+# ===========================================================================
+
+
+def create_scan_log(session: Session, log: ScanLog) -> None:
+    """新增一筆掃描紀錄。"""
+    session.add(log)
+
+
+def find_scan_history(session: Session, ticker: str, limit: int = 20) -> list[ScanLog]:
+    """取得指定股票的掃描歷史（時間降序）。"""
+    statement = (
+        select(ScanLog)
+        .where(ScanLog.stock_ticker == ticker)
+        .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def find_latest_scan_logs(session: Session, limit: int = 50) -> list[ScanLog]:
+    """取得最近的掃描紀錄（跨股票，時間降序）。"""
+    statement = (
+        select(ScanLog)
+        .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def find_scan_logs_since(
+    session: Session, since: datetime
+) -> list[ScanLog]:
+    """取得指定時間之後的所有掃描紀錄。"""
+    statement = (
+        select(ScanLog)
+        .where(ScanLog.scanned_at >= since)  # type: ignore[operator]
+        .order_by(ScanLog.scanned_at.desc())  # type: ignore[union-attr]
+    )
+    return list(session.exec(statement).all())
+
+
+# ===========================================================================
+# PriceAlert Repository
+# ===========================================================================
+
+
+def create_price_alert(session: Session, alert: PriceAlert) -> PriceAlert:
+    """新增一筆價格警報。"""
+    session.add(alert)
+    session.commit()
+    session.refresh(alert)
+    return alert
+
+
+def find_active_alerts_for_stock(session: Session, ticker: str) -> list[PriceAlert]:
+    """取得指定股票的所有啟用中警報。"""
+    statement = (
+        select(PriceAlert)
+        .where(
+            PriceAlert.stock_ticker == ticker,
+            PriceAlert.is_active == True,  # noqa: E712
+        )
+    )
+    return list(session.exec(statement).all())
+
+
+def find_all_alerts_for_stock(session: Session, ticker: str) -> list[PriceAlert]:
+    """取得指定股票的所有警報（含已停用）。"""
+    statement = select(PriceAlert).where(PriceAlert.stock_ticker == ticker)
+    return list(session.exec(statement).all())
+
+
+def find_all_active_alerts(session: Session) -> list[PriceAlert]:
+    """取得所有啟用中的警報。"""
+    statement = select(PriceAlert).where(PriceAlert.is_active == True)  # noqa: E712
+    return list(session.exec(statement).all())
+
+
+def find_price_alert_by_id(session: Session, alert_id: int) -> PriceAlert | None:
+    """根據 ID 查詢單一警報。"""
+    return session.get(PriceAlert, alert_id)
+
+
+def delete_price_alert(session: Session, alert: PriceAlert) -> None:
+    """刪除一筆價格警報。"""
+    session.delete(alert)
+    session.commit()

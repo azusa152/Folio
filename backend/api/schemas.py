@@ -49,6 +49,13 @@ class ReorderRequest(BaseModel):
     ordered_tickers: list[str]
 
 
+class ReactivateRequest(BaseModel):
+    """POST /ticker/{ticker}/reactivate 請求 Body。"""
+
+    category: StockCategory | None = None
+    thesis: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # Response Schemas
 # ---------------------------------------------------------------------------

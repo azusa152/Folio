@@ -1,9 +1,11 @@
 """
 Infrastructure — 市場資料適配器 (yfinance)。
-負責外部 API 呼叫、快取管理。
+負責外部 API 呼叫、快取管理、速率限制。
 所有呼叫皆以 try/except 包裹，失敗時回傳結構化降級結果。
 """
 
+import threading
+import time
 from typing import Optional
 
 import yfinance as yf
@@ -23,11 +25,38 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Rate Limiter：限制 yfinance (Yahoo Finance) 呼叫頻率，避免被封鎖
+# ---------------------------------------------------------------------------
+
+
+class RateLimiter:
+    """Thread-safe rate limiter，確保呼叫間隔不低於 min_interval。"""
+
+    def __init__(self, calls_per_second: float = 2.0):
+        self._min_interval = 1.0 / calls_per_second
+        self._lock = threading.Lock()
+        self._last_call = 0.0
+
+    def wait(self) -> None:
+        with self._lock:
+            now = time.monotonic()
+            elapsed = now - self._last_call
+            if elapsed < self._min_interval:
+                time.sleep(self._min_interval - elapsed)
+            self._last_call = time.monotonic()
+
+
+_rate_limiter = RateLimiter(calls_per_second=2.0)
+
+
 # ---------------------------------------------------------------------------
 # TTL 快取：避免每次頁面載入都重複呼叫 yfinance（預設 5 分鐘）
 # ---------------------------------------------------------------------------
 _signals_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
 _moat_cache: TTLCache = TTLCache(maxsize=200, ttl=3600)  # 1 小時：季報不會頻繁變動
+_earnings_cache: TTLCache = TTLCache(maxsize=200, ttl=86400)  # 24 小時：財報日不常變動
 
 
 def _get_session() -> cffi_requests.Session:
@@ -52,7 +81,9 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
 
     try:
         logger.debug("取得 %s 技術訊號（快取未命中）...", ticker)
+        _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
         hist = stock.history(period="1y")
 
         if hist.empty or len(hist) < 60:
@@ -109,6 +140,7 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
         # 機構持倉 (best-effort，失敗不影響整體回傳)
         institutional_holders = None
         try:
+            _rate_limiter.wait()
             holders_df = stock.institutional_holders
             if holders_df is not None and not holders_df.empty:
                 top5 = holders_df.head(5)
@@ -165,7 +197,9 @@ def analyze_moat_trend(ticker: str) -> dict:
 
     try:
         logger.debug("分析 %s 護城河（毛利率 YoY，快取未命中）...", ticker)
+        _rate_limiter.wait()
         stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
         financials = stock.quarterly_financials
 
         if financials is None or financials.empty:
@@ -323,3 +357,105 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     except Exception as e:
         logger.error("市場情緒分析失敗：%s", e, exc_info=True)
         return {"status": MarketSentiment.POSITIVE.value, "details": "無法判斷，預設樂觀", "below_60ma_pct": 0.0}
+
+
+# ===========================================================================
+# 財報日曆 (Earnings Calendar)
+# ===========================================================================
+
+
+def get_earnings_date(ticker: str) -> dict:
+    """
+    取得下次財報日期。結果快取 24 小時。
+    """
+    cached = _earnings_cache.get(ticker)
+    if cached is not None:
+        return cached
+
+    try:
+        logger.debug("取得 %s 財報日期（快取未命中）...", ticker)
+        _rate_limiter.wait()
+        stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
+        cal = stock.calendar
+
+        result: dict = {"ticker": ticker}
+
+        if cal is not None:
+            # yfinance calendar 可能回傳 dict 或 DataFrame
+            if isinstance(cal, dict):
+                earnings_dates = cal.get("Earnings Date", [])
+                if earnings_dates:
+                    next_date = earnings_dates[0]
+                    result["earnings_date"] = (
+                        next_date.isoformat()[:10]
+                        if hasattr(next_date, "isoformat")
+                        else str(next_date)[:10]
+                    )
+            else:
+                # DataFrame 格式
+                if "Earnings Date" in cal.index:
+                    val = cal.loc["Earnings Date"].iloc[0]
+                    result["earnings_date"] = (
+                        val.isoformat()[:10]
+                        if hasattr(val, "isoformat")
+                        else str(val)[:10]
+                    )
+
+        if "earnings_date" not in result:
+            result["earnings_date"] = None
+
+        _earnings_cache[ticker] = result
+        return result
+
+    except Exception as e:
+        logger.debug("無法取得 %s 財報日期：%s", ticker, e)
+        result = {"ticker": ticker, "earnings_date": None}
+        _earnings_cache[ticker] = result
+        return result
+
+
+# ===========================================================================
+# 股息資訊 (Dividend Info)
+# ===========================================================================
+
+
+def get_dividend_info(ticker: str) -> dict:
+    """
+    從已快取的 signals 中提取股息資訊（不額外呼叫 yfinance）。
+    若 signals 未快取，則直接從 yf.Ticker.info 取得。
+    """
+    # 嘗試複用 signals cache 中的 Ticker（避免重複呼叫）
+    try:
+        _rate_limiter.wait()
+        stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
+        info = stock.info or {}
+
+        dividend_yield = info.get("dividendYield")
+        ex_date_raw = info.get("exDividendDate")
+
+        # exDividendDate 通常是 Unix timestamp
+        ex_dividend_date = None
+        if ex_date_raw:
+            from datetime import datetime, timezone
+
+            try:
+                if isinstance(ex_date_raw, (int, float)):
+                    ex_dividend_date = datetime.fromtimestamp(
+                        ex_date_raw, tz=timezone.utc
+                    ).strftime("%Y-%m-%d")
+                else:
+                    ex_dividend_date = str(ex_date_raw)[:10]
+            except Exception:
+                ex_dividend_date = str(ex_date_raw)[:10]
+
+        return {
+            "ticker": ticker,
+            "dividend_yield": round(dividend_yield * 100, 2) if dividend_yield else None,
+            "ex_dividend_date": ex_dividend_date,
+        }
+
+    except Exception as e:
+        logger.debug("無法取得 %s 股息資訊：%s", ticker, e)
+        return {"ticker": ticker, "dividend_yield": None, "ex_dividend_date": None}

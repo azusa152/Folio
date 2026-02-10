@@ -41,18 +41,22 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 
 ---
 
-### 六步操作流程
+### 操作流程
 
 ---
 
 #### 1. 抬頭看天氣 — 點擊「🚀 執行掃描」
 
-點擊左側面板的掃描按鈕，系統會執行 **V2 三層漏斗分析**。首先觀察 **Layer 1 市場情緒**：
+點擊左側面板的掃描按鈕，系統會在**背景**執行 **V2 三層漏斗分析**（並行掃描 4 股，約 30 秒完成）。系統也會每 30 分鐘自動掃描一次。
+
+首先觀察 **Layer 1 市場情緒**：
 
 | 燈號 | 意義 | 建議 |
 |------|------|------|
 | 🟢 **POSITIVE（晴天）** | 風向球股票穩健，資金面正常 | 適合尋找個股買點 |
 | 🔴 **CAUTION（雨天）** | 風向球轉弱（>50% 跌破 60MA），市場風險升高 | 建議縮手觀望或空手 |
+
+掃描結果透過 **Telegram 差異通知**推播 — 只有訊號發生**變化**時才會收到通知，不會重複推播相同訊號。
 
 > 💡 這一步決定你的「倉位水位」，天氣不好就不要出海。
 
@@ -74,9 +78,9 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 
 ---
 
-#### 3. 判斷燈號 — 查看掃描結果
+#### 3. 判斷燈號 — 查看掃描歷史
 
-掃描完成後，系統對每檔股票產生決策訊號：
+掃描完成後，系統對每檔股票產生決策訊號。展開「📈 掃描歷史」可查看最近 10 次掃描結果，以及**連續異常次數**提示：
 
 | 燈號 | 觸發條件 | 操作建議 |
 |------|----------|----------|
@@ -89,7 +93,20 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 
 ---
 
-#### 4. 確認大戶動向 — 展開「🐳 籌碼面 (13F)」
+#### 4. 設定價格警報 — 展開「🔔 價格警報」
+
+每張股票卡片的「🔔 價格警報」展開區可以：
+- **建立自訂警報**：選擇指標（RSI / 價格 / 乖離率）、條件（< 或 >）、門檻值
+- **檢視現有警報**：查看所有已設定的警報及觸發紀錄
+- **刪除警報**：不再需要時一鍵移除
+
+觸發時系統透過 **Telegram 即時通知**，每個警報有 **4 小時冷卻期**避免重複推播。
+
+> 💡 善用 RSI < 30 或 Bias < -20% 等條件，讓系統幫你盯盤。
+
+---
+
+#### 5. 確認大戶動向 — 展開「🐳 籌碼面 (13F)」
 
 每張股票卡片的「🐳 籌碼面 (13F)」展開區提供：
 - **WhaleWisdom 連結**：一鍵查看完整 13F 機構持倉報告
@@ -102,7 +119,17 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 
 ---
 
-#### 5. 記錄觀點 — 展開「📝 觀點版控」
+#### 6. 查看財報日與股息
+
+每張股票卡片自動顯示：
+- **📅 財報日**：下次財報發布日期，14 天內顯示倒數天數
+- **💰 殖利率**（護城河 / ETF 類）：當前股息殖利率與除息日
+
+> 💡 財報前後是護城河論點被驗證的關鍵時刻，提前做好準備。
+
+---
+
+#### 7. 記錄觀點 — 展開「📝 觀點版控」
 
 投資決策需要留下紀錄，避免事後偏差：
 - 展開股票卡片的「📝 觀點版控」，可查看**完整歷史觀點**（含版本號與日期）
@@ -113,12 +140,25 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 
 ---
 
-#### 6. 管理清單 — 排序、分類、匯出
+#### 8. 管理清單 — 排序、分類、匯出、匯入
 
 - **↕️ 拖曳排序**：每個分頁頂部的「↕️ 拖曳排序」可調整股票顯示順位，點擊「💾 儲存排序」寫入資料庫
 - **🔄 切換分類**：股票卡片內可直接切換分類（例如從風向球移至護城河）
 - **🗑️ 移除追蹤**：移除時需填寫原因，移除後可在「📦 已移除」分頁查看歷史
+- **🔄 重新啟用**：在「📦 已移除」分頁，可將已移除的股票重新啟用到任意分類
 - **📥 匯出觀察名單**：左側面板可下載 JSON 格式的完整觀察名單（含觀點與標籤）
+- **📤 匯入觀察名單**：左側面板可上傳 JSON 檔案批次匯入（支援 upsert）
+
+---
+
+#### 9. 每週摘要
+
+每週日 18:00 UTC，系統自動發送 **Telegram 投資組合健康報告**，包含：
+- **健康分數**：正常股票佔比（例如 85%）
+- **異常股票清單**：目前非 NORMAL 的股票及其訊號
+- **本週訊號變化**：過去 7 天內訊號變動的股票與變動次數
+
+> 💡 每週花 5 分鐘看摘要，掌握整體投資組合狀態。
 """)
 
 
@@ -170,6 +210,17 @@ def api_put(path: str, json_data: dict) -> dict | None:
         return None
 
 
+def api_delete(path: str) -> dict | None:
+    """DELETE 請求 Backend API。"""
+    try:
+        resp = requests.delete(f"{BACKEND_URL}{path}", timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        st.error(f"❌ API 請求失敗：{e}")
+        return None
+
+
 @st.cache_data(ttl=300, show_spinner="載入股票資料中...")
 def fetch_stocks() -> list | None:
     """取得所有追蹤股票（僅 DB 資料），結果快取 5 分鐘。"""
@@ -191,6 +242,28 @@ def fetch_signals(ticker: str) -> dict | None:
 def fetch_removed_stocks() -> list | None:
     """取得已移除股票清單，結果快取 5 分鐘。"""
     return api_get("/stocks/removed")
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_earnings(ticker: str) -> dict | None:
+    """取得財報日期（快取 24 小時）。"""
+    try:
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/earnings", timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_dividend(ticker: str) -> dict | None:
+    """取得股息資訊（快取 1 小時）。"""
+    try:
+        resp = requests.get(f"{BACKEND_URL}/ticker/{ticker}/dividend", timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +340,45 @@ with st.sidebar:
         st.caption(f"共 {len(export_data)} 檔股票（含觀點與標籤）")
     else:
         st.caption("目前無追蹤股票可匯出。")
+
+    st.divider()
+
+    # -- 匯入觀察名單 --
+    st.subheader("📤 匯入觀察名單")
+    uploaded_file = st.file_uploader(
+        "上傳 JSON 檔案",
+        type=["json"],
+        key="import_file",
+        label_visibility="collapsed",
+    )
+    if uploaded_file is not None:
+        try:
+            import_data = json.loads(uploaded_file.getvalue().decode("utf-8"))
+            if isinstance(import_data, list):
+                st.caption(f"偵測到 {len(import_data)} 筆資料。")
+                if st.button("📤 確認匯入", use_container_width=True):
+                    try:
+                        resp = requests.post(
+                            f"{BACKEND_URL}/stocks/import",
+                            json=import_data,
+                            timeout=60,
+                        )
+                        resp.raise_for_status()
+                        result = resp.json()
+                    except requests.RequestException as e:
+                        st.error(f"❌ 匯入失敗：{e}")
+                        result = None
+                    if result:
+                        st.success(result.get("message", "✅ 匯入完成"))
+                        if result.get("errors"):
+                            for err in result["errors"]:
+                                st.warning(f"⚠️ {err}")
+                        st.cache_data.clear()
+                        st.rerun()
+            else:
+                st.warning("⚠️ JSON 格式錯誤，預期為陣列。")
+        except json.JSONDecodeError:
+            st.error("❌ 無法解析 JSON 檔案。")
 
     st.divider()
 
@@ -368,6 +480,36 @@ def render_stock_card(stock: dict) -> None:
                 for s in signals.get("status", []):
                     st.write(s)
 
+            # -- 財報日曆 & 股息 --
+            info_cols = st.columns(2)
+            earnings_data = fetch_earnings(ticker)
+            earnings_date_str = (
+                earnings_data.get("earnings_date") if earnings_data else None
+            )
+            with info_cols[0]:
+                if earnings_date_str:
+                    from datetime import datetime as dt
+                    try:
+                        ed = dt.strptime(earnings_date_str, "%Y-%m-%d")
+                        days_left = (ed - dt.now()).days
+                        badge = f" ({days_left}天)" if 0 < days_left <= 14 else ""
+                        st.caption(f"📅 財報日：{earnings_date_str}{badge}")
+                    except ValueError:
+                        st.caption(f"📅 財報日：{earnings_date_str}")
+                else:
+                    st.caption("📅 財報日：N/A")
+
+            cat = stock.get("category", "")
+            with info_cols[1]:
+                if cat in ("Moat", "ETF"):
+                    div_data = fetch_dividend(ticker)
+                    if div_data and div_data.get("dividend_yield"):
+                        dy = div_data["dividend_yield"]
+                        ex_date = div_data.get("ex_dividend_date", "N/A")
+                        st.caption(f"💰 殖利率：{dy}% | 除息日：{ex_date}")
+                    else:
+                        st.caption("💰 殖利率：N/A")
+
             # -- 籌碼面 (13F) --
             with st.expander(f"🐳 籌碼面 (13F) — {ticker}", expanded=False):
                 st.link_button(
@@ -462,6 +604,102 @@ def render_stock_card(stock: dict) -> None:
                     st.warning(
                         "⚠️ 無法取得財報數據（可能是 ETF 或新股），請稍後再試。"
                     )
+
+            # -- 掃描歷史 --
+            with st.expander(f"📈 掃描歷史 — {ticker}", expanded=False):
+                scan_hist = api_get(f"/ticker/{ticker}/scan-history?limit=10")
+                if scan_hist:
+                    # 計算連續次數
+                    latest_sig = scan_hist[0].get("signal", "NORMAL")
+                    consecutive = 1
+                    for i in range(1, len(scan_hist)):
+                        if scan_hist[i].get("signal") == latest_sig:
+                            consecutive += 1
+                        else:
+                            break
+                    if latest_sig != "NORMAL" and consecutive > 1:
+                        st.warning(f"⚠️ {latest_sig} 已連續 {consecutive} 次掃描")
+
+                    for entry in scan_hist:
+                        sig = entry.get("signal", "NORMAL")
+                        scanned = entry.get("scanned_at", "")
+                        sig_icon = {
+                            "THESIS_BROKEN": "🔴",
+                            "CONTRARIAN_BUY": "🟢",
+                            "OVERHEATED": "🟠",
+                            "NORMAL": "⚪",
+                        }.get(sig, "⚪")
+                        date_str = scanned[:16] if scanned else "N/A"
+                        st.caption(f"{sig_icon} {sig} — {date_str}")
+                else:
+                    st.caption("尚無掃描紀錄。")
+
+            # -- 自訂價格警報 --
+            with st.expander(f"🔔 價格警報 — {ticker}", expanded=False):
+                alerts = api_get(f"/ticker/{ticker}/alerts")
+                if alerts:
+                    st.markdown("**目前警報：**")
+                    for a in alerts:
+                        op_str = "<" if a["operator"] == "lt" else ">"
+                        active_badge = "🟢" if a["is_active"] else "⚪"
+                        triggered = a.get("last_triggered_at")
+                        trigger_info = (
+                            f"（上次觸發：{triggered[:10]}）" if triggered else ""
+                        )
+                        col_a, col_b = st.columns([3, 1])
+                        with col_a:
+                            st.caption(
+                                f"{active_badge} {a['metric']} {op_str} "
+                                f"{a['threshold']}{trigger_info}"
+                            )
+                        with col_b:
+                            if st.button(
+                                "🗑️",
+                                key=f"del_alert_{a['id']}",
+                                help="刪除此警報",
+                            ):
+                                api_delete(f"/alerts/{a['id']}")
+                                st.rerun()
+                    st.divider()
+
+                st.markdown("**➕ 新增警報：**")
+                alert_cols = st.columns(3)
+                with alert_cols[0]:
+                    alert_metric = st.selectbox(
+                        "指標",
+                        options=["rsi", "price", "bias"],
+                        key=f"alert_metric_{ticker}",
+                        label_visibility="collapsed",
+                    )
+                with alert_cols[1]:
+                    alert_op = st.selectbox(
+                        "條件",
+                        options=["lt", "gt"],
+                        format_func=lambda x: "<（小於）" if x == "lt" else ">（大於）",
+                        key=f"alert_op_{ticker}",
+                        label_visibility="collapsed",
+                    )
+                with alert_cols[2]:
+                    alert_threshold = st.number_input(
+                        "門檻",
+                        value=30.0,
+                        step=1.0,
+                        key=f"alert_threshold_{ticker}",
+                        label_visibility="collapsed",
+                    )
+
+                if st.button("新增警報", key=f"add_alert_{ticker}"):
+                    result = api_post(
+                        f"/ticker/{ticker}/alerts",
+                        {
+                            "metric": alert_metric,
+                            "operator": alert_op,
+                            "threshold": alert_threshold,
+                        },
+                    )
+                    if result:
+                        st.success(result.get("message", "✅ 警報已建立"))
+                        st.rerun()
 
         with col2:
             st.markdown("**💡 當前觀點：**")
@@ -696,5 +934,39 @@ with tab_archive:
                                 st.divider()
                         else:
                             st.caption("尚無歷史觀點紀錄。")
+
+                    # -- 重新啟用 --
+                    with st.expander(f"🔄 重新啟用 — {ticker}", expanded=False):
+                        reactivate_cat = st.selectbox(
+                            "分類",
+                            options=["Trend_Setter", "Moat", "Growth", "ETF"],
+                            format_func=lambda x: {
+                                "Trend_Setter": "🌊 風向球",
+                                "Moat": "🏰 護城河",
+                                "Growth": "🚀 成長夢想",
+                                "ETF": "🧺 ETF",
+                            }.get(x, x),
+                            key=f"reactivate_cat_{ticker}",
+                        )
+                        reactivate_thesis = st.text_area(
+                            "新觀點（選填）",
+                            key=f"reactivate_thesis_{ticker}",
+                            placeholder="重新啟用時的觀點...",
+                        )
+                        if st.button(
+                            "✅ 確認重新啟用",
+                            key=f"reactivate_btn_{ticker}",
+                            type="primary",
+                        ):
+                            payload = {"category": reactivate_cat}
+                            if reactivate_thesis.strip():
+                                payload["thesis"] = reactivate_thesis.strip()
+                            result = api_post(
+                                f"/ticker/{ticker}/reactivate", payload
+                            )
+                            if result:
+                                st.success(result.get("message", "✅ 已重新啟用"))
+                                st.cache_data.clear()
+                                st.rerun()
     else:
         st.info("📭 目前沒有已移除的股票。")

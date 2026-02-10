@@ -9,6 +9,7 @@ from sqlmodel import Session
 from api.schemas import (
     CategoryUpdateRequest,
     DeactivateRequest,
+    ReactivateRequest,
     ReorderRequest,
     RemovedStockResponse,
     StockResponse,
@@ -16,6 +17,7 @@ from api.schemas import (
 )
 from application.services import (
     CategoryUnchangedError,
+    StockAlreadyActiveError,
     StockAlreadyExistsError,
     StockAlreadyInactiveError,
     StockNotFoundError,
@@ -23,13 +25,20 @@ from application.services import (
     deactivate_stock,
     export_stocks,
     get_removal_history,
+    import_stocks,
     list_active_stocks,
     list_removed_stocks,
+    reactivate_stock,
     update_display_order,
     update_stock_category,
 )
 from infrastructure.database import get_session
-from infrastructure.market_data import analyze_moat_trend, get_technical_signals
+from infrastructure.market_data import (
+    analyze_moat_trend,
+    get_dividend_info,
+    get_earnings_date,
+    get_technical_signals,
+)
 
 router = APIRouter()
 
@@ -143,3 +152,103 @@ def get_removal_history_route(
         return get_removal_history(session, ticker)
     except StockNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/ticker/{ticker}/reactivate")
+def reactivate_ticker_route(
+    ticker: str,
+    payload: ReactivateRequest,
+    session: Session = Depends(get_session),
+) -> dict:
+    """重新啟用已移除的股票。"""
+    try:
+        return reactivate_stock(session, ticker, payload.category, payload.thesis)
+    except StockNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except StockAlreadyActiveError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.get("/ticker/{ticker}/earnings")
+def get_earnings_route(ticker: str) -> dict:
+    """取得指定股票的下次財報日期。"""
+    return get_earnings_date(ticker.upper())
+
+
+@router.get("/ticker/{ticker}/dividend")
+def get_dividend_route(ticker: str) -> dict:
+    """取得指定股票的股息資訊。"""
+    return get_dividend_info(ticker.upper())
+
+
+@router.get("/ticker/{ticker}/scan-history")
+def get_scan_history_route(
+    ticker: str,
+    limit: int = 20,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """取得指定股票的掃描歷史。"""
+    from application.services import get_scan_history
+    try:
+        return get_scan_history(session, ticker, limit)
+    except StockNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/scan/history")
+def get_all_scan_history_route(
+    limit: int = 50,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """取得最近掃描紀錄。"""
+    from application.services import get_latest_scan_logs
+    return get_latest_scan_logs(session, limit)
+
+
+@router.post("/ticker/{ticker}/alerts")
+def create_price_alert_route(
+    ticker: str,
+    payload: dict,
+    session: Session = Depends(get_session),
+) -> dict:
+    """建立價格警報。"""
+    from application.services import create_price_alert
+    try:
+        return create_price_alert(
+            session,
+            ticker,
+            payload.get("metric", "rsi"),
+            payload.get("operator", "lt"),
+            payload.get("threshold", 30.0),
+        )
+    except StockNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/ticker/{ticker}/alerts")
+def get_price_alerts_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """取得指定股票的價格警報列表。"""
+    from application.services import list_price_alerts
+    return list_price_alerts(session, ticker)
+
+
+@router.delete("/alerts/{alert_id}")
+def delete_price_alert_route(
+    alert_id: int,
+    session: Session = Depends(get_session),
+) -> dict:
+    """刪除價格警報。"""
+    from application.services import delete_price_alert
+    return delete_price_alert(session, alert_id)
+
+
+@router.post("/stocks/import")
+def import_stocks_route(
+    payload: list[dict],
+    session: Session = Depends(get_session),
+) -> dict:
+    """批次匯入股票（upsert 邏輯）。"""
+    return import_stocks(session, payload)

@@ -4,10 +4,14 @@ Application — Service Layer (Use Cases)。
 不包含 HTTP/框架邏輯。
 """
 
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
+
 from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
-from domain.entities import RemovalLog, Stock, ThesisLog
+from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, MoatStatus, ScanSignal, StockCategory
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
@@ -51,6 +55,10 @@ class StockAlreadyExistsError(Exception):
 
 class StockAlreadyInactiveError(Exception):
     """股票已是停用狀態。"""
+
+
+class StockAlreadyActiveError(Exception):
+    """股票已是啟用狀態。"""
 
 
 class CategoryUnchangedError(Exception):
@@ -191,6 +199,50 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     logger.info("股票 %s 已移除追蹤（原因：%s）。", ticker_upper, reason)
 
     return {"message": f"✅ {ticker_upper} 已從追蹤清單移除。", "reason": reason}
+
+
+def reactivate_stock(
+    session: Session,
+    ticker: str,
+    category: StockCategory | None = None,
+    thesis: str | None = None,
+) -> dict:
+    """
+    重新啟用已移除的股票。可選擇性更新分類與觀點。
+    """
+    ticker_upper = ticker.upper()
+    logger.info("重新啟用追蹤：%s", ticker_upper)
+
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+    if stock.is_active:
+        raise StockAlreadyActiveError(f"股票 {ticker_upper} 已經是啟用狀態。")
+
+    stock.is_active = True
+    stock.last_scan_signal = "NORMAL"
+    if category:
+        stock.category = category
+    repo.update_stock(session, stock)
+
+    # 觀點版控紀錄
+    max_version = repo.get_max_thesis_version(session, ticker_upper)
+    thesis_content = thesis or "[重新啟用追蹤]"
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=thesis_content,
+        version=max_version + 1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+
+    if thesis:
+        stock.current_thesis = thesis
+        repo.update_stock(session, stock)
+
+    session.commit()
+    logger.info("股票 %s 已重新啟用追蹤。", ticker_upper)
+
+    return {"message": f"✅ {ticker_upper} 已重新啟用追蹤。"}
 
 
 def export_stocks(session: Session) -> list[dict]:
@@ -353,15 +405,13 @@ def run_scan(session: Session) -> dict:
     market_status_value = market_sentiment.get("status", "POSITIVE")
     logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_sentiment.get("details", ""))
 
-    # === Layer 2 & 3: 逐股分析 + Decision Engine ===
+    # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
     all_stocks = repo.find_active_stocks(session)
     stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
     logger.info("掃描對象：%d 檔股票。", len(all_stocks))
 
-    results: list[dict] = []
-    all_alerts: list[str] = []
-
-    for stock in all_stocks:
+    def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
+        """單一股票的分析邏輯（可在 Thread 中執行）。"""
         ticker = stock.ticker
         alerts: list[str] = []
 
@@ -373,16 +423,17 @@ def run_scan(session: Session) -> dict:
         rsi: float | None = None
         bias: float | None = None
         volume_ratio: float | None = None
+        price: float | None = None
 
         if signals and "error" not in signals:
             rsi = signals.get("rsi")
             bias = signals.get("bias")
             volume_ratio = signals.get("volume_ratio")
+            price = signals.get("price")
         elif signals and "error" in signals:
             alerts.append(signals["error"])
 
-        # Domain 層純函式決策
-        signal = determine_scan_signal(moat_value, market_status_value, rsi, bias)
+        signal = determine_scan_signal(moat_value, mkt_status, rsi, bias)
 
         if signal == ScanSignal.THESIS_BROKEN:
             alerts.append(f"🔴 {ticker} 護城河鬆動！{moat_details}")
@@ -401,7 +452,7 @@ def run_scan(session: Session) -> dict:
             ticker, signal.value, moat_value, rsi, bias, volume_ratio,
         )
 
-        results.append({
+        return {
             "ticker": ticker,
             "category": stock.category,
             "signal": signal.value,
@@ -409,9 +460,37 @@ def run_scan(session: Session) -> dict:
             "moat": moat_value,
             "bias": bias,
             "volume_ratio": volume_ratio,
+            "price": price,
+            "rsi": rsi,
             "market_status": market_status_value,
-        })
-        all_alerts.extend(alerts)
+        }
+
+    results: list[dict] = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_analyze_single_stock, s, market_status_value): s
+            for s in all_stocks
+        }
+        for future in as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as exc:
+                stock = futures[future]
+                logger.error("掃描 %s 失敗：%s", stock.ticker, exc, exc_info=True)
+
+    # === 持久化掃描紀錄 ===
+    for r in results:
+        scan_log = ScanLog(
+            stock_ticker=r["ticker"],
+            signal=r["signal"],
+            market_status=market_status_value,
+            details=json.dumps(r["alerts"], ensure_ascii=False),
+        )
+        repo.create_scan_log(session, scan_log)
+    session.commit()
+
+    # === 檢查自訂價格警報 ===
+    _check_price_alerts(session, results)
 
     # === 差異比對 + 通知 ===
     category_icon = {
@@ -480,3 +559,308 @@ def run_scan(session: Session) -> dict:
         logger.info("掃描完成，訊號無變化，跳過通知。")
 
     return {"market_status": market_sentiment, "results": results}
+
+
+def _check_price_alerts(session: Session, results: list[dict]) -> None:
+    """檢查所有啟用中的自訂價格警報，觸發時發送 Telegram 通知。"""
+    all_alerts = repo.find_all_active_alerts(session)
+    if not all_alerts:
+        return
+
+    # 建立 ticker → result 快查表
+    result_map = {r["ticker"]: r for r in results}
+    triggered_msgs: list[str] = []
+    now = datetime.now(timezone.utc)
+
+    for alert in all_alerts:
+        r = result_map.get(alert.stock_ticker)
+        if not r:
+            continue
+
+        # 取得指標值
+        metric_value: float | None = None
+        if alert.metric == "rsi":
+            metric_value = r.get("rsi")
+        elif alert.metric == "price":
+            metric_value = r.get("price")
+        elif alert.metric == "bias":
+            metric_value = r.get("bias")
+
+        if metric_value is None:
+            continue
+
+        # 比較
+        triggered = False
+        if alert.operator == "lt" and metric_value < alert.threshold:
+            triggered = True
+        elif alert.operator == "gt" and metric_value > alert.threshold:
+            triggered = True
+
+        if not triggered:
+            continue
+
+        # 冷卻檢查（4 小時）
+        if alert.last_triggered_at:
+            cooldown = timedelta(hours=4)
+            if now - alert.last_triggered_at < cooldown:
+                continue
+
+        # 觸發
+        alert.last_triggered_at = now
+        session.add(alert)
+        op_label = "<" if alert.operator == "lt" else ">"
+        triggered_msgs.append(
+            f"🔔 {alert.stock_ticker} {alert.metric}={metric_value} "
+            f"{op_label} {alert.threshold}"
+        )
+
+    if triggered_msgs:
+        session.commit()
+        msg = "⚡ <b>自訂價格警報觸發</b>\n\n" + "\n".join(triggered_msgs)
+        send_telegram_message(msg)
+        logger.warning("觸發 %d 個自訂價格警報。", len(triggered_msgs))
+
+
+# ===========================================================================
+# Scan History Service
+# ===========================================================================
+
+
+def get_scan_history(session: Session, ticker: str, limit: int = 20) -> list[dict]:
+    """取得指定股票的掃描歷史。"""
+    ticker_upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    logs = repo.find_scan_history(session, ticker_upper, limit)
+    return [
+        {
+            "signal": log.signal,
+            "market_status": log.market_status,
+            "details": log.details,
+            "scanned_at": log.scanned_at.isoformat() if log.scanned_at else None,
+        }
+        for log in logs
+    ]
+
+
+def get_latest_scan_logs(session: Session, limit: int = 50) -> list[dict]:
+    """取得最近的掃描紀錄。"""
+    logs = repo.find_latest_scan_logs(session, limit)
+    return [
+        {
+            "ticker": log.stock_ticker,
+            "signal": log.signal,
+            "market_status": log.market_status,
+            "details": log.details,
+            "scanned_at": log.scanned_at.isoformat() if log.scanned_at else None,
+        }
+        for log in logs
+    ]
+
+
+# ===========================================================================
+# Price Alert Service
+# ===========================================================================
+
+
+def create_price_alert(
+    session: Session,
+    ticker: str,
+    metric: str,
+    operator: str,
+    threshold: float,
+) -> dict:
+    """建立自訂價格警報。"""
+    ticker_upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, ticker_upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+
+    alert = PriceAlert(
+        stock_ticker=ticker_upper,
+        metric=metric,
+        operator=operator,
+        threshold=threshold,
+    )
+    saved = repo.create_price_alert(session, alert)
+    op_label = "<" if operator == "lt" else ">"
+    return {
+        "message": f"✅ 已建立警報：{ticker_upper} {metric} {op_label} {threshold}",
+        "id": saved.id,
+    }
+
+
+def list_price_alerts(session: Session, ticker: str) -> list[dict]:
+    """取得指定股票的所有警報。"""
+    alerts = repo.find_all_alerts_for_stock(session, ticker.upper())
+    return [
+        {
+            "id": a.id,
+            "metric": a.metric,
+            "operator": a.operator,
+            "threshold": a.threshold,
+            "is_active": a.is_active,
+            "last_triggered_at": (
+                a.last_triggered_at.isoformat() if a.last_triggered_at else None
+            ),
+        }
+        for a in alerts
+    ]
+
+
+def delete_price_alert(session: Session, alert_id: int) -> dict:
+    """刪除價格警報。"""
+    alert = repo.find_price_alert_by_id(session, alert_id)
+    if not alert:
+        return {"message": "⚠️ 找不到此警報。"}
+    repo.delete_price_alert(session, alert)
+    return {"message": "✅ 警報已刪除。"}
+
+
+# ===========================================================================
+# Weekly Digest Service
+# ===========================================================================
+
+
+def send_weekly_digest(session: Session) -> dict:
+    """
+    發送每週 Telegram 摘要：
+    - 目前所有非 NORMAL 股票
+    - 過去 7 天訊號變化
+    - 投資組合健康分數
+    """
+    logger.info("開始生成每週摘要...")
+
+    all_stocks = repo.find_active_stocks(session)
+    total = len(all_stocks)
+    if total == 0:
+        send_telegram_message("📊 <b>Azusa Radar 每週摘要</b>\n\n目前無追蹤股票。")
+        return {"message": "無追蹤股票。"}
+
+    # 目前非 NORMAL 股票
+    non_normal = [s for s in all_stocks if s.last_scan_signal != "NORMAL"]
+    normal_count = total - len(non_normal)
+    health_score = round(normal_count / total * 100, 1)
+
+    # 過去 7 天的訊號變化
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
+
+    # 統計每檔股票的訊號變化次數
+    signal_changes: dict[str, int] = {}
+    prev_signals: dict[str, str] = {}
+    # 按時間正序處理（最舊→最新）
+    for log in reversed(recent_logs):
+        tk = log.stock_ticker
+        if tk in prev_signals and prev_signals[tk] != log.signal:
+            signal_changes[tk] = signal_changes.get(tk, 0) + 1
+        prev_signals[tk] = log.signal
+
+    # 組合訊息
+    parts: list[str] = [
+        f"📊 <b>Azusa Radar 每週摘要</b>\n",
+        f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）\n",
+    ]
+
+    if non_normal:
+        parts.append("⚠️ <b>目前異常股票：</b>")
+        for s in non_normal:
+            cat_label = CATEGORY_LABEL.get(s.category.value, s.category.value)
+            parts.append(f"  • {s.ticker}（{cat_label}）→ {s.last_scan_signal}")
+
+    if signal_changes:
+        parts.append("\n🔄 <b>本週訊號變化：</b>")
+        for tk, count in sorted(signal_changes.items(), key=lambda x: -x[1]):
+            parts.append(f"  • {tk}：變化 {count} 次")
+
+    if not non_normal and not signal_changes:
+        parts.append("✅ 一切正常，本週無異常訊號。")
+
+    message = "\n".join(parts)
+    send_telegram_message(message)
+    logger.info("每週摘要已發送。")
+
+    return {"message": "每週摘要已發送。", "health_score": health_score}
+
+
+# ===========================================================================
+# Import Service
+# ===========================================================================
+
+
+def import_stocks(session: Session, stock_list: list[dict]) -> dict:
+    """
+    批次匯入股票（upsert 邏輯）。
+    新股票建立，已存在的更新觀點與標籤。
+    """
+    logger.info("批次匯入 %d 筆股票...", len(stock_list))
+    created = 0
+    updated = 0
+    errors: list[str] = []
+
+    for item in stock_list:
+        ticker = item.get("ticker", "").strip().upper()
+        category_str = item.get("category", "Growth")
+        thesis = item.get("thesis", "") or item.get("initial_thesis", "")
+        tags = item.get("tags", [])
+
+        if not ticker:
+            errors.append("缺少 ticker 欄位")
+            continue
+
+        try:
+            category = StockCategory(category_str)
+        except ValueError:
+            errors.append(f"{ticker}: 無效分類 {category_str}")
+            continue
+
+        existing = repo.find_stock_by_ticker(session, ticker)
+        tags_str = _tags_to_str(tags)
+
+        if existing:
+            # Upsert: 更新觀點與標籤
+            if thesis:
+                max_version = repo.get_max_thesis_version(session, ticker)
+                thesis_log = ThesisLog(
+                    stock_ticker=ticker,
+                    content=thesis,
+                    tags=tags_str,
+                    version=max_version + 1,
+                )
+                repo.create_thesis_log(session, thesis_log)
+                existing.current_thesis = thesis
+            if tags:
+                existing.current_tags = tags_str
+            existing.category = category
+            repo.update_stock(session, existing)
+            updated += 1
+        else:
+            # 新增
+            stock = Stock(
+                ticker=ticker,
+                category=category,
+                current_thesis=thesis,
+                current_tags=tags_str,
+                is_active=True,
+            )
+            session.add(stock)
+            thesis_log = ThesisLog(
+                stock_ticker=ticker,
+                content=thesis,
+                tags=tags_str,
+                version=1,
+            )
+            repo.create_thesis_log(session, thesis_log)
+            created += 1
+
+    session.commit()
+    logger.info("匯入完成：新增 %d，更新 %d，錯誤 %d。", created, updated, len(errors))
+
+    return {
+        "message": f"✅ 匯入完成：新增 {created}，更新 {updated}，錯誤 {len(errors)}。",
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+    }

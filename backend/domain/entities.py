@@ -47,3 +47,31 @@ class RemovalLog(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         description="移除時間",
     )
+
+
+class ScanLog(SQLModel, table=True):
+    """掃描紀錄（每次掃描、每檔股票一筆）。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    stock_ticker: str = Field(foreign_key="stock.ticker", description="對應股票代號")
+    signal: str = Field(description="掃描訊號（ScanSignal value）")
+    market_status: str = Field(description="掃描時的市場情緒")
+    details: str = Field(default="", description="警報詳情（JSON）")
+    scanned_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="掃描時間",
+    )
+
+
+class PriceAlert(SQLModel, table=True):
+    """自訂價格警報。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    stock_ticker: str = Field(foreign_key="stock.ticker", description="對應股票代號")
+    metric: str = Field(description="指標名稱：rsi, price, bias")
+    operator: str = Field(description="比較運算：lt, gt")
+    threshold: float = Field(description="門檻值")
+    is_active: bool = Field(default=True, description="是否啟用")
+    last_triggered_at: Optional[datetime] = Field(
+        default=None, description="上次觸發時間"
+    )
