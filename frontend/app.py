@@ -44,6 +44,21 @@ from config import (
 )
 
 # ---------------------------------------------------------------------------
+# Frontend constants (UI-specific)
+# ---------------------------------------------------------------------------
+ALERT_METRIC_OPTIONS = ["rsi", "price", "bias"]
+ALERT_OPERATOR_OPTIONS = ["lt", "gt"]
+SCAN_SIGNAL_ICONS = {
+    "THESIS_BROKEN": "🔴",
+    "CONTRARIAN_BUY": "🟢",
+    "OVERHEATED": "🟠",
+    "NORMAL": "⚪",
+}
+REORDER_MIN_STOCKS = 2
+DATE_FORMAT = "%Y-%m-%d"
+CARD_COL_RATIO = [1, 2]
+
+# ---------------------------------------------------------------------------
 # 頁面設定
 # ---------------------------------------------------------------------------
 
@@ -195,6 +210,13 @@ with st.expander("📖 投資雷達：使用說明書 (SOP)", expanded=False):
 # ---------------------------------------------------------------------------
 # Helper Functions
 # ---------------------------------------------------------------------------
+
+
+def refresh_ui() -> None:
+    """清除所有快取並重新載入頁面。"""
+    st.cache_data.clear()
+    st.rerun()
+
 
 def api_get(path: str) -> dict | list | None:
     """GET 請求 Backend API。"""
@@ -357,7 +379,7 @@ with st.sidebar:
                 })
                 if result:
                     st.success(f"✅ 已新增 {new_ticker.upper()} 到追蹤清單！")
-                    st.rerun()
+                    refresh_ui()
 
     st.divider()
 
@@ -403,24 +425,13 @@ with st.sidebar:
             if isinstance(import_data, list):
                 st.caption(f"偵測到 {len(import_data)} 筆資料。")
                 if st.button("📤 確認匯入", use_container_width=True):
-                    try:
-                        resp = requests.post(
-                            f"{BACKEND_URL}/stocks/import",
-                            json=import_data,
-                            timeout=API_POST_TIMEOUT,
-                        )
-                        resp.raise_for_status()
-                        result = resp.json()
-                    except requests.RequestException as e:
-                        st.error(f"❌ 匯入失敗：{e}")
-                        result = None
+                    result = api_post("/stocks/import", import_data)
                     if result:
                         st.success(result.get("message", "✅ 匯入完成"))
                         if result.get("errors"):
                             for err in result["errors"]:
                                 st.warning(f"⚠️ {err}")
-                        st.cache_data.clear()
-                        st.rerun()
+                        refresh_ui()
             else:
                 st.warning("⚠️ JSON 格式錯誤，預期為陣列。")
         except json.JSONDecodeError:
@@ -429,11 +440,8 @@ with st.sidebar:
     st.divider()
 
     # -- 重新整理資料 --
-    st.subheader("🔄 資料快取")
-    st.caption("股票資料快取 5 分鐘，過期後下次操作時自動重新載入。點擊下方按鈕可立即刷新。")
-    if st.button("🔄 立即刷新資料", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
+    if st.button("🔄 重新整理畫面", use_container_width=True):
+        refresh_ui()
 
 
 # ---------------------------------------------------------------------------
@@ -728,7 +736,7 @@ def render_stock_card(stock: dict) -> None:
                                 help="刪除此警報",
                             ):
                                 api_delete(f"/alerts/{a['id']}")
-                                st.rerun()
+                                refresh_ui()
                     st.divider()
 
                 st.markdown("**➕ 新增警報：**")
@@ -768,7 +776,7 @@ def render_stock_card(stock: dict) -> None:
                     )
                     if result:
                         st.success(result.get("message", "✅ 警報已建立"))
-                        st.rerun()
+                        refresh_ui()
 
         with col2:
             st.markdown("**💡 當前觀點：**")
@@ -812,8 +820,7 @@ def render_stock_card(stock: dict) -> None:
                         )
                         if result:
                             st.success(result.get("message", "✅ 觀點已更新"))
-                            st.cache_data.clear()
-                            st.rerun()
+                            refresh_ui()
                     else:
                         st.warning("⚠️ 請輸入觀點內容。")
 
@@ -839,8 +846,7 @@ def render_stock_card(stock: dict) -> None:
                     )
                     if result:
                         st.success(result.get("message", "✅ 分類已切換"))
-                        st.cache_data.clear()
-                        st.rerun()
+                        refresh_ui()
 
             # -- 移除追蹤 --
             with st.expander(f"🗑️ 移除追蹤 — {ticker}", expanded=False):
@@ -859,7 +865,7 @@ def render_stock_card(stock: dict) -> None:
                         )
                         if result:
                             st.success(result.get("message", "✅ 已移除"))
-                            st.rerun()
+                            refresh_ui()
                     else:
                         st.warning("⚠️ 請輸入移除原因。")
 
@@ -876,8 +882,7 @@ def render_reorder_section(category_key: str, stocks_in_cat: list[dict]) -> None
                 result = api_put("/stocks/reorder", {"ordered_tickers": sorted_tickers})
                 if result:
                     st.success(result.get("message", "✅ 排序已儲存"))
-                    st.cache_data.clear()
-                    st.rerun()
+                    refresh_ui()
         else:
             st.caption("拖曳股票代號以調整顯示順序。")
 
@@ -962,7 +967,6 @@ with tab_archive:
                             )
                             if result:
                                 st.success(result.get("message", "✅ 已重新啟用"))
-                                st.cache_data.clear()
-                                st.rerun()
+                                refresh_ui()
     else:
         st.info("📭 目前沒有已移除的股票。")

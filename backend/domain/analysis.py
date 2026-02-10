@@ -11,6 +11,7 @@ from domain.constants import (
     MARKET_CAUTION_BELOW_60MA_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
+    RSI_PERIOD,
     VOLUME_RATIO_LONG_DAYS,
     VOLUME_RATIO_SHORT_DAYS,
 )
@@ -22,7 +23,7 @@ from domain.enums import MarketSentiment, MoatStatus, ScanSignal
 # ---------------------------------------------------------------------------
 
 
-def compute_rsi(closes: list[float], period: int = 14) -> Optional[float]:
+def compute_rsi(closes: list[float], period: int = RSI_PERIOD) -> Optional[float]:
     """
     以 Wilder's Smoothed Method 計算 RSI。
     需要至少 period+1 筆收盤價。純函式，無副作用。

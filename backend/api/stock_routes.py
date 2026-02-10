@@ -27,8 +27,10 @@ from application.services import (
     create_stock,
     deactivate_stock,
     export_stocks,
+    get_moat_for_ticker,
     get_portfolio_summary,
     get_removal_history,
+    handle_webhook,
     import_stocks,
     list_active_stocks,
     list_removed_stocks,
@@ -37,15 +39,14 @@ from application.services import (
     update_stock_category,
 )
 from domain.constants import (
-    ETF_MOAT_NA_MESSAGE,
+    DEFAULT_ALERT_METRIC,
+    DEFAULT_ALERT_OPERATOR,
+    DEFAULT_ALERT_THRESHOLD,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
-from domain.enums import StockCategory
-from infrastructure import repositories as repo
 from infrastructure.database import get_session
 from infrastructure.market_data import (
-    analyze_moat_trend,
     get_dividend_info,
     get_earnings_date,
     get_technical_signals,
@@ -111,11 +112,7 @@ def export_stocks_route(
 @router.get("/ticker/{ticker}/moat")
 def get_moat_route(ticker: str, session: Session = Depends(get_session)) -> dict:
     """取得指定股票的護城河趨勢（毛利率 5 季走勢 + YoY 診斷）。ETF 不適用。"""
-    upper_ticker = ticker.upper()
-    stock = repo.find_stock_by_ticker(session, upper_ticker)
-    if stock and stock.category == StockCategory.ETF:
-        return {"ticker": upper_ticker, "moat": "N/A", "details": ETF_MOAT_NA_MESSAGE}
-    return analyze_moat_trend(upper_ticker)
+    return get_moat_for_ticker(session, ticker)
 
 
 @router.patch("/ticker/{ticker}/category")
@@ -232,9 +229,9 @@ def create_price_alert_route(
         return create_price_alert(
             session,
             ticker,
-            payload.get("metric", "rsi"),
-            payload.get("operator", "lt"),
-            payload.get("threshold", 30.0),
+            payload.get("metric", DEFAULT_ALERT_METRIC),
+            payload.get("operator", DEFAULT_ALERT_OPERATOR),
+            payload.get("threshold", DEFAULT_ALERT_THRESHOLD),
         )
     except StockNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -289,92 +286,8 @@ def webhook_route(
     統一入口 — 供 OpenClaw 等 AI agent 使用。
     支援的 action: summary, signals, scan, moat, alerts, add_stock
     """
-    import threading as _threading
-
-    action = payload.action.lower().strip()
-    ticker = payload.ticker.upper().strip() if payload.ticker else None
-
     try:
-        if action == "summary":
-            text = get_portfolio_summary(session)
-            return WebhookResponse(success=True, message=text)
-
-        if action == "signals":
-            if not ticker:
-                return WebhookResponse(success=False, message="請提供 ticker 參數。")
-            result = get_technical_signals(ticker)
-            if not result or "error" in result:
-                return WebhookResponse(
-                    success=False,
-                    message=result.get("error", "無法取得技術訊號。") if result else "無法取得技術訊號。",
-                )
-            status_text = "\n".join(result.get("status", []))
-            msg = (
-                f"{ticker} — 現價 ${result.get('price')}, RSI={result.get('rsi')}, "
-                f"Bias={result.get('bias')}%\n{status_text}"
-            )
-            return WebhookResponse(success=True, message=msg, data=result)
-
-        if action == "scan":
-            from application.services import run_scan as _run_scan
-            from infrastructure.database import engine as _engine
-
-            def _bg_scan() -> None:
-                with Session(_engine) as s:
-                    _run_scan(s)
-
-            _threading.Thread(target=_bg_scan, daemon=True).start()
-            return WebhookResponse(success=True, message="掃描已在背景啟動，結果將透過 Telegram 通知。")
-
-        if action == "moat":
-            if not ticker:
-                return WebhookResponse(success=False, message="請提供 ticker 參數。")
-            from infrastructure.market_data import analyze_moat_trend
-            result = analyze_moat_trend(ticker)
-            details = result.get("details", "N/A")
-            return WebhookResponse(
-                success=True,
-                message=f"{ticker} 護城河：{result.get('moat', 'N/A')} — {details}",
-                data=result,
-            )
-
-        if action == "alerts":
-            if not ticker:
-                return WebhookResponse(success=False, message="請提供 ticker 參數。")
-            from application.services import list_price_alerts
-            alerts = list_price_alerts(session, ticker)
-            if not alerts:
-                return WebhookResponse(success=True, message=f"{ticker} 目前沒有設定價格警報。")
-            lines = [f"{ticker} 價格警報："]
-            for a in alerts:
-                op_str = "<" if a["operator"] == "lt" else ">"
-                lines.append(f"  {a['metric']} {op_str} {a['threshold']} ({'啟用' if a['is_active'] else '停用'})")
-            return WebhookResponse(success=True, message="\n".join(lines), data={"alerts": alerts})
-
-        if action == "add_stock":
-            params = payload.params
-            t = params.get("ticker", ticker)
-            if not t:
-                return WebhookResponse(success=False, message="請提供 ticker 參數。")
-            cat_str = params.get("category", "Growth")
-            thesis = params.get("thesis", "由 AI agent 新增。")
-            tags = params.get("tags", [])
-            try:
-                from domain.enums import StockCategory as _SC
-                stock = create_stock(session, t, _SC(cat_str), thesis, tags)
-                return WebhookResponse(
-                    success=True,
-                    message=f"✅ 已新增 {stock.ticker} 到 {cat_str} 分類。",
-                )
-            except StockAlreadyExistsError as e:
-                return WebhookResponse(success=False, message=str(e))
-            except ValueError:
-                return WebhookResponse(success=False, message=f"無效的分類：{cat_str}")
-
-        return WebhookResponse(
-            success=False,
-            message=f"不支援的 action: {action}。支援：summary, signals, scan, moat, alerts, add_stock",
-        )
-
+        result = handle_webhook(session, payload.action, payload.ticker, payload.params)
+        return WebhookResponse(**result)
     except Exception as e:
         return WebhookResponse(success=False, message=f"錯誤：{e}")

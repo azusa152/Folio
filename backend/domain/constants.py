@@ -75,6 +75,42 @@ TELEGRAM_REQUEST_TIMEOUT = 10
 # Shared Messages
 # ---------------------------------------------------------------------------
 ETF_MOAT_NA_MESSAGE = "ETF 不適用護城河分析"
+REMOVAL_REASON_UNKNOWN = "未知"
+
+# ---------------------------------------------------------------------------
+# Default Parameter Values
+# ---------------------------------------------------------------------------
+DEFAULT_ALERT_METRIC = "rsi"
+DEFAULT_ALERT_OPERATOR = "lt"
+DEFAULT_ALERT_THRESHOLD = 30.0
+DEFAULT_IMPORT_CATEGORY = "Growth"
+DEFAULT_WEBHOOK_THESIS = "由 AI agent 新增。"
+
+# ---------------------------------------------------------------------------
+# Category Display Order & Icons
+# ---------------------------------------------------------------------------
+CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "ETF"]
+
+CATEGORY_ICON: dict[str, str] = {
+    "Trend_Setter": "🌊",
+    "Moat": "🏰",
+    "Growth": "🚀",
+    "ETF": "🧺",
+}
+
+# ---------------------------------------------------------------------------
+# Disk Cache Key Prefixes
+# ---------------------------------------------------------------------------
+DISK_KEY_SIGNALS = "signals"
+DISK_KEY_MOAT = "moat"
+DISK_KEY_EARNINGS = "earnings"
+DISK_KEY_DIVIDEND = "dividend"
+
+# ---------------------------------------------------------------------------
+# Webhook Messages
+# ---------------------------------------------------------------------------
+WEBHOOK_MISSING_TICKER = "請提供 ticker 參數。"
+WEBHOOK_UNKNOWN_ACTION_TEMPLATE = "不支援的 action: {action}。支援：summary, signals, scan, moat, alerts, add_stock"
 
 # ---------------------------------------------------------------------------
 # curl_cffi

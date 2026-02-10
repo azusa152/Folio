@@ -1,6 +1,8 @@
 # Azusa Radar — 投資雷達
 
-系統化追蹤股票、管理觀點演進、並透過三層漏斗自動掃描技術面與基本面異常。
+> 不是教你買什麼，而是幫你建立一套**有紀律的觀察流程** — 記錄觀點、追蹤訊號、自動提醒，讓你不再憑感覺做決定。
+
+一套**自架的個人投資追蹤系統**，把「盯盤」這件事自動化。分類管理你關注的股票，定時掃描技術面與基本面異常，有狀況直接推 Telegram 通知。Docker 一鍵部署，輕量不吃資源，跑在任何有 Docker 的機器上都行。
 
 ## 功能特色
 
@@ -92,6 +94,64 @@ TELEGRAM_CHAT_ID=your-telegram-chat-id-here
 ```
 
 > 若不需要 Telegram 通知，保留預設值即可，系統會自動跳過發送。
+
+<details>
+<summary>📖 Telegram Bot 申請與設定教學（點擊展開）</summary>
+
+#### Step 1：透過 BotFather 建立 Bot
+
+1. 在 Telegram 搜尋 **@BotFather**，點擊開始對話。
+2. 傳送 `/newbot`。
+3. 依照提示輸入：
+   - **Bot 名稱**（顯示名稱，例如 `Azusa Radar`）
+   - **Bot 帳號**（唯一 ID，必須以 `bot` 結尾，例如 `azusa_radar_bot`）
+4. 建立成功後，BotFather 會回覆一段訊息，其中包含 **HTTP API Token**，格式類似：
+   ```
+   123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ
+   ```
+5. 將這段 Token 複製，填入 `.env` 的 `TELEGRAM_BOT_TOKEN`。
+
+> 如需更改 Bot 的頭像或描述，可對 BotFather 傳送 `/mybots` 進行設定。
+
+#### Step 2：取得你的 Chat ID
+
+**個人聊天（推薦）：**
+
+1. 在 Telegram 搜尋 **@userinfobot**，點擊開始對話。
+2. 傳送 `/start`，Bot 會回覆你的使用者資訊，其中 `Id` 即為你的 Chat ID（純數字）。
+3. 將此數字填入 `.env` 的 `TELEGRAM_CHAT_ID`。
+
+**群組聊天：**
+
+1. 將你的 Bot 加入目標群組。
+2. 在群組中隨意傳送一則訊息。
+3. 在瀏覽器中開啟以下網址（將 `<TOKEN>` 替換為你的 Bot Token）：
+   ```
+   https://api.telegram.org/bot<TOKEN>/getUpdates
+   ```
+4. 在回傳的 JSON 中找到 `"chat":{"id":-123456789}`，該負數即為群組 Chat ID。
+5. 將此數字填入 `.env` 的 `TELEGRAM_CHAT_ID`。
+
+#### Step 3：填寫 `.env` 並驗證
+
+```env
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ
+TELEGRAM_CHAT_ID=987654321
+```
+
+填好後可用以下指令快速驗證 Bot 是否能正常發送訊息：
+
+```bash
+curl -s "https://api.telegram.org/bot<YOUR_TOKEN>/sendMessage" \
+  -d chat_id=<YOUR_CHAT_ID> \
+  -d text="Hello from Azusa Radar!"
+```
+
+若收到 Telegram 訊息，代表設定成功。
+
+> 參考：`.env.example` 中已列出所有可用的環境變數。
+
+</details>
 
 ### 2. 啟動服務
 

@@ -19,10 +19,24 @@ Your Goal: Build a Dockerized, API-first investment analysis system for discipli
 -   **Data Source:** `yfinance`.
 -   **Notification:** Telegram Bot API.
 
-# Coding Standards
--   **Modular:** Separate logic (`logic.py`) from API routes (`main.py`).
--   **Type Safety:** Use Pydantic models and Python type hints.
--   **Error Handling:** Never crash on API failures (e.g., if yfinance fails, return None/Warning, don't break the app).
+# Coding Standards — Clean Code + Clean Architecture
+
+## Clean Architecture (Layered Structure)
+-   **`domain/`** — Pure business rules, entities, enums, constants. No framework imports allowed.
+-   **`application/`** — Use-case orchestration and service functions. Depends only on `domain/` and repository interfaces.
+-   **`infrastructure/`** — External adapters (yfinance, Telegram, SQLite repositories). Implements interfaces defined by upper layers.
+-   **`api/`** — FastAPI route handlers. Thin controllers that delegate to `application/` services.
+-   New code must be placed in the correct layer; never leak infrastructure concerns into `domain/`.
+
+## Clean Code Practices
+-   **Small, focused functions:** Each function should do one thing well with a descriptive name.
+-   **No magic numbers or strings:** Use `domain/constants.py` (backend) and `frontend/config.py` (frontend) for all thresholds, TTLs, labels, and messages.
+-   **DRY (Don't Repeat Yourself):** Extract duplicated logic into shared helpers or modules.
+-   **Pure functions:** Prefer pure functions and immutable data where possible; isolate side effects at the boundary.
+
+## General Rules
+-   **Type Safety:** Use Pydantic models and Python type hints everywhere.
+-   **Graceful Error Handling:** Never crash on external API failures (e.g., if yfinance fails, return None/Warning, don't break the app).
 -   **Language:** User Interface and Logs must be in **Traditional Chinese (繁體中文)**.
 
 # Interaction Guidelines

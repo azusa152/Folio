@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlmodel import Session, func, select
 
+from domain.constants import LATEST_SCAN_LOGS_DEFAULT_LIMIT, SCAN_HISTORY_DEFAULT_LIMIT
 from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import StockCategory
 
@@ -64,6 +65,21 @@ def save_stock(session: Session, stock: Stock) -> Stock:
 def update_stock(session: Session, stock: Stock) -> None:
     """更新股票（不做 refresh）。"""
     session.add(stock)
+
+
+def bulk_update_display_order(session: Session, ordered_tickers: list[str]) -> None:
+    """批次更新多檔股票的 display_order（單一 SELECT + 批次寫入）。"""
+    if not ordered_tickers:
+        return
+    stocks = session.exec(
+        select(Stock).where(Stock.ticker.in_(ordered_tickers))
+    ).all()
+    stock_map = {s.ticker: s for s in stocks}
+    for index, ticker in enumerate(ordered_tickers):
+        s = stock_map.get(ticker)
+        if s:
+            s.display_order = index
+    session.commit()
 
 
 def bulk_update_scan_signals(session: Session, updates: dict[str, str]) -> None:
@@ -179,7 +195,7 @@ def create_scan_log(session: Session, log: ScanLog) -> None:
     session.add(log)
 
 
-def find_scan_history(session: Session, ticker: str, limit: int = 20) -> list[ScanLog]:
+def find_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DEFAULT_LIMIT) -> list[ScanLog]:
     """取得指定股票的掃描歷史（時間降序）。"""
     statement = (
         select(ScanLog)
@@ -190,7 +206,7 @@ def find_scan_history(session: Session, ticker: str, limit: int = 20) -> list[Sc
     return list(session.exec(statement).all())
 
 
-def find_latest_scan_logs(session: Session, limit: int = 50) -> list[ScanLog]:
+def find_latest_scan_logs(session: Session, limit: int = LATEST_SCAN_LOGS_DEFAULT_LIMIT) -> list[ScanLog]:
     """取得最近的掃描紀錄（跨股票，時間降序）。"""
     statement = (
         select(ScanLog)

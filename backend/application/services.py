@@ -12,14 +12,22 @@ from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
 from domain.constants import (
+    CATEGORY_DISPLAY_ORDER,
+    CATEGORY_ICON,
+    DEFAULT_IMPORT_CATEGORY,
+    DEFAULT_WEBHOOK_THESIS,
     ETF_MOAT_NA_MESSAGE,
+    LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     PRICE_ALERT_COOLDOWN_HOURS,
+    REMOVAL_REASON_UNKNOWN,
     SCAN_HISTORY_DEFAULT_LIMIT,
     SCAN_THREAD_POOL_SIZE,
+    WEBHOOK_MISSING_TICKER,
+    WEBHOOK_UNKNOWN_ACTION_TEMPLATE,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
 )
 from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
-from domain.enums import CATEGORY_LABEL, MoatStatus, ScanSignal, StockCategory
+from domain.enums import CATEGORY_LABEL, MarketSentiment, MoatStatus, ScanSignal, StockCategory
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
@@ -70,6 +78,38 @@ class StockAlreadyActiveError(Exception):
 
 class CategoryUnchangedError(Exception):
     """分類相同，無需變更。"""
+
+
+# ---------------------------------------------------------------------------
+# 共用內部工具
+# ---------------------------------------------------------------------------
+
+
+def _get_stock_or_raise(session: Session, ticker: str) -> Stock:
+    """查詢股票，不存在時拋出 StockNotFoundError。"""
+    upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper)
+    if not stock:
+        raise StockNotFoundError(f"找不到股票 {upper}。")
+    return stock
+
+
+def _append_thesis_log(
+    session: Session,
+    ticker: str,
+    content: str,
+    tags: str = "",
+) -> ThesisLog:
+    """建立新版觀點紀錄（自動遞增版本號）。"""
+    max_version = repo.get_max_thesis_version(session, ticker)
+    log = ThesisLog(
+        stock_ticker=ticker,
+        content=content,
+        tags=tags,
+        version=max_version + 1,
+    )
+    repo.create_thesis_log(session, log)
+    return log
 
 
 def create_stock(
@@ -138,12 +178,9 @@ def update_stock_category(session: Session, ticker: str, new_category: StockCate
     """
     切換股票分類，並在觀點歷史中記錄變更。
     """
-    ticker_upper = ticker.upper()
+    stock = _get_stock_or_raise(session, ticker)
+    ticker_upper = stock.ticker
     logger.info("分類變更請求：%s → %s", ticker_upper, new_category.value)
-
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
 
     old_category = stock.category
     if old_category == new_category:
@@ -153,17 +190,9 @@ def update_stock_category(session: Session, ticker: str, new_category: StockCate
     stock.category = new_category
     repo.update_stock(session, stock)
 
-    # 審計紀錄
-    max_version = repo.get_max_thesis_version(session, ticker_upper)
     old_label = CATEGORY_LABEL.get(old_category.value, old_category.value)
     new_label = CATEGORY_LABEL.get(new_category.value, new_category.value)
-
-    thesis_log = ThesisLog(
-        stock_ticker=ticker_upper,
-        content=f"[分類變更] {old_label} → {new_label}",
-        version=max_version + 1,
-    )
-    repo.create_thesis_log(session, thesis_log)
+    _append_thesis_log(session, ticker_upper, f"[分類變更] {old_label} → {new_label}")
 
     session.commit()
     logger.info("股票 %s 分類已從 %s 變更為 %s。", ticker_upper, old_label, new_label)
@@ -179,12 +208,10 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     """
     移除追蹤股票，記錄移除原因與觀點版控。
     """
-    ticker_upper = ticker.upper()
+    stock = _get_stock_or_raise(session, ticker)
+    ticker_upper = stock.ticker
     logger.info("移除追蹤：%s", ticker_upper)
 
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
     if not stock.is_active:
         raise StockAlreadyInactiveError(f"股票 {ticker_upper} 已經是移除狀態。")
 
@@ -194,13 +221,7 @@ def deactivate_stock(session: Session, ticker: str, reason: str) -> dict:
     removal_log = RemovalLog(stock_ticker=ticker_upper, reason=reason)
     repo.create_removal_log(session, removal_log)
 
-    max_version = repo.get_max_thesis_version(session, ticker_upper)
-    thesis_log = ThesisLog(
-        stock_ticker=ticker_upper,
-        content=f"[已移除] {reason}",
-        version=max_version + 1,
-    )
-    repo.create_thesis_log(session, thesis_log)
+    _append_thesis_log(session, ticker_upper, f"[已移除] {reason}")
 
     session.commit()
     logger.info("股票 %s 已移除追蹤（原因：%s）。", ticker_upper, reason)
@@ -217,30 +238,20 @@ def reactivate_stock(
     """
     重新啟用已移除的股票。可選擇性更新分類與觀點。
     """
-    ticker_upper = ticker.upper()
+    stock = _get_stock_or_raise(session, ticker)
+    ticker_upper = stock.ticker
     logger.info("重新啟用追蹤：%s", ticker_upper)
 
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
     if stock.is_active:
         raise StockAlreadyActiveError(f"股票 {ticker_upper} 已經是啟用狀態。")
 
     stock.is_active = True
-    stock.last_scan_signal = "NORMAL"
+    stock.last_scan_signal = ScanSignal.NORMAL.value
     if category:
         stock.category = category
     repo.update_stock(session, stock)
 
-    # 觀點版控紀錄
-    max_version = repo.get_max_thesis_version(session, ticker_upper)
-    thesis_content = thesis or "[重新啟用追蹤]"
-    thesis_log = ThesisLog(
-        stock_ticker=ticker_upper,
-        content=thesis_content,
-        version=max_version + 1,
-    )
-    repo.create_thesis_log(session, thesis_log)
+    _append_thesis_log(session, ticker_upper, thesis or "[重新啟用追蹤]")
 
     if thesis:
         stock.current_thesis = thesis
@@ -268,20 +279,10 @@ def export_stocks(session: Session) -> list[dict]:
 
 
 def update_display_order(session: Session, ordered_tickers: list[str]) -> dict:
-    """批次更新股票顯示順位（單一 SELECT + 批次寫入）。"""
+    """批次更新股票顯示順位（委託 Repository 執行）。"""
     logger.info("更新顯示順位，共 %d 檔股票。", len(ordered_tickers))
     upper_tickers = [t.upper() for t in ordered_tickers]
-    from sqlmodel import select as sql_select
-    from domain.entities import Stock as StockEntity
-    stocks = session.exec(
-        sql_select(StockEntity).where(StockEntity.ticker.in_(upper_tickers))
-    ).all()
-    stock_map = {s.ticker: s for s in stocks}
-    for index, ticker in enumerate(upper_tickers):
-        s = stock_map.get(ticker)
-        if s:
-            s.display_order = index
-    session.commit()
+    repo.bulk_update_display_order(session, upper_tickers)
     return {"message": f"✅ 已更新 {len(ordered_tickers)} 檔股票的顯示順位。"}
 
 
@@ -301,7 +302,7 @@ def list_removed_stocks(session: Session) -> list[dict]:
             "ticker": stock.ticker,
             "category": stock.category,
             "current_thesis": stock.current_thesis,
-            "removal_reason": latest_removal.reason if latest_removal else "未知",
+            "removal_reason": latest_removal.reason if latest_removal else REMOVAL_REASON_UNKNOWN,
             "removed_at": (
                 latest_removal.created_at.isoformat()
                 if latest_removal and latest_removal.created_at
@@ -315,13 +316,8 @@ def list_removed_stocks(session: Session) -> list[dict]:
 
 def get_removal_history(session: Session, ticker: str) -> list[dict]:
     """取得指定股票的完整移除紀錄歷史。"""
-    ticker_upper = ticker.upper()
-
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
-
-    logs = repo.find_removal_history(session, ticker_upper)
+    stock = _get_stock_or_raise(session, ticker)
+    logs = repo.find_removal_history(session, stock.ticker)
     return [
         {
             "reason": log.reason,
@@ -343,25 +339,14 @@ def add_thesis(
     tags: list[str] | None = None,
 ) -> dict:
     """為指定股票新增觀點，自動遞增版本號。"""
-    ticker_upper = ticker.upper()
+    stock = _get_stock_or_raise(session, ticker)
+    ticker_upper = stock.ticker
     tags = tags or []
     tags_str = _tags_to_str(tags)
     logger.info("更新觀點：%s（標籤：%s）", ticker_upper, tags)
 
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
-
-    max_version = repo.get_max_thesis_version(session, ticker_upper)
-    new_version = max_version + 1
-
-    thesis_log = ThesisLog(
-        stock_ticker=ticker_upper,
-        content=content,
-        tags=tags_str,
-        version=new_version,
-    )
-    repo.create_thesis_log(session, thesis_log)
+    thesis_log = _append_thesis_log(session, ticker_upper, content, tags_str)
+    new_version = thesis_log.version
 
     stock.current_thesis = content
     stock.current_tags = tags_str
@@ -380,13 +365,8 @@ def add_thesis(
 
 def get_thesis_history(session: Session, ticker: str) -> list[dict]:
     """取得指定股票的完整觀點版控歷史。"""
-    ticker_upper = ticker.upper()
-
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
-
-    logs = repo.find_thesis_history(session, ticker_upper)
+    stock = _get_stock_or_raise(session, ticker)
+    logs = repo.find_thesis_history(session, stock.ticker)
     return [
         {
             "version": log.version,
@@ -419,7 +399,7 @@ def run_scan(session: Session) -> dict:
     logger.info("Layer 1 — 風向球股票：%s", trend_tickers)
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
-    market_status_value = market_sentiment.get("status", "POSITIVE")
+    market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)
     logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_sentiment.get("details", ""))
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
@@ -513,12 +493,7 @@ def run_scan(session: Session) -> dict:
     _check_price_alerts(session, results)
 
     # === 差異比對 + 通知 ===
-    category_icon = {
-        "Trend_Setter": "🌊",
-        "Moat": "🏰",
-        "Growth": "🚀",
-        "ETF": "🧺",
-    }
+    category_icon = CATEGORY_ICON
 
     # 比對每檔股票的 current signal vs last_scan_signal
     new_or_changed: list[dict] = []  # signal 從 NORMAL→非 NORMAL，或非 NORMAL 類型改變
@@ -557,11 +532,11 @@ def run_scan(session: Session) -> dict:
         if new_or_changed:
             grouped: dict[str, list[str]] = {}
             for r in new_or_changed:
-                cat = r.get("category", "Growth")
+                cat = r.get("category", DEFAULT_IMPORT_CATEGORY)
                 cat_value = cat.value if hasattr(cat, "value") else str(cat)
                 grouped.setdefault(cat_value, []).extend(r["alerts"])
 
-            for cat_key in ["Trend_Setter", "Moat", "Growth", "ETF"]:
+            for cat_key in CATEGORY_DISPLAY_ORDER:
                 if cat_key in grouped:
                     icon = category_icon.get(cat_key, "")
                     label = CATEGORY_LABEL.get(cat_key, cat_key)
@@ -648,12 +623,8 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
 
 def get_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DEFAULT_LIMIT) -> list[dict]:
     """取得指定股票的掃描歷史。"""
-    ticker_upper = ticker.upper()
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
-
-    logs = repo.find_scan_history(session, ticker_upper, limit)
+    stock = _get_stock_or_raise(session, ticker)
+    logs = repo.find_scan_history(session, stock.ticker, limit)
     return [
         {
             "signal": log.signal,
@@ -665,7 +636,7 @@ def get_scan_history(session: Session, ticker: str, limit: int = SCAN_HISTORY_DE
     ]
 
 
-def get_latest_scan_logs(session: Session, limit: int = 50) -> list[dict]:
+def get_latest_scan_logs(session: Session, limit: int = LATEST_SCAN_LOGS_DEFAULT_LIMIT) -> list[dict]:
     """取得最近的掃描紀錄。"""
     logs = repo.find_latest_scan_logs(session, limit)
     return [
@@ -693,10 +664,8 @@ def create_price_alert(
     threshold: float,
 ) -> dict:
     """建立自訂價格警報。"""
-    ticker_upper = ticker.upper()
-    stock = repo.find_stock_by_ticker(session, ticker_upper)
-    if not stock:
-        raise StockNotFoundError(f"找不到股票 {ticker_upper}。")
+    stock = _get_stock_or_raise(session, ticker)
+    ticker_upper = stock.ticker
 
     alert = PriceAlert(
         stock_ticker=ticker_upper,
@@ -760,7 +729,7 @@ def send_weekly_digest(session: Session) -> dict:
         return {"message": "無追蹤股票。"}
 
     # 目前非 NORMAL 股票
-    non_normal = [s for s in all_stocks if s.last_scan_signal != "NORMAL"]
+    non_normal = [s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     normal_count = total - len(non_normal)
     health_score = round(normal_count / total * 100, 1)
 
@@ -818,12 +787,12 @@ def get_portfolio_summary(session: Session) -> str:
     if not stocks:
         return "Azusa Radar — 目前無追蹤股票。"
 
-    non_normal = [s for s in stocks if s.last_scan_signal != "NORMAL"]
+    non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
 
     lines: list[str] = [f"Azusa Radar — Health: {health}%", ""]
 
-    for cat in ["Trend_Setter", "Moat", "Growth", "ETF"]:
+    for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
@@ -856,7 +825,7 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
 
     for item in stock_list:
         ticker = item.get("ticker", "").strip().upper()
-        category_str = item.get("category", "Growth")
+        category_str = item.get("category", DEFAULT_IMPORT_CATEGORY)
         thesis = item.get("thesis", "") or item.get("initial_thesis", "")
         tags = item.get("tags", [])
 
@@ -876,14 +845,7 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
         if existing:
             # Upsert: 更新觀點與標籤
             if thesis:
-                max_version = repo.get_max_thesis_version(session, ticker)
-                thesis_log = ThesisLog(
-                    stock_ticker=ticker,
-                    content=thesis,
-                    tags=tags_str,
-                    version=max_version + 1,
-                )
-                repo.create_thesis_log(session, thesis_log)
+                _append_thesis_log(session, ticker, thesis, tags_str)
                 existing.current_thesis = thesis
             if tags:
                 existing.current_tags = tags_str
@@ -918,3 +880,103 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
         "updated": updated,
         "errors": errors,
     }
+
+
+# ===========================================================================
+# Moat Service (ETF-aware)
+# ===========================================================================
+
+
+def get_moat_for_ticker(session: Session, ticker: str) -> dict:
+    """取得指定股票的護城河趨勢。ETF 類別直接回傳 N/A。"""
+    upper_ticker = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper_ticker)
+    if stock and stock.category == StockCategory.ETF:
+        return {"ticker": upper_ticker, "moat": "N/A", "details": ETF_MOAT_NA_MESSAGE}
+    return analyze_moat_trend(upper_ticker)
+
+
+# ===========================================================================
+# Webhook Service (for OpenClaw / AI agents)
+# ===========================================================================
+
+
+def handle_webhook(session: Session, action: str, ticker: str | None, params: dict) -> dict:
+    """
+    處理 AI agent webhook 請求。回傳 dict(success, message, data)。
+    業務邏輯集中於此，API handler 只負責 parse + 回傳。
+    """
+    import threading as _threading
+
+    action = action.lower().strip()
+    ticker = ticker.upper().strip() if ticker else None
+
+    if action == "summary":
+        text = get_portfolio_summary(session)
+        return {"success": True, "message": text}
+
+    if action == "signals":
+        if not ticker:
+            return {"success": False, "message": WEBHOOK_MISSING_TICKER}
+        result = get_technical_signals(ticker)
+        if not result or "error" in result:
+            return {
+                "success": False,
+                "message": result.get("error", "無法取得技術訊號。") if result else "無法取得技術訊號。",
+            }
+        status_text = "\n".join(result.get("status", []))
+        msg = (
+            f"{ticker} — 現價 ${result.get('price')}, RSI={result.get('rsi')}, "
+            f"Bias={result.get('bias')}%\n{status_text}"
+        )
+        return {"success": True, "message": msg, "data": result}
+
+    if action == "scan":
+        from infrastructure.database import engine as _engine
+
+        def _bg_scan() -> None:
+            with Session(_engine) as s:
+                run_scan(s)
+
+        _threading.Thread(target=_bg_scan, daemon=True).start()
+        return {"success": True, "message": "掃描已在背景啟動，結果將透過 Telegram 通知。"}
+
+    if action == "moat":
+        if not ticker:
+            return {"success": False, "message": WEBHOOK_MISSING_TICKER}
+        result = analyze_moat_trend(ticker)
+        details = result.get("details", "N/A")
+        return {
+            "success": True,
+            "message": f"{ticker} 護城河：{result.get('moat', 'N/A')} — {details}",
+            "data": result,
+        }
+
+    if action == "alerts":
+        if not ticker:
+            return {"success": False, "message": WEBHOOK_MISSING_TICKER}
+        alerts = list_price_alerts(session, ticker)
+        if not alerts:
+            return {"success": True, "message": f"{ticker} 目前沒有設定價格警報。"}
+        lines = [f"{ticker} 價格警報："]
+        for a in alerts:
+            op_str = "<" if a["operator"] == "lt" else ">"
+            lines.append(f"  {a['metric']} {op_str} {a['threshold']} ({'啟用' if a['is_active'] else '停用'})")
+        return {"success": True, "message": "\n".join(lines), "data": {"alerts": alerts}}
+
+    if action == "add_stock":
+        t = params.get("ticker", ticker)
+        if not t:
+            return {"success": False, "message": WEBHOOK_MISSING_TICKER}
+        cat_str = params.get("category", DEFAULT_IMPORT_CATEGORY)
+        thesis = params.get("thesis", DEFAULT_WEBHOOK_THESIS)
+        tags = params.get("tags", [])
+        try:
+            stock = create_stock(session, t, StockCategory(cat_str), thesis, tags)
+            return {"success": True, "message": f"✅ 已新增 {stock.ticker} 到 {cat_str} 分類。"}
+        except StockAlreadyExistsError as e:
+            return {"success": False, "message": str(e)}
+        except ValueError:
+            return {"success": False, "message": f"無效的分類：{cat_str}"}
+
+    return {"success": False, "message": WEBHOOK_UNKNOWN_ACTION_TEMPLATE.format(action=action)}
