@@ -74,7 +74,8 @@ TELEGRAM_REQUEST_TIMEOUT = 10
 # ---------------------------------------------------------------------------
 # Shared Messages
 # ---------------------------------------------------------------------------
-ETF_MOAT_NA_MESSAGE = "ETF 不適用護城河分析"
+SKIP_SIGNALS_CATEGORIES = ["Cash"]  # Cash 類不進行 yfinance 訊號掃描
+SKIP_MOAT_CATEGORIES = ["Bond", "Cash"]  # 債券與現金不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "未知"
 
 # ---------------------------------------------------------------------------
@@ -89,14 +90,28 @@ DEFAULT_WEBHOOK_THESIS = "由 AI agent 新增。"
 # ---------------------------------------------------------------------------
 # Category Display Order & Icons
 # ---------------------------------------------------------------------------
-CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "ETF"]
+CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "Bond", "Cash"]
 
 CATEGORY_ICON: dict[str, str] = {
     "Trend_Setter": "🌊",
     "Moat": "🏰",
     "Growth": "🚀",
-    "ETF": "🧺",
+    "Bond": "🛡️",
+    "Cash": "💵",
 }
+
+# ---------------------------------------------------------------------------
+# User & Profile
+# ---------------------------------------------------------------------------
+DEFAULT_USER_ID = "default"
+DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
+
+# ---------------------------------------------------------------------------
+# Price History Cache
+# ---------------------------------------------------------------------------
+PRICE_HISTORY_CACHE_MAXSIZE = 200
+PRICE_HISTORY_CACHE_TTL = 300  # L1: 5 minutes (same as signals)
+DISK_PRICE_HISTORY_TTL = 1800  # L2: 30 minutes
 
 # ---------------------------------------------------------------------------
 # Disk Cache Key Prefixes
@@ -105,6 +120,7 @@ DISK_KEY_SIGNALS = "signals"
 DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
+DISK_KEY_PRICE_HISTORY = "price_history"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages

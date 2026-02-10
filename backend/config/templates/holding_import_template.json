@@ -1,0 +1,21 @@
+[
+  {
+    "ticker": "NVDA",
+    "category": "Moat",
+    "quantity": 10,
+    "cost_basis": 120.50
+  },
+  {
+    "ticker": "TLT",
+    "category": "Bond",
+    "quantity": 50,
+    "cost_basis": 92.00
+  },
+  {
+    "ticker": "USD",
+    "category": "Cash",
+    "quantity": 50000,
+    "cost_basis": null,
+    "is_cash": true
+  }
+]

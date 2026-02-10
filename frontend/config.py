@@ -3,6 +3,7 @@ Frontend — 集中管理所有前端常數與設定。
 避免散落在 app.py 中的 magic numbers / magic strings。
 """
 
+import json
 import os
 
 # ---------------------------------------------------------------------------
@@ -49,13 +50,16 @@ DEFAULT_ALERT_THRESHOLD = 30.0
 # ---------------------------------------------------------------------------
 # Category Labels & Tags
 # ---------------------------------------------------------------------------
-CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "ETF"]
+CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond", "Cash"]
 CATEGORY_LABELS = {
     "Trend_Setter": "🌊 風向球 (Trend Setter)",
     "Moat": "🏰 護城河 (Moat)",
     "Growth": "🚀 成長夢想 (Growth)",
-    "ETF": "🧺 ETF",
+    "Bond": "🛡️ 債券 (Bond)",
+    "Cash": "💵 現金 (Cash)",
 }
+SKIP_MOAT_CATEGORIES = ["Bond", "Cash"]  # 不顯示護城河檢測的分類
+SKIP_SIGNALS_CATEGORIES = ["Cash"]  # 不取得技術訊號的分類
 DEFAULT_TAG_OPTIONS = [
     "AI",
     "Semiconductor",
@@ -68,11 +72,128 @@ DEFAULT_TAG_OPTIONS = [
 ]
 
 # ---------------------------------------------------------------------------
+# Price Trend Chart
+# ---------------------------------------------------------------------------
+CACHE_TTL_PRICE_HISTORY = 300  # 5 minutes
+API_PRICE_HISTORY_TIMEOUT = 15
+PRICE_CHART_PERIODS = {
+    "1W": 5,
+    "1M": 21,
+    "6M": 126,
+    "1Y": 252,
+}
+PRICE_CHART_DEFAULT_PERIOD = "1M"
+PRICE_CHART_HEIGHT = 200
+
+# ---------------------------------------------------------------------------
+# War Room / Asset Allocation
+# ---------------------------------------------------------------------------
+CACHE_TTL_TEMPLATES = 86400  # 24 hours (personas rarely change)
+CACHE_TTL_PROFILE = 300  # 5 minutes
+CACHE_TTL_HOLDINGS = 300  # 5 minutes
+CACHE_TTL_REBALANCE = 60  # 1 minute (contains live prices)
+API_REBALANCE_TIMEOUT = 30
+DRIFT_CHART_HEIGHT = 300
+ALLOCATION_CHART_HEIGHT = 400
+
+# ---------------------------------------------------------------------------
 # External URLs
 # ---------------------------------------------------------------------------
 WHALEWISDOM_STOCK_URL = "https://whalewisdom.com/stock/{ticker}"
 
 # ---------------------------------------------------------------------------
+# Radar Page — Category subset (excludes Cash)
+# ---------------------------------------------------------------------------
+RADAR_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth", "Bond"]
+
+# ---------------------------------------------------------------------------
+# Stock Market Options (for multi-market support)
+# ---------------------------------------------------------------------------
+STOCK_MARKET_OPTIONS = {
+    "US": {"label": "🇺🇸 美股", "suffix": "", "currency": "USD"},
+    "TW": {"label": "🇹🇼 台股", "suffix": ".TW", "currency": "TWD"},
+    "JP": {"label": "🇯🇵 日股", "suffix": ".T", "currency": "JPY"},
+    "HK": {"label": "🇭🇰 港股", "suffix": ".HK", "currency": "HKD"},
+}
+STOCK_MARKET_PLACEHOLDERS = {
+    "US": "AAPL",
+    "TW": "2330",
+    "JP": "7203",
+    "HK": "0700",
+}
+STOCK_CATEGORY_OPTIONS = ["Trend_Setter", "Moat", "Growth"]
+
+# ---------------------------------------------------------------------------
+# Cash Form Options
+# ---------------------------------------------------------------------------
+CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD"]
+CASH_ACCOUNT_TYPE_OPTIONS = ["活存", "定存", "貨幣市場基金", "其他"]
+
+# ---------------------------------------------------------------------------
+# UI Constants (shared across pages)
+# ---------------------------------------------------------------------------
+ALERT_METRIC_OPTIONS = ["rsi", "price", "bias"]
+ALERT_OPERATOR_OPTIONS = ["lt", "gt"]
+SCAN_SIGNAL_ICONS = {
+    "THESIS_BROKEN": "🔴",
+    "CONTRARIAN_BUY": "🟢",
+    "OVERHEATED": "🟠",
+    "NORMAL": "⚪",
+}
+REORDER_MIN_STOCKS = 2
+
+# ---------------------------------------------------------------------------
 # File Names
 # ---------------------------------------------------------------------------
-EXPORT_FILENAME = "azusa_watchlist.json"
+EXPORT_FILENAME = "folio_watchlist.json"
+HOLDINGS_EXPORT_FILENAME = "folio_holdings.json"
+
+# ---------------------------------------------------------------------------
+# Import Templates (embedded as JSON strings for frontend download)
+# ---------------------------------------------------------------------------
+STOCK_IMPORT_TEMPLATE = json.dumps(
+    [
+        {
+            "ticker": "NVDA",
+            "category": "Moat",
+            "thesis": "Your investment thesis here.",
+            "tags": ["AI", "Semiconductor"],
+        },
+        {
+            "ticker": "TLT",
+            "category": "Bond",
+            "thesis": "Long-term treasury bond ETF.",
+            "tags": ["Bond"],
+        },
+    ],
+    ensure_ascii=False,
+    indent=2,
+)
+
+HOLDING_IMPORT_TEMPLATE = json.dumps(
+    [
+        {
+            "ticker": "NVDA",
+            "category": "Moat",
+            "quantity": 10,
+            "cost_basis": 120.50,
+            "broker": "Firstrade",
+        },
+        {
+            "ticker": "TLT",
+            "category": "Bond",
+            "quantity": 50,
+            "cost_basis": 92.00,
+            "broker": "永豐金",
+        },
+        {
+            "ticker": "USD",
+            "category": "Cash",
+            "quantity": 50000,
+            "cost_basis": None,
+            "is_cash": True,
+        },
+    ],
+    ensure_ascii=False,
+    indent=2,
+)

@@ -1,4 +1,4 @@
-# Azusa Radar — 投資雷達
+# Folio — 智能資產配置
 
 > 不是教你買什麼，而是幫你建立一套**有紀律的觀察流程** — 記錄觀點、追蹤訊號、自動提醒，讓你不再憑感覺做決定。
 
@@ -6,7 +6,9 @@
 
 ## 功能特色
 
-- **四大分類追蹤** — 風向球 / 護城河 / 成長夢想 / ETF，各類有專屬分頁
+- **雙頁面架構** — 「投資雷達」負責股票追蹤與掃描，「個人資產配置」負責持倉管理與再平衡，透過左側導覽列切換
+- **五大分類追蹤** — 風向球 / 護城河 / 成長夢想 / 債券 / 現金
+- **多市場支援** — 側邊欄新增資產支援美股、台股、日股、港股，自動帶入市場後綴與幣別
 - **觀點版控 (Thesis Versioning)** — 每次更新觀點自動遞增版號，完整保留歷史演進
 - **動態標籤 (Dynamic Tagging)** — 為股票標記領域標籤（AI、Cloud、SaaS...），標籤隨觀點版控一併快照
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號（並行掃描 4 股同時）
@@ -14,13 +16,16 @@
 - **掃描歷史** — 持久化每次掃描結果，可查看個股掃描時間軸與連續異常次數
 - **自訂價格警報** — 為個股設定 RSI / 價格 / 乖離率門檻，觸發時透過 Telegram 即時通知（4 小時冷卻）
 - **財報日曆** — 自動顯示下次財報日期，14 天內倒數提醒
-- **股息資訊** — 護城河與 ETF 類股票顯示殖利率與除息日
-- **拖曳排序** — 透過 drag-and-drop 調整股票顯示順位，順位寫入資料庫持久化
+- **股息資訊** — 護城河與債券類股票顯示殖利率與除息日
+- **即時訊號燈號** — 每張股票卡片標題自動顯示最新掃描訊號（🟢🟠🔴⚪），一目瞭然
+- **拖曳排序** — 勾選排序模式後透過 drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，支援 Dashboard 上傳匯入或 CLI 腳本匯入（upsert）
 - **定時掃描** — 每 30 分鐘自動執行三層漏斗掃描（非同步），僅推播「差異」通知（訊號變化時才發送）
 - **每週摘要** — 每週日自動發送 Telegram 投資組合健康報告（健康分數 + 異常股票 + 本週訊號變化）
 - **yfinance 速率限制** — 內建 Rate Limiter（2 次/秒），避免被 Yahoo Finance 封鎖
+- **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
+- **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類；新股自動加入雷達追蹤，省去重複操作
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
 ## 核心邏輯
@@ -32,7 +37,8 @@
 | **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
-| **ETF** | 指數型基金，被動追蹤市場或主題 | 否 |
+| **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
+| **現金 (Cash)** | 閒置現金（手動輸入，不進行訊號掃描） | 否 |
 
 ### V2 三層漏斗
 
@@ -60,20 +66,29 @@ graph LR
     FE["Streamlit Frontend :8501"]
     BE["FastAPI Backend :8000"]
     DB[("SQLite radar.db")]
+    subgraph backend [Backend Modules]
+      SCAN["Scan Engine"]
+      PERSONA["Persona System"]
+      HOLDINGS["Holdings CRUD"]
+      REBALANCE["Rebalance Engine"]
+      NOTIFY["Notification\n(Dual-Mode)"]
+    end
   end
   YF["yfinance API"]
   TG["Telegram Bot API"]
   FE -->|"HTTP requests"| BE
   BE -->|"read/write"| DB
-  BE -->|"fetch market data"| YF
-  BE -->|"send alerts"| TG
+  SCAN -->|"fetch market data"| YF
+  NOTIFY -->|"send alerts"| TG
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit Dashboard，分頁顯示四類股票（+ 已移除封存）與觀點編輯
-- **Database** — SQLite，透過 Docker Volume 持久化（含 ScanLog、PriceAlert 資料表）
-- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + Rate Limiter（2 次/秒）
-- **通知** — Telegram Bot API（差異通知 + 價格警報 + 每週摘要）
+- **Frontend** — Streamlit 雙頁面 Dashboard（`st.navigation`），投資雷達頁（股票分頁 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增
+- **Database** — SQLite，透過 Docker Volume 持久化（含 Stock、ScanLog、PriceAlert、Holding、UserInvestmentProfile、UserTelegramSettings 等資料表）
+- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + `diskcache` 持久快取 + Rate Limiter（2 次/秒）
+- **通知** — Telegram Bot API 雙模式（系統預設 Bot 或自訂 Bot Token），支援差異通知、價格警報、每週摘要
+- **投資人格系統** — 6 種預設範本 + 自訂，目標配置持久化於 DB
+- **再平衡引擎** — 比較目標配置 vs 實際持倉市值，產生偏移分析與再平衡建議
 - **並行掃描** — `ThreadPoolExecutor(max_workers=4)` 加速掃描，受 Rate Limiter 保護
 - **拖曳排序** — `streamlit-sortables` 元件
 
@@ -94,6 +109,8 @@ TELEGRAM_CHAT_ID=your-telegram-chat-id-here
 ```
 
 > 若不需要 Telegram 通知，保留預設值即可，系統會自動跳過發送。
+>
+> **雙模式通知**：除了 `.env` 環境變數（系統預設 Bot），你也可以在「💼 個人資產配置 → 📡 Telegram 設定」分頁中設定自訂 Bot Token 與 Chat ID。啟用後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送。
 
 <details>
 <summary>📖 Telegram Bot 申請與設定教學（點擊展開）</summary>
@@ -103,8 +120,8 @@ TELEGRAM_CHAT_ID=your-telegram-chat-id-here
 1. 在 Telegram 搜尋 **@BotFather**，點擊開始對話。
 2. 傳送 `/newbot`。
 3. 依照提示輸入：
-   - **Bot 名稱**（顯示名稱，例如 `Azusa Radar`）
-   - **Bot 帳號**（唯一 ID，必須以 `bot` 結尾，例如 `azusa_radar_bot`）
+   - **Bot 名稱**（顯示名稱，例如 `Folio`）
+   - **Bot 帳號**（唯一 ID，必須以 `bot` 結尾，例如 `folio_invest_bot`）
 4. 建立成功後，BotFather 會回覆一段訊息，其中包含 **HTTP API Token**，格式類似：
    ```
    123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ
@@ -144,7 +161,7 @@ TELEGRAM_CHAT_ID=987654321
 ```bash
 curl -s "https://api.telegram.org/bot<YOUR_TOKEN>/sendMessage" \
   -d chat_id=<YOUR_CHAT_ID> \
-  -d text="Hello from Azusa Radar!"
+  -d text="Hello from Folio!"
 ```
 
 若收到 Telegram 訊息，代表設定成功。
@@ -225,6 +242,23 @@ docker compose up --build
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
 | `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
 | `POST` | `/webhook` | 統一入口 — 供 OpenClaw 等 AI agent 使用 |
+| `GET` | `/personas/templates` | 取得系統預設投資人格範本 |
+| `GET` | `/profiles` | 取得目前啟用的投資組合配置 |
+| `POST` | `/profiles` | 建立新的投資組合配置 |
+| `PUT` | `/profiles/{id}` | 更新投資組合配置 |
+| `DELETE` | `/profiles/{id}` | 停用投資組合配置 |
+| `GET` | `/holdings` | 取得所有持倉 |
+| `POST` | `/holdings` | 新增持倉（含可選 broker 欄位） |
+| `POST` | `/holdings/cash` | 新增現金持倉 |
+| `PUT` | `/holdings/{id}` | 更新持倉 |
+| `DELETE` | `/holdings/{id}` | 刪除持倉 |
+| `GET` | `/holdings/export` | 匯出持倉（JSON） |
+| `POST` | `/holdings/import` | 匯入持倉 |
+| `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議） |
+| `GET` | `/ticker/{ticker}/price-history` | 取得股價歷史（前端趨勢圖用） |
+| `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
+| `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
+| `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
@@ -275,9 +309,53 @@ curl -X POST http://localhost:8000/stocks/import \
   -d '[{"ticker":"AAPL","category":"Moat","thesis":"品牌護城河","tags":["Hardware"]}]'
 ```
 
+### 範例：建立投資組合配置（從人格範本）
+
+```bash
+# 查看可用範本
+curl -s http://localhost:8000/personas/templates | python3 -m json.tool
+
+# 從 "balanced" 範本建立配置
+curl -X POST http://localhost:8000/profiles \
+  -H "Content-Type: application/json" \
+  -d '{"name": "標準型", "source_template_id": "balanced", "config": {"Trend_Setter": 25, "Moat": 30, "Growth": 15, "Bond": 20, "Cash": 10}}'
+```
+
+### 範例：新增持倉
+
+```bash
+# 新增股票持倉（broker 為選填）
+curl -X POST http://localhost:8000/holdings \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade"}'
+
+# 新增現金持倉
+curl -X POST http://localhost:8000/holdings/cash \
+  -H "Content-Type: application/json" \
+  -d '{"currency": "USD", "amount": 50000}'
+```
+
+### 範例：再平衡分析
+
+```bash
+curl -s http://localhost:8000/rebalance | python3 -m json.tool
+```
+
+### 範例：設定自訂 Telegram Bot
+
+```bash
+# 更新 Telegram 設定（啟用自訂 Bot）
+curl -X PUT http://localhost:8000/settings/telegram \
+  -H "Content-Type: application/json" \
+  -d '{"telegram_chat_id": "123456789", "custom_bot_token": "YOUR_BOT_TOKEN", "use_custom_bot": true}'
+
+# 發送測試訊息
+curl -X POST http://localhost:8000/settings/telegram/test
+```
+
 ## OpenClaw 整合
 
-[OpenClaw](https://docs.openclaw.ai/) 是一個開源 AI agent gateway，讓你可以透過 WhatsApp、Telegram、Discord 等即時通訊工具與 Azusa Radar 互動。
+[OpenClaw](https://docs.openclaw.ai/) 是一個開源 AI agent gateway，讓你可以透過 WhatsApp、Telegram、Discord 等即時通訊工具與 Folio 互動。
 
 ### 前置需求
 
@@ -286,16 +364,16 @@ npm install -g openclaw@latest
 openclaw onboard
 ```
 
-確保 OpenClaw Gateway 正在運行，且 Azusa Radar 的 Docker Compose 服務已啟動。
+確保 OpenClaw Gateway 正在運行，且 Folio 的 Docker Compose 服務已啟動。
 
 ### 設定方式
 
 **方式一：使用 Skill 檔案**
 
-將 `scripts/openclaw/azusa-radar/` 資料夾複製到 OpenClaw skills 目錄：
+將 `scripts/openclaw/folio/` 資料夾複製到 OpenClaw skills 目錄：
 
 ```bash
-cp -r scripts/openclaw/azusa-radar/ ~/.openclaw/skills/azusa-radar/
+cp -r scripts/openclaw/folio/ ~/.openclaw/skills/folio/
 ```
 
 **方式二：使用 AGENTS.md**
@@ -382,7 +460,8 @@ azusa-stock/
 │   │   ├── constants.py              #   集中管理閾值、快取設定、共用訊息
 │   │   ├── enums.py                  #   分類、狀態列舉 + 常數
 │   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert)
-│   │   └── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
+│   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
+│   │   └── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
 │   │   └── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
@@ -393,25 +472,36 @@ azusa-stock/
 │   │   ├── market_data.py            #   yfinance 適配器（含快取 + Rate Limiter）
 │   │   └── notification.py           #   Telegram Bot 適配器
 │   │
+│   ├── config/                        # 設定檔
+│   │   ├── system_personas.json      #   投資人格範本（6 種）
+│   │   └── templates/                #   匯入範本 (stock / holding)
+│   │
 │   └── api/                          # API 層：薄控制器
 │       ├── schemas.py                #   Pydantic 請求/回應 Schema（含 Webhook）
 │       ├── stock_routes.py           #   股票管理 + /summary + /webhook 路由
 │       ├── thesis_routes.py          #   觀點版控路由
-│       └── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
+│       ├── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
+│       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
+│       ├── holding_routes.py         #   持倉管理 + 再平衡路由
+│       └── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
 │
 ├── frontend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── config.py                     # 前端集中常數與設定
-│   └── app.py                        # Dashboard：四分頁 + 封存 + 觀點編輯器
+│   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
+│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS
+│   └── pages/
+│       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
+│       └── allocation.py             # 個人資產配置頁（War Room + Telegram 設定）
 │
 ├── scripts/
 │   ├── import_stocks.py              # 從 JSON 匯入股票至 API（支援 upsert）
 │   ├── data/
-│   │   └── azusa_watchlist.json      # 預設觀察名單
+│   │   └── folio_watchlist.json      # 預設觀察名單
 │   └── openclaw/
 │       ├── AGENTS.md                 # OpenClaw workspace 指令範本
-│       └── azusa-radar/
+│       └── folio/
 │           └── SKILL.md              # OpenClaw Skill 定義檔
 │
 └── logs/                             # 日誌檔案（bind-mount 自動產生）
@@ -450,7 +540,7 @@ tail -f logs/radar.log
 
 ## 資料檔案格式
 
-匯入用的 JSON 檔案格式（`azusa_watchlist.json`）：
+匯入用的 JSON 檔案格式（`folio_watchlist.json`）：
 
 ```json
 [
@@ -464,6 +554,6 @@ tail -f logs/radar.log
 ```
 
 - `ticker` — 股票代號（美股）
-- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`ETF` 之一
+- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Bond`、`Cash` 之一
 - `thesis` — 初始觀點
 - `tags` — 領域標籤（選填，預設為空陣列）

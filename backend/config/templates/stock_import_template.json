@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "NVDA",
+    "category": "Moat",
+    "thesis": "Your investment thesis here.",
+    "tags": ["AI", "Semiconductor"]
+  },
+  {
+    "ticker": "TLT",
+    "category": "Bond",
+    "thesis": "Long-term treasury bond ETF.",
+    "tags": ["Bond"]
+  }
+]

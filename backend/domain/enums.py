@@ -7,12 +7,13 @@ from enum import Enum
 
 
 class StockCategory(str, Enum):
-    """股票分類：風向球 / 護城河 / 成長夢想 / ETF"""
+    """股票分類：風向球 / 護城河 / 成長夢想 / 債券 / 現金"""
 
     TREND_SETTER = "Trend_Setter"
     MOAT = "Moat"
     GROWTH = "Growth"
-    ETF = "ETF"
+    BOND = "Bond"
+    CASH = "Cash"
 
 
 class MoatStatus(str, Enum):
@@ -43,5 +44,6 @@ CATEGORY_LABEL: dict[str, str] = {
     "Trend_Setter": "風向球",
     "Moat": "護城河",
     "Growth": "成長夢想",
-    "ETF": "ETF",
+    "Bond": "債券",
+    "Cash": "現金",
 }

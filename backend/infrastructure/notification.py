@@ -1,27 +1,21 @@
 """
 Infrastructure — 通知適配器 (Telegram Bot API)。
-將通知邏輯從路由層抽離，日後可替換為其他通知管道。
+支援雙模式：系統預設 Bot（env）或使用者自訂 Bot（DB）。
 """
 
 import os
 
 import requests as http_requests
+from sqlmodel import Session
 
-from domain.constants import TELEGRAM_API_URL, TELEGRAM_REQUEST_TIMEOUT
+from domain.constants import DEFAULT_USER_ID, TELEGRAM_API_URL, TELEGRAM_REQUEST_TIMEOUT
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
-def send_telegram_message(text: str) -> None:
-    """透過 Telegram Bot API 發送通知。Token 未設定時靜默跳過。"""
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-
-    if not token or not chat_id or token.startswith("your-"):
-        logger.debug("Telegram Token 未設定，跳過發送通知。")
-        return
-
+def _send(token: str, chat_id: str, text: str) -> None:
+    """低層發送：透過指定的 token / chat_id 發送 Telegram 訊息。"""
     url = TELEGRAM_API_URL.format(token=token)
     try:
         http_requests.post(
@@ -32,3 +26,41 @@ def send_telegram_message(text: str) -> None:
         logger.info("Telegram 通知已發送。")
     except Exception as e:
         logger.error("Telegram 通知發送失敗：%s", e)
+
+
+def _env_credentials() -> tuple[str, str]:
+    """從環境變數取得系統預設 Bot 憑證。"""
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    return token, chat_id
+
+
+def send_telegram_message(text: str) -> None:
+    """透過 Telegram Bot API 發送通知（使用環境變數憑證）。Token 未設定時靜默跳過。"""
+    token, chat_id = _env_credentials()
+
+    if not token or not chat_id or token.startswith("your-"):
+        logger.debug("Telegram Token 未設定，跳過發送通知。")
+        return
+
+    _send(token, chat_id, text)
+
+
+def send_telegram_message_dual(text: str, session: Session) -> None:
+    """
+    雙模式 Telegram 發送：
+    1. 查詢 UserTelegramSettings（自訂 Bot 設定）
+    2. 若 use_custom_bot=True 且 token / chat_id 有效 → 使用自訂 Bot
+    3. 否則 → 回退至環境變數（系統預設 Bot）
+    """
+    from domain.entities import UserTelegramSettings
+
+    settings = session.get(UserTelegramSettings, DEFAULT_USER_ID)
+
+    if settings and settings.use_custom_bot and settings.custom_bot_token and settings.telegram_chat_id:
+        logger.info("使用自訂 Bot 發送 Telegram 通知。")
+        _send(settings.custom_bot_token, settings.telegram_chat_id, text)
+        return
+
+    # 回退：使用環境變數
+    send_telegram_message(text)

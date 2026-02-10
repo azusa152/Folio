@@ -8,20 +8,22 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from domain.analysis import determine_scan_signal
 from domain.constants import (
     CATEGORY_DISPLAY_ORDER,
     CATEGORY_ICON,
     DEFAULT_IMPORT_CATEGORY,
+    DEFAULT_USER_ID,
     DEFAULT_WEBHOOK_THESIS,
-    ETF_MOAT_NA_MESSAGE,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     PRICE_ALERT_COOLDOWN_HOURS,
     REMOVAL_REASON_UNKNOWN,
     SCAN_HISTORY_DEFAULT_LIMIT,
     SCAN_THREAD_POOL_SIZE,
+    SKIP_MOAT_CATEGORIES,
+    SKIP_SIGNALS_CATEGORIES,
     WEBHOOK_MISSING_TICKER,
     WEBHOOK_UNKNOWN_ACTION_TEMPLATE,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
@@ -34,7 +36,7 @@ from infrastructure.market_data import (
     analyze_moat_trend,
     get_technical_signals,
 )
-from infrastructure.notification import send_telegram_message
+from infrastructure.notification import send_telegram_message_dual
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -412,14 +414,18 @@ def run_scan(session: Session) -> dict:
         ticker = stock.ticker
         alerts: list[str] = []
 
-        if stock.category == StockCategory.ETF:
-            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": ETF_MOAT_NA_MESSAGE}
+        if stock.category.value in SKIP_MOAT_CATEGORIES:
+            moat_result = {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": f"{stock.category.value} 不適用護城河分析"}
         else:
             moat_result = analyze_moat_trend(ticker)
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
         moat_details = moat_result.get("details", "")
 
-        signals = get_technical_signals(ticker)
+        # Cash 類不取得技術訊號
+        if stock.category.value in SKIP_SIGNALS_CATEGORIES:
+            signals = None
+        else:
+            signals = get_technical_signals(ticker)
         rsi: float | None = None
         bias: float | None = None
         volume_ratio: float | None = None
@@ -525,7 +531,7 @@ def run_scan(session: Session) -> dict:
             "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
             len(new_or_changed), len(resolved),
         )
-        header = f"🔔 <b>Azusa Radar V2 掃描（差異通知）</b>\n市場情緒：{market_status_value}\n"
+        header = f"🔔 <b>Folio 掃描（差異通知）</b>\n市場情緒：{market_status_value}\n"
 
         # 新增/惡化的股票依類別分組
         body_parts: list[str] = []
@@ -549,7 +555,7 @@ def run_scan(session: Session) -> dict:
             resolved_tickers = ", ".join(r["ticker"] for r in resolved)
             body_parts.append(f"\n✅ <b>已恢復正常</b>\n{resolved_tickers}")
 
-        send_telegram_message(header + "\n".join(body_parts))
+        send_telegram_message_dual(header + "\n".join(body_parts), session)
     else:
         logger.info("掃描完成，訊號無變化，跳過通知。")
 
@@ -612,7 +618,7 @@ def _check_price_alerts(session: Session, results: list[dict]) -> None:
     if triggered_msgs:
         session.commit()
         msg = "⚡ <b>自訂價格警報觸發</b>\n\n" + "\n".join(triggered_msgs)
-        send_telegram_message(msg)
+        send_telegram_message_dual(msg, session)
         logger.warning("觸發 %d 個自訂價格警報。", len(triggered_msgs))
 
 
@@ -725,7 +731,7 @@ def send_weekly_digest(session: Session) -> dict:
     all_stocks = repo.find_active_stocks(session)
     total = len(all_stocks)
     if total == 0:
-        send_telegram_message("📊 <b>Azusa Radar 每週摘要</b>\n\n目前無追蹤股票。")
+        send_telegram_message_dual("📊 <b>Folio 每週摘要</b>\n\n目前無追蹤股票。", session)
         return {"message": "無追蹤股票。"}
 
     # 目前非 NORMAL 股票
@@ -749,7 +755,7 @@ def send_weekly_digest(session: Session) -> dict:
 
     # 組合訊息
     parts: list[str] = [
-        f"📊 <b>Azusa Radar 每週摘要</b>\n",
+        f"📊 <b>Folio 每週摘要</b>\n",
         f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）\n",
     ]
 
@@ -768,7 +774,7 @@ def send_weekly_digest(session: Session) -> dict:
         parts.append("✅ 一切正常，本週無異常訊號。")
 
     message = "\n".join(parts)
-    send_telegram_message(message)
+    send_telegram_message_dual(message, session)
     logger.info("每週摘要已發送。")
 
     return {"message": "每週摘要已發送。", "health_score": health_score}
@@ -785,12 +791,12 @@ def get_portfolio_summary(session: Session) -> str:
     """
     stocks = repo.find_active_stocks(session)
     if not stocks:
-        return "Azusa Radar — 目前無追蹤股票。"
+        return "Folio — 目前無追蹤股票。"
 
     non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
 
-    lines: list[str] = [f"Azusa Radar — Health: {health}%", ""]
+    lines: list[str] = [f"Folio — Health: {health}%", ""]
 
     for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]
@@ -883,16 +889,16 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
 
 
 # ===========================================================================
-# Moat Service (ETF-aware)
+# Moat Service（Bond / Cash 不適用）
 # ===========================================================================
 
 
 def get_moat_for_ticker(session: Session, ticker: str) -> dict:
-    """取得指定股票的護城河趨勢。ETF 類別直接回傳 N/A。"""
+    """取得指定股票的護城河趨勢。Bond / Cash 類別直接回傳 N/A。"""
     upper_ticker = ticker.upper()
     stock = repo.find_stock_by_ticker(session, upper_ticker)
-    if stock and stock.category == StockCategory.ETF:
-        return {"ticker": upper_ticker, "moat": "N/A", "details": ETF_MOAT_NA_MESSAGE}
+    if stock and stock.category.value in SKIP_MOAT_CATEGORIES:
+        return {"ticker": upper_ticker, "moat": "N/A", "details": f"{stock.category.value} 不適用護城河分析"}
     return analyze_moat_trend(upper_ticker)
 
 
@@ -980,3 +986,63 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
             return {"success": False, "message": f"無效的分類：{cat_str}"}
 
     return {"success": False, "message": WEBHOOK_UNKNOWN_ACTION_TEMPLATE.format(action=action)}
+
+
+# ===========================================================================
+# Asset Allocation — 再平衡分析
+# ===========================================================================
+
+
+def calculate_rebalance(session: Session) -> dict:
+    """
+    計算再平衡分析：比較目標配置與實際持倉。
+    1. 讀取啟用中的 UserInvestmentProfile（目標配置）
+    2. 讀取所有 Holding（實際持倉）
+    3. 對非現金持倉查詢即時價格
+    4. 委託 domain.rebalance 純函式計算偏移與建議
+    """
+    import json as _json
+
+    from domain.entities import Holding, UserInvestmentProfile
+    from domain.rebalance import calculate_rebalance as _pure_rebalance
+    from infrastructure.market_data import get_technical_signals
+
+    # 1) 取得目標配置
+    profile = session.exec(
+        select(UserInvestmentProfile)
+        .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
+        .where(UserInvestmentProfile.is_active == True)  # noqa: E712
+    ).first()
+
+    if not profile:
+        raise StockNotFoundError("尚未設定投資組合目標配置，請先選擇投資人格。")
+
+    target_config: dict[str, float] = _json.loads(profile.config)
+
+    # 2) 取得所有持倉
+    holdings = session.exec(
+        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
+    ).all()
+
+    if not holdings:
+        raise StockNotFoundError("尚未輸入任何持倉，請先新增資產。")
+
+    # 3) 計算各持倉的市值
+    category_values: dict[str, float] = {}
+    for h in holdings:
+        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
+        if h.is_cash:
+            market_value = h.quantity
+        else:
+            signals = get_technical_signals(h.ticker)
+            price = signals.get("price") if signals else None
+            if price is not None and isinstance(price, (int, float)):
+                market_value = h.quantity * price
+            elif h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis
+            else:
+                market_value = 0.0
+        category_values[cat] = category_values.get(cat, 0.0) + market_value
+
+    # 4) 委託 domain 純函式計算
+    return _pure_rebalance(category_values, target_config)

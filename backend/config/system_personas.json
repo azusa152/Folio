@@ -1,0 +1,50 @@
+[
+  {
+    "id": "conservative",
+    "name": "Retirement Defense (退休防禦型)",
+    "description": "Steady income, health is wealth.",
+    "quote": "你就穩穩領息，身體健康最重要。",
+    "isEmpty": false,
+    "defaultConfig": { "Bond": 50, "Trend_Setter": 30, "Cash": 15, "Moat": 5, "Growth": 0 }
+  },
+  {
+    "id": "balanced",
+    "name": "Standard Balanced (標準型/上班族)",
+    "description": "Simple core-satellite strategy. Sleep well at night.",
+    "quote": "大道至簡，核心VTI配一點衛星，睡得著覺。",
+    "isEmpty": false,
+    "defaultConfig": { "Trend_Setter": 50, "Moat": 25, "Cash": 15, "Growth": 10, "Bond": 0 }
+  },
+  {
+    "id": "aggressive",
+    "name": "Aggressive Attack (積極進攻型/少年股神)",
+    "description": "Young with high risk tolerance.",
+    "quote": "年輕人本金小就該衝，跌倒了再爬起來就好。",
+    "isEmpty": false,
+    "defaultConfig": { "Moat": 40, "Growth": 40, "Trend_Setter": 10, "Cash": 10, "Bond": 0 }
+  },
+  {
+    "id": "barbell",
+    "name": "Barbell Strategy (槓鈴策略型)",
+    "description": "Safety foundation + high risk bets.",
+    "quote": "大部分放VTI保底，拿一點錢去賭個翻倍的夢想。",
+    "isEmpty": false,
+    "defaultConfig": { "Trend_Setter": 80, "Growth": 15, "Cash": 5, "Moat": 0, "Bond": 0 }
+  },
+  {
+    "id": "sniper",
+    "name": "Sniper (狙擊手型)",
+    "description": "Heavy cash/equivalents waiting for a crash.",
+    "quote": "現金不要死存，放SGOV等崩盤。",
+    "isEmpty": false,
+    "defaultConfig": { "Bond": 60, "Trend_Setter": 20, "Moat": 20, "Growth": 0, "Cash": 0 }
+  },
+  {
+    "id": "custom_blank",
+    "name": "Custom / Blank",
+    "description": "Build your own portfolio from scratch.",
+    "quote": "Design your own destiny.",
+    "isEmpty": true,
+    "defaultConfig": { "Bond": 0, "Trend_Setter": 0, "Moat": 0, "Growth": 0, "Cash": 0 }
+  }
+]

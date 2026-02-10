@@ -1,5 +1,5 @@
 """
-Azusa Radar — 股票觀察名單匯入腳本（Upsert 模式）
+Folio — 股票觀察名單匯入腳本（Upsert 模式）
 從 JSON 檔案讀取股票清單，批次匯入至正在運行的 FastAPI 後端。
 - 新股票：透過 POST /ticker 新增
 - 已存在：透過 POST /ticker/{ticker}/thesis 更新觀點與標籤
@@ -17,10 +17,10 @@ import requests
 
 BASE_URL = "http://localhost:8000"
 API_URL = f"{BASE_URL}/ticker"
-DEFAULT_DATA_FILE = Path(__file__).parent / "data" / "azusa_watchlist.json"
+DEFAULT_DATA_FILE = Path(__file__).parent / "data" / "folio_watchlist.json"
 
 REQUIRED_FIELDS = {"ticker", "category", "thesis"}
-VALID_CATEGORIES = {"Trend_Setter", "Moat", "Growth", "ETF"}
+VALID_CATEGORIES = {"Trend_Setter", "Moat", "Growth", "Bond", "Cash"}
 
 
 def load_stock_list(file_path: Path) -> list[dict]:
@@ -112,7 +112,7 @@ def main() -> None:
     stock_list = load_stock_list(data_file)
 
     print("=" * 60)
-    print("  Azusa Radar — 股票觀察名單匯入（Upsert 模式）")
+    print("  Folio — 股票觀察名單匯入（Upsert 模式）")
     print(f"  資料來源：{data_file}")
     print(f"  目標 API：{BASE_URL}")
     print(f"  共 {len(stock_list)} 檔股票")

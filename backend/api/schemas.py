@@ -104,6 +104,124 @@ class ScanResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Persona / Profile Schemas
+# ---------------------------------------------------------------------------
+
+
+class PersonaTemplateResponse(BaseModel):
+    """GET /personas/templates 回傳的單一範本。"""
+
+    id: str
+    name: str
+    description: str
+    quote: str
+    is_empty: bool
+    default_config: dict
+
+
+class ProfileCreateRequest(BaseModel):
+    """POST /profiles 請求 Body。"""
+
+    name: str = ""
+    source_template_id: Optional[str] = None
+    config: dict[str, float]  # {"Bond": 50, "Trend_Setter": 30, ...}
+
+
+class ProfileUpdateRequest(BaseModel):
+    """PUT /profiles/{id} 請求 Body。"""
+
+    name: Optional[str] = None
+    config: Optional[dict[str, float]] = None
+
+
+class ProfileResponse(BaseModel):
+    """GET /profiles 回傳的投資組合配置。"""
+
+    id: int
+    user_id: str
+    name: str
+    source_template_id: Optional[str] = None
+    config: dict
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+# ---------------------------------------------------------------------------
+# Holdings Schemas
+# ---------------------------------------------------------------------------
+
+
+class HoldingRequest(BaseModel):
+    """POST /holdings 請求 Body。"""
+
+    ticker: str
+    category: StockCategory
+    quantity: float
+    cost_basis: Optional[float] = None
+    broker: Optional[str] = None
+    is_cash: bool = False
+
+
+class CashHoldingRequest(BaseModel):
+    """POST /holdings/cash 請求 Body。"""
+
+    currency: str  # e.g. "USD", "TWD"
+    amount: float
+
+
+class HoldingResponse(BaseModel):
+    """GET /holdings 回傳的單一持倉。"""
+
+    id: int
+    ticker: str
+    category: StockCategory
+    quantity: float
+    cost_basis: Optional[float] = None
+    broker: Optional[str] = None
+    is_cash: bool
+    updated_at: str
+
+
+class CategoryAllocation(BaseModel):
+    """單一分類的配置分析。"""
+
+    target_pct: float
+    current_pct: float
+    drift_pct: float
+    market_value: float
+
+
+class RebalanceResponse(BaseModel):
+    """GET /rebalance 回傳的再平衡分析。"""
+
+    total_value: float
+    categories: dict[str, CategoryAllocation]
+    advice: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Telegram Settings Schemas
+# ---------------------------------------------------------------------------
+
+
+class TelegramSettingsRequest(BaseModel):
+    """PUT /settings/telegram 請求 Body。"""
+
+    telegram_chat_id: str = ""
+    custom_bot_token: Optional[str] = None
+    use_custom_bot: bool = False
+
+
+class TelegramSettingsResponse(BaseModel):
+    """GET /settings/telegram 回傳結構（token 遮蔽）。"""
+
+    telegram_chat_id: str
+    custom_bot_token_masked: str  # e.g. "123***xyz"
+    use_custom_bot: bool
+
+
+# ---------------------------------------------------------------------------
 # Webhook Schemas (for OpenClaw / AI agent)
 # ---------------------------------------------------------------------------
 

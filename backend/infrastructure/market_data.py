@@ -33,8 +33,10 @@ from domain.constants import (
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_MOAT,
+    DISK_KEY_PRICE_HISTORY,
     DISK_KEY_SIGNALS,
     DISK_MOAT_TTL,
+    DISK_PRICE_HISTORY_TTL,
     DISK_SIGNALS_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
@@ -47,6 +49,8 @@ from domain.constants import (
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
+    PRICE_HISTORY_CACHE_MAXSIZE,
+    PRICE_HISTORY_CACHE_TTL,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
     YFINANCE_HISTORY_PERIOD,
@@ -90,6 +94,7 @@ _signals_cache: TTLCache = TTLCache(maxsize=SIGNALS_CACHE_MAXSIZE, ttl=SIGNALS_C
 _moat_cache: TTLCache = TTLCache(maxsize=MOAT_CACHE_MAXSIZE, ttl=MOAT_CACHE_TTL)
 _earnings_cache: TTLCache = TTLCache(maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNINGS_CACHE_TTL)
 _dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL)
+_price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +171,9 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
             logger.warning("%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist))
             return {"error": f"⚠️ {ticker} 歷史資料不足，無法計算技術指標。"}
 
+        # Piggyback：將收盤價歷史寫入 price_history 快取，避免後續重複呼叫 yfinance
+        _piggyback_price_history(ticker, hist)
+
         closes = hist["Close"].tolist()
         volumes = hist["Volume"].tolist() if "Volume" in hist.columns else []
         current_price = round(closes[-1], 2)
@@ -230,6 +238,58 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
     """
     return _cached_fetch(
         _signals_cache, ticker, DISK_KEY_SIGNALS, DISK_SIGNALS_TTL, _fetch_signals_from_yf
+    )
+
+
+# ===========================================================================
+# 股價歷史（Price History）
+# ===========================================================================
+
+
+def _extract_price_history(hist) -> list[dict]:
+    """從 yfinance history DataFrame 中提取收盤價列表（共用 helper）。"""
+    result = []
+    for idx, row in hist.iterrows():
+        date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
+        result.append({"date": date_str, "close": round(row["Close"], 2)})
+    return result
+
+
+def _piggyback_price_history(ticker: str, hist) -> None:
+    """將 signals 取得的歷史資料順便寫入 price_history 快取（避免重複 yfinance 呼叫）。"""
+    try:
+        price_history = _extract_price_history(hist)
+        _price_history_cache[ticker] = price_history
+        _disk_set(f"{DISK_KEY_PRICE_HISTORY}:{ticker}", price_history, DISK_PRICE_HISTORY_TTL)
+        logger.debug("%s 已 piggyback 寫入 price_history 快取（%d 筆）。", ticker, len(price_history))
+    except Exception as e:
+        logger.debug("%s piggyback price_history 失敗（非致命）：%s", ticker, e)
+
+
+def _fetch_price_history_from_yf(ticker: str) -> list[dict]:
+    """獨立 fetcher — 僅在 L1 + L2 皆未命中時才呼叫。"""
+    try:
+        _rate_limiter.wait()
+        stock = yf.Ticker(ticker, session=_get_session())
+        _rate_limiter.wait()
+        hist = stock.history(period=YFINANCE_HISTORY_PERIOD)
+        if hist.empty:
+            return []
+        return _extract_price_history(hist)
+    except Exception as e:
+        logger.error("無法取得 %s 股價歷史：%s", ticker, e, exc_info=True)
+        return []
+
+
+def get_price_history(ticker: str) -> list[dict] | None:
+    """
+    取得股價收盤價歷史（1 年）。
+    通常由 signals 的 piggyback 預先填充快取，幾乎不需額外 yfinance 呼叫。
+    """
+    return _cached_fetch(
+        _price_history_cache, ticker,
+        DISK_KEY_PRICE_HISTORY, DISK_PRICE_HISTORY_TTL,
+        _fetch_price_history_from_yf,
     )
 
 

@@ -1,6 +1,6 @@
 """
 Domain — 資料庫實體 (SQLModel Tables)。
-定義核心業務實體：Stock、ThesisLog、RemovalLog。
+定義核心業務實體及資產配置相關資料表。
 """
 
 from datetime import datetime, timezone
@@ -8,6 +8,7 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+from domain.constants import DEFAULT_USER_ID
 from domain.enums import ScanSignal, StockCategory
 
 
@@ -75,3 +76,64 @@ class PriceAlert(SQLModel, table=True):
     last_triggered_at: Optional[datetime] = Field(
         default=None, description="上次觸發時間"
     )
+
+
+# ---------------------------------------------------------------------------
+# Asset Allocation — 投資組合配置相關
+# ---------------------------------------------------------------------------
+
+
+class SystemTemplate(SQLModel, table=True):
+    """系統預設的投資組合人格範本（唯讀參考資料）。"""
+
+    id: str = Field(primary_key=True, description="範本 ID（如 conservative, balanced）")
+    name: str = Field(description="範本名稱")
+    description: str = Field(default="", description="範本說明")
+    quote: str = Field(default="", description="引言")
+    is_empty: bool = Field(default=False, description="是否為空白自訂範本")
+    default_config: str = Field(default="{}", description="預設配置（JSON 字串）")
+
+
+class UserInvestmentProfile(SQLModel, table=True):
+    """使用者的投資組合目標配置。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    name: str = Field(default="", description="配置名稱")
+    source_template_id: Optional[str] = Field(default=None, description="來源範本 ID")
+    config: str = Field(default="{}", description="配置（JSON 字串，如 {\"Bond\": 50, ...}）")
+    is_active: bool = Field(default=True, description="是否為啟用中的配置")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="建立時間",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="更新時間",
+    )
+
+
+class Holding(SQLModel, table=True):
+    """使用者的實際持倉（用於資產配置計算）。"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    ticker: str = Field(description="資產代號（股票代號或幣別如 USD）")
+    category: StockCategory = Field(description="資產分類")
+    quantity: float = Field(description="持有數量（股數或金額）")
+    cost_basis: Optional[float] = Field(default=None, description="成本基礎（每單位）")
+    broker: Optional[str] = Field(default=None, description="券商名稱")
+    is_cash: bool = Field(default=False, description="是否為現金類資產")
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="更新時間",
+    )
+
+
+class UserTelegramSettings(SQLModel, table=True):
+    """使用者的 Telegram 通知設定（支援自訂 Bot）。"""
+
+    user_id: str = Field(default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID")
+    telegram_chat_id: str = Field(default="", description="Telegram Chat ID")
+    custom_bot_token: Optional[str] = Field(default=None, description="自訂 Bot Token")
+    use_custom_bot: bool = Field(default=False, description="是否使用自訂 Bot")

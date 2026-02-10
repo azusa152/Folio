@@ -1,5 +1,5 @@
 """
-Azusa Radar — 集中式 Logging 設定
+Folio — 集中式 Logging 設定
 - 每日輪替 (TimedRotatingFileHandler)，保留 3 天自動刪除
 - 同時輸出至 console（讓 Docker logs 仍可使用）
 - 所有模組透過 get_logger(__name__) 取得 logger

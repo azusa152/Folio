@@ -1,16 +1,16 @@
 ---
-name: azusa-radar
-description: Azusa Radar 投資雷達 — 股票追蹤、掃描與警報系統
+name: folio
+description: Folio 智能資產配置 — 股票追蹤、掃描與警報系統
 version: 1.0.0
 ---
 
-# Azusa Radar Skill
+# Folio Skill
 
-Azusa Radar 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、以及 Telegram 通知。
+Folio 是一套自架的投資追蹤系統，提供股票觀察名單管理、三層漏斗掃描、護城河分析、價格警報、以及 Telegram 通知。
 
 ## Prerequisites
 
-- Azusa Radar 的 Docker Compose 服務正在運行
+- Folio 的 Docker Compose 服務正在運行
 - Backend API 預設在 `http://localhost:8000`
 
 ## Quick Start
@@ -99,6 +99,16 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/ticker/{ticker}/alerts` | 建立價格警報 |
 | `GET` | `/ticker/{ticker}/earnings` | 財報日曆 |
 | `GET` | `/ticker/{ticker}/dividend` | 股息資訊 |
+| `GET` | `/personas/templates` | 投資人格範本列表 |
+| `GET` | `/profiles` | 目前啟用的投資組合配置 |
+| `POST` | `/profiles` | 建立投資組合配置 |
+| `GET` | `/holdings` | 所有持倉 |
+| `POST` | `/holdings` | 新增持倉（含可選 broker 欄位） |
+| `POST` | `/holdings/cash` | 新增現金持倉 |
+| `GET` | `/rebalance` | 再平衡分析 |
+| `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
+| `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
+| `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
 | `GET` | `/docs` | Swagger UI (互動式 API 文件) |
 | `GET` | `/openapi.json` | OpenAPI 規範 |
 
@@ -109,7 +119,8 @@ For advanced use, you can call individual endpoints directly:
 | `Trend_Setter` | 🌊 風向球 | 大盤 ETF、巨頭 |
 | `Moat` | 🏰 護城河 | 不可替代的賣鏟子公司 |
 | `Growth` | 🚀 成長夢想 | 高波動成長股 |
-| `ETF` | 🧺 ETF | 指數型基金 |
+| `Bond` | 🛡️ 債券 | 國債、投資等級債券 ETF |
+| `Cash` | 💵 現金 | 閒置現金 |
 
 ## Usage Tips
 
@@ -117,3 +128,4 @@ For advanced use, you can call individual endpoints directly:
 - Use `signals` to check if a stock is oversold (RSI < 30) or overheated (Bias > 20%)
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact
 - Use `scan` to trigger a full portfolio analysis with Telegram notifications
+- Use `rebalance` to check if portfolio allocation drifts from target

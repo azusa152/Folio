@@ -1,0 +1,987 @@
+"""
+Folio — Asset Allocation Page (個人資產配置).
+Holdings management, rebalancing, and Telegram settings.
+"""
+
+import json
+
+import pandas as pd
+import requests
+import streamlit as st
+
+from config import (
+    ALLOCATION_CHART_HEIGHT,
+    API_POST_TIMEOUT,
+    API_PUT_TIMEOUT,
+    BACKEND_URL,
+    CASH_ACCOUNT_TYPE_OPTIONS,
+    CASH_CURRENCY_OPTIONS,
+    CATEGORY_LABELS,
+    CATEGORY_OPTIONS,
+    DRIFT_CHART_HEIGHT,
+    HOLDING_IMPORT_TEMPLATE,
+    HOLDINGS_EXPORT_FILENAME,
+    STOCK_CATEGORY_OPTIONS,
+    STOCK_MARKET_OPTIONS,
+    STOCK_MARKET_PLACEHOLDERS,
+)
+from utils import (
+    api_delete,
+    api_get_silent,
+    api_post,
+    api_put,
+    build_radar_lookup,
+    fetch_holdings,
+    fetch_profile,
+    fetch_rebalance,
+    fetch_templates,
+    refresh_ui,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_MARKET_KEYS = list(STOCK_MARKET_OPTIONS.keys())
+
+
+def _market_label(key: str) -> str:
+    return STOCK_MARKET_OPTIONS[key]["label"]
+
+
+# ---------------------------------------------------------------------------
+# Page Header
+# ---------------------------------------------------------------------------
+
+st.title("💼 個人資產配置")
+st.caption("持倉記錄 · 再平衡分析 · Telegram 通知")
+
+
+# ---------------------------------------------------------------------------
+# SOP Manual
+# ---------------------------------------------------------------------------
+
+with st.expander("📖 個人資產配置：使用說明書", expanded=False):
+    st.markdown("""
+### 頁面總覽
+
+本頁面負責**個人資產持倉管理**與**投資組合再平衡分析**。透過左側導覽列從投資雷達切換至此頁面。
+
+---
+
+### 側邊欄 — 新增持倉（三種模式）
+
+透過「資產類型」切換，可新增三種持倉：
+
+- **📈 股票**：選擇市場（🇺🇸 美股 / 🇹🇼 台股 / 🇯🇵 日股 / 🇭🇰 港股），輸入股票代號（系統自動加上市場後綴如 `.TW`、`.T`），選擇分類，輸入股數、平均成本與券商
+- **🛡️ 債券**：輸入債券代號（如 TLT、BND），選擇幣別，輸入股數、平均成本與券商
+- **💵 現金**：選擇幣別與金額，可選填銀行、帳戶類型（活存/定存/貨幣市場基金）及備註
+
+#### 雷達自動同步
+
+- 若輸入的股票代號**已在雷達追蹤**中，分類欄位會自動帶入雷達中的分類（鎖定不可修改）
+- 若輸入的是**全新股票**，新增持倉後系統會自動將其加入雷達追蹤，可選填投資觀點作為初始紀錄
+
+側邊欄也提供**匯出 / 匯入持倉**功能（JSON 格式），以及匯入範本下載。
+
+---
+
+### Step 1 — 設定目標配置
+
+- 從 6 種預設**投資人格範本**中選擇（退休防禦、標準型、積極進攻、槓鈴策略、狙擊手、自訂）
+- 每種範本預設五大分類的目標配置比例
+- 可隨時**微調**各分類百分比（合計需等於 100%）
+- 已選定範本後，可點擊**「🔄 切換風格」**更換為其他範本
+
+---
+
+### Step 2 — 持倉管理
+
+- 持倉表格支援**即時編輯**：直接點擊儲存格即可修改數量、平均成本、券商、分類
+- 編輯完成後按下「💾 儲存變更」即可批次更新
+- 可透過下拉選單選擇持倉並按「🗑️ 刪除」移除
+- 新增持倉請使用左側面板
+
+---
+
+### Step 3 — 再平衡分析
+
+- **雙餅圖**：目標配置 vs 實際配置
+- **Drift 長條圖**：各分類的偏移程度（紅色超配 / 綠色低配）
+- **再平衡建議**：自動提示偏移超過 5% 的分類，建議加碼或減碼
+
+> 💡 定期（如每季）檢視資產配置，是最重要但最常被忽略的投資紀律。
+
+---
+
+### Telegram 通知設定（雙模式）
+
+- **系統預設 Bot**：使用 `.env` 中的 `TELEGRAM_BOT_TOKEN`，無需額外設定
+- **自訂 Bot**：輸入自訂 Bot Token 與 Chat ID，開啟「使用自訂 Bot」開關
+- 啟用自訂 Bot 後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送
+- 未設定或關閉自訂 Bot 時，自動回退使用系統預設 Bot
+- **測試按鈕**：儲存設定後可點擊「📨 發送測試訊息」驗證設定是否正確
+""")
+
+
+# ---------------------------------------------------------------------------
+# Sidebar: 新增持倉 + 匯出 / 匯入
+# ---------------------------------------------------------------------------
+
+with st.sidebar:
+    st.header("💰 資產管理")
+    st.subheader("➕ 新增持倉")
+
+    asset_type = st.radio(
+        "資產類型",
+        ["📈 股票", "🛡️ 債券", "💵 現金"],
+        horizontal=True,
+        key="sidebar_asset_type",
+    )
+
+    # ---- Stock holding form ----
+    if asset_type == "📈 股票":
+        sb_market = st.selectbox(
+            "市場",
+            options=_MARKET_KEYS,
+            format_func=_market_label,
+            key="sb_stock_market",
+        )
+        market_info = STOCK_MARKET_OPTIONS[sb_market]
+        st.caption(f"幣別：{market_info['currency']}")
+
+        # Ticker outside form for reactive radar lookup
+        sb_ticker = st.text_input(
+            "股票代號",
+            placeholder=STOCK_MARKET_PLACEHOLDERS.get(sb_market, "AAPL"),
+            key="sb_stock_ticker",
+        )
+
+        # Radar auto-category lookup
+        radar_lookup = build_radar_lookup()
+        full_ticker_preview = (
+            (sb_ticker.strip().upper() + market_info["suffix"])
+            if sb_ticker.strip()
+            else ""
+        )
+        is_in_radar = full_ticker_preview in radar_lookup
+        radar_cat = radar_lookup.get(full_ticker_preview)
+
+        if sb_ticker.strip():
+            if is_in_radar:
+                st.info(
+                    f"📋 已在雷達中，自動同步分類："
+                    f"{CATEGORY_LABELS.get(radar_cat, radar_cat)}"
+                )
+            else:
+                st.caption("📌 此股票尚未在雷達中，新增後將自動加入追蹤。")
+
+        # Compute default category index
+        default_cat_idx = 0
+        if is_in_radar and radar_cat in STOCK_CATEGORY_OPTIONS:
+            default_cat_idx = STOCK_CATEGORY_OPTIONS.index(radar_cat)
+
+        # Optional thesis (only for new stocks)
+        sb_thesis = ""
+        if sb_ticker.strip() and not is_in_radar:
+            sb_thesis = st.text_area(
+                "投資觀點（選填）",
+                placeholder="新增至雷達時的初始觀點...",
+                key="sb_stock_thesis",
+            )
+
+        with st.form("sidebar_stock_form", clear_on_submit=True):
+            sb_cat = st.selectbox(
+                "分類",
+                options=STOCK_CATEGORY_OPTIONS,
+                format_func=lambda x: CATEGORY_LABELS.get(x, x),
+                index=default_cat_idx,
+                disabled=is_in_radar,
+            )
+            sb_qty = st.number_input(
+                "股數", min_value=0.0, step=1.0, value=0.0
+            )
+            sb_cost = st.number_input(
+                "平均成本", min_value=0.0, step=0.01, value=0.0
+            )
+            sb_broker = st.text_input(
+                "券商（選填）",
+                placeholder="例如 永豐金、Firstrade",
+                key="sb_stock_broker",
+            )
+
+            if st.form_submit_button("新增"):
+                if not sb_ticker.strip():
+                    st.warning("⚠️ 請輸入股票代號。")
+                elif sb_qty <= 0:
+                    st.warning("⚠️ 請輸入股數。")
+                else:
+                    full_ticker = (
+                        sb_ticker.strip().upper() + market_info["suffix"]
+                    )
+                    # Use radar category if stock already tracked
+                    final_cat = radar_cat if is_in_radar else sb_cat
+                    result = api_post(
+                        "/holdings",
+                        {
+                            "ticker": full_ticker,
+                            "category": final_cat,
+                            "quantity": sb_qty,
+                            "cost_basis": (
+                                sb_cost if sb_cost > 0 else None
+                            ),
+                            "broker": (
+                                sb_broker.strip() if sb_broker.strip() else None
+                            ),
+                            "is_cash": False,
+                        },
+                    )
+                    if result:
+                        st.success(f"✅ 已新增 {full_ticker}")
+                        # Auto-add to radar if not tracked yet
+                        if not is_in_radar:
+                            radar_result = api_post(
+                                "/ticker",
+                                {
+                                    "ticker": full_ticker,
+                                    "category": final_cat,
+                                    "thesis": sb_thesis.strip()
+                                    or "Added via holdings",
+                                    "tags": [],
+                                },
+                            )
+                            if radar_result:
+                                st.info("📡 已自動加入雷達追蹤")
+                        refresh_ui()
+
+    # ---- Bond holding form ----
+    elif asset_type == "🛡️ 債券":
+        # Ticker outside form for reactive radar lookup
+        sb_bond_ticker = st.text_input(
+            "債券代號",
+            placeholder="TLT, BND, SGOV",
+            key="sb_bond_ticker",
+        )
+
+        # Radar auto-category lookup
+        radar_lookup_b = build_radar_lookup()
+        bond_ticker_preview = (
+            sb_bond_ticker.strip().upper() if sb_bond_ticker.strip() else ""
+        )
+        bond_in_radar = bond_ticker_preview in radar_lookup_b
+
+        if sb_bond_ticker.strip():
+            if bond_in_radar:
+                st.info("📋 已在雷達中，將沿用既有分類。")
+            else:
+                st.caption("📌 此債券尚未在雷達中，新增後將自動加入追蹤。")
+
+        # Optional thesis (only for new bonds)
+        sb_bond_thesis = ""
+        if sb_bond_ticker.strip() and not bond_in_radar:
+            sb_bond_thesis = st.text_area(
+                "投資觀點（選填）",
+                placeholder="新增至雷達時的初始觀點...",
+                key="sb_bond_thesis",
+            )
+
+        with st.form("sidebar_bond_form", clear_on_submit=True):
+            sb_bond_currency = st.selectbox(
+                "幣別", options=CASH_CURRENCY_OPTIONS
+            )
+            sb_bond_qty = st.number_input(
+                "股數", min_value=0.0, step=1.0, value=0.0, key="sb_bqty"
+            )
+            sb_bond_cost = st.number_input(
+                "平均成本",
+                min_value=0.0,
+                step=0.01,
+                value=0.0,
+                key="sb_bcost",
+            )
+            sb_bond_broker = st.text_input(
+                "券商（選填）",
+                placeholder="例如 永豐金、Firstrade",
+                key="sb_bond_broker",
+            )
+
+            if st.form_submit_button("新增"):
+                if not sb_bond_ticker.strip():
+                    st.warning("⚠️ 請輸入債券代號。")
+                elif sb_bond_qty <= 0:
+                    st.warning("⚠️ 請輸入股數。")
+                else:
+                    bond_full = sb_bond_ticker.strip().upper()
+                    result = api_post(
+                        "/holdings",
+                        {
+                            "ticker": bond_full,
+                            "category": "Bond",
+                            "quantity": sb_bond_qty,
+                            "cost_basis": (
+                                sb_bond_cost if sb_bond_cost > 0 else None
+                            ),
+                            "broker": (
+                                sb_bond_broker.strip()
+                                if sb_bond_broker.strip()
+                                else None
+                            ),
+                            "is_cash": False,
+                        },
+                    )
+                    if result:
+                        st.success(f"✅ 已新增 {bond_full}")
+                        # Auto-add to radar if not tracked yet
+                        if not bond_in_radar:
+                            radar_result = api_post(
+                                "/ticker",
+                                {
+                                    "ticker": bond_full,
+                                    "category": "Bond",
+                                    "thesis": sb_bond_thesis.strip()
+                                    or "Added via holdings",
+                                    "tags": [],
+                                },
+                            )
+                            if radar_result:
+                                st.info("📡 已自動加入雷達追蹤")
+                        refresh_ui()
+
+    # ---- Cash holding form ----
+    else:
+        with st.form("sidebar_cash_form", clear_on_submit=True):
+            cash_currency = st.selectbox(
+                "幣別", options=CASH_CURRENCY_OPTIONS
+            )
+            cash_amount = st.number_input(
+                "金額", min_value=0.0, step=100.0, value=0.0
+            )
+            cash_bank = st.text_input(
+                "銀行 / 券商（選填）",
+                placeholder="例如 台灣銀行、中信銀行",
+            )
+            cash_account_type = st.selectbox(
+                "帳戶類型（選填）",
+                options=["（不指定）"] + CASH_ACCOUNT_TYPE_OPTIONS,
+            )
+            cash_notes = st.text_area(
+                "備註（選填）",
+                placeholder="例如 緊急預備金、旅遊基金...",
+            )
+
+            if st.form_submit_button("新增"):
+                if cash_amount <= 0:
+                    st.warning("⚠️ 請輸入金額。")
+                else:
+                    result = api_post(
+                        "/holdings/cash",
+                        {
+                            "currency": cash_currency,
+                            "amount": cash_amount,
+                        },
+                    )
+                    if result:
+                        label_parts = [cash_currency]
+                        if cash_bank.strip():
+                            label_parts.append(cash_bank.strip())
+                        st.success(
+                            f"✅ 已新增 {' - '.join(label_parts)}"
+                            f" {cash_amount:,.0f}"
+                        )
+                        refresh_ui()
+
+    st.divider()
+
+    # -- Export Holdings --
+    st.subheader("📥 匯出持倉")
+    export_h = api_get_silent("/holdings/export")
+    if export_h:
+        st.download_button(
+            "📥 下載 JSON",
+            data=json.dumps(export_h, ensure_ascii=False, indent=2),
+            file_name=HOLDINGS_EXPORT_FILENAME,
+            mime="application/json",
+            use_container_width=True,
+        )
+        st.caption(f"共 {len(export_h)} 筆持倉")
+    else:
+        st.caption("目前無持倉可匯出。")
+
+    st.divider()
+
+    # -- Import Holdings --
+    st.subheader("📤 匯入持倉")
+    h_file = st.file_uploader(
+        "上傳 JSON 檔案",
+        type=["json"],
+        key="import_holdings_file",
+        label_visibility="collapsed",
+    )
+    if h_file is not None:
+        try:
+            h_data = json.loads(h_file.getvalue().decode("utf-8"))
+            if isinstance(h_data, list):
+                st.caption(f"偵測到 {len(h_data)} 筆資料。")
+                if st.button("📤 確認匯入", use_container_width=True):
+                    result = api_post("/holdings/import", h_data)
+                    if result:
+                        st.success(
+                            result.get("message", "✅ 匯入完成")
+                        )
+                        st.cache_data.clear()
+                        st.rerun()
+            else:
+                st.warning("⚠️ JSON 格式錯誤，預期為陣列。")
+        except json.JSONDecodeError:
+            st.error("❌ 無法解析 JSON 檔案。")
+
+    st.download_button(
+        "📋 下載匯入範本",
+        data=HOLDING_IMPORT_TEMPLATE,
+        file_name="holding_import_template.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
+    st.divider()
+
+    # -- Refresh --
+    if st.button("🔄 重新整理畫面", use_container_width=True):
+        refresh_ui()
+
+
+# ---------------------------------------------------------------------------
+# Main Content: Tabs (War Room + Telegram)
+# ---------------------------------------------------------------------------
+
+tab_warroom, tab_telegram = st.tabs(
+    ["📊 資產配置 War Room", "📡 Telegram 設定"]
+)
+
+
+# ===========================================================================
+# Tab 1: War Room — Asset Allocation Dashboard
+# ===========================================================================
+
+with tab_warroom:
+    try:
+        templates = fetch_templates() or []
+        profile = fetch_profile()
+        holdings = fetch_holdings() or []
+
+        # -------------------------------------------------------------------
+        # Section 1: Target Allocation
+        # -------------------------------------------------------------------
+        st.subheader("🎯 Step 1 — 設定目標配置")
+
+        if profile:
+            prof_cols = st.columns([4, 1])
+            with prof_cols[0]:
+                st.success(
+                    f"✅ 目前使用配置：**{profile['name']}**"
+                )
+            with prof_cols[1]:
+                switch_clicked = st.button(
+                    "🔄 切換風格", key="switch_persona_btn"
+                )
+
+            target = profile.get("config", {})
+
+            target_cols = st.columns(len(CATEGORY_OPTIONS))
+            for i, cat in enumerate(CATEGORY_OPTIONS):
+                with target_cols[i]:
+                    label = CATEGORY_LABELS.get(cat, cat)
+                    pct = target.get(cat, 0)
+                    st.metric(label.split(" ")[0], f"{pct}%")
+
+            # -- Switch Persona picker --
+            if switch_clicked:
+                with st.expander(
+                    "🔄 選擇新的投資風格範本", expanded=True
+                ):
+                    if templates:
+                        sw_cols = st.columns(3)
+                        for idx, tmpl in enumerate(templates):
+                            with sw_cols[idx % 3]:
+                                with st.container(border=True):
+                                    st.markdown(f"**{tmpl['name']}**")
+                                    st.caption(tmpl["description"])
+                                    if tmpl.get("quote"):
+                                        st.markdown(
+                                            f"*「{tmpl['quote']}」*"
+                                        )
+
+                                    cfg = tmpl.get("default_config", {})
+                                    non_zero = {
+                                        k: v
+                                        for k, v in cfg.items()
+                                        if v > 0
+                                    }
+                                    if non_zero:
+                                        parts = [
+                                            f"{CATEGORY_LABELS.get(k, k).split(' ')[0]} {v}%"
+                                            for k, v in non_zero.items()
+                                        ]
+                                        st.caption(" · ".join(parts))
+
+                                    if st.button(
+                                        "選擇此範本",
+                                        key=f"switch_tmpl_{tmpl['id']}",
+                                        use_container_width=True,
+                                    ):
+                                        result = api_post(
+                                            "/profiles",
+                                            {
+                                                "name": tmpl["name"],
+                                                "source_template_id": tmpl[
+                                                    "id"
+                                                ],
+                                                "config": cfg,
+                                            },
+                                        )
+                                        if result:
+                                            st.success(
+                                                f"✅ 已切換至「{tmpl['name']}」"
+                                            )
+                                            st.cache_data.clear()
+                                            st.rerun()
+                    else:
+                        st.warning("⚠️ 無法載入範本。")
+
+            # -- Adjust percentages --
+            with st.expander("✏️ 調整目標配置", expanded=False):
+                edit_cols = st.columns(len(CATEGORY_OPTIONS))
+                new_config = {}
+                for i, cat in enumerate(CATEGORY_OPTIONS):
+                    with edit_cols[i]:
+                        label = (
+                            CATEGORY_LABELS.get(cat, cat)
+                            .split("(")[0]
+                            .strip()
+                        )
+                        new_config[cat] = st.number_input(
+                            label,
+                            min_value=0.0,
+                            max_value=100.0,
+                            value=float(target.get(cat, 0)),
+                            step=5.0,
+                            key=f"target_{cat}",
+                        )
+
+                total_pct = sum(new_config.values())
+                if abs(total_pct - 100) > 0.01:
+                    st.warning(
+                        f"⚠️ 配置合計 {total_pct:.0f}%，應為 100%。"
+                    )
+                else:
+                    if st.button("💾 儲存配置", key="save_profile"):
+                        result = api_put(
+                            f"/profiles/{profile['id']}",
+                            {"config": new_config},
+                        )
+                        if result:
+                            st.success("✅ 配置已更新")
+                            st.cache_data.clear()
+                            st.rerun()
+        else:
+            st.info(
+                "📋 尚未設定投資組合目標，請選擇一個投資人格範本開始："
+            )
+
+            if templates:
+                template_cols = st.columns(3)
+                for idx, tmpl in enumerate(templates):
+                    with template_cols[idx % 3]:
+                        with st.container(border=True):
+                            st.markdown(f"**{tmpl['name']}**")
+                            st.caption(tmpl["description"])
+                            if tmpl.get("quote"):
+                                st.markdown(f"*「{tmpl['quote']}」*")
+
+                            cfg = tmpl.get("default_config", {})
+                            non_zero = {
+                                k: v for k, v in cfg.items() if v > 0
+                            }
+                            if non_zero:
+                                parts = [
+                                    f"{CATEGORY_LABELS.get(k, k).split(' ')[0]} {v}%"
+                                    for k, v in non_zero.items()
+                                ]
+                                st.caption(" · ".join(parts))
+
+                            if st.button(
+                                "選擇此範本",
+                                key=f"pick_template_{tmpl['id']}",
+                                use_container_width=True,
+                            ):
+                                result = api_post(
+                                    "/profiles",
+                                    {
+                                        "name": tmpl["name"],
+                                        "source_template_id": tmpl["id"],
+                                        "config": cfg,
+                                    },
+                                )
+                                if result:
+                                    st.success(
+                                        f"✅ 已套用「{tmpl['name']}」"
+                                    )
+                                    st.cache_data.clear()
+                                    st.rerun()
+            else:
+                st.warning("⚠️ 無法載入範本，請確認後端服務。")
+
+        st.divider()
+
+        # -------------------------------------------------------------------
+        # Section 2: Holdings Management (inline editor + save + delete)
+        # -------------------------------------------------------------------
+        st.subheader("💼 Step 2 — 持倉管理")
+
+        if holdings:
+            # Build DataFrame with raw API values for round-trip editing
+            rows = []
+            for h in holdings:
+                rows.append(
+                    {
+                        "ID": h["id"],
+                        "ticker": h["ticker"],
+                        "category": h["category"],
+                        "quantity": float(h["quantity"]),
+                        "cost_basis": (
+                            float(h["cost_basis"])
+                            if h.get("cost_basis") is not None
+                            else None
+                        ),
+                        "broker": h.get("broker") or "",
+                        "is_cash": h.get("is_cash", False),
+                    }
+                )
+            df = pd.DataFrame(rows)
+
+            edited_df = st.data_editor(
+                df,
+                column_config={
+                    "ID": None,  # hidden
+                    "ticker": st.column_config.TextColumn(
+                        "代號", disabled=True
+                    ),
+                    "category": st.column_config.SelectboxColumn(
+                        "分類",
+                        options=CATEGORY_OPTIONS,
+                        required=True,
+                    ),
+                    "quantity": st.column_config.NumberColumn(
+                        "數量", min_value=0.0, format="%.4f"
+                    ),
+                    "cost_basis": st.column_config.NumberColumn(
+                        "平均成本", min_value=0.0, format="%.2f"
+                    ),
+                    "broker": st.column_config.TextColumn("券商"),
+                    "is_cash": st.column_config.CheckboxColumn(
+                        "現金", disabled=True
+                    ),
+                },
+                use_container_width=True,
+                hide_index=True,
+                num_rows="fixed",
+                key="holdings_editor",
+            )
+
+            # Save & Delete row
+            btn_cols = st.columns([1, 1, 2])
+            with btn_cols[0]:
+                save_clicked = st.button(
+                    "💾 儲存變更", key="save_holdings_btn"
+                )
+            with btn_cols[1]:
+                delete_clicked = st.button(
+                    "🗑️ 刪除", key="del_holding_btn"
+                )
+
+            # --- Save logic: diff edited vs original ---
+            if save_clicked:
+                changed = 0
+                errors: list[str] = []
+                for idx in range(len(df)):
+                    orig = df.iloc[idx]
+                    edit = edited_df.iloc[idx]
+                    # Check if any editable field changed
+                    if (
+                        orig["category"] != edit["category"]
+                        or orig["quantity"] != edit["quantity"]
+                        or orig["cost_basis"] != edit["cost_basis"]
+                        or (orig["broker"] or "") != (edit["broker"] or "")
+                    ):
+                        h_id = int(orig["ID"])
+                        result = api_put(
+                            f"/holdings/{h_id}",
+                            {
+                                "ticker": edit["ticker"],
+                                "category": edit["category"],
+                                "quantity": float(edit["quantity"]),
+                                "cost_basis": (
+                                    float(edit["cost_basis"])
+                                    if pd.notna(edit["cost_basis"])
+                                    else None
+                                ),
+                                "broker": (
+                                    edit["broker"]
+                                    if edit["broker"]
+                                    else None
+                                ),
+                                "is_cash": bool(edit["is_cash"]),
+                            },
+                        )
+                        if result:
+                            changed += 1
+                        else:
+                            errors.append(edit["ticker"])
+                if changed > 0:
+                    st.success(f"✅ 已更新 {changed} 筆持倉")
+                if errors:
+                    st.error(
+                        f"❌ 更新失敗：{', '.join(errors)}"
+                    )
+                if changed == 0 and not errors:
+                    st.info("ℹ️ 沒有偵測到變更")
+                if changed > 0:
+                    st.cache_data.clear()
+                    st.rerun()
+
+            # --- Delete logic ---
+            del_id = st.selectbox(
+                "選擇要刪除的持倉",
+                options=[h["id"] for h in holdings],
+                format_func=lambda x: next(
+                    (
+                        f"{h['ticker']} ({h['quantity']})"
+                        for h in holdings
+                        if h["id"] == x
+                    ),
+                    str(x),
+                ),
+                key="del_holding_id",
+                label_visibility="collapsed",
+            )
+            if delete_clicked:
+                result = api_delete(f"/holdings/{del_id}")
+                if result:
+                    st.success(result.get("message", "✅ 已刪除"))
+                    st.cache_data.clear()
+                    st.rerun()
+        else:
+            st.caption(
+                "目前無持倉資料，請透過左側面板新增股票、債券或現金。"
+            )
+
+        st.divider()
+
+        # -------------------------------------------------------------------
+        # Section 3: Rebalance Analysis
+        # -------------------------------------------------------------------
+        st.subheader("📊 Step 3 — 再平衡分析")
+
+        if profile and holdings:
+            rebalance = fetch_rebalance()
+            if rebalance:
+                st.metric(
+                    "💰 投資組合總市值",
+                    f"${rebalance['total_value']:,.2f}",
+                )
+
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
+
+                cats_data = rebalance.get("categories", {})
+                cat_names = list(cats_data.keys())
+                cat_labels = [
+                    CATEGORY_LABELS.get(c, c).split("(")[0].strip()
+                    for c in cat_names
+                ]
+                target_vals = [
+                    cats_data[c]["target_pct"] for c in cat_names
+                ]
+                current_vals = [
+                    cats_data[c]["current_pct"] for c in cat_names
+                ]
+
+                fig_pie = make_subplots(
+                    rows=1,
+                    cols=2,
+                    specs=[[{"type": "pie"}, {"type": "pie"}]],
+                    subplot_titles=["🎯 目標配置", "📊 實際配置"],
+                )
+                fig_pie.add_trace(
+                    go.Pie(
+                        labels=cat_labels,
+                        values=target_vals,
+                        hole=0.4,
+                        textinfo="label+percent",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig_pie.add_trace(
+                    go.Pie(
+                        labels=cat_labels,
+                        values=current_vals,
+                        hole=0.4,
+                        textinfo="label+percent",
+                    ),
+                    row=1,
+                    col=2,
+                )
+                fig_pie.update_layout(
+                    height=ALLOCATION_CHART_HEIGHT,
+                    margin=dict(t=40, b=20, l=20, r=20),
+                    showlegend=False,
+                )
+                st.plotly_chart(fig_pie, use_container_width=True)
+
+                # Drift chart
+                drift_vals = [
+                    cats_data[c]["drift_pct"] for c in cat_names
+                ]
+                colors = [
+                    "#ef4444" if d > 0 else "#22c55e" for d in drift_vals
+                ]
+                fig_drift = go.Figure(
+                    go.Bar(
+                        x=cat_labels,
+                        y=drift_vals,
+                        marker_color=colors,
+                        text=[f"{d:+.1f}%" for d in drift_vals],
+                        textposition="outside",
+                    )
+                )
+                fig_drift.update_layout(
+                    title="偏移度 (Drift %)",
+                    yaxis_title="偏移 (%)",
+                    height=DRIFT_CHART_HEIGHT,
+                    margin=dict(t=40, b=20, l=40, r=20),
+                )
+                st.plotly_chart(fig_drift, use_container_width=True)
+
+                # Advice
+                st.markdown("**💡 再平衡建議：**")
+                for adv in rebalance.get("advice", []):
+                    st.write(adv)
+            else:
+                st.info(
+                    "⏳ 無法計算再平衡，"
+                    "請確認已設定目標配置並輸入持倉。"
+                )
+        elif not profile:
+            st.caption("請先完成 Step 1（設定目標配置）。")
+        else:
+            st.caption("請先完成 Step 2（輸入持倉）。")
+
+    except Exception as e:
+        st.error(f"❌ 資產配置載入失敗：{e}")
+
+
+# ===========================================================================
+# Tab 2: Telegram Settings
+# ===========================================================================
+
+with tab_telegram:
+    st.subheader("🔔 Telegram 通知設定")
+    st.caption(
+        "系統支援兩種模式：使用系統預設 Bot（.env 設定）或自訂 Bot Token。"
+    )
+
+    tg_settings = api_get_silent("/settings/telegram")
+
+    if tg_settings:
+        mode_label = (
+            "🟢 自訂 Bot"
+            if tg_settings.get("use_custom_bot")
+            else "⚪ 系統預設"
+        )
+        tg_cols = st.columns(3)
+        with tg_cols[0]:
+            st.metric("模式", mode_label)
+        with tg_cols[1]:
+            st.metric(
+                "Chat ID",
+                tg_settings.get("telegram_chat_id") or "未設定",
+            )
+        with tg_cols[2]:
+            st.metric(
+                "自訂 Token",
+                tg_settings.get("custom_bot_token_masked") or "未設定",
+            )
+
+    with st.expander(
+        "✏️ 編輯 Telegram 設定",
+        expanded=not bool(
+            tg_settings and tg_settings.get("telegram_chat_id")
+        ),
+    ):
+        with st.form("telegram_settings_form"):
+            tg_chat = st.text_input(
+                "Telegram Chat ID",
+                value=(tg_settings or {}).get("telegram_chat_id", ""),
+                placeholder="例如 123456789",
+            )
+            tg_token = st.text_input(
+                "自訂 Bot Token（選填）",
+                value="",
+                placeholder="留空則保留原有設定",
+                type="password",
+            )
+            tg_custom = st.toggle(
+                "使用自訂 Bot",
+                value=(tg_settings or {}).get("use_custom_bot", False),
+            )
+            st.caption(
+                "💡 若未設定自訂 Bot，系統會使用 `.env` 中的"
+                " `TELEGRAM_BOT_TOKEN` 發送通知。"
+                "自訂 Bot 適用於想要分開管理通知頻道的使用者。"
+            )
+
+            if st.form_submit_button("💾 儲存設定"):
+                payload: dict = {
+                    "telegram_chat_id": tg_chat.strip(),
+                    "use_custom_bot": tg_custom,
+                }
+                if tg_token.strip():
+                    payload["custom_bot_token"] = tg_token.strip()
+                try:
+                    resp = requests.put(
+                        f"{BACKEND_URL}/settings/telegram",
+                        json=payload,
+                        timeout=API_PUT_TIMEOUT,
+                    )
+                    if resp.status_code == 200:
+                        st.success("✅ Telegram 設定已儲存")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"❌ 儲存失敗：{resp.text}")
+                except requests.RequestException as e:
+                    st.error(f"❌ 請求失敗：{e}")
+
+    # Test button (outside form)
+    if tg_settings and tg_settings.get("telegram_chat_id"):
+        if st.button("📨 發送測試訊息", key="test_telegram_btn"):
+            try:
+                resp = requests.post(
+                    f"{BACKEND_URL}/settings/telegram/test",
+                    timeout=API_POST_TIMEOUT,
+                )
+                if resp.status_code == 200:
+                    st.success(resp.json().get("message", "✅ 已發送"))
+                else:
+                    detail = (
+                        resp.json().get("detail", resp.text)
+                        if resp.headers.get("content-type", "").startswith(
+                            "application/json"
+                        )
+                        else resp.text
+                    )
+                    st.error(f"❌ {detail}")
+            except requests.RequestException as e:
+                st.error(f"❌ 請求失敗：{e}")

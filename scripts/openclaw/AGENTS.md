@@ -1,12 +1,12 @@
-# Azusa Radar — OpenClaw Workspace Instructions
+# Folio — OpenClaw Workspace Instructions
 
 ## System Context
 
-You have access to **Azusa Radar (投資雷達)**, a self-hosted stock tracking and market scanning system. It runs as a Docker Compose application with a FastAPI backend at `http://localhost:8000`.
+You have access to **Folio (智能資產配置)**, a self-hosted stock tracking and market scanning system. It runs as a Docker Compose application with a FastAPI backend at `http://localhost:8000`.
 
 ## How to Interact
 
-Use the `exec` tool with `curl` to call the Azusa Radar API:
+Use the `exec` tool with `curl` to call the Folio API:
 
 ```bash
 # Quick portfolio overview (plain text)
@@ -54,6 +54,15 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/ticker/{ticker}/dividend` | Dividend info |
 | `POST` | `/scan` | Trigger scan |
 | `POST` | `/digest` | Trigger weekly digest |
+| `GET` | `/personas/templates` | Investment persona templates |
+| `GET` | `/profiles` | Active investment profile |
+| `POST` | `/profiles` | Create investment profile |
+| `GET` | `/holdings` | All holdings |
+| `POST` | `/holdings` | Add holding |
+| `GET` | `/rebalance` | Rebalance analysis |
+| `GET` | `/settings/telegram` | Telegram notification settings |
+| `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
+| `POST` | `/settings/telegram/test` | Send a test Telegram message |
 
 ### Docs
 
@@ -70,4 +79,5 @@ curl -s -X POST http://localhost:8000/webhook \
   - **Trend_Setter (風向球)**: Market direction indicators
   - **Moat (護城河)**: Companies with competitive advantages
   - **Growth (成長夢想)**: High-volatility growth stocks
-  - **ETF**: Index funds for passive tracking
+  - **Bond (債券)**: Bonds and fixed-income ETFs
+  - **Cash (現金)**: Idle cash positions

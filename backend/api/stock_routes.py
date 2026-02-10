@@ -49,6 +49,7 @@ from infrastructure.database import get_session
 from infrastructure.market_data import (
     get_dividend_info,
     get_earnings_date,
+    get_price_history,
     get_technical_signals,
 )
 
@@ -101,6 +102,12 @@ def get_signals_route(ticker: str) -> dict:
     return get_technical_signals(ticker.upper()) or {}
 
 
+@router.get("/ticker/{ticker}/price-history")
+def get_price_history_route(ticker: str) -> list[dict]:
+    """取得指定股票的收盤價歷史（1 年），用於價格趨勢圖。"""
+    return get_price_history(ticker.upper()) or []
+
+
 @router.get("/stocks/export")
 def export_stocks_route(
     session: Session = Depends(get_session),
@@ -111,7 +118,7 @@ def export_stocks_route(
 
 @router.get("/ticker/{ticker}/moat")
 def get_moat_route(ticker: str, session: Session = Depends(get_session)) -> dict:
-    """取得指定股票的護城河趨勢（毛利率 5 季走勢 + YoY 診斷）。ETF 不適用。"""
+    """取得指定股票的護城河趨勢（毛利率 5 季走勢 + YoY 診斷）。Bond / Cash 不適用。"""
     return get_moat_for_ticker(session, ticker)
 
 
