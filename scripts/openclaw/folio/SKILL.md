@@ -53,6 +53,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `alerts` | 查看價格警報 | Yes | `{"action": "alerts", "ticker": "AAPL"}` |
 | `fear_greed` | 恐懼與貪婪指數 (VIX + CNN 綜合) | No | `{"action": "fear_greed"}` |
 | `add_stock` | 新增股票到觀察名單 | Yes (in params) | See below |
+| `withdraw` | 聰明提款建議 (Liquidity Waterfall) | No | See below |
 
 > **Tip:** Use `help` first to discover all supported actions and their parameters at runtime.
 
@@ -69,6 +70,20 @@ curl -s -X POST http://localhost:8000/webhook \
   }
 }
 ```
+
+### withdraw Example
+
+```json
+{
+  "action": "withdraw",
+  "params": {
+    "amount": 50000,
+    "currency": "TWD"
+  }
+}
+```
+
+Returns a prioritized sell plan: (1) overweight rebalancing, (2) tax-loss harvesting, (3) liquidity order. Each recommendation includes ticker, quantity, sell value, reason, and unrealized P/L.
 
 ### Response Format
 
@@ -132,6 +147,7 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
 | `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`cash_non_home_pct`、匯率變動、建議 |
 | `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（含現金曝險金額） |
+| `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），body: `{"target_amount": 50000, "display_currency": "TWD", "notify": true}` |
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
@@ -163,3 +179,4 @@ For advanced use, you can call individual endpoints directly:
 - When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)
 - Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only) and `breakdown` (full portfolio) for separate analysis
 - Use `POST /currency-exposure/alert` to trigger Telegram alerts for significant FX movements (>3% change), alerts now include cash exposure amounts
+- Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order

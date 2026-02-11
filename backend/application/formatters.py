@@ -120,3 +120,62 @@ def format_fear_greed_short(level: str) -> str:
     icon = _FEAR_GREED_ICON.get(level, "⏳")
     label = _FEAR_GREED_LABEL_ZH.get(level, "無資料")
     return f"{icon} {label}"
+
+
+# ---------------------------------------------------------------------------
+# 聰明提款格式化
+# ---------------------------------------------------------------------------
+
+_PRIORITY_LABEL: dict[int, str] = {
+    1: "再平衡",
+    2: "節稅",
+    3: "流動性",
+}
+
+
+def format_withdrawal_telegram(plan: "WithdrawalPlan", display_currency: str = "USD") -> str:  # noqa: F821
+    """
+    將 WithdrawalPlan 格式化為 Telegram HTML 訊息。
+
+    Args:
+        plan: domain.withdrawal.WithdrawalPlan 實例
+        display_currency: 顯示幣別
+
+    Returns:
+        Telegram HTML 格式訊息字串
+    """
+    from domain.constants import CATEGORY_ICON
+
+    parts: list[str] = [
+        f"🏧 <b>聰明提款建議</b>（目標：{plan.target_amount:,.2f} {display_currency}）\n",
+    ]
+
+    if not plan.recommendations:
+        parts.append("⚠️ 無可賣出的持倉。")
+        return "\n".join(parts)
+
+    parts.append("📋 <b>建議賣出：</b>")
+    for i, rec in enumerate(plan.recommendations, 1):
+        icon = CATEGORY_ICON.get(rec.category, "📊")
+        pl_text = ""
+        if rec.unrealized_pl is not None:
+            pl_sign = "+" if rec.unrealized_pl >= 0 else ""
+            pl_text = f"\n   損益：{pl_sign}{rec.unrealized_pl:,.2f} {display_currency}"
+        priority_label = _PRIORITY_LABEL.get(rec.priority, "其他")
+        parts.append(
+            f"\n{i}. {icon} <b>{rec.ticker}</b> ({rec.category})"
+            f" — 賣出 {rec.quantity_to_sell:,.4g} 股"
+            f"（{rec.sell_value:,.2f} {display_currency}）"
+            f"\n   理由：{rec.reason}"
+            f"\n   優先級：{priority_label}"
+            f"{pl_text}"
+        )
+
+    parts.append(f"\n💰 總賣出金額：{plan.total_sell_value:,.2f} {display_currency}")
+
+    if plan.shortfall > 0:
+        parts.append(
+            f"⚠️ 持倉不足，缺口：{plan.shortfall:,.2f} {display_currency}"
+        )
+
+    return "\n".join(parts)

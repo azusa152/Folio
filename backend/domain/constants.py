@@ -108,6 +108,13 @@ DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
 
 # ---------------------------------------------------------------------------
+# Smart Withdrawal (聰明提款機)
+# ---------------------------------------------------------------------------
+# 流動性優先順序：最容易變現的排最前面，複利核心資產排最後
+CATEGORY_LIQUIDITY_ORDER = ["Cash", "Bond", "Growth", "Moat", "Trend_Setter"]
+WITHDRAWAL_MIN_SELL_VALUE = 10.0  # 最小賣出金額（避免灰塵交易）
+
+# ---------------------------------------------------------------------------
 # Forex Cache
 # ---------------------------------------------------------------------------
 FOREX_CACHE_MAXSIZE = 50
@@ -243,6 +250,14 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
     "fear_greed": {
         "description": "Current Fear & Greed Index (VIX + CNN composite)",
         "requires_ticker": False,
+    },
+    "withdraw": {
+        "description": "Smart withdrawal plan (Liquidity Waterfall)",
+        "requires_ticker": False,
+        "params": {
+            "amount": "float (required, target withdrawal amount)",
+            "currency": "str (display currency, default USD)",
+        },
     },
 }
 

@@ -468,6 +468,42 @@ class FXAlertResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Smart Withdrawal Schemas (聰明提款機)
+# ---------------------------------------------------------------------------
+
+
+class WithdrawRequest(BaseModel):
+    """POST /withdraw 請求 Body。"""
+
+    target_amount: float
+    display_currency: str = "USD"
+    notify: bool = True
+
+
+class SellRecommendationResponse(BaseModel):
+    """單筆賣出建議。"""
+
+    ticker: str
+    category: str
+    quantity_to_sell: float
+    sell_value: float
+    reason: str
+    unrealized_pl: Optional[float] = None
+    priority: int  # 1=再平衡, 2=節稅, 3=流動性
+
+
+class WithdrawResponse(BaseModel):
+    """POST /withdraw 回傳的提款計劃。"""
+
+    recommendations: list[SellRecommendationResponse] = []
+    total_sell_value: float = 0.0
+    target_amount: float = 0.0
+    shortfall: float = 0.0
+    post_sell_drifts: dict[str, dict] = {}
+    message: str = ""
+
+
+# ---------------------------------------------------------------------------
 # Fear & Greed Index Schemas
 # ---------------------------------------------------------------------------
 
