@@ -224,6 +224,8 @@ class LastScanResponse(BaseModel):
 
     last_scanned_at: Optional[str] = None
     epoch: Optional[int] = None
+    market_status: Optional[str] = None
+    market_status_details: Optional[str] = None
 
 
 class AcceptedResponse(BaseModel):
@@ -433,6 +435,23 @@ class TelegramSettingsResponse(BaseModel):
     telegram_chat_id: str
     custom_bot_token_masked: str  # e.g. "123***xyz"
     use_custom_bot: bool
+
+
+# ---------------------------------------------------------------------------
+# User Preferences Schemas
+# ---------------------------------------------------------------------------
+
+
+class PreferencesRequest(BaseModel):
+    """PUT /settings/preferences 請求 Body。"""
+
+    privacy_mode: bool
+
+
+class PreferencesResponse(BaseModel):
+    """GET /settings/preferences 回應。"""
+
+    privacy_mode: bool
 
 
 # ---------------------------------------------------------------------------

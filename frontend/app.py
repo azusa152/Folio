@@ -1,10 +1,12 @@
 """
 Folio — Streamlit Frontend Entry Point.
-Uses st.navigation to switch between the Radar and Asset Allocation pages.
+Uses st.navigation to switch between Dashboard, Radar, and Asset Allocation pages.
 """
 
 import streamlit as st
 from streamlit_js_eval import streamlit_js_eval
+
+from utils import fetch_preferences
 
 # ---------------------------------------------------------------------------
 # Page Config (must be the first Streamlit command)
@@ -21,10 +23,11 @@ st.set_page_config(
 # trigger a rerun, otherwise Streamlit falls back to legacy pages/ routing)
 # ---------------------------------------------------------------------------
 
-radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", default=True)
+dashboard_page = st.Page("views/dashboard.py", title="投資組合總覽", icon="📊", default=True)
+radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡")
 allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼")
 
-pg = st.navigation([radar_page, allocation_page])
+pg = st.navigation([dashboard_page, radar_page, allocation_page])
 
 # ---------------------------------------------------------------------------
 # Custom CSS — global styles shared across all pages
@@ -69,6 +72,22 @@ if "browser_tz" not in st.session_state:
             st.session_state["browser_tz"] = tz
     except Exception:
         pass  # Safari may block JS eval iframe; gracefully fall back to UTC
+
+# ---------------------------------------------------------------------------
+# Load Persisted Privacy Mode (once per session, then re-hydrate every rerun)
+# ---------------------------------------------------------------------------
+
+if "_privacy_mode_value" not in st.session_state:
+    st.session_state["_privacy_mode_value"] = False
+    try:
+        prefs = fetch_preferences()
+        if prefs and "privacy_mode" in prefs:
+            st.session_state["_privacy_mode_value"] = prefs["privacy_mode"]
+    except Exception:
+        pass  # Backend unreachable — default to False
+
+# Re-hydrate widget key before page renders (survives page switches)
+st.session_state["privacy_mode"] = st.session_state["_privacy_mode_value"]
 
 # ---------------------------------------------------------------------------
 # Run the selected page

@@ -47,6 +47,7 @@ from utils import (
     fetch_templates,
     format_utc_timestamp,
     refresh_ui,
+    save_privacy_mode,
 )
 
 
@@ -72,6 +73,13 @@ def _is_privacy() -> bool:
     return bool(st.session_state.get("privacy_mode"))
 
 
+def _on_privacy_change() -> None:
+    """Callback: persist privacy mode to backend and backing key."""
+    new_val = st.session_state.get("privacy_mode", False)
+    st.session_state["_privacy_mode_value"] = new_val
+    save_privacy_mode(new_val)
+
+
 def _mask_money(value: float, fmt: str = "${:,.2f}") -> str:
     """Format a monetary value, or return the mask placeholder in privacy mode."""
     if _is_privacy():
@@ -95,7 +103,7 @@ with _title_cols[0]:
     st.title("💼 個人資產配置")
     st.caption("持倉記錄 · 再平衡分析 · Telegram 通知")
 with _title_cols[1]:
-    st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode")
+    st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode", on_change=_on_privacy_change)
 
 
 # ---------------------------------------------------------------------------
@@ -108,9 +116,9 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 本頁面負責**個人資產持倉管理**與**投資組合再平衡分析**。透過左側導覽列從投資雷達切換至此頁面。
 
-### 🙈 隱私模式
+### 🙈 隱私模式（跨裝置同步）
 
-頁面右上角提供**隱私模式開關**。開啟後，所有敏感的金額數字（總市值、持倉數量、現價、平均成本、市值等）會以 `***` 遮蔽，僅保留百分比與分類結構。適合螢幕分享或截圖時使用，不影響後端資料。
+頁面右上角提供**隱私模式開關**。開啟後，所有敏感的金額數字（總市值、持倉數量、現價、平均成本、市值等）會以 `***` 遮蔽，僅保留百分比與分類結構。適合螢幕分享或截圖時使用，不影響後端資料。**隱私模式設定會儲存至資料庫**，跨裝置、跨瀏覽器 session 同步生效。在「投資組合總覽」頁面也可切換，兩頁面同步。
 
 ---
 

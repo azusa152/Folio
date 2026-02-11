@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from api.holding_routes import router as holding_router
 from api.persona_routes import router as persona_router
+from api.preferences_routes import router as preferences_router
 from api.scan_routes import router as scan_router
 from api.schemas import HealthResponse
 from api.stock_routes import router as stock_router
@@ -68,3 +69,4 @@ app.include_router(scan_router)
 app.include_router(persona_router)
 app.include_router(holding_router)
 app.include_router(telegram_router)
+app.include_router(preferences_router)

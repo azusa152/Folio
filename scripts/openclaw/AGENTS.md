@@ -66,6 +66,9 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/settings/telegram` | Telegram notification settings |
 | `PUT` | `/settings/telegram` | Update Telegram settings (dual-mode) |
 | `POST` | `/settings/telegram/test` | Send a test Telegram message |
+| `GET` | `/settings/preferences` | User preferences (privacy mode, etc.) |
+| `PUT` | `/settings/preferences` | Update user preferences (upsert) |
+| `GET` | `/scan/last` | Last scan timestamp + market sentiment |
 
 ### Docs
 
@@ -85,6 +88,7 @@ Branch on `error_code` (not the human-readable `detail` string). Common codes:
 - `CATEGORY_UNCHANGED` / `HOLDING_NOT_FOUND` / `PROFILE_NOT_FOUND`
 - `SCAN_IN_PROGRESS` / `DIGEST_IN_PROGRESS`
 - `TELEGRAM_NOT_CONFIGURED` / `TELEGRAM_SEND_FAILED`
+- `PREFERENCES_UPDATE_FAILED`
 
 ## Response Guidelines
 

@@ -45,14 +45,17 @@ def _run_digest_background() -> None:
 
 @router.get("/scan/last", response_model=LastScanResponse, summary="Get last scan timestamp")
 def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanResponse:
-    """取得最近一次掃描的時間戳，用於判斷資料新鮮度。"""
+    """取得最近一次掃描的時間戳與市場情緒，用於判斷資料新鮮度。"""
     logs = repo.find_latest_scan_logs(session, limit=1)
     if not logs:
         return LastScanResponse(last_scanned_at=None, epoch=None)
-    ts = logs[0].scanned_at
+    log = logs[0]
+    ts = log.scanned_at
     return LastScanResponse(
         last_scanned_at=ts.isoformat(),
         epoch=int(ts.timestamp()),
+        market_status=log.market_status,
+        market_status_details=getattr(log, "market_status_details", ""),
     )
 
 

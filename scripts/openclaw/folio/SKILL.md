@@ -96,7 +96,7 @@ Direct API endpoints return structured errors with a machine-readable `error_cod
 
 Use `error_code` for programmatic branching instead of parsing the human-readable `detail` string.
 
-Common error codes: `STOCK_NOT_FOUND`, `STOCK_ALREADY_EXISTS`, `STOCK_ALREADY_INACTIVE`, `STOCK_ALREADY_ACTIVE`, `CATEGORY_UNCHANGED`, `HOLDING_NOT_FOUND`, `PROFILE_NOT_FOUND`, `SCAN_IN_PROGRESS`, `TELEGRAM_NOT_CONFIGURED`.
+Common error codes: `STOCK_NOT_FOUND`, `STOCK_ALREADY_EXISTS`, `STOCK_ALREADY_INACTIVE`, `STOCK_ALREADY_ACTIVE`, `CATEGORY_UNCHANGED`, `HOLDING_NOT_FOUND`, `PROFILE_NOT_FOUND`, `SCAN_IN_PROGRESS`, `TELEGRAM_NOT_CONFIGURED`, `PREFERENCES_UPDATE_FAILED`.
 
 ## Direct API Endpoints
 
@@ -113,7 +113,7 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/ticker/{ticker}/thesis` | 更新觀點 |
 | `PATCH` | `/ticker/{ticker}/category` | 切換分類 |
 | `POST` | `/scan` | 觸發全域掃描 |
-| `GET` | `/scan/last` | 取得最近一次掃描時間戳（判斷資料新鮮度） |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（判斷資料新鮮度） |
 | `POST` | `/digest` | 觸發每週摘要 |
 | `GET` | `/ticker/{ticker}/scan-history` | 掃描歷史 |
 | `GET` | `/ticker/{ticker}/alerts` | 價格警報清單 |
@@ -131,6 +131,8 @@ For advanced use, you can call individual endpoints directly:
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
+| `GET` | `/settings/preferences` | 使用者偏好設定（隱私模式等） |
+| `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert） |
 | `GET` | `/docs` | Swagger UI (互動式 API 文件) |
 | `GET` | `/openapi.json` | OpenAPI 規範 |
 

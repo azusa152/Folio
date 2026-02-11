@@ -406,7 +406,8 @@ def run_scan(session: Session) -> dict:
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
     market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)
-    logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_sentiment.get("details", ""))
+    market_status_details_value = market_sentiment.get("details", "")
+    logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value)
 
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
     all_stocks = repo.find_active_stocks(session)
@@ -494,6 +495,7 @@ def run_scan(session: Session) -> dict:
             stock_ticker=r["ticker"],
             signal=r["signal"],
             market_status=market_status_value,
+            market_status_details=market_status_details_value,
             details=json.dumps(r["alerts"], ensure_ascii=False),
         )
         repo.create_scan_log(session, scan_log)

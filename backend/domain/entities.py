@@ -57,6 +57,7 @@ class ScanLog(SQLModel, table=True):
     stock_ticker: str = Field(foreign_key="stock.ticker", description="對應股票代號")
     signal: str = Field(description="掃描訊號（ScanSignal value）")
     market_status: str = Field(description="掃描時的市場情緒")
+    market_status_details: str = Field(default="", description="市場情緒原因說明")
     details: str = Field(default="", description="警報詳情（JSON）")
     scanned_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -139,3 +140,10 @@ class UserTelegramSettings(SQLModel, table=True):
     telegram_chat_id: str = Field(default="", description="Telegram Chat ID")
     custom_bot_token: Optional[str] = Field(default=None, description="自訂 Bot Token")
     use_custom_bot: bool = Field(default=False, description="是否使用自訂 Bot")
+
+
+class UserPreferences(SQLModel, table=True):
+    """使用者偏好設定（跨裝置同步）。"""
+
+    user_id: str = Field(default=DEFAULT_USER_ID, primary_key=True, description="使用者 ID")
+    privacy_mode: bool = Field(default=False, description="是否啟用隱私模式")

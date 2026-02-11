@@ -31,7 +31,9 @@ from config import (
     CACHE_TTL_DIVIDEND,
     CACHE_TTL_EARNINGS,
     CACHE_TTL_HOLDINGS,
+    CACHE_TTL_LAST_SCAN,
     CACHE_TTL_MOAT,
+    CACHE_TTL_PREFERENCES,
     CACHE_TTL_PRICE_HISTORY,
     CACHE_TTL_PROFILE,
     CACHE_TTL_REMOVED,
@@ -310,6 +312,28 @@ def fetch_rebalance(display_currency: str = "USD") -> dict | None:
         return None
     except requests.RequestException:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Dashboard — Cached API Helpers
+# ---------------------------------------------------------------------------
+
+
+@st.cache_data(ttl=CACHE_TTL_LAST_SCAN, show_spinner=False)
+def fetch_last_scan() -> dict | None:
+    """Fetch last scan timestamp and market sentiment."""
+    return api_get_silent("/scan/last")
+
+
+@st.cache_data(ttl=CACHE_TTL_PREFERENCES, show_spinner=False)
+def fetch_preferences() -> dict | None:
+    """Fetch user preferences (privacy mode, etc.)."""
+    return api_get_silent("/settings/preferences")
+
+
+def save_privacy_mode(enabled: bool) -> dict | None:
+    """Persist privacy mode to backend (non-cached PUT)."""
+    return api_put("/settings/preferences", {"privacy_mode": enabled})
 
 
 # ---------------------------------------------------------------------------

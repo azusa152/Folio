@@ -6,7 +6,8 @@
 
 ## 功能特色
 
-- **雙頁面架構** — 「投資雷達」負責股票追蹤與掃描，「個人資產配置」負責持倉管理與再平衡，透過左側導覽列切換
+- **三頁面架構** — 「投資組合總覽」為預設首頁提供一眼式儀表板、「投資雷達」負責股票追蹤與掃描、「個人資產配置」負責持倉管理與再平衡，透過左側導覽列切換
+- **投資組合總覽 Dashboard** — 市場情緒（晴天/雨天）、總市值、健康分數、追蹤/持倉數量、目標 vs 實際配置圓餅圖、Drift 偏移長條圖、訊號警報、前 10 大持倉，資料更新時間戳
 - **五大分類追蹤** — 風向球 / 護城河 / 成長夢想 / 債券 / 現金
 - **多市場支援** — 側邊欄新增資產支援美股、台股、日股、港股，自動帶入市場後綴與幣別，股票卡片標題顯示市場旗幟徽章（🇺🇸 / 🇹🇼 / 🇯🇵 / 🇭🇰）
 - **觀點版控 (Thesis Versioning)** — 每次更新觀點自動遞增版號，完整保留歷史演進
@@ -29,7 +30,7 @@
 - **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、**多幣別匯率轉換**（支援 USD/TWD/JPY/EUR/GBP/CNY/HKD/SGD/THB）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
 - **穿透式持倉 X-Ray** — 自動解析 ETF 前 10 大成分股，計算直接+間接真實曝險比例，堆疊長條圖視覺化集中度風險，超過門檻自動 Telegram 警告
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類；新股自動加入雷達追蹤，省去重複操作
-- **隱私模式** — 個人資產配置頁右上角一鍵切換，遮蔽所有金額與數量（顯示 `***`），僅保留百分比與分類結構，適合螢幕分享或截圖
+- **隱私模式（跨裝置同步）** — Dashboard 與配置頁右上角一鍵切換，遮蔽所有金額與數量（顯示 `***`），僅保留百分比與分類結構；**設定儲存於資料庫**，跨裝置、跨 session 同步生效
 - **內建 SOP 指引** — Dashboard 內附操作說明書
 
 ## 核心邏輯
@@ -87,8 +88,8 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit 雙頁面 Dashboard（`st.navigation`），投資雷達頁（股票分頁 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增；使用 `streamlit-js-eval` 偵測瀏覽器時區自動顯示本地時間，`st.status` 提供載入狀態視覺回饋
-- **Database** — SQLite，透過 Docker Volume 持久化（含 Stock、ScanLog、PriceAlert、Holding、UserInvestmentProfile、UserTelegramSettings 等資料表）
+- **Frontend** — Streamlit 三頁面 Dashboard（`st.navigation`），投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）+ 投資雷達頁（股票分頁 + 掃描 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增；使用 `streamlit-js-eval` 偵測瀏覽器時區自動顯示本地時間，`st.status` 提供載入狀態視覺回饋
+- **Database** — SQLite，透過 Docker Volume 持久化（含 Stock、ScanLog、PriceAlert、Holding、UserInvestmentProfile、UserTelegramSettings、UserPreferences 等資料表）
 - **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + `diskcache` 持久快取 + Rate Limiter（2 次/秒）
 - **通知** — Telegram Bot API 雙模式（系統預設 Bot 或自訂 Bot Token），支援差異通知、價格警報、每週摘要
 - **投資人格系統** — 6 種預設範本 + 自訂，目標配置持久化於 DB
@@ -242,7 +243,7 @@ docker compose up --build
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
 | `POST` | `/scan` | V2 三層漏斗掃描（非同步），僅推播差異通知 |
-| `GET` | `/scan/last` | 取得最近一次掃描時間戳（供 smart-scan 判斷資料新鮮度） |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
 | `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
@@ -265,6 +266,8 @@ docker compose up --build
 | `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
 | `POST` | `/settings/telegram/test` | 發送 Telegram 測試訊息 |
+| `GET` | `/settings/preferences` | 取得使用者偏好設定（隱私模式等） |
+| `PUT` | `/settings/preferences` | 更新使用者偏好設定（upsert） |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
@@ -486,7 +489,7 @@ azusa-stock/
 │   ├── domain/                       # 領域層：純業務邏輯，無框架依賴
 │   │   ├── constants.py              #   集中管理閾值、快取設定、共用訊息
 │   │   ├── enums.py                  #   分類、狀態列舉 + 常數
-│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert)
+│   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences)
 │   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
 │   │   └── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
 │   │
@@ -510,15 +513,17 @@ azusa-stock/
 │       ├── scan_routes.py            #   三層漏斗掃描 + 每週摘要路由（含 mutex）
 │       ├── persona_routes.py         #   投資人格 + 配置 CRUD 路由
 │       ├── holding_routes.py         #   持倉管理 + 再平衡路由
-│       └── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
+│       ├── telegram_routes.py        #   Telegram 通知設定路由（雙模式）
+│       └── preferences_routes.py    #   使用者偏好設定路由（隱私模式等）
 │
 ├── frontend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── config.py                     # 前端集中常數與設定
 │   ├── utils.py                      # 共用 API helpers、快取 fetchers、渲染函式
-│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測
+│   ├── app.py                        # 進入點：st.navigation 路由 + 全域 CSS + 瀏覽器時區偵測 + 隱私模式載入
 │   └── views/
+│       ├── dashboard.py              # 投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）
 │       ├── radar.py                  # 投資雷達頁（股票分頁 + 掃描 + 封存）
 │       └── allocation.py             # 個人資產配置頁（War Room + Telegram 設定）
 │

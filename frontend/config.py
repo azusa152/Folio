@@ -176,6 +176,22 @@ PRIVACY_MASK = "***"
 PRIVACY_TOGGLE_LABEL = "🙈 隱私模式"
 
 # ---------------------------------------------------------------------------
+# Dashboard Page
+# ---------------------------------------------------------------------------
+DASHBOARD_TOP_HOLDINGS_LIMIT = 10
+CACHE_TTL_LAST_SCAN = 60  # 1 minute
+CACHE_TTL_PREFERENCES = 300  # 5 minutes
+HEALTH_SCORE_GOOD_THRESHOLD = 80
+HEALTH_SCORE_WARN_THRESHOLD = 50
+MARKET_SENTIMENT_LABELS = {
+    "POSITIVE": {"label": "☀️ 晴天", "color": "green"},
+    "CAUTION": {"label": "🌧️ 雨天", "color": "red"},
+}
+MARKET_SENTIMENT_DEFAULT_LABEL = "⏳ 尚未掃描"
+DASHBOARD_DRIFT_CHART_HEIGHT = 250
+DASHBOARD_ALLOCATION_CHART_HEIGHT = 300
+
+# ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
 # ---------------------------------------------------------------------------
 XRAY_WARN_THRESHOLD_PCT = 15.0
