@@ -190,6 +190,20 @@ MARKET_SENTIMENT_LABELS = {
     "CAUTION": {"label": "🌧️ 雨天", "color": "red"},
 }
 MARKET_SENTIMENT_DEFAULT_LABEL = "⏳ 尚未掃描"
+
+# Fear & Greed Index
+FEAR_GREED_LABELS = {
+    "EXTREME_FEAR": {"label": "😱 極度恐懼", "color": "inverse"},
+    "FEAR": {"label": "😨 恐懼", "color": "off"},
+    "NEUTRAL": {"label": "😐 中性", "color": "normal"},
+    "GREED": {"label": "🤑 貪婪", "color": "normal"},
+    "EXTREME_GREED": {"label": "🤯 極度貪婪", "color": "off"},
+    "N/A": {"label": "⏳ 無資料", "color": "off"},
+}
+FEAR_GREED_DEFAULT_LABEL = "⏳ 無資料"
+CACHE_TTL_FEAR_GREED = 1800  # 30 minutes
+API_FEAR_GREED_TIMEOUT = 15
+
 DASHBOARD_DRIFT_CHART_HEIGHT = 250
 DASHBOARD_ALLOCATION_CHART_HEIGHT = 300
 

@@ -40,6 +40,27 @@ class ScanSignal(str, Enum):
     NORMAL = "NORMAL"
 
 
+class FearGreedLevel(str, Enum):
+    """恐懼與貪婪指數等級（VIX + CNN Fear & Greed 綜合）"""
+
+    EXTREME_FEAR = "EXTREME_FEAR"
+    FEAR = "FEAR"
+    NEUTRAL = "NEUTRAL"
+    GREED = "GREED"
+    EXTREME_GREED = "EXTREME_GREED"
+    NOT_AVAILABLE = "N/A"
+
+
+FEAR_GREED_LABEL: dict[str, str] = {
+    "EXTREME_FEAR": "極度恐懼",
+    "FEAR": "恐懼",
+    "NEUTRAL": "中性",
+    "GREED": "貪婪",
+    "EXTREME_GREED": "極度貪婪",
+    "N/A": "無資料",
+}
+
+
 CATEGORY_LABEL: dict[str, str] = {
     "Trend_Setter": "風向球",
     "Moat": "護城河",

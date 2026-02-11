@@ -153,6 +153,39 @@ XRAY_SINGLE_STOCK_WARN_PCT = 15.0  # Telegram warning threshold (%)
 XRAY_SKIP_CATEGORIES = ["Cash", "Bond"]  # skip non-equity for X-Ray
 
 # ---------------------------------------------------------------------------
+# Fear & Greed Index
+# ---------------------------------------------------------------------------
+VIX_TICKER = "^VIX"
+VIX_HISTORY_PERIOD = "5d"
+
+# VIX 閾值（對應恐懼與貪婪等級）
+VIX_EXTREME_FEAR = 30  # VIX > 30 → 極度恐懼
+VIX_FEAR = 20          # VIX 20–30 → 恐懼
+VIX_NEUTRAL_HIGH = 20  # VIX 15–20 → 中性
+VIX_NEUTRAL_LOW = 15
+VIX_GREED = 10         # VIX 10–15 → 貪婪
+# VIX < 10 → 極度貪婪
+
+# CNN Fear & Greed Index 閾值（0–100 分）
+CNN_FG_EXTREME_FEAR = 25   # 0–25 → 極度恐懼
+CNN_FG_FEAR = 45           # 25–45 → 恐懼
+CNN_FG_NEUTRAL_HIGH = 55   # 45–55 → 中性
+CNN_FG_GREED = 75          # 55–75 → 貪婪
+# 75–100 → 極度貪婪
+
+CNN_FG_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+CNN_FG_REQUEST_TIMEOUT = 10  # seconds
+
+# 綜合權重：VIX 40%, CNN 60%
+FG_WEIGHT_VIX = 0.4
+FG_WEIGHT_CNN = 0.6
+
+# Fear & Greed Cache
+FEAR_GREED_CACHE_MAXSIZE = 10
+FEAR_GREED_CACHE_TTL = 1800  # L1: 30 minutes
+DISK_FEAR_GREED_TTL = 7200   # L2: 2 hours
+
+# ---------------------------------------------------------------------------
 # Disk Cache Key Prefixes
 # ---------------------------------------------------------------------------
 DISK_KEY_SIGNALS = "signals"
@@ -162,6 +195,7 @@ DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"
+DISK_KEY_FEAR_GREED = "fear_greed"
 
 # ---------------------------------------------------------------------------
 # Webhook Messages
@@ -205,6 +239,10 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
             "thesis": "str (investment thesis)",
             "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
         },
+    },
+    "fear_greed": {
+        "description": "Current Fear & Greed Index (VIX + CNN composite)",
+        "requires_ticker": False,
     },
 }
 

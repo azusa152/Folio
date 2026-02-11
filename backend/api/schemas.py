@@ -226,6 +226,8 @@ class LastScanResponse(BaseModel):
     epoch: Optional[int] = None
     market_status: Optional[str] = None
     market_status_details: Optional[str] = None
+    fear_greed_level: Optional[str] = None
+    fear_greed_score: Optional[int] = None
 
 
 class AcceptedResponse(BaseModel):
@@ -463,6 +465,40 @@ class FXAlertResponse(BaseModel):
 
     message: str
     alerts: list[str] = []
+
+
+# ---------------------------------------------------------------------------
+# Fear & Greed Index Schemas
+# ---------------------------------------------------------------------------
+
+
+class VIXData(BaseModel):
+    """VIX 指數資料。"""
+
+    value: Optional[float] = None
+    change_1d: Optional[float] = None
+    level: str = "N/A"
+    fetched_at: str = ""
+
+
+class CNNFearGreedData(BaseModel):
+    """CNN Fear & Greed Index 資料。"""
+
+    score: Optional[int] = None
+    label: str = ""
+    level: str = "N/A"
+    fetched_at: str = ""
+
+
+class FearGreedResponse(BaseModel):
+    """GET /market/fear-greed 回傳的恐懼與貪婪指數綜合分析。"""
+
+    composite_score: int = 50
+    composite_level: str = "N/A"
+    composite_label: str = ""
+    vix: Optional[VIXData] = None
+    cnn: Optional[CNNFearGreedData] = None
+    fetched_at: str = ""
 
 
 # ---------------------------------------------------------------------------

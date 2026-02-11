@@ -7,11 +7,12 @@
 ## 功能特色
 
 - **三頁面架構** — 「投資組合總覽」為預設首頁提供一眼式儀表板、「投資雷達」負責股票追蹤與掃描、「個人資產配置」負責持倉管理與再平衡，透過左側導覽列切換
-- **投資組合總覽 Dashboard** — 市場情緒（晴天/雨天）、總市值、健康分數、追蹤/持倉數量、目標 vs 實際配置圓餅圖、Drift 偏移長條圖、訊號警報、前 10 大持倉，資料更新時間戳
+- **投資組合總覽 Dashboard** — 市場情緒（晴天/雨天）、恐懼貪婪指數（含 VIX 即時值）、總市值、健康分數、追蹤/持倉數量、目標 vs 實際配置圓餅圖、Drift 偏移長條圖、訊號警報、前 10 大持倉，資料更新時間戳
 - **五大分類追蹤** — 風向球 / 護城河 / 成長夢想 / 債券 / 現金
 - **多市場支援** — 側邊欄新增資產支援美股、台股、日股、港股，自動帶入市場後綴與幣別，股票卡片標題顯示市場旗幟徽章（🇺🇸 / 🇹🇼 / 🇯🇵 / 🇭🇰）
 - **觀點版控 (Thesis Versioning)** — 每次更新觀點自動遞增版號，完整保留歷史演進
 - **動態標籤 (Dynamic Tagging)** — 為股票標記領域標籤（AI、Cloud、SaaS...），標籤隨觀點版控一併快照
+- **恐懼與貪婪指數 (Fear & Greed Index)** — 結合 VIX 波動率指數（yfinance）與 CNN Fear & Greed Index 的綜合市場恐慌/貪婪指標（極度恐懼 → 極度貪婪五級），儀表板 KPI 即時顯示，掃描 Telegram 通知標頭、每週摘要、投資組合摘要皆含 F&G 資訊；VIX 40% + CNN 60% 加權，CNN 不可用時自動降級為 VIX-only
 - **V2 三層漏斗掃描** — 市場情緒 → 護城河趨勢 → 技術面訊號 → 自動產生決策燈號（並行掃描 4 股同時）
 - **護城河健檢** — 毛利率 5 季走勢圖 + YoY 五級診斷（護城河穩固 / 錯殺機會 / 股價偏弱 / Thesis Broken / 觀察中）
 - **掃描歷史** — 持久化每次掃描結果，可查看個股掃描時間軸與連續異常次數
@@ -219,6 +220,22 @@ docker compose up --build
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
 
+### 5. 執行測試
+
+```bash
+# 建立虛擬環境（首次）
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 執行所有測試
+LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v --tb=short
+```
+
+> 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
+> CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
+
 ## API 參考
 
 | Method | Path | 說明 |
@@ -245,7 +262,8 @@ docker compose up --build
 | `GET` | `/ticker/{ticker}/alerts` | 取得個股的所有價格警報 |
 | `DELETE` | `/alerts/{id}` | 刪除價格警報 |
 | `POST` | `/scan` | V2 三層漏斗掃描（非同步），僅推播差異通知 |
-| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度） |
+| `GET` | `/market/fear-greed` | 取得恐懼與貪婪指數（VIX + CNN 綜合分析，含各來源明細） |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（供 smart-scan 判斷資料新鮮度，含 F&G） |
 | `GET` | `/scan/history` | 取得最近掃描紀錄（跨股票） |
 | `POST` | `/digest` | 觸發每週投資組合摘要（非同步），結果透過 Telegram 推播 |
 | `GET` | `/summary` | 純文字投資組合摘要（專為 AI agent / chat 設計） |
