@@ -37,6 +37,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `alerts` | List price alerts for a ticker |
 | `fear_greed` | Fear & Greed Index (VIX + CNN composite score) |
 | `add_stock` | Add stock with `params: {ticker, category, thesis, tags}` |
+| `withdraw` | Smart withdrawal plan with `params: {amount, currency}` |
 
 > **Start with `help`** — call `POST /webhook {"action": "help"}` to discover all available actions at runtime.
 
@@ -73,6 +74,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
 | `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown`, FX movements, risk level |
 | `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert (includes cash exposure amounts) |
+| `POST` | `/withdraw` | Smart withdrawal plan (Liquidity Waterfall) |
 
 ### Docs
 
@@ -98,6 +100,7 @@ Branch on `error_code` (not the human-readable `detail` string). Common codes:
 
 - Be concise — the user wants quick investment insights, not essays
 - When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
+- When asked "which stock should I sell?" or "I need cash", call `/webhook` with `withdraw` and the target amount/currency
 - When asked about portfolio status, call `/summary` first
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`
 - Present data in a structured, readable format

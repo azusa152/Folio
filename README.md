@@ -47,6 +47,7 @@
 - **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，偵測顯著匯率變動，Telegram 警報
 - **隱私模式** — 一鍵遮蔽金額與數量，設定儲存於資料庫，跨裝置同步
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
+- **聰明提款機** — Liquidity Waterfall 三層優先演算法產生賣出建議（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 
 ### 介面與操作
 
@@ -119,6 +120,7 @@ graph LR
 - **通知** — Telegram Bot API 雙模式，支援差異通知、價格警報、每週摘要
 - **再平衡引擎** — 比較目標配置 vs 實際持倉，產生偏移分析與再平衡建議
 - **匯率曝險引擎** — 分離現金/全資產幣別分佈，偵測顯著匯率變動
+- **聰明提款引擎** — Liquidity Waterfall 三層優先演算法（再平衡 → 節稅 → 流動性），純函式設計可獨立測試
 
 ## 快速開始
 
@@ -264,15 +266,30 @@ docker compose up --build
 ### 5. 執行測試
 
 ```bash
-# 建立虛擬環境（首次）
+# 首次安裝依賴
+make install
+
+# 執行所有測試
+make test
+
+# Lint + Format
+make lint
+make format
+```
+
+<details>
+<summary>手動執行（不使用 Make）</summary>
+
+```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 執行所有測試
 LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v --tb=short
 ```
+
+</details>
 
 > 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
 > CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
@@ -337,6 +354,7 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `POST` | `/holdings/import` | 匯入持倉 |
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
+| `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），支援 `display_currency` 指定幣別、`notify` 控制 Telegram 通知 |
 | `GET` | `/ticker/{ticker}/price-history` | 取得股價歷史（前端趨勢圖用） |
 | `GET` | `/settings/telegram` | 取得 Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（支援自訂 Bot） |
@@ -449,6 +467,20 @@ for e in data.get('xray', [])[:10]:
 
 # 觸發 X-Ray Telegram 警告（超過 15% 門檻的標的）
 curl -s -X POST "http://localhost:8000/rebalance/xray-alert?display_currency=USD"
+```
+
+### 聰明提款（Smart Withdrawal）
+
+```bash
+# 「我需要 50,000 TWD 去旅遊，該賣哪個？」
+curl -s -X POST http://localhost:8000/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{"target_amount": 50000, "display_currency": "TWD", "notify": true}' | python3 -m json.tool
+
+# 透過 Webhook 呼叫（適用 AI agent / OpenClaw）
+curl -s -X POST http://localhost:8000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"action": "withdraw", "params": {"amount": 50000, "currency": "TWD"}}'
 ```
 
 ### 設定自訂 Telegram Bot
@@ -596,7 +628,8 @@ azusa-stock/
 │   │   ├── enums.py                  #   分類、狀態列舉 + 常數
 │   │   ├── entities.py               #   SQLModel 資料表 (Stock, ThesisLog, RemovalLog, ScanLog, PriceAlert, UserPreferences)
 │   │   ├── analysis.py               #   純計算：RSI, Bias, 決策引擎（可獨立測試）
-│   │   └── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
+│   │   ├── rebalance.py              #   純計算：再平衡 drift 分析（可獨立測試）
+│   │   └── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
 │   │   └── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務

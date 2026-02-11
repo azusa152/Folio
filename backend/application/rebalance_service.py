@@ -613,3 +613,162 @@ def send_fx_alerts(session: Session) -> list[str]:
             logger.info("匯率曝險通知已被使用者停用，跳過發送。")
 
     return alerts
+
+
+# ===========================================================================
+# Smart Withdrawal — 聰明提款機
+# ===========================================================================
+
+
+def calculate_withdrawal(
+    session: Session,
+    target_amount: float,
+    display_currency: str = "USD",
+    notify: bool = True,
+) -> dict:
+    """
+    聰明提款：根據 Liquidity Waterfall 演算法產生賣出建議。
+    1. 讀取投資組合目標配置與持倉
+    2. 取得匯率與即時價格
+    3. 計算再平衡偏移
+    4. 委託 domain.withdrawal 純函式產生賣出計劃
+    5. （可選）發送 Telegram 通知
+    """
+    from application.formatters import format_withdrawal_telegram
+    from domain.withdrawal import HoldingData, plan_withdrawal
+
+    logger.info("聰明提款計算：目標 %.2f %s", target_amount, display_currency)
+
+    # 1) 取得目標配置
+    profile = session.exec(
+        select(UserInvestmentProfile)
+        .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
+        .where(UserInvestmentProfile.is_active == True)  # noqa: E712
+    ).first()
+
+    if not profile:
+        raise StockNotFoundError("尚未設定投資組合目標配置，請先選擇投資人格。")
+
+    target_config: dict[str, float] = _json.loads(profile.config)
+
+    # 2) 取得所有持倉
+    holdings = session.exec(
+        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
+    ).all()
+
+    if not holdings:
+        return {
+            "recommendations": [],
+            "total_sell_value": 0.0,
+            "target_amount": target_amount,
+            "shortfall": target_amount,
+            "post_sell_drifts": {},
+            "message": "⚠️ 尚未輸入任何持倉，無法計算提款建議。",
+        }
+
+    # 3) 取得匯率
+    holding_currencies = list({h.currency for h in holdings})
+    fx_rates = get_exchange_rates(display_currency, holding_currencies)
+
+    # 4) 計算各持倉市值，建立 HoldingData 列表
+    category_values: dict[str, float] = {}
+    holdings_data: list[HoldingData] = []
+
+    for h in holdings:
+        fx = fx_rates.get(h.currency, 1.0)
+        price: float | None = None
+
+        if h.is_cash:
+            market_value = h.quantity * fx
+            price = 1.0
+        else:
+            signals = get_technical_signals(h.ticker)
+            price = signals.get("price") if signals else None
+            if price is not None and isinstance(price, (int, float)):
+                market_value = h.quantity * price * fx
+            elif h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis * fx
+            else:
+                market_value = 0.0
+
+        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
+        category_values[cat] = category_values.get(cat, 0.0) + market_value
+
+        holdings_data.append(
+            HoldingData(
+                ticker=h.ticker,
+                category=cat,
+                quantity=h.quantity,
+                cost_basis=h.cost_basis,
+                current_price=price,
+                market_value=market_value,
+                currency=h.currency,
+                is_cash=h.is_cash,
+                fx_rate=fx,
+            )
+        )
+
+    total_value = sum(category_values.values())
+
+    # 5) 計算再平衡偏移
+    rebalance_result = _pure_rebalance(category_values, target_config)
+    category_drifts = {
+        cat: info["drift_pct"]
+        for cat, info in rebalance_result.get("categories", {}).items()
+    }
+
+    # 6) 執行 Liquidity Waterfall 演算法
+    plan = plan_withdrawal(
+        target_amount=target_amount,
+        holdings_data=holdings_data,
+        category_drifts=category_drifts,
+        total_portfolio_value=total_value,
+        target_config=target_config,
+    )
+
+    # 7) 建立回傳結果
+    recs = [
+        {
+            "ticker": r.ticker,
+            "category": r.category,
+            "quantity_to_sell": r.quantity_to_sell,
+            "sell_value": r.sell_value,
+            "reason": r.reason,
+            "unrealized_pl": r.unrealized_pl,
+            "priority": r.priority,
+        }
+        for r in plan.recommendations
+    ]
+
+    if plan.shortfall > 0:
+        message = (
+            f"⚠️ 投資組合市值不足，缺口 {plan.shortfall:,.2f} {display_currency}。"
+            f"以下為最大可提取建議。"
+        )
+    elif not plan.recommendations:
+        message = "⚠️ 無可賣出的持倉。"
+    else:
+        message = f"✅ 聰明提款建議已產生，共 {len(recs)} 筆賣出建議。"
+
+    result = {
+        "recommendations": recs,
+        "total_sell_value": plan.total_sell_value,
+        "target_amount": plan.target_amount,
+        "shortfall": plan.shortfall,
+        "post_sell_drifts": plan.post_sell_drifts,
+        "message": message,
+    }
+
+    # 8) 發送 Telegram 通知
+    if notify and plan.recommendations:
+        if is_notification_enabled(session, "withdrawal"):
+            try:
+                tg_msg = format_withdrawal_telegram(plan, display_currency)
+                send_telegram_message_dual(tg_msg, session)
+                logger.info("聰明提款建議已發送至 Telegram。")
+            except Exception as e:
+                logger.warning("聰明提款 Telegram 通知發送失敗：%s", e)
+        else:
+            logger.info("聰明提款通知已被使用者停用，跳過發送。")
+
+    return result

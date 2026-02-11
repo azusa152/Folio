@@ -17,11 +17,15 @@ from api.schemas import (
     ImportResponse,
     MessageResponse,
     RebalanceResponse,
+    WithdrawRequest,
+    WithdrawResponse,
     XRayAlertResponse,
 )
 from application.services import (
+    StockNotFoundError,
     calculate_currency_exposure,
     calculate_rebalance,
+    calculate_withdrawal,
     send_fx_alerts,
     send_xray_warnings,
 )
@@ -250,6 +254,37 @@ def trigger_xray_alert(
         "message": f"X-Ray 分析完成，{len(warnings)} 筆警告已發送。",
         "warnings": warnings,
     }
+
+
+# ---------------------------------------------------------------------------
+# Smart Withdrawal (聰明提款機)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/withdraw", response_model=WithdrawResponse, summary="Smart withdrawal plan (Liquidity Waterfall)")
+def calculate_withdraw_route(
+    payload: WithdrawRequest,
+    session: Session = Depends(get_session),
+) -> WithdrawResponse:
+    """
+    聰明提款：根據 Liquidity Waterfall 演算法產生賣出建議。
+    優先順序：再平衡超配 → 節稅（虧損持倉）→ 流動性（Cash/Bond 優先）。
+    """
+    try:
+        result = calculate_withdrawal(
+            session,
+            target_amount=payload.target_amount,
+            display_currency=payload.display_currency.strip().upper(),
+            notify=payload.notify,
+        )
+        return WithdrawResponse(**result)
+    except StockNotFoundError as e:
+        from domain.constants import ERROR_PROFILE_NOT_FOUND
+
+        raise HTTPException(
+            status_code=404,
+            detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": str(e)},
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -58,6 +58,7 @@ from application.rebalance_service import (  # noqa: F401
     _compute_holding_market_values,
     calculate_currency_exposure,
     calculate_rebalance,
+    calculate_withdrawal,
     check_fx_alerts,
     send_fx_alerts,
     send_xray_warnings,

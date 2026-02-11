@@ -12,6 +12,7 @@ from application.stock_service import (
 )
 from application.scan_service import list_price_alerts, run_scan
 from application.notification_service import get_portfolio_summary
+from application.rebalance_service import calculate_withdrawal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     DEFAULT_WEBHOOK_THESIS,
@@ -132,6 +133,25 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
             return {"success": False, "message": str(e)}
         except ValueError:
             return {"success": False, "message": f"無效的分類：{cat_str}"}
+
+    if action == "withdraw":
+        amount = params.get("amount")
+        if not amount:
+            return {"success": False, "message": "請提供 amount 參數（目標提款金額）。"}
+        try:
+            amount_float = float(amount)
+        except (ValueError, TypeError):
+            return {"success": False, "message": f"無效的金額：{amount}"}
+        currency = params.get("currency", "USD")
+        try:
+            result = calculate_withdrawal(session, amount_float, currency, notify=True)
+            return {
+                "success": True,
+                "message": result.get("message", ""),
+                "data": result,
+            }
+        except StockNotFoundError as e:
+            return {"success": False, "message": str(e)}
 
     # Fallback — should not reach here if registry is in sync
     supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
