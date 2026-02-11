@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from api.holding_routes import router as holding_router
 from api.persona_routes import router as persona_router
 from api.scan_routes import router as scan_router
+from api.schemas import HealthResponse
 from api.stock_routes import router as stock_router
 from api.telegram_routes import router as telegram_router
 from api.thesis_routes import router as thesis_router
@@ -52,7 +53,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse, summary="Health check")
 def health_check() -> dict:
     return {"status": "ok", "service": "folio-backend"}
 

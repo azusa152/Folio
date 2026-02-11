@@ -56,8 +56,64 @@ class ReactivateRequest(BaseModel):
     thesis: str | None = None
 
 
+class PriceAlertCreateRequest(BaseModel):
+    """POST /ticker/{ticker}/alerts 請求 Body。"""
+
+    metric: str = "rsi"
+    operator: str = "lt"
+    threshold: float = 30.0
+
+
+class StockImportItem(BaseModel):
+    """POST /stocks/import 單筆匯入資料。"""
+
+    ticker: str
+    category: str
+    thesis: str = ""
+    tags: list[str] = []
+
+
+class HoldingImportItem(BaseModel):
+    """POST /holdings/import 單筆匯入資料。"""
+
+    ticker: str
+    category: str
+    quantity: float
+    cost_basis: Optional[float] = None
+    broker: Optional[str] = None
+    currency: str = "USD"
+    account_type: Optional[str] = None
+    is_cash: bool = False
+
+
 # ---------------------------------------------------------------------------
-# Response Schemas
+# Response Schemas — Generic
+# ---------------------------------------------------------------------------
+
+
+class MessageResponse(BaseModel):
+    """通用操作結果回應（刪除、停用、重新啟用、匯入等）。"""
+
+    message: str
+
+
+class ImportResponse(BaseModel):
+    """匯入操作回應。"""
+
+    message: str
+    imported: int
+    errors: list[str] = []
+
+
+class HealthResponse(BaseModel):
+    """GET /health 回應。"""
+
+    status: str
+    service: str
+
+
+# ---------------------------------------------------------------------------
+# Response Schemas — Stock
 # ---------------------------------------------------------------------------
 
 
@@ -101,6 +157,127 @@ class ScanResponse(BaseModel):
 
     market_status: dict
     results: list[ScanResult]
+
+
+class SignalsResponse(BaseModel):
+    """GET /ticker/{ticker}/signals 技術訊號回應。"""
+
+    ticker: Optional[str] = None
+    price: Optional[float] = None
+    rsi: Optional[float] = None
+    ma200: Optional[float] = None
+    ma60: Optional[float] = None
+    bias: Optional[float] = None
+    volume_ratio: Optional[float] = None
+    status: list[str] = []
+    error: Optional[str] = None
+
+
+class PriceHistoryPoint(BaseModel):
+    """價格歷史單一資料點。"""
+
+    date: str
+    close: float
+
+
+class MoatResponse(BaseModel):
+    """GET /ticker/{ticker}/moat 護城河分析回應。"""
+
+    ticker: str = ""
+    moat: Optional[str] = None
+    details: Optional[str] = None
+    margins: list[dict] = []
+    yoy_change: Optional[float] = None
+
+
+class EarningsResponse(BaseModel):
+    """GET /ticker/{ticker}/earnings 財報日曆回應。"""
+
+    ticker: str = ""
+    next_earnings_date: Optional[str] = None
+    days_until: Optional[int] = None
+    error: Optional[str] = None
+
+
+class DividendResponse(BaseModel):
+    """GET /ticker/{ticker}/dividend 股息資訊回應。"""
+
+    ticker: str = ""
+    dividend_yield: Optional[float] = None
+    ex_date: Optional[str] = None
+    error: Optional[str] = None
+
+
+class PriceAlertResponse(BaseModel):
+    """價格警報回應。"""
+
+    id: int
+    ticker: str
+    metric: str
+    operator: str
+    threshold: float
+    is_active: bool
+
+
+class LastScanResponse(BaseModel):
+    """GET /scan/last 回應。"""
+
+    last_scanned_at: Optional[str] = None
+    epoch: Optional[int] = None
+
+
+class AcceptedResponse(BaseModel):
+    """非同步操作已接受回應。"""
+
+    status: str = "accepted"
+    message: str
+
+
+class ThesisLogResponse(BaseModel):
+    """觀點歷史單一紀錄。"""
+
+    version: int
+    content: str
+    tags: list[str] = []
+    created_at: str
+
+
+class ScanLogResponse(BaseModel):
+    """掃描歷史單一紀錄。"""
+
+    ticker: str
+    signal: str
+    alerts: list[str] = []
+    scanned_at: str
+
+
+class StockExportItem(BaseModel):
+    """匯出觀察名單單一紀錄。"""
+
+    ticker: str
+    category: str
+    thesis: str = ""
+    tags: list[str] = []
+
+
+class HoldingExportItem(BaseModel):
+    """匯出持倉單一紀錄。"""
+
+    ticker: str
+    category: str
+    quantity: float
+    cost_basis: Optional[float] = None
+    broker: Optional[str] = None
+    currency: str = "USD"
+    account_type: Optional[str] = None
+    is_cash: bool = False
+
+
+class XRayAlertResponse(BaseModel):
+    """POST /rebalance/xray-alert 回應。"""
+
+    message: str
+    warnings: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +443,7 @@ class TelegramSettingsResponse(BaseModel):
 class WebhookRequest(BaseModel):
     """POST /webhook 請求 Body — 統一入口供 AI agent 使用。"""
 
-    action: str  # "summary", "signals", "scan", "moat", "alerts", "add_stock"
+    action: str  # "help", "summary", "signals", "scan", "moat", "alerts", "add_stock"
     ticker: str | None = None
     params: dict = {}
 

@@ -9,12 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from api.schemas import (
+    MessageResponse,
     PersonaTemplateResponse,
     ProfileCreateRequest,
     ProfileResponse,
     ProfileUpdateRequest,
 )
-from domain.constants import DEFAULT_USER_ID
+from domain.constants import DEFAULT_USER_ID, ERROR_PROFILE_NOT_FOUND
 from domain.entities import SystemTemplate, UserInvestmentProfile
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -29,7 +30,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
-@router.get("/personas/templates", response_model=list[PersonaTemplateResponse])
+@router.get("/personas/templates", response_model=list[PersonaTemplateResponse], summary="List persona templates")
 def list_persona_templates(session: Session = Depends(get_session)) -> list[PersonaTemplateResponse]:
     """取得所有系統預設投資人格範本。"""
     templates = session.exec(select(SystemTemplate)).all()
@@ -51,7 +52,7 @@ def list_persona_templates(session: Session = Depends(get_session)) -> list[Pers
 # ---------------------------------------------------------------------------
 
 
-@router.get("/profiles", response_model=ProfileResponse | None)
+@router.get("/profiles", response_model=ProfileResponse | None, summary="Get active investment profile")
 def get_active_profile(session: Session = Depends(get_session)) -> ProfileResponse | None:
     """取得目前啟用中的投資組合配置。"""
     profile = session.exec(
@@ -64,7 +65,7 @@ def get_active_profile(session: Session = Depends(get_session)) -> ProfileRespon
     return _profile_to_response(profile)
 
 
-@router.post("/profiles", response_model=ProfileResponse)
+@router.post("/profiles", response_model=ProfileResponse, summary="Create an investment profile")
 def create_profile(
     payload: ProfileCreateRequest,
     session: Session = Depends(get_session),
@@ -93,7 +94,7 @@ def create_profile(
     return _profile_to_response(profile)
 
 
-@router.put("/profiles/{profile_id}", response_model=ProfileResponse)
+@router.put("/profiles/{profile_id}", response_model=ProfileResponse, summary="Update an investment profile")
 def update_profile(
     profile_id: int,
     payload: ProfileUpdateRequest,
@@ -102,7 +103,7 @@ def update_profile(
     """更新投資組合配置。"""
     profile = session.get(UserInvestmentProfile, profile_id)
     if not profile:
-        raise HTTPException(status_code=404, detail="配置不存在。")
+        raise HTTPException(status_code=404, detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": "配置不存在。"})
     if payload.name is not None:
         profile.name = payload.name
     if payload.config is not None:
@@ -113,7 +114,7 @@ def update_profile(
     return _profile_to_response(profile)
 
 
-@router.delete("/profiles/{profile_id}")
+@router.delete("/profiles/{profile_id}", response_model=MessageResponse, summary="Deactivate an investment profile")
 def delete_profile(
     profile_id: int,
     session: Session = Depends(get_session),
@@ -121,7 +122,7 @@ def delete_profile(
     """停用投資組合配置（軟刪除）。"""
     profile = session.get(UserInvestmentProfile, profile_id)
     if not profile:
-        raise HTTPException(status_code=404, detail="配置不存在。")
+        raise HTTPException(status_code=404, detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": "配置不存在。"})
     profile.is_active = False
     session.commit()
     return {"message": f"配置 '{profile.name}' 已停用。"}

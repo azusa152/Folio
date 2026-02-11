@@ -9,7 +9,9 @@ import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from api.schemas import AcceptedResponse, LastScanResponse
 from application.services import run_scan, send_weekly_digest
+from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
 from infrastructure import repositories as repo
 from infrastructure.database import engine, get_session
 from logging_config import get_logger
@@ -41,26 +43,26 @@ def _run_digest_background() -> None:
         logger.error("每週摘要生成失敗：%s", e, exc_info=True)
 
 
-@router.get("/scan/last")
-def get_last_scan_time(session: Session = Depends(get_session)) -> dict:
+@router.get("/scan/last", response_model=LastScanResponse, summary="Get last scan timestamp")
+def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanResponse:
     """取得最近一次掃描的時間戳，用於判斷資料新鮮度。"""
     logs = repo.find_latest_scan_logs(session, limit=1)
     if not logs:
-        return {"last_scanned_at": None, "epoch": None}
+        return LastScanResponse(last_scanned_at=None, epoch=None)
     ts = logs[0].scanned_at
-    return {
-        "last_scanned_at": ts.isoformat(),
-        "epoch": int(ts.timestamp()),
-    }
+    return LastScanResponse(
+        last_scanned_at=ts.isoformat(),
+        epoch=int(ts.timestamp()),
+    )
 
 
-@router.post("/scan")
-def run_scan_route() -> dict:
+@router.post("/scan", response_model=AcceptedResponse, summary="Trigger background scan")
+def run_scan_route() -> AcceptedResponse:
     """觸發 V2 三層漏斗掃描（非同步），結果透過 Telegram 通知。"""
     if not _scan_lock.acquire(blocking=False):
         raise HTTPException(
             status_code=409,
-            detail="掃描正在執行中，請稍後再試。",
+            detail={"error_code": ERROR_SCAN_IN_PROGRESS, "detail": "掃描正在執行中，請稍後再試。"},
         )
 
     def _run_with_lock() -> None:
@@ -72,16 +74,16 @@ def run_scan_route() -> dict:
     thread = threading.Thread(target=_run_with_lock, daemon=True)
     thread.start()
     logger.info("掃描已在背景執行緒啟動。")
-    return {"status": "accepted", "message": "掃描已啟動，結果將透過 Telegram 通知。"}
+    return AcceptedResponse(status="accepted", message="掃描已啟動，結果將透過 Telegram 通知。")
 
 
-@router.post("/digest")
-def run_digest_route() -> dict:
+@router.post("/digest", response_model=AcceptedResponse, summary="Trigger weekly digest")
+def run_digest_route() -> AcceptedResponse:
     """觸發每週摘要（非同步），結果透過 Telegram 通知。"""
     if not _digest_lock.acquire(blocking=False):
         raise HTTPException(
             status_code=409,
-            detail="每週摘要正在生成中，請稍後再試。",
+            detail={"error_code": ERROR_DIGEST_IN_PROGRESS, "detail": "每週摘要正在生成中，請稍後再試。"},
         )
 
     def _run_with_lock() -> None:
@@ -93,4 +95,4 @@ def run_digest_route() -> dict:
     thread = threading.Thread(target=_run_with_lock, daemon=True)
     thread.start()
     logger.info("每週摘要已在背景執行緒啟動。")
-    return {"status": "accepted", "message": "每週摘要已啟動，結果將透過 Telegram 通知。"}
+    return AcceptedResponse(status="accepted", message="每週摘要已啟動，結果將透過 Telegram 通知。")

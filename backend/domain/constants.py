@@ -155,7 +155,61 @@ DISK_KEY_ETF_HOLDINGS = "etf_holdings"
 # Webhook Messages
 # ---------------------------------------------------------------------------
 WEBHOOK_MISSING_TICKER = "請提供 ticker 參數。"
-WEBHOOK_UNKNOWN_ACTION_TEMPLATE = "不支援的 action: {action}。支援：summary, signals, scan, moat, alerts, add_stock"
+
+# ---------------------------------------------------------------------------
+# Webhook Action Registry — single source of truth for AI agent actions
+# ---------------------------------------------------------------------------
+WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
+    "help": {
+        "description": "List all supported webhook actions and their parameters",
+        "requires_ticker": False,
+    },
+    "summary": {
+        "description": "Portfolio health overview (plain text)",
+        "requires_ticker": False,
+    },
+    "signals": {
+        "description": "Technical indicators for a ticker (RSI, MA, Bias)",
+        "requires_ticker": True,
+    },
+    "scan": {
+        "description": "Trigger background full scan (results via Telegram)",
+        "requires_ticker": False,
+    },
+    "moat": {
+        "description": "Gross margin YoY analysis for a ticker",
+        "requires_ticker": True,
+    },
+    "alerts": {
+        "description": "List price alerts for a ticker",
+        "requires_ticker": True,
+    },
+    "add_stock": {
+        "description": "Add a stock to the watchlist",
+        "requires_ticker": True,
+        "params": {
+            "ticker": "str (required)",
+            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Cash)",
+            "thesis": "str (investment thesis)",
+            "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
+        },
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Error Codes — machine-readable slugs for AI agent error handling
+# ---------------------------------------------------------------------------
+ERROR_STOCK_NOT_FOUND = "STOCK_NOT_FOUND"
+ERROR_STOCK_ALREADY_EXISTS = "STOCK_ALREADY_EXISTS"
+ERROR_STOCK_ALREADY_INACTIVE = "STOCK_ALREADY_INACTIVE"
+ERROR_STOCK_ALREADY_ACTIVE = "STOCK_ALREADY_ACTIVE"
+ERROR_CATEGORY_UNCHANGED = "CATEGORY_UNCHANGED"
+ERROR_HOLDING_NOT_FOUND = "HOLDING_NOT_FOUND"
+ERROR_PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
+ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS"
+ERROR_DIGEST_IN_PROGRESS = "DIGEST_IN_PROGRESS"
+ERROR_TELEGRAM_NOT_CONFIGURED = "TELEGRAM_NOT_CONFIGURED"
+ERROR_TELEGRAM_SEND_FAILED = "TELEGRAM_SEND_FAILED"
 
 # ---------------------------------------------------------------------------
 # curl_cffi

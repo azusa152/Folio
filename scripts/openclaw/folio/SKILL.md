@@ -45,12 +45,15 @@ curl -s -X POST http://localhost:8000/webhook \
 
 | Action | Description | Requires `ticker` | Example |
 |--------|-------------|-------------------|---------|
+| `help` | 列出所有支援的 actions 與參數 | No | `{"action": "help"}` |
 | `summary` | 投資組合健康摘要 | No | `{"action": "summary"}` |
 | `signals` | 單一股票技術指標 | Yes | `{"action": "signals", "ticker": "NVDA"}` |
 | `scan` | 觸發全域掃描（背景執行） | No | `{"action": "scan"}` |
 | `moat` | 護城河分析（毛利率 YoY） | Yes | `{"action": "moat", "ticker": "TSM"}` |
 | `alerts` | 查看價格警報 | Yes | `{"action": "alerts", "ticker": "AAPL"}` |
 | `add_stock` | 新增股票到觀察名單 | Yes (in params) | See below |
+
+> **Tip:** Use `help` first to discover all supported actions and their parameters at runtime.
 
 ### add_stock Example
 
@@ -77,6 +80,23 @@ All webhook responses follow this structure:
   "data": {}
 }
 ```
+
+### Error Response Format
+
+Direct API endpoints return structured errors with a machine-readable `error_code`:
+
+```json
+{
+  "detail": {
+    "error_code": "STOCK_NOT_FOUND",
+    "detail": "找不到股票 NVDA。"
+  }
+}
+```
+
+Use `error_code` for programmatic branching instead of parsing the human-readable `detail` string.
+
+Common error codes: `STOCK_NOT_FOUND`, `STOCK_ALREADY_EXISTS`, `STOCK_ALREADY_INACTIVE`, `STOCK_ALREADY_ACTIVE`, `CATEGORY_UNCHANGED`, `HOLDING_NOT_FOUND`, `PROFILE_NOT_FOUND`, `SCAN_IN_PROGRESS`, `TELEGRAM_NOT_CONFIGURED`.
 
 ## Direct API Endpoints
 

@@ -29,12 +29,15 @@ curl -s -X POST http://localhost:8000/webhook \
 
 | Action | What it does |
 |--------|-------------|
+| `help` | List all supported actions and their parameters (self-discovery) |
 | `summary` | Portfolio health + stock list |
 | `signals` | Technical indicators for a ticker (RSI, MA, Bias) |
 | `scan` | Trigger background full scan (results via Telegram) |
 | `moat` | Gross margin YoY analysis for a ticker |
 | `alerts` | List price alerts for a ticker |
 | `add_stock` | Add stock with `params: {ticker, category, thesis, tags}` |
+
+> **Start with `help`** — call `POST /webhook {"action": "help"}` to discover all available actions at runtime.
 
 ### Direct API (for advanced queries)
 
@@ -68,6 +71,20 @@ curl -s -X POST http://localhost:8000/webhook \
 
 - **Swagger UI**: `http://localhost:8000/docs`
 - **OpenAPI JSON**: `http://localhost:8000/openapi.json`
+
+## Error Handling
+
+Direct API errors return structured JSON with a machine-readable `error_code`:
+
+```json
+{"detail": {"error_code": "STOCK_NOT_FOUND", "detail": "找不到股票 NVDA。"}}
+```
+
+Branch on `error_code` (not the human-readable `detail` string). Common codes:
+- `STOCK_NOT_FOUND` / `STOCK_ALREADY_EXISTS` / `STOCK_ALREADY_INACTIVE` / `STOCK_ALREADY_ACTIVE`
+- `CATEGORY_UNCHANGED` / `HOLDING_NOT_FOUND` / `PROFILE_NOT_FOUND`
+- `SCAN_IN_PROGRESS` / `DIGEST_IN_PROGRESS`
+- `TELEGRAM_NOT_CONFIGURED` / `TELEGRAM_SEND_FAILED`
 
 ## Response Guidelines
 

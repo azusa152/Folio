@@ -24,8 +24,8 @@ from domain.constants import (
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_SIGNALS_CATEGORIES,
+    WEBHOOK_ACTION_REGISTRY,
     WEBHOOK_MISSING_TICKER,
-    WEBHOOK_UNKNOWN_ACTION_TEMPLATE,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
@@ -921,6 +921,18 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
     action = action.lower().strip()
     ticker = ticker.upper().strip() if ticker else None
 
+    # Validate action against registry
+    if action not in WEBHOOK_ACTION_REGISTRY:
+        supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
+        return {"success": False, "message": f"不支援的 action: {action}。支援：{supported}"}
+
+    if action == "help":
+        return {
+            "success": True,
+            "message": "以下是所有支援的 webhook actions。",
+            "data": {"actions": WEBHOOK_ACTION_REGISTRY},
+        }
+
     if action == "summary":
         text = get_portfolio_summary(session)
         return {"success": True, "message": text}
@@ -989,7 +1001,9 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
         except ValueError:
             return {"success": False, "message": f"無效的分類：{cat_str}"}
 
-    return {"success": False, "message": WEBHOOK_UNKNOWN_ACTION_TEMPLATE.format(action=action)}
+    # Fallback — should not reach here if registry is in sync
+    supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
+    return {"success": False, "message": f"不支援的 action: {action}。支援：{supported}"}
 
 
 # ===========================================================================

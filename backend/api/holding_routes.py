@@ -12,10 +12,13 @@ from api.schemas import (
     CashHoldingRequest,
     HoldingRequest,
     HoldingResponse,
+    ImportResponse,
+    MessageResponse,
     RebalanceResponse,
+    XRayAlertResponse,
 )
 from application.services import calculate_rebalance, send_xray_warnings
-from domain.constants import DEFAULT_USER_ID
+from domain.constants import DEFAULT_USER_ID, ERROR_HOLDING_NOT_FOUND
 from domain.entities import Holding
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -45,7 +48,7 @@ def _holding_to_response(h: Holding) -> HoldingResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/holdings", response_model=list[HoldingResponse])
+@router.get("/holdings", response_model=list[HoldingResponse], summary="List all holdings")
 def list_holdings(session: Session = Depends(get_session)) -> list[HoldingResponse]:
     """取得所有持倉。"""
     holdings = session.exec(
@@ -54,7 +57,7 @@ def list_holdings(session: Session = Depends(get_session)) -> list[HoldingRespon
     return [_holding_to_response(h) for h in holdings]
 
 
-@router.post("/holdings", response_model=HoldingResponse)
+@router.post("/holdings", response_model=HoldingResponse, summary="Add a holding")
 def create_holding(
     payload: HoldingRequest,
     session: Session = Depends(get_session),
@@ -78,7 +81,7 @@ def create_holding(
     return _holding_to_response(holding)
 
 
-@router.post("/holdings/cash", response_model=HoldingResponse)
+@router.post("/holdings/cash", response_model=HoldingResponse, summary="Add a cash holding")
 def create_cash_holding(
     payload: CashHoldingRequest,
     session: Session = Depends(get_session),
@@ -105,7 +108,7 @@ def create_cash_holding(
     return _holding_to_response(holding)
 
 
-@router.put("/holdings/{holding_id}", response_model=HoldingResponse)
+@router.put("/holdings/{holding_id}", response_model=HoldingResponse, summary="Update a holding")
 def update_holding(
     holding_id: int,
     payload: HoldingRequest,
@@ -114,7 +117,7 @@ def update_holding(
     """更新持倉。"""
     holding = session.get(Holding, holding_id)
     if not holding:
-        raise HTTPException(status_code=404, detail="持倉不存在。")
+        raise HTTPException(status_code=404, detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"})
     holding.ticker = payload.ticker.strip().upper()
     holding.category = payload.category
     holding.quantity = payload.quantity
@@ -129,7 +132,7 @@ def update_holding(
     return _holding_to_response(holding)
 
 
-@router.delete("/holdings/{holding_id}")
+@router.delete("/holdings/{holding_id}", response_model=MessageResponse, summary="Delete a holding")
 def delete_holding(
     holding_id: int,
     session: Session = Depends(get_session),
@@ -137,7 +140,7 @@ def delete_holding(
     """刪除持倉。"""
     holding = session.get(Holding, holding_id)
     if not holding:
-        raise HTTPException(status_code=404, detail="持倉不存在。")
+        raise HTTPException(status_code=404, detail={"error_code": ERROR_HOLDING_NOT_FOUND, "detail": "持倉不存在。"})
     ticker = holding.ticker
     session.delete(holding)
     session.commit()
@@ -150,7 +153,7 @@ def delete_holding(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/holdings/export")
+@router.get("/holdings/export", summary="Export all holdings as JSON")
 def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     """匯出所有持倉（JSON 格式）。"""
     holdings = session.exec(
@@ -171,7 +174,7 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
     ]
 
 
-@router.post("/holdings/import")
+@router.post("/holdings/import", response_model=ImportResponse, summary="Bulk import holdings (replace)")
 def import_holdings(
     data: list[dict],
     session: Session = Depends(get_session),
@@ -218,7 +221,7 @@ def import_holdings(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/rebalance", response_model=RebalanceResponse)
+@router.get("/rebalance", response_model=RebalanceResponse, summary="Calculate rebalance analysis")
 def get_rebalance(
     display_currency: str = "USD",
     session: Session = Depends(get_session),
@@ -227,7 +230,7 @@ def get_rebalance(
     return calculate_rebalance(session, display_currency=display_currency.strip().upper())
 
 
-@router.post("/rebalance/xray-alert")
+@router.post("/rebalance/xray-alert", response_model=XRayAlertResponse, summary="Trigger X-Ray alert via Telegram")
 def trigger_xray_alert(
     display_currency: str = "USD",
     session: Session = Depends(get_session),
