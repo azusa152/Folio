@@ -4,6 +4,7 @@ At-a-glance view of market sentiment, portfolio KPIs, allocation, signals, and t
 """
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
 from config import (
@@ -131,9 +132,9 @@ with st.expander("📖 投資組合總覽：使用說明書", expanded=False):
 
 ---
 
-### 🎯 目標 vs 實際配置（圓餅圖）
+### 🎯 目標 vs 實際配置（雙圓餅圖）
 
-顯示你的**實際持倉比例**（依五大分類：風向球 / 護城河 / 成長夢想 / 債券 / 現金）。對照「個人資產配置」頁中設定的目標比例，快速判斷是否偏離。
+並排顯示兩個甜甜圈圖：**左邊是目標配置**（你在投資人格中設定的理想比例），**右邊是實際配置**（當前持倉的市值比例）。兩張圖使用相同的分類顏色，方便直觀對比每個分類是否偏離目標。
 
 ---
 
@@ -266,90 +267,115 @@ with kpi_cols[3]:
 st.divider()
 
 if rebalance_data and profile_data and rebalance_data.get("categories"):
-    alloc_cols = st.columns(2)
     breakdown = rebalance_data["categories"]
 
-    # -- 2a. Donut Chart: Target vs Actual --
-    with alloc_cols[0]:
-        st.subheader("🎯 目標 vs 實際配置")
+    # -- 2a. Dual Donut Chart: Target vs Actual (side by side) --
+    st.subheader("🎯 目標 vs 實際配置")
 
-        # Target allocation from profile
-        target_alloc = profile_data.get("config", {})
-        cat_labels = []
-        target_vals = []
-        actual_vals = []
-        colors = []
+    target_alloc = profile_data.get("config", {})
+    cat_labels = []
+    target_vals = []
+    actual_vals = []
+    colors = []
 
-        for cat_key, target_pct in target_alloc.items():
-            cat_display = CATEGORY_LABELS.get(cat_key, cat_key)
-            icon = CATEGORY_ICON_SHORT.get(cat_key, "")
-            cat_labels.append(f"{icon} {cat_display.split('(')[0].strip()}")
-            target_vals.append(target_pct)
-            # Actual from breakdown
-            cat_info = breakdown.get(cat_key, {})
-            actual_vals.append(cat_info.get("current_pct", 0))
-            colors.append(CATEGORY_COLOR_MAP.get(cat_key, CATEGORY_COLOR_FALLBACK))
+    for cat_key, target_pct in target_alloc.items():
+        cat_display = CATEGORY_LABELS.get(cat_key, cat_key)
+        icon = CATEGORY_ICON_SHORT.get(cat_key, "")
+        cat_labels.append(f"{icon} {cat_display.split('(')[0].strip()}")
+        target_vals.append(target_pct)
+        cat_info = breakdown.get(cat_key, {})
+        actual_vals.append(cat_info.get("current_pct", 0))
+        colors.append(CATEGORY_COLOR_MAP.get(cat_key, CATEGORY_COLOR_FALLBACK))
 
-        fig_donut = go.Figure()
-        fig_donut.add_trace(
-            go.Pie(
-                labels=cat_labels,
-                values=actual_vals,
-                hole=0.5,
-                marker=dict(colors=colors),
-                textinfo="label+percent",
-                textposition="outside",
-                name="實際",
-            )
-        )
-        fig_donut.update_layout(
-            height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
-            margin=dict(l=20, r=20, t=30, b=20),
-            showlegend=False,
-            annotations=[dict(text="實際", x=0.5, y=0.5, font_size=16, showarrow=False)],
-        )
-        st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+    fig_alloc = make_subplots(
+        rows=1,
+        cols=2,
+        specs=[[{"type": "pie"}, {"type": "pie"}]],
+        subplot_titles=["🎯 目標配置", "📊 實際配置"],
+    )
+
+    # Left donut — Target allocation
+    fig_alloc.add_trace(
+        go.Pie(
+            labels=cat_labels,
+            values=target_vals,
+            hole=0.4,
+            marker=dict(colors=colors),
+            textinfo="label+percent",
+            textposition="auto",
+            hovertemplate=(
+                "<b>%{label}</b><br>"
+                "目標佔比：%{percent}<extra></extra>"
+            ),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Right donut — Actual allocation
+    fig_alloc.add_trace(
+        go.Pie(
+            labels=cat_labels,
+            values=actual_vals,
+            hole=0.4,
+            marker=dict(colors=colors),
+            textinfo="label+percent",
+            textposition="auto",
+            hovertemplate=(
+                "<b>%{label}</b><br>"
+                "實際佔比：%{percent}<extra></extra>"
+            ),
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig_alloc.update_layout(
+        height=DASHBOARD_ALLOCATION_CHART_HEIGHT,
+        margin=dict(l=20, r=20, t=40, b=20),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_alloc, use_container_width=True, config={"displayModeBar": False})
 
     # -- 2b. Drift Bar Chart --
-    with alloc_cols[1]:
-        st.subheader("📊 偏移度 Drift")
-        drift_labels = []
-        drift_vals = []
-        drift_colors = []
+    st.subheader("📊 偏移度 Drift")
+    drift_labels = []
+    drift_vals = []
+    drift_colors = []
 
-        for cat_key in target_alloc:
-            cat_info = breakdown.get(cat_key, {})
-            drift = cat_info.get("drift_pct", 0)
-            icon = CATEGORY_ICON_SHORT.get(cat_key, "")
-            drift_labels.append(f"{icon} {cat_key}")
-            drift_vals.append(drift)
-            drift_colors.append("red" if abs(drift) > 5 else "gray")
+    for cat_key in target_alloc:
+        cat_info = breakdown.get(cat_key, {})
+        drift = cat_info.get("drift_pct", 0)
+        icon = CATEGORY_ICON_SHORT.get(cat_key, "")
+        drift_labels.append(f"{icon} {cat_key}")
+        drift_vals.append(drift)
+        drift_colors.append("red" if abs(drift) > 5 else "gray")
 
-        fig_drift = go.Figure(
-            go.Bar(
-                x=drift_labels,
-                y=drift_vals,
-                marker_color=drift_colors,
-                text=[f"{d:+.1f}%" for d in drift_vals],
-                textposition="outside",
-            )
+    fig_drift = go.Figure(
+        go.Bar(
+            x=drift_labels,
+            y=drift_vals,
+            marker_color=drift_colors,
+            text=[f"{d:+.1f}%" for d in drift_vals],
+            textposition="outside",
         )
-        fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="⚠️ +5%")
-        fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="⚠️ -5%")
-        fig_drift.update_layout(
-            height=DASHBOARD_DRIFT_CHART_HEIGHT,
-            margin=dict(l=20, r=20, t=30, b=20),
-            yaxis_title="偏移 (%)",
-            showlegend=False,
-        )
-        st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
+    )
+    fig_drift.add_hline(y=5, line_dash="dash", line_color="orange", annotation_text="+5%")
+    fig_drift.add_hline(y=-5, line_dash="dash", line_color="orange", annotation_text="-5%")
+    fig_drift.update_layout(
+        height=DASHBOARD_DRIFT_CHART_HEIGHT,
+        margin=dict(l=20, r=20, t=30, b=20),
+        yaxis_title="偏移 (%)",
+        showlegend=False,
+    )
+    st.plotly_chart(fig_drift, use_container_width=True, config={"displayModeBar": False})
 
-        # Rebalance advice summary
-        advice = rebalance_data.get("advice", [])
-        if advice:
-            with st.expander("💡 再平衡建議", expanded=False):
-                for item in advice[:5]:
-                    st.write(item)
+    # Rebalance advice summary
+    advice = rebalance_data.get("advice", [])
+    if advice:
+        with st.expander("💡 再平衡建議", expanded=False):
+            for item in advice[:5]:
+                st.write(item)
 else:
     st.info("📈 尚無配置資料。請先設定投資人格並新增持倉。")
 

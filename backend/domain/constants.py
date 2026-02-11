@@ -216,3 +216,10 @@ ERROR_PREFERENCES_UPDATE_FAILED = "PREFERENCES_UPDATE_FAILED"
 # curl_cffi
 # ---------------------------------------------------------------------------
 CURL_CFFI_IMPERSONATE = "chrome"
+
+# ---------------------------------------------------------------------------
+# Retry Configuration (yfinance transient network failures)
+# ---------------------------------------------------------------------------
+YFINANCE_RETRY_ATTEMPTS = 3
+YFINANCE_RETRY_WAIT_MIN = 2   # seconds (exponential backoff minimum)
+YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)

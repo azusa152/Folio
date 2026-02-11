@@ -2,6 +2,7 @@
 Infrastructure — 市場資料適配器 (yfinance)。
 負責外部 API 呼叫、快取管理、速率限制。
 所有呼叫皆以 try/except 包裹，失敗時回傳結構化降級結果。
+含 tenacity 重試機制，針對暫時性網路 / DNS 錯誤自動指數退避重試。
 """
 
 import threading
@@ -15,6 +16,13 @@ import diskcache
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
+from curl_cffi.curl import CurlError
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from domain.analysis import (
     compute_bias,
@@ -65,11 +73,32 @@ from domain.constants import (
     SIGNALS_CACHE_TTL,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
+    YFINANCE_RETRY_ATTEMPTS,
+    YFINANCE_RETRY_WAIT_MAX,
+    YFINANCE_RETRY_WAIT_MIN,
 )
 from domain.enums import MarketSentiment, MoatStatus
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
+# ---------------------------------------------------------------------------
+_RETRYABLE_EXCEPTIONS = (CurlError, ConnectionError, OSError)
+
+_yf_retry = retry(
+    stop=stop_after_attempt(YFINANCE_RETRY_ATTEMPTS),
+    wait=wait_exponential(min=YFINANCE_RETRY_WAIT_MIN, max=YFINANCE_RETRY_WAIT_MAX),
+    retry=retry_if_exception_type(_RETRYABLE_EXCEPTIONS),
+    reraise=True,
+)
+
+
+def _is_error_dict(result) -> bool:
+    """判斷 fetcher 結果是否為錯誤回應（含 'error' 鍵的 dict）。"""
+    return isinstance(result, dict) and "error" in result
 
 
 # ---------------------------------------------------------------------------
@@ -137,10 +166,15 @@ def _cached_fetch(
     disk_prefix: str,
     disk_ttl: int,
     fetcher: Callable[[str], T],
+    is_error: Optional[Callable[[T], bool]] = None,
 ) -> T:
     """
     通用二層快取取得函式。
     L1 (記憶體) → L2 (磁碟) → fetcher (yfinance)，並回寫兩層快取。
+
+    is_error — 可選回呼函式，判斷 fetcher 結果是否為錯誤。
+    若為錯誤，仍寫入 L1（短暫快取避免瞬間重複呼叫），但略過 L2/磁碟寫入，
+    讓下次 L1 過期後可重新嘗試取得正確結果。
     """
     cached = l1_cache.get(ticker)
     if cached is not None:
@@ -157,13 +191,78 @@ def _cached_fetch(
     logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
     result = fetcher(ticker)
     l1_cache[ticker] = result
-    _disk_set(disk_key, result, disk_ttl)
+    # Only persist to disk if the result is NOT an error
+    if is_error is not None and is_error(result):
+        logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
+    else:
+        _disk_set(disk_key, result, disk_ttl)
     return result
 
 
 def _get_session() -> cffi_requests.Session:
     """建立模擬 Chrome 瀏覽器的 Session，以繞過 Yahoo Finance 的 bot 防護。"""
     return cffi_requests.Session(impersonate=CURL_CFFI_IMPERSONATE)
+
+
+# ---------------------------------------------------------------------------
+# Retryable yfinance network helpers
+# ---------------------------------------------------------------------------
+
+
+@_yf_retry
+def _yf_history(ticker: str, period: str):
+    """
+    取得 yfinance 歷史資料（含重試）。
+    僅針對網路層例外（CurlError、ConnectionError、OSError）重試，
+    資料品質問題（空資料）不重試。
+    """
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    return stock, stock.history(period=period)
+
+
+@_yf_retry
+def _yf_quarterly_financials(ticker: str):
+    """取得 yfinance 季度財報（含重試）。"""
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    return stock.quarterly_financials
+
+
+@_yf_retry
+def _yf_calendar(ticker: str):
+    """取得 yfinance 財報日曆（含重試）。"""
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    return stock.calendar
+
+
+@_yf_retry
+def _yf_info(ticker: str):
+    """取得 yfinance 股票 info（含重試）。"""
+    _rate_limiter.wait()
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    return stock.info or {}
+
+
+@_yf_retry
+def _yf_history_short(ticker: str, period: str = "5d"):
+    """取得 yfinance 短期歷史（匯率等，含重試）。"""
+    _rate_limiter.wait()
+    session = _get_session()
+    ticker_obj = yf.Ticker(ticker, session=session)
+    return ticker_obj.history(period=period)
+
+
+@_yf_retry
+def _yf_ticker_obj(ticker: str):
+    """建立 yfinance Ticker 物件（含重試）。用於 ETF funds_data 等屬性存取。"""
+    _rate_limiter.wait()
+    return yf.Ticker(ticker, session=_get_session())
 
 
 # ===========================================================================
@@ -174,10 +273,7 @@ def _get_session() -> cffi_requests.Session:
 def _fetch_signals_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得技術訊號（供 _cached_fetch 使用）。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        hist = stock.history(period=YFINANCE_HISTORY_PERIOD)
+        stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
 
         if hist.empty or len(hist) < MIN_HISTORY_DAYS_FOR_SIGNALS:
             logger.warning("%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist))
@@ -247,10 +343,11 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
 def get_technical_signals(ticker: str) -> Optional[dict]:
     """
     取得技術面訊號：RSI(14)、現價、200MA、60MA、Bias(%)、Volume Ratio。
-    結果快取 5 分鐘。含 error 的結果也會快取以避免重複失敗呼叫。
+    結果快取 5 分鐘。錯誤結果僅寫入 L1（短暫），不寫入 L2/磁碟。
     """
     return _cached_fetch(
-        _signals_cache, ticker, DISK_KEY_SIGNALS, DISK_SIGNALS_TTL, _fetch_signals_from_yf
+        _signals_cache, ticker, DISK_KEY_SIGNALS, DISK_SIGNALS_TTL,
+        _fetch_signals_from_yf, is_error=_is_error_dict,
     )
 
 
@@ -282,10 +379,7 @@ def _piggyback_price_history(ticker: str, hist) -> None:
 def _fetch_price_history_from_yf(ticker: str) -> list[dict]:
     """獨立 fetcher — 僅在 L1 + L2 皆未命中時才呼叫。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        hist = stock.history(period=YFINANCE_HISTORY_PERIOD)
+        _stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
         if hist.empty:
             return []
         return _extract_price_history(hist)
@@ -314,10 +408,7 @@ def get_price_history(ticker: str) -> list[dict] | None:
 def _fetch_moat_from_yf(ticker: str) -> dict:
     """實際從 yfinance 分析護城河趨勢（供 _cached_fetch 使用）。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        financials = stock.quarterly_financials
+        financials = _yf_quarterly_financials(ticker)
 
         if financials is None or financials.empty:
             logger.warning("%s 無法取得季報資料。", ticker)
@@ -408,10 +499,16 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
         return {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
 
 
+def _is_moat_error(result) -> bool:
+    """判斷護城河結果是否為失敗回應（NOT_AVAILABLE 狀態）。"""
+    return isinstance(result, dict) and result.get("moat") == MoatStatus.NOT_AVAILABLE.value
+
+
 def analyze_moat_trend(ticker: str) -> dict:
-    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。"""
+    """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。"""
     return _cached_fetch(
-        _moat_cache, ticker, DISK_KEY_MOAT, DISK_MOAT_TTL, _fetch_moat_from_yf
+        _moat_cache, ticker, DISK_KEY_MOAT, DISK_MOAT_TTL,
+        _fetch_moat_from_yf, is_error=_is_moat_error,
     )
 
 
@@ -478,10 +575,7 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
 def _fetch_earnings_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得財報日期（供 _cached_fetch 使用）。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        cal = stock.calendar
+        cal = _yf_calendar(ticker)
 
         result: dict = {"ticker": ticker}
 
@@ -529,10 +623,7 @@ def get_earnings_date(ticker: str) -> dict:
 def _fetch_dividend_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
     try:
-        _rate_limiter.wait()
-        stock = yf.Ticker(ticker, session=_get_session())
-        _rate_limiter.wait()
-        info = stock.info or {}
+        info = _yf_info(ticker)
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")
@@ -587,10 +678,7 @@ def _fetch_forex_rate(pair_key: str) -> float:
         # 我們要的是 1 holding_cur = ? display_cur
         # 所以用 {HOLDING}{DISPLAY}=X
         yf_ticker = f"{holding_cur}{display_cur}=X"
-        _rate_limiter.wait()
-        session = _get_session()
-        ticker_obj = yf.Ticker(yf_ticker, session=session)
-        hist = ticker_obj.history(period="5d")
+        hist = _yf_history_short(yf_ticker, "5d")
 
         if hist is not None and not hist.empty:
             rate = float(hist["Close"].dropna().iloc[-1])
@@ -599,9 +687,7 @@ def _fetch_forex_rate(pair_key: str) -> float:
 
         # 嘗試反向查詢
         yf_ticker_rev = f"{display_cur}{holding_cur}=X"
-        _rate_limiter.wait()
-        ticker_obj_rev = yf.Ticker(yf_ticker_rev, session=session)
-        hist_rev = ticker_obj_rev.history(period="5d")
+        hist_rev = _yf_history_short(yf_ticker_rev, "5d")
 
         if hist_rev is not None and not hist_rev.empty:
             rev_rate = float(hist_rev["Close"].dropna().iloc[-1])
@@ -658,7 +744,7 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
     """
     _rate_limiter.wait()
     try:
-        t = yf.Ticker(ticker, session=_get_session())
+        t = _yf_ticker_obj(ticker)
         fd = t.funds_data
         if fd is None:
             return None

@@ -26,7 +26,7 @@
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，支援 Dashboard 上傳匯入或 CLI 腳本匯入（upsert）
 - **智慧定時掃描** — 每 30 分鐘檢查資料新鮮度，僅在上次掃描超過 30 分鐘時才觸發（容器啟動時立即檢查，避免重複掃描），僅推播「差異」通知
 - **每週摘要** — 每週日自動發送 Telegram 投資組合健康報告（健康分數 + 異常股票 + 本週訊號變化）
-- **yfinance 速率限制** — 內建 Rate Limiter（2 次/秒），避免被 Yahoo Finance 封鎖
+- **yfinance 速率限制與容錯** — 內建 Rate Limiter（2 次/秒）避免被 Yahoo Finance 封鎖；暫時性 DNS / 網路錯誤自動指數退避重試（最多 3 次，2–10 秒），錯誤結果不寫入磁碟快取，避免長時間快取污染
 - **資產配置 War Room** — 6 種投資人格範本、三種資產類型持倉管理（股票/債券/現金，即時表格編輯 + 匯入匯出 + 券商記錄）、**多幣別匯率轉換**（支援 USD/TWD/JPY/EUR/GBP/CNY/HKD/SGD/THB）、再平衡分析（雙餅圖 + Drift 長條圖 + 建議）
 - **穿透式持倉 X-Ray** — 自動解析 ETF 前 10 大成分股，計算直接+間接真實曝險比例，堆疊長條圖視覺化集中度風險，超過門檻自動 Telegram 警告
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類；新股自動加入雷達追蹤，省去重複操作
@@ -90,7 +90,7 @@ graph LR
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
 - **Frontend** — Streamlit 三頁面 Dashboard（`st.navigation`），投資組合總覽頁（一眼式 KPI + 配置圖表 + 訊號警報）+ 投資雷達頁（股票分頁 + 掃描 + 封存）+ 個人資產配置頁（War Room + Telegram 設定），側邊欄支援多市場股票/債券/現金三種資產新增；使用 `streamlit-js-eval` 偵測瀏覽器時區自動顯示本地時間，`st.status` 提供載入狀態視覺回饋
 - **Database** — SQLite，透過 Docker Volume 持久化（含 Stock、ScanLog、PriceAlert、Holding、UserInvestmentProfile、UserTelegramSettings、UserPreferences 等資料表）
-- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + `diskcache` 持久快取 + Rate Limiter（2 次/秒）
+- **資料來源** — yfinance（使用 curl_cffi 繞過 bot 防護），含 `cachetools` 記憶體快取 + `diskcache` 持久快取 + Rate Limiter（2 次/秒）+ **tenacity 指數退避重試**（針對暫時性 DNS / 網路錯誤自動重試最多 3 次，等待 2–10 秒；錯誤結果僅寫入 L1 短暫快取，不寫入 L2/磁碟快取，避免快取污染）
 - **通知** — Telegram Bot API 雙模式（系統預設 Bot 或自訂 Bot Token），支援差異通知、價格警報、每週摘要
 - **投資人格系統** — 6 種預設範本 + 自訂，目標配置持久化於 DB
 - **再平衡引擎** — 比較目標配置 vs 實際持倉市值，產生偏移分析與再平衡建議
@@ -499,7 +499,7 @@ azusa-stock/
 │   ├── infrastructure/               # 基礎設施層：外部適配器
 │   │   ├── database.py               #   SQLite engine + session 管理
 │   │   ├── repositories.py           #   Repository Pattern（集中 DB 查詢，含批次操作）
-│   │   ├── market_data.py            #   yfinance 適配器（含快取 + Rate Limiter）
+│   │   ├── market_data.py            #   yfinance 適配器（含快取 + Rate Limiter + tenacity 重試）
 │   │   └── notification.py           #   Telegram Bot 適配器
 │   │
 │   ├── config/                        # 設定檔

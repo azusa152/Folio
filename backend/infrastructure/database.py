@@ -44,6 +44,8 @@ def _run_migrations() -> None:
         "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
         # Holding: 新增帳戶類型欄位
         "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
+        # ScanLog: 新增市場情緒原因說明欄位
+        "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
     ]
 
     with engine.connect() as conn:
