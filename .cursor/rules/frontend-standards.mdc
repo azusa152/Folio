@@ -1,0 +1,23 @@
+---
+description: Streamlit frontend coding standards -- caching, session state, layout patterns, config usage
+globs: ["frontend/**"]
+---
+
+# Frontend Standards (Streamlit)
+
+## Caching
+-   Use `@st.cache_data` for data fetches and `@st.cache_resource` for connections.
+-   Always set `ttl` to avoid stale data (e.g., `@st.cache_data(ttl=300)`).
+
+## Session State
+-   Use `st.session_state` for cross-rerun persistence.
+-   Initialize with `if key not in st.session_state: st.session_state[key] = default`.
+
+## Configuration
+-   All labels, URLs, and thresholds go in `frontend/config.py`. No magic strings in view files.
+
+## Layout
+-   Reference existing views in `frontend/views/` for page structure patterns before creating new pages.
+
+## API Calls
+-   All backend calls go through helper functions in `frontend/utils.py`. Never call `requests` directly in view files.
