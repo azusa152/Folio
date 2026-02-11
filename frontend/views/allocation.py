@@ -27,6 +27,8 @@ from config import (
     DRIFT_CHART_HEIGHT,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
+    PRIVACY_MASK,
+    PRIVACY_TOGGLE_LABEL,
     STOCK_CATEGORY_OPTIONS,
     STOCK_MARKET_OPTIONS,
     STOCK_MARKET_PLACEHOLDERS,
@@ -65,12 +67,35 @@ def _market_label(key: str) -> str:
     return STOCK_MARKET_OPTIONS[key]["label"]
 
 
+def _is_privacy() -> bool:
+    """Return True when the privacy toggle is active."""
+    return bool(st.session_state.get("privacy_mode"))
+
+
+def _mask_money(value: float, fmt: str = "${:,.2f}") -> str:
+    """Format a monetary value, or return the mask placeholder in privacy mode."""
+    if _is_privacy():
+        return PRIVACY_MASK
+    return fmt.format(value)
+
+
+def _mask_qty(value: float, fmt: str = "{:,.4f}") -> str:
+    """Format a quantity, or return the mask placeholder in privacy mode."""
+    if _is_privacy():
+        return PRIVACY_MASK
+    return fmt.format(value)
+
+
 # ---------------------------------------------------------------------------
 # Page Header
 # ---------------------------------------------------------------------------
 
-st.title("💼 個人資產配置")
-st.caption("持倉記錄 · 再平衡分析 · Telegram 通知")
+_title_cols = st.columns([5, 1])
+with _title_cols[0]:
+    st.title("💼 個人資產配置")
+    st.caption("持倉記錄 · 再平衡分析 · Telegram 通知")
+with _title_cols[1]:
+    st.toggle(PRIVACY_TOGGLE_LABEL, key="privacy_mode")
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +107,10 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 ### 頁面總覽
 
 本頁面負責**個人資產持倉管理**與**投資組合再平衡分析**。透過左側導覽列從投資雷達切換至此頁面。
+
+### 🙈 隱私模式
+
+頁面右上角提供**隱私模式開關**。開啟後，所有敏感的金額數字（總市值、持倉數量、現價、平均成本、市值等）會以 `***` 遮蔽，僅保留百分比與分類結構。適合螢幕分享或截圖時使用，不影響後端資料。
 
 ---
 
@@ -699,47 +728,72 @@ with tab_warroom:
                 )
             df = pd.DataFrame(rows)
 
-            edited_df = st.data_editor(
-                df,
-                column_config={
-                    "ID": None,  # hidden
-                    "raw_ticker": None,  # hidden
-                    "ticker": st.column_config.TextColumn(
-                        "代號", disabled=True
-                    ),
-                    "category": st.column_config.SelectboxColumn(
-                        "分類",
-                        options=CATEGORY_OPTIONS,
-                        required=True,
-                    ),
-                    "quantity": st.column_config.NumberColumn(
-                        "數量", min_value=0.0, format="%.4f"
-                    ),
-                    "cost_basis": st.column_config.NumberColumn(
-                        "平均成本", min_value=0.0, format="%.2f"
-                    ),
-                    "broker": st.column_config.TextColumn(
-                        "銀行/券商"
-                    ),
-                    "currency": st.column_config.TextColumn(
-                        "幣別", disabled=True
-                    ),
-                    "account_type": st.column_config.TextColumn(
-                        "帳戶類型"
-                    ),
-                    "is_cash": st.column_config.CheckboxColumn(
-                        "現金", disabled=True
-                    ),
-                },
-                use_container_width=True,
-                hide_index=True,
-                num_rows="fixed",
-                key="holdings_editor",
-            )
+            if _is_privacy():
+                # Privacy mode: show masked read-only table
+                masked_df = df.copy()
+                masked_df["quantity"] = PRIVACY_MASK
+                masked_df["cost_basis"] = PRIVACY_MASK
+                st.dataframe(
+                    masked_df.drop(columns=["ID", "raw_ticker"]),
+                    column_config={
+                        "ticker": "代號",
+                        "category": "分類",
+                        "quantity": "數量",
+                        "cost_basis": "平均成本",
+                        "broker": "銀行/券商",
+                        "currency": "幣別",
+                        "account_type": "帳戶類型",
+                        "is_cash": "現金",
+                    },
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                edited_df = df  # no edits in privacy mode
+                st.caption("🔒 隱私模式已開啟，關閉後可編輯持倉。")
+            else:
+                edited_df = st.data_editor(
+                    df,
+                    column_config={
+                        "ID": None,  # hidden
+                        "raw_ticker": None,  # hidden
+                        "ticker": st.column_config.TextColumn(
+                            "代號", disabled=True
+                        ),
+                        "category": st.column_config.SelectboxColumn(
+                            "分類",
+                            options=CATEGORY_OPTIONS,
+                            required=True,
+                        ),
+                        "quantity": st.column_config.NumberColumn(
+                            "數量", min_value=0.0, format="%.4f"
+                        ),
+                        "cost_basis": st.column_config.NumberColumn(
+                            "平均成本", min_value=0.0, format="%.2f"
+                        ),
+                        "broker": st.column_config.TextColumn(
+                            "銀行/券商"
+                        ),
+                        "currency": st.column_config.TextColumn(
+                            "幣別", disabled=True
+                        ),
+                        "account_type": st.column_config.TextColumn(
+                            "帳戶類型"
+                        ),
+                        "is_cash": st.column_config.CheckboxColumn(
+                            "現金", disabled=True
+                        ),
+                    },
+                    use_container_width=True,
+                    hide_index=True,
+                    num_rows="fixed",
+                    key="holdings_editor",
+                )
 
             # --- Save button ---
             save_clicked = st.button(
-                "💾 儲存變更", key="save_holdings_btn"
+                "💾 儲存變更",
+                key="save_holdings_btn",
+                disabled=_is_privacy(),
             )
 
             # --- Save logic: diff edited vs original ---
@@ -809,12 +863,17 @@ with tab_warroom:
             st.divider()
             del_cols = st.columns([3, 1])
             with del_cols[0]:
+                _priv = _is_privacy()
                 del_id = st.selectbox(
                     "選擇要刪除的持倉",
                     options=[h["id"] for h in holdings],
                     format_func=lambda x: next(
                         (
-                            f"{h['ticker']} ({h['quantity']})"
+                            (
+                                h["ticker"]
+                                if _priv
+                                else f"{h['ticker']} ({h['quantity']})"
+                            )
                             for h in holdings
                             if h["id"] == x
                         ),
@@ -881,7 +940,7 @@ with tab_warroom:
                         )
                 st.metric(
                     f"💰 投資組合總市值（{display_cur}）",
-                    f"${rebalance['total_value']:,.2f}",
+                    _mask_money(rebalance["total_value"]),
                 )
 
                 import plotly.graph_objects as go
@@ -906,7 +965,8 @@ with tab_warroom:
                     for c in cat_names
                 ]
                 target_text = [
-                    f"${amt:,.0f}" for amt in target_amounts
+                    _mask_money(amt, "${:,.0f}")
+                    for amt in target_amounts
                 ]
 
                 # --- Actual Pie: per-stock breakdown (grouped by category color) ---
@@ -937,7 +997,9 @@ with tab_warroom:
                     for i, d in enumerate(items):
                         actual_labels.append(f"{icon} {d['ticker']}")
                         actual_values.append(d["market_value"])
-                        actual_text.append(f"${d['market_value']:,.0f}")
+                        actual_text.append(
+                            _mask_money(d["market_value"], "${:,.0f}")
+                        )
                         actual_colors.append(shades[i])
 
                 fig_pie = make_subplots(
@@ -955,19 +1017,29 @@ with tab_warroom:
                     CATEGORY_COLOR_MAP.get(c, CATEGORY_COLOR_FALLBACK)
                     for c in cat_names
                 ]
+                _privacy = _is_privacy()
                 fig_pie.add_trace(
                     go.Pie(
                         labels=cat_labels,
                         values=target_amounts,
                         hole=0.4,
                         text=target_text,
-                        textinfo="label+text+percent",
+                        textinfo=(
+                            "label+percent"
+                            if _privacy
+                            else "label+text+percent"
+                        ),
                         textposition="auto",
                         marker=dict(colors=target_colors),
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            f"目標金額：%{{text}} {display_cur}<br>"
                             "佔比：%{percent}<extra></extra>"
+                            if _privacy
+                            else (
+                                "<b>%{label}</b><br>"
+                                f"目標金額：%{{text}} {display_cur}<br>"
+                                "佔比：%{percent}<extra></extra>"
+                            )
                         ),
                     ),
                     row=1,
@@ -981,13 +1053,22 @@ with tab_warroom:
                         values=actual_values,
                         hole=0.4,
                         text=actual_text,
-                        textinfo="label+text+percent",
+                        textinfo=(
+                            "label+percent"
+                            if _privacy
+                            else "label+text+percent"
+                        ),
                         textposition="auto",
                         marker=dict(colors=actual_colors),
                         hovertemplate=(
                             "<b>%{label}</b><br>"
-                            f"市值：%{{text}} {display_cur}<br>"
                             "佔比：%{percent}<extra></extra>"
+                            if _privacy
+                            else (
+                                "<b>%{label}</b><br>"
+                                f"市值：%{{text}} {display_cur}<br>"
+                                "佔比：%{percent}<extra></extra>"
+                            )
                         ),
                     ),
                     row=1,
@@ -1052,19 +1133,25 @@ with tab_warroom:
                                 "代號": d["ticker"],
                                 "分類": cat_lbl,
                                 "原幣": orig_cur,
-                                "數量": d["quantity"],
+                                "數量": (
+                                    _mask_qty(d["quantity"])
+                                ),
                                 "現價": (
-                                    f"${d['current_price']:,.2f}"
+                                    _mask_money(
+                                        d["current_price"]
+                                    )
                                     if d.get("current_price")
                                     else "—"
                                 ),
                                 "平均成本": (
-                                    f"${d['avg_cost']:,.2f}"
+                                    _mask_money(d["avg_cost"])
                                     if d.get("avg_cost")
                                     else "—"
                                 ),
                                 f"市值({display_cur})": (
-                                    f"${d['market_value']:,.2f}"
+                                    _mask_money(
+                                        d["market_value"]
+                                    )
                                 ),
                                 "佔比": f"{d['weight_pct']:.1f}%",
                             }
@@ -1194,10 +1281,16 @@ with tab_warroom:
                                     f"{e['total_weight_pct']:.1f}"
                                 ),
                                 f"直接市值({display_cur})": (
-                                    f"${e['direct_value']:,.0f}"
+                                    _mask_money(
+                                        e["direct_value"],
+                                        "${:,.0f}",
+                                    )
                                 ),
                                 f"間接市值({display_cur})": (
-                                    f"${e['indirect_value']:,.0f}"
+                                    _mask_money(
+                                        e["indirect_value"],
+                                        "${:,.0f}",
+                                    )
                                 ),
                                 "間接來源": ", ".join(
                                     e.get("indirect_sources", [])

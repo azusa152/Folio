@@ -172,6 +172,8 @@ SCAN_SIGNAL_ICONS = {
     "NORMAL": "⚪",
 }
 REORDER_MIN_STOCKS = 2
+PRIVACY_MASK = "***"
+PRIVACY_TOGGLE_LABEL = "🙈 隱私模式"
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
