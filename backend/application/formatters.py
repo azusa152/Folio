@@ -77,3 +77,46 @@ def build_moat_details(
         f"毛利率穩健：{current_margin}% vs 去年同期 {previous_margin}%"
         f"（{'+' if change >= 0 else ''}{change} 個百分點）"
     )
+
+
+# ---------------------------------------------------------------------------
+# 恐懼與貪婪指數格式化
+# ---------------------------------------------------------------------------
+
+_FEAR_GREED_ICON: dict[str, str] = {
+    "EXTREME_FEAR": "😱",
+    "FEAR": "😨",
+    "NEUTRAL": "😐",
+    "GREED": "🤑",
+    "EXTREME_GREED": "🤯",
+    "N/A": "⏳",
+}
+
+_FEAR_GREED_LABEL_ZH: dict[str, str] = {
+    "EXTREME_FEAR": "極度恐懼",
+    "FEAR": "恐懼",
+    "NEUTRAL": "中性",
+    "GREED": "貪婪",
+    "EXTREME_GREED": "極度貪婪",
+    "N/A": "無資料",
+}
+
+
+def format_fear_greed_label(level: str, score: int) -> str:
+    """
+    格式化恐懼與貪婪等級為繁體中文標籤（含 icon 與分數）。
+    例如：「😱 極度恐懼 (15)」
+    """
+    icon = _FEAR_GREED_ICON.get(level, "⏳")
+    label = _FEAR_GREED_LABEL_ZH.get(level, "無資料")
+    return f"{icon} {label} ({score})"
+
+
+def format_fear_greed_short(level: str) -> str:
+    """
+    格式化恐懼與貪婪等級為精簡標籤（icon + 中文）。
+    例如：「😱 極度恐懼」
+    """
+    icon = _FEAR_GREED_ICON.get(level, "⏳")
+    label = _FEAR_GREED_LABEL_ZH.get(level, "無資料")
+    return f"{icon} {label}"

@@ -13,6 +13,7 @@ from typing import Callable, Optional, TypeVar
 T = TypeVar("T")
 
 import diskcache
+import requests as http_requests
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -25,7 +26,9 @@ from tenacity import (
 )
 
 from domain.analysis import (
+    classify_vix,
     compute_bias,
+    compute_composite_fear_greed,
     compute_moving_average,
     compute_rsi,
     compute_volume_ratio,
@@ -34,17 +37,21 @@ from domain.analysis import (
 )
 from application.formatters import build_moat_details, build_signal_status
 from domain.constants import (
+    CNN_FG_API_URL,
+    CNN_FG_REQUEST_TIMEOUT,
     CURL_CFFI_IMPERSONATE,
     DISK_CACHE_DIR,
     DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
+    DISK_FEAR_GREED_TTL,
     DISK_FOREX_HISTORY_TTL,
     DISK_FOREX_TTL,
     DISK_KEY_DIVIDEND,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
+    DISK_KEY_FEAR_GREED,
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
     DISK_KEY_MOAT,
@@ -60,6 +67,8 @@ from domain.constants import (
     ETF_HOLDINGS_CACHE_MAXSIZE,
     ETF_HOLDINGS_CACHE_TTL,
     ETF_TOP_N,
+    FEAR_GREED_CACHE_MAXSIZE,
+    FEAR_GREED_CACHE_TTL,
     FOREX_CACHE_MAXSIZE,
     FOREX_CACHE_TTL,
     FOREX_HISTORY_CACHE_MAXSIZE,
@@ -76,13 +85,15 @@ from domain.constants import (
     PRICE_HISTORY_CACHE_TTL,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
+    VIX_HISTORY_PERIOD,
+    VIX_TICKER,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
     YFINANCE_RETRY_WAIT_MAX,
     YFINANCE_RETRY_WAIT_MIN,
 )
-from domain.enums import MarketSentiment, MoatStatus
+from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -142,6 +153,7 @@ _price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, t
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
 _etf_holdings_cache: TTLCache = TTLCache(maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL)
 _forex_history_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL)
+_fear_greed_cache: TTLCache = TTLCache(maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL)
 
 
 # ---------------------------------------------------------------------------
@@ -881,3 +893,145 @@ def get_etf_top_holdings(ticker: str) -> list[dict] | None:
         _fetch_with_sentinel,
     )
     return data if data else None
+
+
+# ===========================================================================
+# 恐懼與貪婪指數 (Fear & Greed Index)
+# ===========================================================================
+
+
+def get_vix_data() -> dict:
+    """
+    從 yfinance 取得 VIX 指數資料。
+    回傳 {"value": float, "change_1d": float, "level": str, "fetched_at": str}。
+    失敗時回傳 {"value": None, "level": "N/A", ...}。
+    """
+    try:
+        hist = _yf_history_short(VIX_TICKER, VIX_HISTORY_PERIOD)
+
+        if hist is None or hist.empty:
+            logger.warning("VIX 資料為空。")
+            return {
+                "value": None,
+                "change_1d": None,
+                "level": FearGreedLevel.NOT_AVAILABLE.value,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        closes = hist["Close"].dropna().tolist()
+        if not closes:
+            return {
+                "value": None,
+                "change_1d": None,
+                "level": FearGreedLevel.NOT_AVAILABLE.value,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        current_vix = round(float(closes[-1]), 2)
+        change_1d = round(float(closes[-1] - closes[-2]), 2) if len(closes) >= 2 else None
+
+        vix_level = classify_vix(current_vix)
+
+        logger.info("VIX = %.2f（等級：%s，日變動：%s）", current_vix, vix_level.value, change_1d)
+
+        return {
+            "value": current_vix,
+            "change_1d": change_1d,
+            "level": vix_level.value,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    except Exception as e:
+        logger.error("取得 VIX 資料失敗：%s", e, exc_info=True)
+        return {
+            "value": None,
+            "change_1d": None,
+            "level": FearGreedLevel.NOT_AVAILABLE.value,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+
+def get_cnn_fear_greed() -> dict | None:
+    """
+    從 CNN Fear & Greed Index API 取得市場恐懼貪婪分數。
+    回傳 {"score": int, "label": str, "level": str, "fetched_at": str} 或 None。
+    此為非官方 API，失敗時靜默回傳 None（graceful degradation）。
+    """
+    try:
+        resp = http_requests.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
+        resp.raise_for_status()
+
+        data = resp.json()
+
+        # CNN API 回傳結構：{"fear_and_greed": {"score": 42, "rating": "Fear", ...}}
+        fg_data = data.get("fear_and_greed", {})
+        score_raw = fg_data.get("score")
+        label = fg_data.get("rating", "")
+
+        if score_raw is None:
+            logger.warning("CNN Fear & Greed API 回傳無 score 欄位。")
+            return None
+
+        score = round(float(score_raw))
+        from domain.analysis import classify_cnn_fear_greed
+
+        level = classify_cnn_fear_greed(score)
+
+        logger.info("CNN Fear & Greed = %d（%s，等級：%s）", score, label, level.value)
+
+        return {
+            "score": score,
+            "label": label,
+            "level": level.value,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    except Exception as e:
+        logger.warning("CNN Fear & Greed API 取得失敗（非致命）：%s", e)
+        return None
+
+
+def _fetch_fear_greed(_key: str) -> dict:
+    """
+    綜合 VIX 與 CNN Fear & Greed 資料（供 _cached_fetch 使用）。
+    _key 固定為 "composite"。
+    """
+    vix_data = get_vix_data()
+    cnn_data = get_cnn_fear_greed()
+
+    vix_value = vix_data.get("value")
+    cnn_score = cnn_data.get("score") if cnn_data else None
+
+    level, composite_score = compute_composite_fear_greed(vix_value, cnn_score)
+
+    return {
+        "composite_score": composite_score,
+        "composite_level": level.value,
+        "vix": vix_data,
+        "cnn": cnn_data,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _is_fear_greed_error(result) -> bool:
+    """判斷 Fear & Greed 結果是否為失敗回應。"""
+    return (
+        isinstance(result, dict)
+        and result.get("composite_level") == FearGreedLevel.NOT_AVAILABLE.value
+    )
+
+
+def get_fear_greed_index() -> dict:
+    """
+    取得恐懼與貪婪指數（VIX + CNN 綜合）。
+    結果透過 L1 + L2 快取（L1: 30 分鐘，L2: 2 小時）。
+    錯誤結果僅寫入 L1，不寫入 L2。
+    """
+    return _cached_fetch(
+        _fear_greed_cache,
+        "composite",
+        DISK_KEY_FEAR_GREED,
+        DISK_FEAR_GREED_TTL,
+        _fetch_fear_greed,
+        is_error=_is_fear_greed_error,
+    )

@@ -64,6 +64,24 @@ MOCK_MOAT = {
     "yoy_change": 2.1,
 }
 
+MOCK_FEAR_GREED = {
+    "composite_score": 35,
+    "composite_level": "FEAR",
+    "vix": {
+        "value": 22.5,
+        "change_1d": 1.2,
+        "level": "FEAR",
+        "fetched_at": "2025-06-15T10:00:00+00:00",
+    },
+    "cnn": {
+        "score": 38,
+        "label": "Fear",
+        "level": "FEAR",
+        "fetched_at": "2025-06-15T10:00:00+00:00",
+    },
+    "fetched_at": "2025-06-15T10:00:00+00:00",
+}
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _create_tables():
@@ -99,6 +117,9 @@ def client() -> Generator[TestClient, None, None]:
         patch("infrastructure.notification.send_telegram_message_dual", return_value=None),
         patch("application.services.get_technical_signals", return_value=MOCK_SIGNALS),
         patch("application.services.analyze_moat_trend", return_value=MOCK_MOAT),
+        patch("infrastructure.market_data.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
+        patch("api.scan_routes.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
+        patch("application.services.get_fear_greed_index", return_value=MOCK_FEAR_GREED),
     ):
         with TestClient(app) as c:
             yield c

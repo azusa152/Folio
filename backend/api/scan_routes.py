@@ -9,11 +9,13 @@ import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from api.schemas import AcceptedResponse, LastScanResponse
+from api.schemas import AcceptedResponse, CNNFearGreedData, FearGreedResponse, LastScanResponse, VIXData
+from application.formatters import format_fear_greed_label
 from application.services import run_scan, send_weekly_digest
 from domain.constants import ERROR_DIGEST_IN_PROGRESS, ERROR_SCAN_IN_PROGRESS
 from infrastructure import repositories as repo
 from infrastructure.database import engine, get_session
+from infrastructure.market_data import get_fear_greed_index
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -51,11 +53,39 @@ def get_last_scan_time(session: Session = Depends(get_session)) -> LastScanRespo
         return LastScanResponse(last_scanned_at=None, epoch=None)
     log = logs[0]
     ts = log.scanned_at
+
+    # 取得最新 Fear & Greed 資料（快取，不額外呼叫 yfinance）
+    fg = get_fear_greed_index()
+    fg_level = fg.get("composite_level")
+    fg_score = fg.get("composite_score")
+
     return LastScanResponse(
         last_scanned_at=ts.isoformat(),
         epoch=int(ts.timestamp()),
         market_status=log.market_status,
         market_status_details=getattr(log, "market_status_details", ""),
+        fear_greed_level=fg_level,
+        fear_greed_score=fg_score,
+    )
+
+
+@router.get("/market/fear-greed", response_model=FearGreedResponse, summary="Fear & Greed Index")
+def get_fear_greed() -> FearGreedResponse:
+    """取得恐懼與貪婪指數（VIX + CNN Fear & Greed 綜合分析）。"""
+    fg = get_fear_greed_index()
+    composite_level = fg.get("composite_level", "N/A")
+    composite_score = fg.get("composite_score", 50)
+
+    vix_raw = fg.get("vix")
+    cnn_raw = fg.get("cnn")
+
+    return FearGreedResponse(
+        composite_score=composite_score,
+        composite_level=composite_level,
+        composite_label=format_fear_greed_label(composite_level, composite_score),
+        vix=VIXData(**vix_raw) if vix_raw else None,
+        cnn=CNNFearGreedData(**cnn_raw) if cnn_raw else None,
+        fetched_at=fg.get("fetched_at", ""),
     )
 
 

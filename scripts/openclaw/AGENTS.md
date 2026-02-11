@@ -35,6 +35,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `scan` | Trigger background full scan (results via Telegram) |
 | `moat` | Gross margin YoY analysis for a ticker |
 | `alerts` | List price alerts for a ticker |
+| `fear_greed` | Fear & Greed Index (VIX + CNN composite score) |
 | `add_stock` | Add stock with `params: {ticker, category, thesis, tags}` |
 
 > **Start with `help`** — call `POST /webhook {"action": "help"}` to discover all available actions at runtime.
@@ -68,7 +69,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `POST` | `/settings/telegram/test` | Send a test Telegram message |
 | `GET` | `/settings/preferences` | User preferences (privacy mode, etc.) |
 | `PUT` | `/settings/preferences` | Update user preferences (upsert) |
-| `GET` | `/scan/last` | Last scan timestamp + market sentiment |
+| `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
+| `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
 | `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown`, FX movements, risk level |
 | `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert (includes cash exposure amounts) |
 
@@ -95,6 +97,7 @@ Branch on `error_code` (not the human-readable `detail` string). Common codes:
 ## Response Guidelines
 
 - Be concise — the user wants quick investment insights, not essays
+- When asked about market sentiment or timing, call `/webhook` with `fear_greed` to get the VIX + CNN Fear & Greed composite
 - When asked about portfolio status, call `/summary` first
 - When asked about a specific stock, call `/webhook` with `signals` or `moat`
 - Present data in a structured, readable format

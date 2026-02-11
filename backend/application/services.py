@@ -35,12 +35,14 @@ from domain.constants import (
 )
 from domain.entities import PriceAlert, RemovalLog, ScanLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, MarketSentiment, MoatStatus, ScanSignal, StockCategory
+from application.formatters import format_fear_greed_label, format_fear_greed_short
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_market_sentiment,
     analyze_moat_trend,
     get_etf_top_holdings,
     get_exchange_rates,
+    get_fear_greed_index,
     get_forex_history,
     get_technical_signals,
 )
@@ -413,6 +415,13 @@ def run_scan(session: Session) -> dict:
     market_status_details_value = market_sentiment.get("details", "")
     logger.info("Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value)
 
+    # === Fear & Greed Index（與 Layer 1 並列的市場概況） ===
+    fear_greed = get_fear_greed_index()
+    fg_level = fear_greed.get("composite_level", "N/A")
+    fg_score = fear_greed.get("composite_score", 50)
+    fg_label = format_fear_greed_label(fg_level, fg_score)
+    logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
+
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
     all_stocks = repo.find_active_stocks(session)
     stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
@@ -541,7 +550,10 @@ def run_scan(session: Session) -> dict:
             "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
             len(new_or_changed), len(resolved),
         )
-        header = f"🔔 <b>Folio 掃描（差異通知）</b>\n市場情緒：{market_status_value}\n"
+        header = (
+            f"🔔 <b>Folio 掃描（差異通知）</b>\n"
+            f"市場情緒：{market_status_value} | 恐懼貪婪：{fg_label}\n"
+        )
 
         # 新增/惡化的股票依類別分組
         body_parts: list[str] = []
@@ -569,7 +581,11 @@ def run_scan(session: Session) -> dict:
     else:
         logger.info("掃描完成，訊號無變化，跳過通知。")
 
-    return {"market_status": market_sentiment, "results": results}
+    return {
+        "market_status": market_sentiment,
+        "fear_greed": fear_greed,
+        "results": results,
+    }
 
 
 def _check_price_alerts(session: Session, results: list[dict]) -> None:
@@ -763,10 +779,17 @@ def send_weekly_digest(session: Session) -> dict:
             signal_changes[tk] = signal_changes.get(tk, 0) + 1
         prev_signals[tk] = log.signal
 
+    # 恐懼貪婪指數
+    fg = get_fear_greed_index()
+    fg_label = format_fear_greed_label(fg.get("composite_level", "N/A"), fg.get("composite_score", 50))
+    vix_val = fg.get("vix", {}).get("value")
+    vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
+
     # 組合訊息
     parts: list[str] = [
         f"📊 <b>Folio 每週摘要</b>\n",
-        f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）\n",
+        f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）",
+        f"📈 恐懼貪婪指數：{fg_label}（{vix_text}）\n",
     ]
 
     if non_normal:
@@ -806,7 +829,11 @@ def get_portfolio_summary(session: Session) -> str:
     non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
 
-    lines: list[str] = [f"Folio — Health: {health}%", ""]
+    # 恐懼貪婪指數
+    fg = get_fear_greed_index()
+    fg_short = format_fear_greed_short(fg.get("composite_level", "N/A"))
+
+    lines: list[str] = [f"Folio — Health: {health}% | F&G: {fg_short}", ""]
 
     for cat in CATEGORY_DISPLAY_ORDER:
         group = [s for s in stocks if s.category.value == cat]
@@ -991,6 +1018,20 @@ def handle_webhook(session: Session, action: str, ticker: str | None, params: di
             op_str = "<" if a["operator"] == "lt" else ">"
             lines.append(f"  {a['metric']} {op_str} {a['threshold']} ({'啟用' if a['is_active'] else '停用'})")
         return {"success": True, "message": "\n".join(lines), "data": {"alerts": alerts}}
+
+    if action == "fear_greed":
+        fg = get_fear_greed_index()
+        fg_label = format_fear_greed_label(
+            fg.get("composite_level", "N/A"),
+            fg.get("composite_score", 50),
+        )
+        vix_data = fg.get("vix", {})
+        vix_val = vix_data.get("value")
+        vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
+        cnn_data = fg.get("cnn")
+        cnn_text = f"CNN={cnn_data['score']}" if cnn_data and cnn_data.get("score") is not None else "CNN=N/A"
+        msg = f"恐懼貪婪指數：{fg_label}\n{vix_text}, {cnn_text}"
+        return {"success": True, "message": msg, "data": fg}
 
     if action == "add_stock":
         t = params.get("ticker", ticker)

@@ -8,14 +8,24 @@ from typing import Optional
 
 from domain.constants import (
     BIAS_OVERHEATED_THRESHOLD,
+    CNN_FG_EXTREME_FEAR,
+    CNN_FG_FEAR,
+    CNN_FG_GREED,
+    CNN_FG_NEUTRAL_HIGH,
+    FG_WEIGHT_CNN,
+    FG_WEIGHT_VIX,
     MARKET_CAUTION_BELOW_60MA_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
     RSI_PERIOD,
+    VIX_EXTREME_FEAR,
+    VIX_FEAR,
+    VIX_GREED,
+    VIX_NEUTRAL_LOW,
     VOLUME_RATIO_LONG_DAYS,
     VOLUME_RATIO_SHORT_DAYS,
 )
-from domain.enums import MarketSentiment, MoatStatus, ScanSignal
+from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus, ScanSignal
 
 
 # ---------------------------------------------------------------------------
@@ -161,3 +171,95 @@ def determine_scan_signal(
         return ScanSignal.OVERHEATED
 
     return ScanSignal.NORMAL
+
+
+# ---------------------------------------------------------------------------
+# 恐懼與貪婪指數分析
+# ---------------------------------------------------------------------------
+
+
+def classify_vix(vix_value: Optional[float]) -> FearGreedLevel:
+    """
+    根據 VIX 值判定恐懼與貪婪等級。
+    VIX > 30 極度恐懼, 20–30 恐懼, 15–20 中性, 10–15 貪婪, < 10 極度貪婪。
+    純函式，無副作用。
+    """
+    if vix_value is None:
+        return FearGreedLevel.NOT_AVAILABLE
+    if vix_value > VIX_EXTREME_FEAR:  # > 30
+        return FearGreedLevel.EXTREME_FEAR
+    if vix_value > VIX_FEAR:  # > 20
+        return FearGreedLevel.FEAR
+    if vix_value > VIX_NEUTRAL_LOW:  # > 15
+        return FearGreedLevel.NEUTRAL
+    if vix_value > VIX_GREED:  # > 10
+        return FearGreedLevel.GREED
+    return FearGreedLevel.EXTREME_GREED
+
+
+def classify_cnn_fear_greed(score: Optional[int]) -> FearGreedLevel:
+    """
+    根據 CNN Fear & Greed Index（0–100）判定等級。
+    0–25 極度恐懼, 25–45 恐懼, 45–55 中性, 55–75 貪婪, 75–100 極度貪婪。
+    純函式，無副作用。
+    """
+    if score is None:
+        return FearGreedLevel.NOT_AVAILABLE
+    if score <= CNN_FG_EXTREME_FEAR:
+        return FearGreedLevel.EXTREME_FEAR
+    if score <= CNN_FG_FEAR:
+        return FearGreedLevel.FEAR
+    if score <= CNN_FG_NEUTRAL_HIGH:
+        return FearGreedLevel.NEUTRAL
+    if score <= CNN_FG_GREED:
+        return FearGreedLevel.GREED
+    return FearGreedLevel.EXTREME_GREED
+
+
+# 各等級對應的 0–100 分數中心值（用於 VIX 等級→分數轉換）
+_LEVEL_SCORE: dict[FearGreedLevel, int] = {
+    FearGreedLevel.EXTREME_FEAR: 10,
+    FearGreedLevel.FEAR: 30,
+    FearGreedLevel.NEUTRAL: 50,
+    FearGreedLevel.GREED: 70,
+    FearGreedLevel.EXTREME_GREED: 90,
+    FearGreedLevel.NOT_AVAILABLE: 50,  # fallback
+}
+
+
+def _vix_to_score(vix_value: Optional[float]) -> int:
+    """
+    將 VIX 值線性映射至 0–100 恐懼貪婪分數。
+    VIX 40+ → 0, VIX 8 → 100。
+    """
+    if vix_value is None:
+        return 50
+    # 線性反轉：高 VIX = 低分數（恐懼），低 VIX = 高分數（貪婪）
+    score = round((40.0 - vix_value) / 32.0 * 100.0)
+    return max(0, min(100, score))
+
+
+def compute_composite_fear_greed(
+    vix_value: Optional[float],
+    cnn_score: Optional[int],
+) -> tuple[FearGreedLevel, int]:
+    """
+    綜合 VIX 與 CNN Fear & Greed Index 計算複合恐懼貪婪等級與分數。
+    VIX 權重 40%，CNN 權重 60%。若 CNN 不可用，100% 使用 VIX。
+    回傳 (等級, 0–100 分數)。
+    純函式，無副作用。
+    """
+    vix_score = _vix_to_score(vix_value) if vix_value is not None else None
+
+    if vix_score is not None and cnn_score is not None:
+        composite = round(vix_score * FG_WEIGHT_VIX + cnn_score * FG_WEIGHT_CNN)
+    elif vix_score is not None:
+        composite = vix_score
+    elif cnn_score is not None:
+        composite = cnn_score
+    else:
+        return FearGreedLevel.NOT_AVAILABLE, 50
+
+    composite = max(0, min(100, composite))
+    level = classify_cnn_fear_greed(composite)
+    return level, composite

@@ -51,6 +51,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `scan` | 觸發全域掃描（背景執行） | No | `{"action": "scan"}` |
 | `moat` | 護城河分析（毛利率 YoY） | Yes | `{"action": "moat", "ticker": "TSM"}` |
 | `alerts` | 查看價格警報 | Yes | `{"action": "alerts", "ticker": "AAPL"}` |
+| `fear_greed` | 恐懼與貪婪指數 (VIX + CNN 綜合) | No | `{"action": "fear_greed"}` |
 | `add_stock` | 新增股票到觀察名單 | Yes (in params) | See below |
 
 > **Tip:** Use `help` first to discover all supported actions and their parameters at runtime.
@@ -113,7 +114,8 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/ticker/{ticker}/thesis` | 更新觀點 |
 | `PATCH` | `/ticker/{ticker}/category` | 切換分類 |
 | `POST` | `/scan` | 觸發全域掃描 |
-| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（判斷資料新鮮度） |
+| `GET` | `/market/fear-greed` | 恐懼與貪婪指數（VIX + CNN 綜合分析） |
+| `GET` | `/scan/last` | 取得最近一次掃描時間戳與市場情緒（判斷資料新鮮度，含 F&G） |
 | `POST` | `/digest` | 觸發每週摘要 |
 | `GET` | `/ticker/{ticker}/scan-history` | 掃描歷史 |
 | `GET` | `/ticker/{ticker}/alerts` | 價格警報清單 |
@@ -150,6 +152,7 @@ For advanced use, you can call individual endpoints directly:
 
 ## Usage Tips
 
+- Use `fear_greed` to check market sentiment via VIX + CNN Fear & Greed Index before making buy/sell decisions ("be greedy when others are fearful")
 - Use `summary` first to get an overview before drilling into individual stocks
 - Use `signals` to check if a stock is oversold (RSI < 30) or overheated (Bias > 20%)
 - Use `moat` to verify if a stock's fundamentals (gross margin) are still intact

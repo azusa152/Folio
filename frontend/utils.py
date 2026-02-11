@@ -17,6 +17,7 @@ from config import (
     API_DELETE_TIMEOUT,
     API_DIVIDEND_TIMEOUT,
     API_EARNINGS_TIMEOUT,
+    API_FEAR_GREED_TIMEOUT,
     API_GET_TIMEOUT,
     API_PATCH_TIMEOUT,
     API_POST_TIMEOUT,
@@ -40,6 +41,7 @@ from config import (
     CACHE_TTL_REBALANCE,
     CACHE_TTL_SCAN_HISTORY,
     CACHE_TTL_SIGNALS,
+    CACHE_TTL_FEAR_GREED,
     CACHE_TTL_STOCKS,
     CACHE_TTL_TEMPLATES,
     CACHE_TTL_THESIS,
@@ -338,6 +340,21 @@ def fetch_currency_exposure() -> dict | None:
 def fetch_last_scan() -> dict | None:
     """Fetch last scan timestamp and market sentiment."""
     return api_get_silent("/scan/last")
+
+
+@st.cache_data(ttl=CACHE_TTL_FEAR_GREED, show_spinner=False)
+def fetch_fear_greed() -> dict | None:
+    """Fetch Fear & Greed Index (VIX + CNN composite)."""
+    try:
+        resp = requests.get(
+            f"{BACKEND_URL}/market/fear-greed",
+            timeout=API_FEAR_GREED_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except requests.RequestException:
+        return None
 
 
 @st.cache_data(ttl=CACHE_TTL_PREFERENCES, show_spinner=False)

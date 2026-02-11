@@ -16,6 +16,8 @@ from config import (
     DASHBOARD_DRIFT_CHART_HEIGHT,
     DASHBOARD_TOP_HOLDINGS_LIMIT,
     DISPLAY_CURRENCY_OPTIONS,
+    FEAR_GREED_DEFAULT_LABEL,
+    FEAR_GREED_LABELS,
     HEALTH_SCORE_GOOD_THRESHOLD,
     HEALTH_SCORE_WARN_THRESHOLD,
     MARKET_SENTIMENT_DEFAULT_LABEL,
@@ -25,6 +27,7 @@ from config import (
     SCAN_SIGNAL_ICONS,
 )
 from utils import (
+    fetch_fear_greed,
     fetch_holdings,
     fetch_last_scan,
     fetch_profile,
@@ -219,7 +222,7 @@ else:
 # ---------------------------------------------------------------------------
 # Section 1: KPI Metrics Row
 # ---------------------------------------------------------------------------
-kpi_cols = st.columns(4)
+kpi_cols = st.columns(5)
 
 # -- 1a. Market Sentiment --
 with kpi_cols[0]:
@@ -233,16 +236,42 @@ with kpi_cols[0]:
     else:
         st.metric("市場情緒", MARKET_SENTIMENT_DEFAULT_LABEL)
 
-# -- 1b. Total Portfolio Value --
+# -- 1b. Fear & Greed Index --
 with kpi_cols[1]:
+    fear_greed_data = fetch_fear_greed()
+    if fear_greed_data:
+        fg_level = fear_greed_data.get("composite_level", "N/A")
+        fg_score = fear_greed_data.get("composite_score", 50)
+        fg_info = FEAR_GREED_LABELS.get(fg_level, FEAR_GREED_LABELS["N/A"])
+        vix_data = fear_greed_data.get("vix") or {}
+        vix_val = vix_data.get("value")
+        vix_change = vix_data.get("change_1d")
+        st.metric(
+            "恐懼貪婪",
+            fg_info["label"],
+            delta=f"分數 {fg_score}/100",
+            delta_color=fg_info["color"],
+        )
+        vix_parts = []
+        if vix_val is not None:
+            vix_parts.append(f"VIX={vix_val:.1f}")
+        if vix_change is not None:
+            vix_parts.append(f"{'▲' if vix_change > 0 else '▼'}{abs(vix_change):.1f}")
+        if vix_parts:
+            st.caption(" ".join(vix_parts))
+    else:
+        st.metric("恐懼貪婪", FEAR_GREED_DEFAULT_LABEL)
+
+# -- 1c. Total Portfolio Value --
+with kpi_cols[2]:
     if rebalance_data and rebalance_data.get("total_value") is not None:
         total_val = rebalance_data["total_value"]
         st.metric("總市值", _mask_money(total_val))
     else:
         st.metric("總市值", "N/A")
 
-# -- 1c. Health Score --
-with kpi_cols[2]:
+# -- 1d. Health Score --
+with kpi_cols[3]:
     health_pct, normal_cnt, total_cnt = _compute_health_score(stocks_data or [])
     if total_cnt > 0:
         st.metric(
@@ -254,8 +283,8 @@ with kpi_cols[2]:
     else:
         st.metric("健康分數", "N/A")
 
-# -- 1d. Tracking & Holdings Count --
-with kpi_cols[3]:
+# -- 1e. Tracking & Holdings Count --
+with kpi_cols[4]:
     stock_count = len(stocks_data) if stocks_data else 0
     holding_count = len(holdings_data) if holdings_data else 0
     st.metric("追蹤 / 持倉", f"{stock_count} 檔 / {holding_count} 筆")
