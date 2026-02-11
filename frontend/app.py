@@ -17,6 +17,16 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
+# Navigation — two-page app (must be registered before any widgets that may
+# trigger a rerun, otherwise Streamlit falls back to legacy pages/ routing)
+# ---------------------------------------------------------------------------
+
+radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", default=True)
+allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼")
+
+pg = st.navigation([radar_page, allocation_page])
+
+# ---------------------------------------------------------------------------
 # Custom CSS — global styles shared across all pages
 # ---------------------------------------------------------------------------
 
@@ -61,11 +71,7 @@ if "browser_tz" not in st.session_state:
         pass  # Safari may block JS eval iframe; gracefully fall back to UTC
 
 # ---------------------------------------------------------------------------
-# Navigation — two-page app
+# Run the selected page
 # ---------------------------------------------------------------------------
 
-radar_page = st.Page("views/radar.py", title="投資雷達", icon="📡", default=True)
-allocation_page = st.Page("views/allocation.py", title="個人資產配置", icon="💼")
-
-pg = st.navigation([radar_page, allocation_page])
 pg.run()
