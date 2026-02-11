@@ -95,9 +95,10 @@ class TestCompositeScore:
         assert score == 40
 
     def test_composite_should_fallback_to_vix_only_when_cnn_none(self):
-        # VIX=20 → _vix_to_score(20) = round((40-20)/32*100) = 63
+        # VIX=20 → _vix_to_score(20) = round((40-20)/32*100) = round(62.5) = 62
+        # (Python banker's rounding: 0.5 rounds to even)
         level, score = compute_composite_fear_greed(20.0, None)
-        assert score == 63
+        assert score == 62
         assert level == FearGreedLevel.GREED
 
     def test_composite_should_fallback_to_cnn_only_when_vix_none(self):

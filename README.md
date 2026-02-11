@@ -220,6 +220,22 @@ docker compose up --build
 
 `-v` 會移除 Docker Volume（含 `radar.db`），重啟後自動建立空白資料庫。
 
+### 5. 執行測試
+
+```bash
+# 建立虛擬環境（首次）
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 執行所有測試
+LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v --tb=short
+```
+
+> 測試使用 in-memory SQLite，所有外部服務（yfinance、Telegram）皆已 mock，不需要網路連線。
+> CI 環境（GitHub Actions）會在每次 push / PR 時自動執行，詳見 `.github/workflows/ci.yml`。
+
 ## API 參考
 
 | Method | Path | 說明 |
