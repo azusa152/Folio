@@ -529,6 +529,7 @@ if st.session_state.get("show_add_dialog", False):
 # Empty state check
 if not watches:
     st.info("📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始")
+    st.caption("💡 最常用的監控配置：USD/TWD（美元兌台幣），可追蹤換匯時機。")
     st.stop()
 
 # Get analysis data (helper lives in utils.py, shared cache with invalidation)
