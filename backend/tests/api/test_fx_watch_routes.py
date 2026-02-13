@@ -365,3 +365,172 @@ class TestFXWatchActions:
         telegram_msg = mock_send_telegram.call_args[0][0]
         assert "外匯換匯時機警報" in telegram_msg
         assert "USD/TWD" in telegram_msg
+
+
+class TestFXWatchValidation:
+    """Tests for FX Watch request validation (422 errors)."""
+
+    def test_create_should_return_422_when_missing_required_fields(
+        self, client: TestClient
+    ):
+        # Act — empty body
+        response = client.post("/fx-watch", json={})
+
+        # Assert
+        assert response.status_code == 422
+
+    def test_create_should_return_422_when_base_currency_missing(
+        self, client: TestClient
+    ):
+        # Act — only quote_currency provided
+        response = client.post("/fx-watch", json={"quote_currency": "TWD"})
+
+        # Assert
+        assert response.status_code == 422
+
+
+class TestFXWatchAlertCooldown:
+    """Tests for alert cooldown integration flow."""
+
+    @patch("application.fx_watch_service.send_telegram_message_dual")
+    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.fx_watch_service.is_notification_enabled")
+    def test_cooldown_should_prevent_duplicate_alerts(
+        self,
+        mock_notification_enabled,
+        mock_get_history,
+        mock_send_telegram,
+        client: TestClient,
+    ):
+        # Arrange: create a config with short cooldown
+        client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "TWD",
+                "recent_high_days": 5,
+                "consecutive_increase_days": 2,
+                "reminder_interval_hours": 24,
+            },
+        )
+
+        mock_notification_enabled.return_value = True
+        mock_get_history.return_value = [
+            {"date": "2026-02-07", "close": 30.0},
+            {"date": "2026-02-08", "close": 30.5},
+            {"date": "2026-02-09", "close": 31.0},
+            {"date": "2026-02-10", "close": 31.5},
+        ]
+
+        # Act: first alert should trigger
+        first = client.post("/fx-watch/alert")
+        assert first.status_code == 200
+        assert first.json()["triggered_alerts"] == 1
+        assert first.json()["sent_alerts"] == 1
+
+        # Act: second alert immediately — should be within cooldown
+        second = client.post("/fx-watch/alert")
+
+        # Assert: second has zero triggered (cooldown prevents re-analysis)
+        assert second.status_code == 200
+        assert second.json()["triggered_alerts"] == 0
+        assert second.json()["sent_alerts"] == 0
+
+    @patch("application.fx_watch_service.get_forex_history_long")
+    def test_check_should_handle_forex_api_failure_gracefully(
+        self, mock_get_history, client: TestClient
+    ):
+        # Arrange: create a config
+        client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "TWD",
+            },
+        )
+
+        # Mock forex history to raise exception
+        mock_get_history.side_effect = RuntimeError("yfinance error")
+
+        # Act
+        response = client.post("/fx-watch/check")
+
+        # Assert: returns 200, not 500
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_watches"] == 0
+        assert data["results"] == []
+
+
+class TestFXWatchNotificationToggle:
+    """Tests for notification toggle integration."""
+
+    @patch("application.fx_watch_service.send_telegram_message_dual")
+    @patch("application.fx_watch_service.get_forex_history_long")
+    @patch("application.fx_watch_service.is_notification_enabled")
+    def test_alert_should_not_send_when_notification_disabled(
+        self,
+        mock_notification_enabled,
+        mock_get_history,
+        mock_send_telegram,
+        client: TestClient,
+    ):
+        # Arrange: create config
+        client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "TWD",
+                "recent_high_days": 5,
+                "consecutive_increase_days": 2,
+            },
+        )
+
+        mock_notification_enabled.return_value = False
+        mock_get_history.return_value = [
+            {"date": "2026-02-07", "close": 30.0},
+            {"date": "2026-02-08", "close": 30.5},
+            {"date": "2026-02-09", "close": 31.0},
+            {"date": "2026-02-10", "close": 31.5},
+        ]
+
+        # Act
+        response = client.post("/fx-watch/alert")
+
+        # Assert: triggered but not sent
+        assert response.status_code == 200
+        data = response.json()
+        assert data["triggered_alerts"] == 1
+        assert data["sent_alerts"] == 0
+        mock_send_telegram.assert_not_called()
+
+
+class TestFXWatchUserIsolation:
+    """Tests for user_id query parameter isolation."""
+
+    def test_get_watches_should_isolate_by_user_id(self, client: TestClient):
+        # Arrange: create configs for two different users
+        client.post(
+            "/fx-watch?user_id=user_a",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "TWD",
+            },
+        )
+        client.post(
+            "/fx-watch?user_id=user_b",
+            json={
+                "base_currency": "EUR",
+                "quote_currency": "TWD",
+            },
+        )
+
+        # Act: query for user_a only
+        response = client.get("/fx-watch?user_id=user_a")
+
+        # Assert: only user_a's config returned
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["base_currency"] == "USD"
+        assert data[0]["user_id"] == "user_a"

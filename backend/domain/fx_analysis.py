@@ -264,7 +264,9 @@ def assess_exchange_timing(
     else:
         # 評估啟用的條件
         high_condition = alert_on_recent_high and near_high
-        consec_condition = alert_on_consecutive_increase and consec >= consecutive_threshold
+        consec_condition = (
+            alert_on_consecutive_increase and consec >= consecutive_threshold
+        )
         should_alert = high_condition or consec_condition
 
         if should_alert:
@@ -277,9 +279,7 @@ def assess_exchange_timing(
             elif consec_condition:
                 triggers.append("連續上漲")
 
-            recommendation_zh = (
-                f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
-            )
+            recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
             parts = []
             if high_condition:
                 parts.append(f"已接近 {recent_high_days} 日高點 ({high:.4f})")
@@ -289,23 +289,15 @@ def assess_exchange_timing(
                 f"{base_currency}/{quote_currency} "
                 f"{'，且'.join(parts)}，現在可能是換匯好時機。"
             )
-        elif near_high and not alert_on_consecutive_increase:
-            # 偵測到高點但連續上漲監控已關閉
-            recommendation_zh = "接近高點（連續上漲監控已關閉）"
-            reasoning_zh = f"匯率接近 {recent_high_days} 日高點，連續上漲監控未啟用。"
-        elif near_high and alert_on_consecutive_increase:
-            # 接近高點但連續上漲未達標
+        elif near_high:
+            # 接近高點但連續上漲未達標（alert_on_recent_high 必為 False，否則 should_alert=True）
             recommendation_zh = "接近高點但上漲動能不足，可再觀察"
             reasoning_zh = (
                 f"匯率接近 {recent_high_days} 日高點，但連續上漲僅 {consec} 日 "
                 f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
             )
-        elif consec >= consecutive_threshold and not alert_on_recent_high:
-            # 連續上漲達標但近期高點監控已關閉
-            recommendation_zh = "持續上漲（近期高點監控已關閉）"
-            reasoning_zh = f"連續上漲 {consec} 日達門檻，近期高點監控未啟用。"
-        elif consec >= consecutive_threshold and alert_on_recent_high:
-            # 連續上漲達標但未達高點
+        elif consec >= consecutive_threshold:
+            # 連續上漲達標但未達高點（alert_on_consecutive_increase 必為 False，否則 should_alert=True）
             recommendation_zh = "持續上漲但未達高點，可再等待"
             reasoning_zh = (
                 f"連續上漲 {consec} 日但匯率尚未達 {recent_high_days} 日高點附近，"

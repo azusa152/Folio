@@ -13,6 +13,7 @@ from infrastructure.repositories import (
     find_active_fx_watches,
     find_all_fx_watches,
     find_fx_watch_by_id,
+    update_fx_watch,
     update_fx_watch_last_alerted,
 )
 
@@ -201,6 +202,96 @@ class TestFXWatchRepository:
     ):
         # Act & Assert (should not raise)
         update_fx_watch_last_alerted(test_session, 9999, datetime.now(timezone.utc))
+
+    def test_update_fx_watch_should_persist_changes_and_update_timestamp(
+        self, test_session: Session
+    ):
+        # Arrange
+        watch = FXWatchConfig(
+            user_id=DEFAULT_USER_ID,
+            base_currency="USD",
+            quote_currency="TWD",
+            recent_high_days=30,
+        )
+        created = create_fx_watch(test_session, watch)
+        original_updated = created.updated_at
+
+        # Act
+        created.recent_high_days = 60
+        updated = update_fx_watch(test_session, created)
+
+        # Assert
+        assert updated.recent_high_days == 60
+        found = find_fx_watch_by_id(test_session, created.id)
+        assert found.recent_high_days == 60
+        # updated_at should have changed
+        assert found.updated_at is not None
+        if original_updated is not None:
+            assert found.updated_at >= original_updated
+
+    def test_find_all_fx_watches_should_filter_by_user_id(self, test_session: Session):
+        # Arrange: create watches for different users
+        create_fx_watch(
+            test_session,
+            FXWatchConfig(
+                user_id="user_a",
+                base_currency="USD",
+                quote_currency="TWD",
+                is_active=True,
+            ),
+        )
+        create_fx_watch(
+            test_session,
+            FXWatchConfig(
+                user_id="user_b",
+                base_currency="EUR",
+                quote_currency="TWD",
+                is_active=True,
+            ),
+        )
+        create_fx_watch(
+            test_session,
+            FXWatchConfig(
+                user_id="user_a",
+                base_currency="GBP",
+                quote_currency="TWD",
+                is_active=False,
+            ),
+        )
+
+        # Act
+        user_a_watches = find_all_fx_watches(test_session, user_id="user_a")
+
+        # Assert
+        assert len(user_a_watches) == 2
+        assert all(w.user_id == "user_a" for w in user_a_watches)
+
+    def test_find_all_fx_watches_should_return_all_when_user_id_is_none(
+        self, test_session: Session
+    ):
+        # Arrange
+        create_fx_watch(
+            test_session,
+            FXWatchConfig(
+                user_id="user_x",
+                base_currency="USD",
+                quote_currency="TWD",
+            ),
+        )
+        create_fx_watch(
+            test_session,
+            FXWatchConfig(
+                user_id="user_y",
+                base_currency="EUR",
+                quote_currency="TWD",
+            ),
+        )
+
+        # Act
+        all_watches = find_all_fx_watches(test_session, user_id=None)
+
+        # Assert
+        assert len(all_watches) == 2
 
     def test_delete_fx_watch(self, test_session: Session):
         # Arrange

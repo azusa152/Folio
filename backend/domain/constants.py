@@ -167,7 +167,9 @@ FX_WATCH_DEFAULT_RECENT_HIGH_DAYS = 30  # 30-day recent high window
 FX_WATCH_DEFAULT_CONSECUTIVE_DAYS = 3  # 3-day consecutive increase threshold
 FX_WATCH_DEFAULT_REMINDER_HOURS = 24  # 24-hour cooldown between alerts
 FX_WATCH_DEFAULT_ALERT_ON_RECENT_HIGH = True  # Enable recent high alerts by default
-FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE = True  # Enable consecutive increase alerts by default
+FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE = (
+    True  # Enable consecutive increase alerts by default
+)
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
