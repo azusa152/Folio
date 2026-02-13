@@ -148,6 +148,8 @@ class FXTimingResult:
     lookback_days: int  # 回溯天數
     consecutive_increases: int  # 連續上漲天數
     consecutive_threshold: int  # 連續上漲門檻
+    alert_on_recent_high: bool  # 是否啟用近期高點警報
+    alert_on_consecutive_increase: bool  # 是否啟用連續上漲警報
     should_alert: bool  # 是否應發出警報
     recommendation_zh: str  # 繁體中文建議
     reasoning_zh: str  # 繁體中文理由
@@ -212,8 +214,10 @@ def assess_exchange_timing(
     base_currency: str,
     quote_currency: str,
     history: list[dict],
-    lookback_days: int,
+    recent_high_days: int,
     consecutive_threshold: int,
+    alert_on_recent_high: bool = True,
+    alert_on_consecutive_increase: bool = True,
 ) -> FXTimingResult:
     """
     評估換匯時機，產出結構化分析結果。
@@ -222,8 +226,10 @@ def assess_exchange_timing(
         base_currency: 基礎貨幣（例如 USD）
         quote_currency: 報價貨幣（例如 TWD）
         history: 歷史匯率資料 [{\"date\": \"...\", \"close\": float}, ...]
-        lookback_days: 回溯天數（近期高點判定）
+        recent_high_days: 回溯天數（近期高點判定）
         consecutive_threshold: 連續上漲天數門檻
+        alert_on_recent_high: 是否啟用近期高點警報（預設 True）
+        alert_on_consecutive_increase: 是否啟用連續上漲警報（預設 True）
 
     Returns:
         FXTimingResult 結構化分析結果
@@ -235,43 +241,77 @@ def assess_exchange_timing(
             current_rate=0.0,
             is_recent_high=False,
             lookback_high=0.0,
-            lookback_days=lookback_days,
+            lookback_days=recent_high_days,
             consecutive_increases=0,
             consecutive_threshold=consecutive_threshold,
+            alert_on_recent_high=alert_on_recent_high,
+            alert_on_consecutive_increase=alert_on_consecutive_increase,
             should_alert=False,
             recommendation_zh="無歷史資料，無法分析",
             reasoning_zh="歷史資料不足",
         )
 
     current_rate = history[-1]["close"]
-    near_high, high = is_recent_high(current_rate, history, lookback_days)
+    near_high, high = is_recent_high(current_rate, history, recent_high_days)
     consec = count_consecutive_increases(history)
 
-    # 判斷是否應發出警報：接近高點 + 連續上漲達標
-    should_alert = near_high and consec >= consecutive_threshold
-
-    # 產生繁體中文建議與理由
-    if should_alert:
-        recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}"
-        reasoning_zh = (
-            f"{base_currency}/{quote_currency} 已接近 {lookback_days} 日高點 "
-            f"({high:.4f})，且連續上漲 {consec} 日，現在可能是換匯好時機。"
-        )
-    elif near_high:
-        recommendation_zh = "接近高點但上漲動能不足，可再觀察"
-        reasoning_zh = (
-            f"匯率接近 {lookback_days} 日高點，但連續上漲僅 {consec} 日 "
-            f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
-        )
-    elif consec >= consecutive_threshold:
-        recommendation_zh = "持續上漲但未達高點，可再等待"
-        reasoning_zh = (
-            f"連續上漲 {consec} 日但匯率尚未達 {lookback_days} 日高點附近，"
-            f"可能還有上漲空間。"
-        )
+    # 判斷是否應發出警報：根據啟用的條件使用 OR 邏輯
+    if not alert_on_recent_high and not alert_on_consecutive_increase:
+        # 兩項條件皆關閉
+        should_alert = False
+        recommendation_zh = "監控已停用：兩項條件皆關閉"
+        reasoning_zh = "請啟用至少一項警報條件（近期高點或連續上漲）"
     else:
-        recommendation_zh = "暫無換匯訊號"
-        reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {consec} 日。"
+        # 評估啟用的條件
+        high_condition = alert_on_recent_high and near_high
+        consec_condition = alert_on_consecutive_increase and consec >= consecutive_threshold
+        should_alert = high_condition or consec_condition
+
+        if should_alert:
+            # 產生觸發條件說明
+            triggers = []
+            if high_condition and consec_condition:
+                triggers.append("近期高點 + 連續上漲")
+            elif high_condition:
+                triggers.append("近期高點")
+            elif consec_condition:
+                triggers.append("連續上漲")
+
+            recommendation_zh = (
+                f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
+            )
+            reasoning_zh = (
+                f"{base_currency}/{quote_currency} "
+                f"{'已接近 ' + str(recent_high_days) + ' 日高點 (' + f'{high:.4f}' + ')' if high_condition else ''}"
+                f"{'，且' if high_condition and consec_condition else ''}"
+                f"{'連續上漲 ' + str(consec) + ' 日' if consec_condition else ''}"
+                f"，現在可能是換匯好時機。"
+            )
+        elif near_high and not alert_on_consecutive_increase:
+            # 偵測到高點但連續上漲監控已關閉
+            recommendation_zh = "接近高點（連續上漲監控已關閉）"
+            reasoning_zh = f"匯率接近 {recent_high_days} 日高點，連續上漲監控未啟用。"
+        elif near_high and alert_on_consecutive_increase:
+            # 接近高點但連續上漲未達標
+            recommendation_zh = "接近高點但上漲動能不足，可再觀察"
+            reasoning_zh = (
+                f"匯率接近 {recent_high_days} 日高點，但連續上漲僅 {consec} 日 "
+                f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
+            )
+        elif consec >= consecutive_threshold and not alert_on_recent_high:
+            # 連續上漲達標但近期高點監控已關閉
+            recommendation_zh = "持續上漲（近期高點監控已關閉）"
+            reasoning_zh = f"連續上漲 {consec} 日達門檻，近期高點監控未啟用。"
+        elif consec >= consecutive_threshold and alert_on_recent_high:
+            # 連續上漲達標但未達高點
+            recommendation_zh = "持續上漲但未達高點，可再等待"
+            reasoning_zh = (
+                f"連續上漲 {consec} 日但匯率尚未達 {recent_high_days} 日高點附近，"
+                f"可能還有上漲空間。"
+            )
+        else:
+            recommendation_zh = "暫無換匯訊號"
+            reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {consec} 日。"
 
     return FXTimingResult(
         base_currency=base_currency,
@@ -279,9 +319,11 @@ def assess_exchange_timing(
         current_rate=current_rate,
         is_recent_high=near_high,
         lookback_high=high,
-        lookback_days=lookback_days,
+        lookback_days=recent_high_days,
         consecutive_increases=consec,
         consecutive_threshold=consecutive_threshold,
+        alert_on_recent_high=alert_on_recent_high,
+        alert_on_consecutive_increase=alert_on_consecutive_increase,
         should_alert=should_alert,
         recommendation_zh=recommendation_zh,
         reasoning_zh=reasoning_zh,

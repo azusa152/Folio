@@ -13,8 +13,10 @@ class TestFXWatchCRUD:
         payload = {
             "base_currency": "USD",
             "quote_currency": "TWD",
-            "lookback_days": 30,
+            "recent_high_days": 30,
             "consecutive_increase_days": 3,
+            "alert_on_recent_high": True,
+            "alert_on_consecutive_increase": True,
             "reminder_interval_hours": 24,
         }
 
@@ -26,8 +28,10 @@ class TestFXWatchCRUD:
         data = response.json()
         assert data["base_currency"] == "USD"
         assert data["quote_currency"] == "TWD"
-        assert data["lookback_days"] == 30
+        assert data["recent_high_days"] == 30
         assert data["consecutive_increase_days"] == 3
+        assert data["alert_on_recent_high"] is True
+        assert data["alert_on_consecutive_increase"] is True
         assert data["reminder_interval_hours"] == 24
         assert data["is_active"] is True
         assert "id" in data
@@ -106,7 +110,7 @@ class TestFXWatchCRUD:
         update_response = client.patch(
             f"/fx-watch/{watch_id}",
             json={
-                "lookback_days": 60,
+                "recent_high_days": 60,
                 "consecutive_increase_days": 5,
                 "is_active": False,
             },
@@ -116,7 +120,7 @@ class TestFXWatchCRUD:
         assert update_response.status_code == 200
         data = update_response.json()
         assert data["id"] == watch_id
-        assert data["lookback_days"] == 60
+        assert data["recent_high_days"] == 60
         assert data["consecutive_increase_days"] == 5
         assert data["is_active"] is False
 
@@ -161,6 +165,107 @@ class TestFXWatchCRUD:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
+    def test_create_with_only_recent_high_enabled(self, client: TestClient):
+        """Create config with only recent high toggle enabled."""
+        # Arrange
+        payload = {
+            "base_currency": "USD",
+            "quote_currency": "TWD",
+            "alert_on_recent_high": True,
+            "alert_on_consecutive_increase": False,
+        }
+
+        # Act
+        response = client.post("/fx-watch", json=payload)
+
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        assert data["alert_on_recent_high"] is True
+        assert data["alert_on_consecutive_increase"] is False
+
+    def test_create_with_only_consecutive_enabled(self, client: TestClient):
+        """Create config with only consecutive increase toggle enabled."""
+        # Arrange
+        payload = {
+            "base_currency": "EUR",
+            "quote_currency": "JPY",
+            "alert_on_recent_high": False,
+            "alert_on_consecutive_increase": True,
+        }
+
+        # Act
+        response = client.post("/fx-watch", json=payload)
+
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        assert data["alert_on_recent_high"] is False
+        assert data["alert_on_consecutive_increase"] is True
+
+    def test_create_with_both_toggles_disabled(self, client: TestClient):
+        """Create config with both toggles disabled."""
+        # Arrange
+        payload = {
+            "base_currency": "GBP",
+            "quote_currency": "USD",
+            "alert_on_recent_high": False,
+            "alert_on_consecutive_increase": False,
+        }
+
+        # Act
+        response = client.post("/fx-watch", json=payload)
+
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        assert data["alert_on_recent_high"] is False
+        assert data["alert_on_consecutive_increase"] is False
+
+    def test_update_toggle_flags(self, client: TestClient):
+        """Update toggle flags via PATCH."""
+        # Arrange: Create config with defaults
+        create_resp = client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "TWD",
+            },
+        )
+        watch_id = create_resp.json()["id"]
+
+        # Act: Update toggles
+        update_resp = client.patch(
+            f"/fx-watch/{watch_id}",
+            json={
+                "alert_on_recent_high": False,
+                "alert_on_consecutive_increase": True,
+            },
+        )
+
+        # Assert
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert data["alert_on_recent_high"] is False
+        assert data["alert_on_consecutive_increase"] is True
+
+    def test_defaults_when_toggles_not_specified(self, client: TestClient):
+        """Verify default toggle values when not explicitly provided."""
+        # Arrange: Create config without specifying toggles
+        payload = {
+            "base_currency": "USD",
+            "quote_currency": "CNY",
+        }
+
+        # Act
+        response = client.post("/fx-watch", json=payload)
+
+        # Assert: Both should default to True
+        assert response.status_code == 201
+        data = response.json()
+        assert data["alert_on_recent_high"] is True
+        assert data["alert_on_consecutive_increase"] is True
+
 
 class TestFXWatchActions:
     """Tests for FX Watch action endpoints (check & alert)."""
@@ -185,7 +290,7 @@ class TestFXWatchActions:
             json={
                 "base_currency": "USD",
                 "quote_currency": "TWD",
-                "lookback_days": 5,
+                "recent_high_days": 5,
                 "consecutive_increase_days": 2,
             },
         )
@@ -212,6 +317,8 @@ class TestFXWatchActions:
         assert result["result"]["current_rate"] == 31.5
         assert result["result"]["is_recent_high"] is True
         assert result["result"]["consecutive_increases"] == 3
+        assert result["result"]["alert_on_recent_high"] is True
+        assert result["result"]["alert_on_consecutive_increase"] is True
 
     @patch("application.fx_watch_service.send_telegram_message_dual")
     @patch("application.fx_watch_service.get_forex_history_long")
@@ -229,7 +336,7 @@ class TestFXWatchActions:
             json={
                 "base_currency": "USD",
                 "quote_currency": "TWD",
-                "lookback_days": 5,
+                "recent_high_days": 5,
                 "consecutive_increase_days": 2,
             },
         )

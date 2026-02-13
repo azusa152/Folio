@@ -76,7 +76,7 @@ curl -s -X POST http://localhost:8000/webhook \
 | `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
 | `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert — three-tier detection (daily >1.5%, 5-day >2%, 3-month >8%), includes cash exposure amounts |
 | `GET` | `/fx-watch` | Get all FX watch configs (supports `?active_only=true`) |
-| `POST` | `/fx-watch` | Create FX watch config (base_currency, quote_currency, lookback_days, consecutive_increase_days, reminder_interval_hours) |
+| `POST` | `/fx-watch` | Create FX watch config (base_currency, quote_currency, recent_high_days, consecutive_increase_days, alert_on_recent_high, alert_on_consecutive_increase, reminder_interval_hours) |
 | `PATCH` | `/fx-watch/{id}` | Update FX watch config (optional fields) |
 | `DELETE` | `/fx-watch/{id}` | Delete FX watch config |
 | `POST` | `/fx-watch/check` | Check all FX watches (analysis only, no Telegram) |

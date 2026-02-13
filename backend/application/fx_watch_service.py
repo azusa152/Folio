@@ -37,8 +37,10 @@ def create_watch(
     session: Session,
     base_currency: str,
     quote_currency: str,
-    lookback_days: int = 30,
+    recent_high_days: int = 30,
     consecutive_increase_days: int = 3,
+    alert_on_recent_high: bool = True,
+    alert_on_consecutive_increase: bool = True,
     reminder_interval_hours: int = 24,
     user_id: str = DEFAULT_USER_ID,
 ) -> FXWatchConfig:
@@ -49,8 +51,10 @@ def create_watch(
         session: Database session
         base_currency: 基礎貨幣（例如 USD）
         quote_currency: 報價貨幣（例如 TWD）
-        lookback_days: 回溯天數（近期高點判定）
+        recent_high_days: 回溯天數（近期高點判定）
         consecutive_increase_days: 連續上漲天數門檻
+        alert_on_recent_high: 是否啟用近期高點警報
+        alert_on_consecutive_increase: 是否啟用連續上漲警報
         reminder_interval_hours: 提醒間隔（小時）
         user_id: 使用者 ID
 
@@ -61,18 +65,22 @@ def create_watch(
         user_id=user_id,
         base_currency=base_currency.upper(),
         quote_currency=quote_currency.upper(),
-        lookback_days=lookback_days,
+        recent_high_days=recent_high_days,
         consecutive_increase_days=consecutive_increase_days,
+        alert_on_recent_high=alert_on_recent_high,
+        alert_on_consecutive_increase=alert_on_consecutive_increase,
         reminder_interval_hours=reminder_interval_hours,
         is_active=True,
     )
     created = create_fx_watch(session, watch)
     logger.info(
-        "新增外匯監控：%s/%s (lookback=%dd, consecutive=%dd, interval=%dh)",
+        "新增外匯監控：%s/%s (recent_high=%dd, consecutive=%dd, flags=%s/%s, interval=%dh)",
         base_currency,
         quote_currency,
-        lookback_days,
+        recent_high_days,
         consecutive_increase_days,
+        alert_on_recent_high,
+        alert_on_consecutive_increase,
         reminder_interval_hours,
     )
     return created
@@ -105,8 +113,10 @@ def get_all_watches(
 def update_watch(
     session: Session,
     watch_id: int,
-    lookback_days: int | None = None,
+    recent_high_days: int | None = None,
     consecutive_increase_days: int | None = None,
+    alert_on_recent_high: bool | None = None,
+    alert_on_consecutive_increase: bool | None = None,
     reminder_interval_hours: int | None = None,
     is_active: bool | None = None,
 ) -> FXWatchConfig | None:
@@ -116,8 +126,10 @@ def update_watch(
     Args:
         session: Database session
         watch_id: 配置 ID
-        lookback_days: 回溯天數（可選）
+        recent_high_days: 回溯天數（可選）
         consecutive_increase_days: 連續上漲天數門檻（可選）
+        alert_on_recent_high: 是否啟用近期高點警報（可選）
+        alert_on_consecutive_increase: 是否啟用連續上漲警報（可選）
         reminder_interval_hours: 提醒間隔（可選）
         is_active: 是否啟用（可選）
 
@@ -128,10 +140,14 @@ def update_watch(
     if not watch:
         return None
 
-    if lookback_days is not None:
-        watch.lookback_days = lookback_days
+    if recent_high_days is not None:
+        watch.recent_high_days = recent_high_days
     if consecutive_increase_days is not None:
         watch.consecutive_increase_days = consecutive_increase_days
+    if alert_on_recent_high is not None:
+        watch.alert_on_recent_high = alert_on_recent_high
+    if alert_on_consecutive_increase is not None:
+        watch.alert_on_consecutive_increase = alert_on_consecutive_increase
     if reminder_interval_hours is not None:
         watch.reminder_interval_hours = reminder_interval_hours
     if is_active is not None:
@@ -142,7 +158,13 @@ def update_watch(
     session.commit()
     session.refresh(watch)
 
-    logger.info("更新外匯監控：ID=%d, is_active=%s", watch_id, watch.is_active)
+    logger.info(
+        "更新外匯監控：ID=%d, is_active=%s, flags=%s/%s",
+        watch_id,
+        watch.is_active,
+        watch.alert_on_recent_high,
+        watch.alert_on_consecutive_increase,
+    )
     return watch
 
 
@@ -208,8 +230,10 @@ def check_fx_watches(session: Session, user_id: str = DEFAULT_USER_ID) -> list[d
                 base_currency=watch.base_currency,
                 quote_currency=watch.quote_currency,
                 history=history,
-                lookback_days=watch.lookback_days,
+                recent_high_days=watch.recent_high_days,
                 consecutive_threshold=watch.consecutive_increase_days,
+                alert_on_recent_high=watch.alert_on_recent_high,
+                alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
             )
             results.append(
                 {
@@ -290,8 +314,10 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
                 base_currency=watch.base_currency,
                 quote_currency=watch.quote_currency,
                 history=history,
-                lookback_days=watch.lookback_days,
+                recent_high_days=watch.recent_high_days,
                 consecutive_threshold=watch.consecutive_increase_days,
+                alert_on_recent_high=watch.alert_on_recent_high,
+                alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
             )
 
             # 若應發出警報，加入列表並更新時間戳

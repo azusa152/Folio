@@ -190,8 +190,12 @@ class FXWatchConfig(SQLModel, table=True):
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     base_currency: str = Field(description="基礎貨幣，例如 USD")
     quote_currency: str = Field(description="報價貨幣，例如 TWD")
-    lookback_days: int = Field(default=30, description="回溯天數（近期高點判定）")
+    recent_high_days: int = Field(default=30, description="回溯天數（近期高點判定）")
     consecutive_increase_days: int = Field(default=3, description="連續上漲天數門檻")
+    alert_on_recent_high: bool = Field(default=True, description="是否啟用近期高點警報")
+    alert_on_consecutive_increase: bool = Field(
+        default=True, description="是否啟用連續上漲警報"
+    )
     reminder_interval_hours: int = Field(
         default=24, description="提醒間隔（小時），避免重複通知"
     )

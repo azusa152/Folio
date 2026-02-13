@@ -620,16 +620,20 @@ class FXWatchCreateRequest(BaseModel):
 
     base_currency: str
     quote_currency: str
-    lookback_days: int = 30
+    recent_high_days: int = 30
     consecutive_increase_days: int = 3
+    alert_on_recent_high: bool = True
+    alert_on_consecutive_increase: bool = True
     reminder_interval_hours: int = 24
 
 
 class FXWatchUpdateRequest(BaseModel):
     """PATCH /fx-watch/{id} 請求 Body：更新外匯監控配置。"""
 
-    lookback_days: Optional[int] = None
+    recent_high_days: Optional[int] = None
     consecutive_increase_days: Optional[int] = None
+    alert_on_recent_high: Optional[bool] = None
+    alert_on_consecutive_increase: Optional[bool] = None
     reminder_interval_hours: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -641,8 +645,10 @@ class FXWatchResponse(BaseModel):
     user_id: str
     base_currency: str
     quote_currency: str
-    lookback_days: int
+    recent_high_days: int
     consecutive_increase_days: int
+    alert_on_recent_high: bool
+    alert_on_consecutive_increase: bool
     reminder_interval_hours: int
     is_active: bool
     last_alerted_at: Optional[str] = None
@@ -661,6 +667,8 @@ class FXTimingResultResponse(BaseModel):
     lookback_days: int
     consecutive_increases: int
     consecutive_threshold: int
+    alert_on_recent_high: bool
+    alert_on_consecutive_increase: bool
     should_alert: bool
     recommendation_zh: str
     reasoning_zh: str

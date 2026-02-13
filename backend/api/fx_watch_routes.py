@@ -55,8 +55,10 @@ def get_fx_watch_configs(
             user_id=w.user_id,
             base_currency=w.base_currency,
             quote_currency=w.quote_currency,
-            lookback_days=w.lookback_days,
+            recent_high_days=w.recent_high_days,
             consecutive_increase_days=w.consecutive_increase_days,
+            alert_on_recent_high=w.alert_on_recent_high,
+            alert_on_consecutive_increase=w.alert_on_consecutive_increase,
             reminder_interval_hours=w.reminder_interval_hours,
             is_active=w.is_active,
             last_alerted_at=w.last_alerted_at.isoformat()
@@ -86,16 +88,20 @@ def create_fx_watch_config(
     Request Body:
     - base_currency: 基礎貨幣（例如 USD）
     - quote_currency: 報價貨幣（例如 TWD）
-    - lookback_days: 回溯天數（預設 30）
+    - recent_high_days: 回溯天數（預設 30）
     - consecutive_increase_days: 連續上漲天數門檻（預設 3）
+    - alert_on_recent_high: 是否啟用近期高點警報（預設 True）
+    - alert_on_consecutive_increase: 是否啟用連續上漲警報（預設 True）
     - reminder_interval_hours: 提醒間隔（預設 24）
     """
     watch = create_watch(
         session=session,
         base_currency=req.base_currency,
         quote_currency=req.quote_currency,
-        lookback_days=req.lookback_days,
+        recent_high_days=req.recent_high_days,
         consecutive_increase_days=req.consecutive_increase_days,
+        alert_on_recent_high=req.alert_on_recent_high,
+        alert_on_consecutive_increase=req.alert_on_consecutive_increase,
         reminder_interval_hours=req.reminder_interval_hours,
         user_id=user_id,
     )
@@ -104,8 +110,10 @@ def create_fx_watch_config(
         user_id=watch.user_id,
         base_currency=watch.base_currency,
         quote_currency=watch.quote_currency,
-        lookback_days=watch.lookback_days,
+        recent_high_days=watch.recent_high_days,
         consecutive_increase_days=watch.consecutive_increase_days,
+        alert_on_recent_high=watch.alert_on_recent_high,
+        alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
         reminder_interval_hours=watch.reminder_interval_hours,
         is_active=watch.is_active,
         last_alerted_at=watch.last_alerted_at.isoformat()
@@ -133,16 +141,20 @@ def update_fx_watch_config(
     - watch_id: 配置 ID
 
     Request Body:
-    - lookback_days: 回溯天數（可選）
+    - recent_high_days: 回溯天數（可選）
     - consecutive_increase_days: 連續上漲天數門檻（可選）
+    - alert_on_recent_high: 是否啟用近期高點警報（可選）
+    - alert_on_consecutive_increase: 是否啟用連續上漲警報（可選）
     - reminder_interval_hours: 提醒間隔（可選）
     - is_active: 是否啟用（可選）
     """
     watch = update_watch(
         session=session,
         watch_id=watch_id,
-        lookback_days=req.lookback_days,
+        recent_high_days=req.recent_high_days,
         consecutive_increase_days=req.consecutive_increase_days,
+        alert_on_recent_high=req.alert_on_recent_high,
+        alert_on_consecutive_increase=req.alert_on_consecutive_increase,
         reminder_interval_hours=req.reminder_interval_hours,
         is_active=req.is_active,
     )
@@ -156,8 +168,10 @@ def update_fx_watch_config(
         user_id=watch.user_id,
         base_currency=watch.base_currency,
         quote_currency=watch.quote_currency,
-        lookback_days=watch.lookback_days,
+        recent_high_days=watch.recent_high_days,
         consecutive_increase_days=watch.consecutive_increase_days,
+        alert_on_recent_high=watch.alert_on_recent_high,
+        alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
         reminder_interval_hours=watch.reminder_interval_hours,
         is_active=watch.is_active,
         last_alerted_at=watch.last_alerted_at.isoformat()
@@ -227,6 +241,8 @@ def check_fx_watch_alerts(
                     "lookback_days": r["result"].lookback_days,
                     "consecutive_increases": r["result"].consecutive_increases,
                     "consecutive_threshold": r["result"].consecutive_threshold,
+                    "alert_on_recent_high": r["result"].alert_on_recent_high,
+                    "alert_on_consecutive_increase": r["result"].alert_on_consecutive_increase,
                     "should_alert": r["result"].should_alert,
                     "recommendation_zh": r["result"].recommendation_zh,
                     "reasoning_zh": r["result"].reasoning_zh,
@@ -276,6 +292,8 @@ def send_fx_watch_alert(
                     "lookback_days": a["result"].lookback_days,
                     "consecutive_increases": a["result"].consecutive_increases,
                     "consecutive_threshold": a["result"].consecutive_threshold,
+                    "alert_on_recent_high": a["result"].alert_on_recent_high,
+                    "alert_on_consecutive_increase": a["result"].alert_on_consecutive_increase,
                     "should_alert": a["result"].should_alert,
                     "recommendation_zh": a["result"].recommendation_zh,
                     "reasoning_zh": a["result"].reasoning_zh,

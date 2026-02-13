@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from api.forex_routes import router as forex_router
 from api.fx_watch_routes import router as fx_watch_router
 from api.holding_routes import router as holding_router
 from api.persona_routes import router as persona_router
@@ -71,4 +72,5 @@ app.include_router(persona_router)
 app.include_router(holding_router)
 app.include_router(telegram_router)
 app.include_router(preferences_router)
+app.include_router(forex_router)
 app.include_router(fx_watch_router)

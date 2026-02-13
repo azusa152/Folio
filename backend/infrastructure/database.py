@@ -50,6 +50,11 @@ def _run_migrations() -> None:
         "ALTER TABLE userinvestmentprofile ADD COLUMN home_currency VARCHAR DEFAULT 'TWD';",
         # UserPreferences: 新增通知偏好 JSON 欄位
         "ALTER TABLE userpreferences ADD COLUMN notification_preferences VARCHAR DEFAULT '{}';",
+        # FX Watch: 新增獨立切換開關與欄位重命名
+        "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_recent_high BOOLEAN DEFAULT 1;",
+        "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_consecutive_increase BOOLEAN DEFAULT 1;",
+        "ALTER TABLE fxwatchconfig ADD COLUMN recent_high_days INTEGER DEFAULT 30;",
+        "UPDATE fxwatchconfig SET recent_high_days = lookback_days WHERE recent_high_days = 30;",
     ]
 
     with engine.connect() as conn:

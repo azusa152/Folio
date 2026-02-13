@@ -153,7 +153,8 @@ class TestAssessExchangeTiming:
         assert "建議考慮換匯" in result.recommendation_zh
         assert "接近 30 日高點" in result.reasoning_zh
 
-    def test_should_not_alert_when_near_high_but_insufficient_consecutive(self):
+    def test_should_alert_when_near_high_with_or_logic(self):
+        """With OR logic and both toggles enabled, alert fires when near high even if consecutive insufficient."""
         history = [
             {"date": "2026-01-15", "close": 30.0},
             {"date": "2026-02-09", "close": 31.0},
@@ -161,15 +162,17 @@ class TestAssessExchangeTiming:
             {"date": "2026-02-11", "close": 32.0},
         ]
 
-        # Set threshold to 4 so we don't trigger alert (actual consecutive is 3)
+        # Set threshold to 4 so consecutive is not met (actual consecutive is 3)
+        # But with OR logic, should still alert because near_high is True
         result = assess_exchange_timing("USD", "TWD", history, 30, 4)
 
         assert result.is_recent_high is True
         assert result.consecutive_increases == 3
-        assert result.should_alert is False
-        assert "接近高點但上漲動能不足" in result.recommendation_zh
+        assert result.should_alert is True  # OR logic: high condition met
+        assert "近期高點" in result.recommendation_zh
 
-    def test_should_not_alert_when_consecutive_but_not_near_high(self):
+    def test_should_alert_when_consecutive_with_or_logic(self):
+        """With OR logic and both toggles enabled, alert fires when consecutive met even if not near high."""
         history = [
             {"date": "2026-01-15", "close": 30.0},
             {"date": "2026-02-07", "close": 35.0},  # Recent high far above current
@@ -183,8 +186,8 @@ class TestAssessExchangeTiming:
 
         assert result.is_recent_high is False
         assert result.consecutive_increases >= 3
-        assert result.should_alert is False
-        assert "持續上漲但未達高點" in result.recommendation_zh
+        assert result.should_alert is True  # OR logic: consecutive condition met
+        assert "連續上漲" in result.recommendation_zh
 
     def test_should_return_no_signal_when_neither_condition_met(self):
         history = [
@@ -214,3 +217,129 @@ class TestAssessExchangeTiming:
         assert result.is_recent_high is True
         assert result.consecutive_increases == 2
         assert result.should_alert is True
+
+    def test_should_alert_when_only_recent_high_enabled_and_met(self):
+        """Alert fires when only recent high is enabled and condition is met."""
+        history = [
+            {"date": "2026-01-15", "close": 30.0},
+            {"date": "2026-02-11", "close": 32.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=False,
+        )
+
+        assert result.should_alert is True
+        assert result.alert_on_recent_high is True
+        assert result.alert_on_consecutive_increase is False
+        assert "近期高點" in result.recommendation_zh
+        # Alert fires successfully, so no "監控已關閉" message
+
+    def test_should_alert_when_only_consecutive_enabled_and_met(self):
+        """Alert fires when only consecutive is enabled and condition is met."""
+        history = [
+            {"date": "2026-02-07", "close": 35.0},  # Recent high far above
+            {"date": "2026-02-08", "close": 30.0},
+            {"date": "2026-02-09", "close": 30.5},
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 31.5},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=True,
+        )
+
+        assert result.should_alert is True
+        assert result.alert_on_recent_high is False
+        assert result.alert_on_consecutive_increase is True
+        assert "連續上漲" in result.recommendation_zh
+        # Alert fires successfully, so no "監控已關閉" message
+
+    def test_should_not_alert_when_both_toggles_disabled(self):
+        """No alert when both toggles are disabled."""
+        history = [
+            {"date": "2026-02-08", "close": 30.0},
+            {"date": "2026-02-09", "close": 31.0},
+            {"date": "2026-02-10", "close": 32.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            2,
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=False,
+        )
+
+        assert result.should_alert is False
+        assert result.alert_on_recent_high is False
+        assert result.alert_on_consecutive_increase is False
+        assert "監控已停用" in result.recommendation_zh
+        assert "兩項條件皆關閉" in result.recommendation_zh
+
+    def test_should_alert_with_or_logic_when_only_one_condition_met(self):
+        """Alert fires when EITHER condition is met (both enabled, OR logic)."""
+        # Arrange: Near high but not consecutive
+        history = [
+            {"date": "2026-01-15", "close": 30.0},
+            {"date": "2026-02-10", "close": 31.8},
+            {"date": "2026-02-11", "close": 32.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            5,  # High threshold that won't be met
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=True,
+        )
+
+        # With OR logic, should alert because near high is true
+        assert result.should_alert is True
+        assert result.is_recent_high is True
+        assert result.consecutive_increases < 5  # Not enough consecutive
+        assert "近期高點" in result.recommendation_zh
+
+    def test_should_show_both_triggers_when_both_conditions_met(self):
+        """Recommendation shows both conditions when both are met."""
+        history = [
+            {"date": "2026-02-08", "close": 30.0},
+            {"date": "2026-02-09", "close": 30.5},
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 32.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=True,
+        )
+
+        assert result.should_alert is True
+        assert result.is_recent_high is True
+        assert result.consecutive_increases >= 3
+        # Should mention both conditions
+        assert "近期高點 + 連續上漲" in result.recommendation_zh or (
+            "近期高點" in result.recommendation_zh
+            and "連續上漲" in result.recommendation_zh
+        )
