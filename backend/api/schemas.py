@@ -29,6 +29,7 @@ class TickerCreateRequest(BaseModel):
     category: StockCategory
     thesis: str
     tags: list[str] = []
+    is_etf: Optional[bool] = None
 
 
 class ThesisCreateRequest(BaseModel):
@@ -78,6 +79,7 @@ class StockImportItem(BaseModel):
     category: str
     thesis: str = ""
     tags: list[str] = []
+    is_etf: Optional[bool] = None
 
 
 class HoldingImportItem(BaseModel):
@@ -133,6 +135,7 @@ class StockResponse(BaseModel):
     current_tags: list[str] = []
     display_order: int = 0
     is_active: bool
+    is_etf: bool = False
     signals: Optional[dict] = None
 
 
@@ -271,6 +274,7 @@ class StockExportItem(BaseModel):
     category: str
     thesis: str = ""
     tags: list[str] = []
+    is_etf: bool = False
 
 
 class HoldingExportItem(BaseModel):

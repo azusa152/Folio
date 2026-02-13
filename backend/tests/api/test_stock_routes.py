@@ -192,6 +192,78 @@ class TestUpdateCategory:
         assert resp.json()["detail"]["error_code"] == "CATEGORY_UNCHANGED"
 
 
+class TestCreateStockETF:
+    """Tests for is_etf field in POST /ticker."""
+
+    def test_create_stock_should_default_is_etf_to_false(self, client):
+        # Act — no is_etf provided, mock returns False
+        resp = client.post(
+            "/ticker",
+            json={"ticker": "NVDA", "category": "Growth", "thesis": "AI leader"},
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        assert resp.json()["is_etf"] is False
+
+    def test_create_stock_should_accept_explicit_is_etf_true(self, client):
+        # Act — explicitly pass is_etf=True
+        resp = client.post(
+            "/ticker",
+            json={
+                "ticker": "VTI",
+                "category": "Trend_Setter",
+                "thesis": "US Market ETF",
+                "is_etf": True,
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        assert resp.json()["is_etf"] is True
+
+    def test_export_should_include_is_etf_field(self, client):
+        # Arrange
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "VTI",
+                "category": "Trend_Setter",
+                "thesis": "ETF",
+                "is_etf": True,
+            },
+        )
+
+        # Act
+        resp = client.get("/stocks/export")
+
+        # Assert
+        assert resp.status_code == 200
+        exported = resp.json()
+        assert len(exported) == 1
+        assert exported[0]["is_etf"] is True
+
+    def test_list_stocks_should_include_is_etf_field(self, client):
+        # Arrange
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "MSFT",
+                "category": "Trend_Setter",
+                "thesis": "Cloud",
+            },
+        )
+
+        # Act
+        resp = client.get("/stocks")
+
+        # Assert
+        assert resp.status_code == 200
+        stocks = resp.json()
+        assert len(stocks) == 1
+        assert stocks[0]["is_etf"] is False
+
+
 class TestGetSummary:
     """Tests for GET /summary."""
 

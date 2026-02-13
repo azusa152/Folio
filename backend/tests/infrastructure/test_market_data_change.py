@@ -1,23 +1,11 @@
 """Tests for daily change calculation in market_data."""
 
-import os
-import tempfile
+from unittest.mock import MagicMock, patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+import pytest
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_change"
-)
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-import pytest  # noqa: E402
-
-from infrastructure.market_data import _fetch_signals_from_yf  # noqa: E402
+from infrastructure.market_data import _fetch_signals_from_yf
 
 
 class TestDailyChangeCalculation:

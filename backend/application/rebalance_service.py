@@ -200,14 +200,12 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
     total_value_change = round(total_value - previous_total_value, 2)
     total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
-    if total_value_change_pct is None:
-        total_value_change_pct = 0.0
 
     logger.info(
         "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
         previous_total_value,
         total_value,
-        total_value_change if total_value_change is not None else 0.0,
+        total_value_change,
         total_value_change_pct if total_value_change_pct is not None else 0.0,
     )
 

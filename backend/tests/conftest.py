@@ -69,7 +69,7 @@ MOCK_MOAT = {
 }
 
 MOCK_FEAR_GREED = {
-    "composite_score": 38,
+    "composite_score": 38,  # CNN-primary: equals CNN mock score directly
     "composite_level": "FEAR",
     "vix": {
         "value": 22.5,
@@ -145,6 +145,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.stock_service.get_technical_signals", MOCK_SIGNALS),
     ("application.stock_service.get_earnings_date", _MOCK_EARNINGS),
     ("application.stock_service.get_dividend_info", _MOCK_DIVIDEND),
+    ("application.stock_service.detect_is_etf", False),
     # API routes
     ("api.scan_routes.get_fear_greed_index", MOCK_FEAR_GREED),
 ]

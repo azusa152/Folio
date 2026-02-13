@@ -61,6 +61,14 @@ def health_check() -> dict:
     return {"status": "ok", "service": "folio-backend"}
 
 
+@app.post("/admin/cache/clear", summary="Clear all backend caches (L1 + L2)")
+def clear_cache() -> dict:
+    from infrastructure.market_data import clear_all_caches
+
+    result = clear_all_caches()
+    return {"status": "ok", **result}
+
+
 # ---------------------------------------------------------------------------
 # 註冊路由
 # ---------------------------------------------------------------------------

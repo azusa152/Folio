@@ -108,7 +108,7 @@ def invalidate_profile_caches() -> None:
 
 
 def invalidate_all_caches() -> None:
-    """Nuclear option — only for explicit refresh button."""
+    """Clear frontend Streamlit caches, forcing re-fetch from backend API."""
     st.cache_data.clear()
 
 
@@ -202,6 +202,18 @@ def api_get_silent(path: str, timeout: int | None = None) -> dict | list | None:
     """GET request to Backend API (silent mode — no error display)."""
     try:
         resp = requests.get(f"{BACKEND_URL}{path}", timeout=timeout or API_GET_TIMEOUT)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+def api_post_silent(path: str, json_data: dict | None = None) -> dict | None:
+    """POST request to Backend API (silent mode — no error display)."""
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}{path}", json=json_data or {}, timeout=API_POST_TIMEOUT
+        )
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:

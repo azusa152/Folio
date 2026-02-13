@@ -73,7 +73,7 @@
 
 | 分類 | 說明 | Layer 1 參與 |
 |------|------|:------------:|
-| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | 是 |
+| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex（ETF 不參與情緒計算） | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
 | **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
@@ -375,6 +375,7 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `DELETE` | `/fx-watch/{id}` | 刪除外匯監控配置 |
 | `POST` | `/fx-watch/check` | 檢查所有外匯監控（分析結果，不發送 Telegram） |
 | `POST` | `/fx-watch/alert` | 檢查外匯監控並發送 Telegram 警報（帶冷卻機制） |
+| `POST` | `/admin/cache/clear` | 清除所有後端快取（L1 記憶體 + L2 磁碟） |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
@@ -509,6 +510,14 @@ curl -s -X POST http://localhost:8000/withdraw \
 curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
   -d '{"action": "withdraw", "params": {"amount": 50000, "currency": "TWD"}}'
+```
+
+### 清除後端快取（Admin）
+
+```bash
+# 清除所有後端快取（L1 記憶體 × 10 + L2 磁碟），適用於快取資料過期但 TTL 未到的情況
+curl -X POST http://localhost:8000/admin/cache/clear
+# => {"status":"ok","l1_cleared":10,"l2_cleared":true}
 ```
 
 ### 設定自訂 Telegram Bot

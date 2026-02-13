@@ -1,26 +1,14 @@
 """Tests for portfolio-level daily change calculation in rebalance_service."""
 
 import json
-import os
-import tempfile
+from unittest.mock import patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pytest
+from sqlmodel import Session
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_rebalance_change"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-import pytest  # noqa: E402
-from sqlmodel import Session  # noqa: E402
-
-from application.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Holding, UserInvestmentProfile  # noqa: E402
-from domain.enums import StockCategory  # noqa: E402
+from application.rebalance_service import calculate_rebalance
+from domain.entities import Holding, UserInvestmentProfile
+from domain.enums import StockCategory
 
 
 class TestRebalancePortfolioChange:
@@ -29,8 +17,16 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_technical_signals")
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
     def test_calculate_rebalance_should_include_total_change(
-        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
+        self,
+        _mock_etf,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
     ):
         # Arrange
         profile = UserInvestmentProfile(
@@ -81,8 +77,16 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_technical_signals")
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
     def test_calculate_rebalance_should_include_holding_change_pct(
-        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
+        self,
+        _mock_etf,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
     ):
         # Arrange
         profile = UserInvestmentProfile(
@@ -130,8 +134,16 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_technical_signals")
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
     def test_calculate_rebalance_should_handle_missing_previous_close(
-        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
+        self,
+        _mock_etf,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
     ):
         # Arrange: New stock with no previous_close
         profile = UserInvestmentProfile(
@@ -209,8 +221,16 @@ class TestRebalancePortfolioChange:
     @patch("application.rebalance_service.get_technical_signals")
     @patch("application.rebalance_service.get_exchange_rates")
     @patch("application.rebalance_service.prewarm_signals_batch")
+    @patch("application.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.rebalance_service.get_etf_top_holdings", return_value=None)
     def test_calculate_rebalance_should_aggregate_multiple_holdings_change(
-        self, mock_prewarm, mock_fx, mock_signals, db_session: Session
+        self,
+        _mock_etf,
+        _mock_etf_prewarm,
+        mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
     ):
         # Arrange: Multiple holdings with different changes
         profile = UserInvestmentProfile(

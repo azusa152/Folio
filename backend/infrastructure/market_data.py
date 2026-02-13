@@ -202,6 +202,27 @@ def _disk_set(key: str, value, ttl: int) -> None:
         pass
 
 
+def clear_all_caches() -> dict:
+    """清除所有 L1 記憶體快取與 L2 磁碟快取。"""
+    l1_caches = [
+        _signals_cache,
+        _moat_cache,
+        _earnings_cache,
+        _dividend_cache,
+        _price_history_cache,
+        _forex_cache,
+        _etf_holdings_cache,
+        _forex_history_cache,
+        _forex_history_long_cache,
+        _fear_greed_cache,
+    ]
+    for cache in l1_caches:
+        cache.clear()
+    _disk_cache.clear()
+    logger.info("已清除所有快取（L1×%d + L2 磁碟）。", len(l1_caches))
+    return {"l1_cleared": len(l1_caches), "l2_cleared": True}
+
+
 def _cached_fetch(
     l1_cache: TTLCache,
     ticker: str,
@@ -289,6 +310,15 @@ def _yf_info(ticker: str):
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     return stock.info or {}
+
+
+def detect_is_etf(ticker: str) -> bool:
+    """透過 yfinance quoteType 偵測是否為 ETF。失敗時回傳 False。"""
+    try:
+        info = _yf_info(ticker)
+        return info.get("quoteType", "") == "ETF"
+    except Exception:
+        return False
 
 
 @_yf_retry
