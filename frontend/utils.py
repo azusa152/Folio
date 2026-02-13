@@ -85,6 +85,18 @@ def refresh_ui() -> None:
     st.rerun()
 
 
+_TOAST_DISPATCH = {"success": st.success, "error": st.error, "warning": st.warning}
+
+
+def show_toast(level: str, msg: str) -> None:
+    """Display a Streamlit toast/message via level name.
+
+    Safely dispatches to ``st.success``, ``st.error``, or ``st.warning``.
+    Falls back to ``st.error`` for unrecognised levels.
+    """
+    _TOAST_DISPATCH.get(level, st.error)(msg)
+
+
 # ---------------------------------------------------------------------------
 # Targeted Cache Invalidation
 # ---------------------------------------------------------------------------
@@ -473,6 +485,114 @@ def post_telegram_test() -> tuple[str, str]:
         return ("error", f"❌ 請求失敗：{exc}")
 
 
+def post_xray_alert(display_currency: str = "USD") -> tuple[str, str]:
+    """POST /rebalance/xray-alert — 發送 X-Ray 集中度警告至 Telegram。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"error"``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/rebalance/xray-alert",
+            params={"display_currency": display_currency},
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            data = resp.json()
+            w_count = len(data.get("warnings", []))
+            return ("success", f"✅ {data.get('message', f'{w_count} 筆警告已發送')}")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("X-Ray 警告 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 發送失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("X-Ray 警告 API 連線失敗: %s", exc)
+        return ("error", f"❌ 發送失敗：{exc}")
+
+
+def post_fx_exposure_alert() -> tuple[str, str]:
+    """POST /currency-exposure/alert — 發送匯率曝險警報至 Telegram。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"error"``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/currency-exposure/alert",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            data = resp.json()
+            a_count = len(data.get("alerts", []))
+            return ("success", f"✅ {data.get('message', f'{a_count} 筆警報已發送')}")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("匯率曝險警報 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 發送失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("匯率曝險警報 API 連線失敗: %s", exc)
+        return ("error", f"❌ 發送失敗：{exc}")
+
+
+def put_telegram_settings(payload: dict) -> tuple[str, str]:
+    """PUT /settings/telegram — 儲存 Telegram 設定。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"error"``.
+    """
+    try:
+        resp = requests.put(
+            f"{BACKEND_URL}/settings/telegram",
+            json=payload,
+            timeout=API_PUT_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return ("success", "✅ Telegram 設定已儲存")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("Telegram 設定 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 儲存失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("Telegram 設定 API 連線失敗: %s", exc)
+        return ("error", f"❌ 請求失敗：{exc}")
+
+
+def put_notification_preferences(
+    privacy_mode: bool, notification_preferences: dict
+) -> tuple[str, str]:
+    """PUT /settings/preferences — 儲存通知偏好。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"error"``.
+    """
+    try:
+        resp = requests.put(
+            f"{BACKEND_URL}/settings/preferences",
+            json={
+                "privacy_mode": privacy_mode,
+                "notification_preferences": notification_preferences,
+            },
+            timeout=API_PUT_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return ("success", "✅ 通知偏好已儲存")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("通知偏好 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 儲存失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("通知偏好 API 連線失敗: %s", exc)
+        return ("error", f"❌ 請求失敗：{exc}")
+
+
 def post_digest() -> tuple[str, str]:
     """POST /digest — 觸發每週摘要（背景執行）。
 
@@ -503,6 +623,180 @@ def post_digest() -> tuple[str, str]:
     except requests.RequestException as exc:
         logger.error("摘要 API 連線失敗: %s", exc)
         return ("error", f"❌ 請求失敗：{exc}")
+
+
+# ---------------------------------------------------------------------------
+# FX Watch — Action Helpers
+# ---------------------------------------------------------------------------
+
+
+def create_fx_watch(payload: dict) -> tuple[str, str]:
+    """POST /fx-watch — 新增監控配置。
+
+    Returns ``(level, message)``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/fx-watch",
+            json=payload,
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            pair = f"{payload.get('base_currency', '')}/{payload.get('quote_currency', '')}"
+            return ("success", f"✅ 已新增 {pair} 監控")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("FX Watch 新增 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 新增失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("FX Watch 新增 API 連線失敗: %s", exc)
+        return ("error", f"❌ 新增失敗：{exc}")
+
+
+def patch_fx_watch(watch_id: int, payload: dict) -> tuple[str, str]:
+    """PATCH /fx-watch/{id} — 更新監控配置。
+
+    Returns ``(level, message)``.
+    """
+    try:
+        resp = requests.patch(
+            f"{BACKEND_URL}/fx-watch/{watch_id}",
+            json=payload,
+            timeout=API_PATCH_TIMEOUT,
+        )
+        if resp.ok:
+            return ("success", "✅ 已更新")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("FX Watch 更新 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 更新失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("FX Watch 更新 API 連線失敗: %s", exc)
+        return ("error", f"❌ 更新失敗：{exc}")
+
+
+def toggle_fx_watch(watch_id: int, is_active: bool) -> bool:
+    """PATCH /fx-watch/{id} — 切換監控啟用狀態。
+
+    Returns ``True`` on success, ``False`` on any failure.
+    """
+    try:
+        resp = requests.patch(
+            f"{BACKEND_URL}/fx-watch/{watch_id}",
+            json={"is_active": not is_active},
+            timeout=API_PATCH_TIMEOUT,
+        )
+        if resp.ok:
+            return True
+        logger.warning("FX Watch 切換 API 回傳 %s", resp.status_code)
+        return False
+    except requests.RequestException as exc:
+        logger.error("FX Watch 切換 API 連線失敗: %s", exc)
+        return False
+
+
+def delete_fx_watch(watch_id: int) -> bool:
+    """DELETE /fx-watch/{id} — 刪除監控配置。
+
+    Returns ``True`` on success, ``False`` on any failure.
+    """
+    try:
+        resp = requests.delete(
+            f"{BACKEND_URL}/fx-watch/{watch_id}",
+            timeout=API_DELETE_TIMEOUT,
+        )
+        if resp.ok:
+            return True
+        logger.warning("FX Watch 刪除 API 回傳 %s", resp.status_code)
+        return False
+    except requests.RequestException as exc:
+        logger.error("FX Watch 刪除 API 連線失敗: %s", exc)
+        return False
+
+
+def post_fx_watch_check() -> tuple[str, str]:
+    """POST /fx-watch/check — 手動檢查所有監控（不發送通知）。
+
+    Returns ``(level, message)``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/fx-watch/check",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            data = resp.json()
+            return ("success", f"✅ 已完成 {data.get('total_watches', 0)} 筆監控分析")
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("FX Watch 檢查 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 檢查失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("FX Watch 檢查 API 連線失敗: %s", exc)
+        return ("error", f"❌ 檢查失敗：{exc}")
+
+
+def post_fx_watch_alert() -> tuple[str, str]:
+    """POST /fx-watch/alert — 手動觸發 Telegram 通知。
+
+    Returns ``(level, message)``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/fx-watch/alert",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            data = resp.json()
+            return (
+                "success",
+                f"✅ {data.get('triggered_alerts', 0)} 筆觸發，"
+                f"{data.get('sent_alerts', 0)} 筆已發送",
+            )
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("FX Watch 警報 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ 發送失敗：{detail}")
+    except requests.RequestException as exc:
+        logger.error("FX Watch 警報 API 連線失敗: %s", exc)
+        return ("error", f"❌ 發送失敗：{exc}")
+
+
+@st.cache_data(ttl=CACHE_TTL_FX_WATCH, show_spinner=False)
+def fetch_fx_watch_analysis() -> dict[int, dict]:
+    """POST /fx-watch/check — 取得所有監控即時分析結果（快取）。
+
+    Returns mapping of watch_id → analysis dict.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/fx-watch/check",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.ok:
+            data = resp.json()
+            results = data.get("results", [])
+            return {
+                r["watch_id"]: {
+                    "recommendation": r["result"]["recommendation_zh"],
+                    "reasoning": r["result"]["reasoning_zh"],
+                    "should_alert": r["result"]["should_alert"],
+                    "current_rate": r["result"]["current_rate"],
+                }
+                for r in results
+            }
+        return {}
+    except Exception as exc:
+        logger.warning("FX Watch 分析 API 失敗: %s", exc)
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -556,6 +850,7 @@ def fetch_fx_watches() -> list | None:
 def invalidate_fx_watch_caches() -> None:
     """Invalidate all FX watch caches after mutations."""
     fetch_fx_watches.clear()
+    fetch_fx_watch_analysis.clear()
 
 
 # ---------------------------------------------------------------------------

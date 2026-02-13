@@ -7,16 +7,12 @@ import json
 import re
 
 import pandas as pd
-import requests
 import streamlit as st
 
 from collections import defaultdict
 
 from config import (
     ALLOCATION_CHART_HEIGHT,
-    API_POST_TIMEOUT,
-    API_PUT_TIMEOUT,
-    BACKEND_URL,
     CASH_ACCOUNT_TYPE_OPTIONS,
     CASH_CURRENCY_OPTIONS,
     CATEGORY_COLOR_FALLBACK,
@@ -50,8 +46,6 @@ from utils import (
     fetch_rebalance,
     fetch_templates,
     fetch_withdraw,
-    post_digest,
-    post_telegram_test,
     format_utc_timestamp,
     invalidate_all_caches,
     invalidate_holding_caches,
@@ -61,7 +55,14 @@ from utils import (
     mask_money as _mask_money,
     mask_qty as _mask_qty,
     on_privacy_change as _on_privacy_change,
+    post_digest,
+    post_fx_exposure_alert,
+    post_telegram_test,
+    post_xray_alert,
+    put_notification_preferences,
+    put_telegram_settings,
     refresh_ui,
+    show_toast,
 )
 
 
@@ -1422,28 +1423,8 @@ with tab_warroom:
                         "📨 發送 X-Ray 警告至 Telegram",
                         key="xray_tg_btn",
                     ):
-                        try:
-                            resp = requests.post(
-                                f"{BACKEND_URL}/rebalance/xray-alert",
-                                params={
-                                    "display_currency": display_cur
-                                },
-                                timeout=API_POST_TIMEOUT,
-                            )
-                            if resp.ok:
-                                data = resp.json()
-                                w_count = len(
-                                    data.get("warnings", [])
-                                )
-                                st.success(
-                                    f"✅ {data.get('message', f'{w_count} 筆警告已發送')}"
-                                )
-                            else:
-                                st.error(
-                                    f"❌ 發送失敗：{resp.text}"
-                                )
-                        except Exception as ex:
-                            st.error(f"❌ 發送失敗：{ex}")
+                        level, msg = post_xray_alert(display_cur)
+                        show_toast(level, msg)
 
                 # -----------------------------------------------------------
                 # Section 4: Currency Exposure Monitor
@@ -1665,21 +1646,8 @@ with tab_warroom:
                                 "📨 發送匯率曝險警報至 Telegram",
                                 key="fx_alert_tg_cash_btn",
                             ):
-                                try:
-                                    resp = requests.post(
-                                        f"{BACKEND_URL}/currency-exposure/alert",
-                                        timeout=API_POST_TIMEOUT,
-                                    )
-                                    if resp.ok:
-                                        data = resp.json()
-                                        a_count = len(data.get("alerts", []))
-                                        st.success(
-                                            f"✅ {data.get('message', f'{a_count} 筆警報已發送')}"
-                                        )
-                                    else:
-                                        st.error(f"❌ 發送失敗：{resp.text}")
-                                except Exception as ex:
-                                    st.error(f"❌ 發送失敗：{ex}")
+                                level, msg = post_fx_exposure_alert()
+                                show_toast(level, msg)
 
                     # === Total tab ===
                     with fx_tab_total:
@@ -1973,19 +1941,10 @@ with tab_telegram:
                 }
                 if tg_token.strip():
                     payload["custom_bot_token"] = tg_token.strip()
-                try:
-                    resp = requests.put(
-                        f"{BACKEND_URL}/settings/telegram",
-                        json=payload,
-                        timeout=API_PUT_TIMEOUT,
-                    )
-                    if resp.status_code == 200:
-                        st.success("✅ Telegram 設定已儲存")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ 儲存失敗：{resp.text}")
-                except requests.RequestException as e:
-                    st.error(f"❌ 請求失敗：{e}")
+                level, msg = put_telegram_settings(payload)
+                show_toast(level, msg)
+                if level == "success":
+                    st.rerun()
 
     # Action buttons (outside form)
     if tg_settings and tg_settings.get("telegram_chat_id"):
@@ -1993,11 +1952,11 @@ with tab_telegram:
         with btn_cols[0]:
             if st.button("📨 發送測試訊息", key="test_telegram_btn"):
                 level, msg = post_telegram_test()
-                getattr(st, level)(msg)
+                show_toast(level, msg)
         with btn_cols[1]:
             if st.button("📬 發送每週摘要", key="trigger_digest_btn"):
                 level, msg = post_digest()
-                getattr(st, level)(msg)
+                show_toast(level, msg)
 
     # -------------------------------------------------------------------
     # Notification Preferences — selective alert toggles
@@ -2032,20 +1991,8 @@ with tab_telegram:
             )
 
         if st.form_submit_button("💾 儲存通知偏好"):
-            try:
-                resp = requests.put(
-                    f"{BACKEND_URL}/settings/preferences",
-                    json={
-                        "privacy_mode": current_privacy,
-                        "notification_preferences": new_prefs,
-                    },
-                    timeout=API_PUT_TIMEOUT,
-                )
-                if resp.status_code == 200:
-                    st.success("✅ 通知偏好已儲存")
-                    fetch_preferences.clear()
-                    st.rerun()
-                else:
-                    st.error(f"❌ 儲存失敗：{resp.text}")
-            except requests.RequestException as e:
-                st.error(f"❌ 請求失敗：{e}")
+            level, msg = put_notification_preferences(current_privacy, new_prefs)
+            show_toast(level, msg)
+            if level == "success":
+                fetch_preferences.clear()
+                st.rerun()
