@@ -46,6 +46,7 @@ from domain.constants import (
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
     DISK_FEAR_GREED_TTL,
+    DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
     DISK_FOREX_TTL,
     DISK_KEY_DIVIDEND,
@@ -54,6 +55,7 @@ from domain.constants import (
     DISK_KEY_FEAR_GREED,
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
+    DISK_KEY_FOREX_HISTORY_LONG,
     DISK_KEY_MOAT,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_SIGNALS,
@@ -73,7 +75,10 @@ from domain.constants import (
     FOREX_CACHE_TTL,
     FOREX_HISTORY_CACHE_MAXSIZE,
     FOREX_HISTORY_CACHE_TTL,
+    FOREX_HISTORY_LONG_CACHE_MAXSIZE,
+    FOREX_HISTORY_LONG_CACHE_TTL,
     FX_HISTORY_PERIOD,
+    FX_LONG_TERM_PERIOD,
     INSTITUTIONAL_HOLDERS_TOP_N,
     MA200_WINDOW,
     MA60_WINDOW,
@@ -154,6 +159,7 @@ _price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, t
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
 _etf_holdings_cache: TTLCache = TTLCache(maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL)
 _forex_history_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL)
+_forex_history_long_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_LONG_CACHE_MAXSIZE, ttl=FOREX_HISTORY_LONG_CACHE_TTL)
 _fear_greed_cache: TTLCache = TTLCache(maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL)
 
 
@@ -831,6 +837,64 @@ def get_forex_history(base: str, quote: str) -> list[dict]:
         DISK_KEY_FOREX_HISTORY,
         DISK_FOREX_HISTORY_TTL,
         _fetch_forex_history,
+    )
+    return result if result else []
+
+
+def _fetch_forex_history_long(pair_key: str) -> list[dict]:
+    """
+    從 yfinance 取得 3 個月匯率歷史（供 _cached_fetch 使用）。
+    pair_key 格式同 _fetch_forex_history。
+    """
+    try:
+        base, quote = pair_key.split(":")
+        if base == quote:
+            return []
+
+        yf_ticker = f"{base}{quote}=X"
+        hist = _yf_history_short(yf_ticker, FX_LONG_TERM_PERIOD)
+
+        if hist is not None and not hist.empty:
+            return [
+                {"date": idx.strftime("%Y-%m-%d"), "close": round(float(row["Close"]), 4)}
+                for idx, row in hist.iterrows()
+                if not _is_nan(row.get("Close"))
+            ]
+
+        # 嘗試反向查詢
+        yf_ticker_rev = f"{quote}{base}=X"
+        hist_rev = _yf_history_short(yf_ticker_rev, FX_LONG_TERM_PERIOD)
+
+        if hist_rev is not None and not hist_rev.empty:
+            return [
+                {"date": idx.strftime("%Y-%m-%d"), "close": round(1.0 / float(row["Close"]), 4)}
+                for idx, row in hist_rev.iterrows()
+                if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
+            ]
+
+        logger.warning("無法取得長期匯率歷史 %s/%s", base, quote)
+        return []
+
+    except Exception as e:
+        logger.warning("取得長期匯率歷史失敗（%s）：%s", pair_key, e)
+        return []
+
+
+def get_forex_history_long(base: str, quote: str) -> list[dict]:
+    """
+    取得 3 個月匯率歷史：1 base = ? quote 的每日收盤價。
+    回傳 [{"date": "2025-11-15", "close": 31.80}, ...]。
+    結果透過 L1 + L2 快取（L1: 2hr, L2: 4hr）。
+    """
+    if base == quote:
+        return []
+    pair_key = f"{base}:{quote}"
+    result = _cached_fetch(
+        _forex_history_long_cache,
+        pair_key,
+        DISK_KEY_FOREX_HISTORY_LONG,
+        DISK_FOREX_HISTORY_LONG_TTL,
+        _fetch_forex_history_long,
     )
     return result if result else []
 

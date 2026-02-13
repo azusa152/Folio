@@ -10,7 +10,7 @@ from api.schemas import MessageResponse, TelegramSettingsRequest, TelegramSettin
 from domain.constants import DEFAULT_USER_ID, ERROR_TELEGRAM_NOT_CONFIGURED, ERROR_TELEGRAM_SEND_FAILED
 from domain.entities import UserTelegramSettings
 from infrastructure.database import get_session
-from infrastructure.notification import send_telegram_message, send_telegram_message_dual
+from infrastructure.notification import send_telegram_message_dual
 from logging_config import get_logger
 
 logger = get_logger(__name__)

@@ -127,6 +127,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
     ("application.rebalance_service.get_etf_top_holdings", []),
     ("application.rebalance_service.get_forex_history", []),
+    ("application.rebalance_service.get_forex_history_long", []),
     ("application.rebalance_service.prewarm_signals_batch", {}),
     ("application.rebalance_service.prewarm_etf_holdings_batch", {}),
     # webhook_service

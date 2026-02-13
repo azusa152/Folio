@@ -72,8 +72,8 @@ curl -s -X POST http://localhost:8000/webhook \
 | `PUT` | `/settings/preferences` | Update user preferences (upsert) |
 | `GET` | `/market/fear-greed` | Fear & Greed Index (VIX + CNN composite) |
 | `GET` | `/scan/last` | Last scan timestamp + market sentiment + F&G |
-| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown`, FX movements, risk level |
-| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert (includes cash exposure amounts) |
+| `GET` | `/currency-exposure` | Currency exposure analysis with `cash_breakdown` + `breakdown` + `fx_rate_alerts` (three-tier), FX movements, risk level |
+| `POST` | `/currency-exposure/alert` | Trigger FX exposure Telegram alert — three-tier detection (daily >1.5%, 5-day >2%, 3-month >8%), includes cash exposure amounts |
 | `POST` | `/withdraw` | Smart withdrawal plan (Liquidity Waterfall) |
 
 ### Docs

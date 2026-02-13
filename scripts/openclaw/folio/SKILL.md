@@ -145,8 +145,8 @@ For advanced use, you can call individual endpoints directly:
 | `POST` | `/holdings/cash` | 新增現金持倉 |
 | `GET` | `/rebalance` | 再平衡分析 + X-Ray 穿透式持倉，支援 `?display_currency=TWD` 指定顯示幣別（自動匯率換算）。回傳含 `xray` 陣列，揭示 ETF 間接曝險 |
 | `POST` | `/rebalance/xray-alert` | 觸發 X-Ray 分析並發送 Telegram 集中度風險警告 |
-| `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`cash_non_home_pct`、匯率變動、建議 |
-| `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（含現金曝險金額） |
+| `GET` | `/currency-exposure` | 匯率曝險分析：含 `breakdown`（全資產）+ `cash_breakdown`（現金）幣別分佈、`fx_rate_alerts`（三層級警報）、匯率變動、建議 |
+| `POST` | `/currency-exposure/alert` | 檢查匯率曝險並發送 Telegram 警報（三層級偵測：單日 >1.5% / 5日 >2% / 3月 >8%，含現金曝險金額） |
 | `POST` | `/withdraw` | 聰明提款建議（Liquidity Waterfall），body: `{"target_amount": 50000, "display_currency": "TWD", "notify": true}` |
 | `GET` | `/settings/telegram` | Telegram 通知設定（token 遮蔽） |
 | `PUT` | `/settings/telegram` | 更新 Telegram 通知設定（雙模式） |
@@ -177,6 +177,6 @@ For advanced use, you can call individual endpoints directly:
 - Add `?display_currency=TWD` to `/rebalance` to see all values in TWD (supports USD, TWD, JPY, EUR, GBP, CNY, HKD, SGD, THB)
 - Use `POST /rebalance/xray-alert` to trigger Telegram warnings for stocks whose true exposure (direct + ETF indirect) exceeds 15%
 - When adding holdings, set `currency` field to match the holding's native currency (e.g., "TWD" for Taiwan stocks, "JPY" for Japan stocks)
-- Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only) and `breakdown` (full portfolio) for separate analysis
-- Use `POST /currency-exposure/alert` to trigger Telegram alerts for significant FX movements (>3% change), alerts now include cash exposure amounts
+- Use `GET /currency-exposure` to check currency concentration risk; response includes `cash_breakdown` (cash-only), `breakdown` (full portfolio), and `fx_rate_alerts` (three-tier rate-change alerts) for separate analysis
+- Use `POST /currency-exposure/alert` to trigger Telegram alerts for three-tier FX rate changes (daily spike >1.5%, 5-day swing >2%, 3-month trend >8%), alerts include cash exposure amounts
 - Use `withdraw` when you need cash — tell it the amount and currency (e.g., `{"amount": 50000, "currency": "TWD"}`), it will recommend which holdings to sell using a 3-tier priority: overweight rebalancing, tax-loss harvesting, then liquidity order

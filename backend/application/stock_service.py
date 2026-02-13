@@ -7,7 +7,6 @@ from sqlmodel import Session
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from domain.constants import (
-    CATEGORY_DISPLAY_ORDER,
     DEFAULT_IMPORT_CATEGORY,
     ENRICHED_PER_TICKER_TIMEOUT,
     ENRICHED_THREAD_POOL_SIZE,

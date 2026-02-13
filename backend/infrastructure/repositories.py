@@ -152,7 +152,6 @@ def find_latest_removals_batch(session: Session, tickers: list[str]) -> dict[str
         return {}
 
     # 子查詢：每檔股票的最大 created_at
-    from sqlmodel import col
     subq = (
         select(
             RemovalLog.stock_ticker,

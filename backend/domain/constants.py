@@ -146,14 +146,19 @@ ETF_TOP_N = 10  # only resolve top N constituents per ETF
 # ---------------------------------------------------------------------------
 # Currency Exposure Monitor
 # ---------------------------------------------------------------------------
-FX_SIGNIFICANT_CHANGE_PCT = 3.0  # alert threshold: 3% change over period
-FX_HIGH_CONCENTRATION_PCT = 70.0  # "high" risk if >70% non-home currency
-FX_MEDIUM_CONCENTRATION_PCT = 40.0  # "medium" risk if >40% non-home currency
-FX_HISTORY_PERIOD = "5d"  # yfinance period for FX movement detection
+FX_DAILY_SPIKE_PCT = 1.5  # 單日波動門檻
+FX_SHORT_TERM_SWING_PCT = 2.0  # 5 日波段門檻
+FX_LONG_TERM_TREND_PCT = 8.0  # 3 個月趨勢門檻
+FX_HISTORY_PERIOD = "5d"  # yfinance period for short-term detection
+FX_LONG_TERM_PERIOD = "3mo"  # yfinance period for long-term trend detection
 DISK_KEY_FOREX_HISTORY = "forex_history"
 DISK_FOREX_HISTORY_TTL = 3600  # 1 hour
 FOREX_HISTORY_CACHE_MAXSIZE = 50
 FOREX_HISTORY_CACHE_TTL = 3600  # 1 hour
+DISK_KEY_FOREX_HISTORY_LONG = "forex_history_long"
+DISK_FOREX_HISTORY_LONG_TTL = 14400  # 4 hours (long-term data changes slowly)
+FOREX_HISTORY_LONG_CACHE_MAXSIZE = 50
+FOREX_HISTORY_LONG_CACHE_TTL = 7200  # 2 hours L1
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)

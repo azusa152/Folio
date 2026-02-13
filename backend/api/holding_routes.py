@@ -2,7 +2,6 @@
 API — 持倉 (Holding) 管理與再平衡 (Rebalance) 路由。
 """
 
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException

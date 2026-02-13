@@ -444,6 +444,17 @@ class FXMovement(BaseModel):
     direction: str  # "up" / "down" / "flat"
 
 
+class FXRateAlertItem(BaseModel):
+    """匯率變動警報項目（三層級偵測）。"""
+
+    pair: str  # e.g. "USD/TWD"
+    alert_type: str  # "daily_spike" / "short_term_swing" / "long_term_trend"
+    change_pct: float  # signed percentage change
+    direction: str  # "up" / "down"
+    current_rate: float
+    period_label: str  # "1 日" / "5 日" / "3 個月"
+
+
 class CurrencyExposureResponse(BaseModel):
     """GET /currency-exposure 回傳的匯率曝險分析。"""
 
@@ -455,6 +466,7 @@ class CurrencyExposureResponse(BaseModel):
     cash_non_home_pct: float = 0.0
     total_cash_home: float = 0.0
     fx_movements: list[FXMovement]
+    fx_rate_alerts: list[FXRateAlertItem] = []
     risk_level: str  # "low" / "medium" / "high"
     advice: list[str]
     calculated_at: str = ""

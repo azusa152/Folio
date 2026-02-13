@@ -5,7 +5,7 @@ Domain — 聰明提款機 (Smart Withdrawal) 純函式單元測試。
 
 import pytest
 
-from domain.withdrawal import HoldingData, WithdrawalPlan, plan_withdrawal
+from domain.withdrawal import HoldingData, plan_withdrawal
 
 
 # ---------------------------------------------------------------------------

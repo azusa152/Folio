@@ -2,10 +2,8 @@
 Tests for POST /withdraw — 聰明提款機 (Smart Withdrawal / Liquidity Waterfall)。
 """
 
-import json
 from unittest.mock import patch
 
-from tests.conftest import MOCK_SIGNALS
 
 
 def _setup_profile_and_holdings(client):

@@ -67,7 +67,7 @@ def send_weekly_digest(session: Session) -> dict:
 
     # 組合訊息
     parts: list[str] = [
-        f"📊 <b>Folio 每週摘要</b>\n",
+        "📊 <b>Folio 每週摘要</b>\n",
         f"🏥 投資組合健康分數：<b>{health_score}%</b>（{normal_count}/{total} 正常）",
         f"📈 恐懼貪婪指數：{fg_label}（{vix_text}）\n",
     ]
