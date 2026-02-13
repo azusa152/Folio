@@ -343,3 +343,135 @@ class TestAssessExchangeTiming:
             "近期高點" in result.recommendation_zh
             and "連續上漲" in result.recommendation_zh
         )
+
+
+class TestAssessExchangeTimingEdgeCases:
+    """Edge case tests for assess_exchange_timing."""
+
+    def test_should_handle_single_data_point_history(self):
+        """Single data point should not crash; current rate is its own high."""
+        history = [{"date": "2026-02-11", "close": 32.0}]
+
+        result = assess_exchange_timing("USD", "TWD", history, 30, 3)
+
+        assert isinstance(result, FXTimingResult)
+        assert result.current_rate == 32.0
+        assert result.consecutive_increases == 0
+        # Single point IS at its own high, so is_recent_high=True
+        assert result.is_recent_high is True
+        # With default alert_on_recent_high=True, should_alert=True
+        assert result.should_alert is True
+
+    def test_should_handle_all_identical_prices(self):
+        """Flat market: price equals its own high, so is_recent_high is True."""
+        history = [
+            {"date": "2026-02-08", "close": 31.0},
+            {"date": "2026-02-09", "close": 31.0},
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 31.0},
+        ]
+
+        result = assess_exchange_timing("USD", "TWD", history, 30, 3)
+
+        assert result.consecutive_increases == 0
+        # Price equals lookback high, so is_recent_high=True
+        assert result.is_recent_high is True
+        # But with both toggles enabled, recent high fires => should_alert=True
+        assert result.should_alert is True
+
+    def test_near_high_enabled_not_met_consecutive_disabled(self):
+        """recent_high=True but not near high, consecutive=False -> no alert."""
+        history = [
+            {"date": "2026-01-15", "close": 35.0},  # Far higher than current
+            {"date": "2026-02-09", "close": 30.0},
+            {"date": "2026-02-10", "close": 30.5},
+            {"date": "2026-02-11", "close": 31.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=False,
+        )
+
+        assert result.should_alert is False
+        assert result.is_recent_high is False
+        assert result.alert_on_recent_high is True
+        assert result.alert_on_consecutive_increase is False
+
+    def test_consecutive_enabled_not_met_recent_high_disabled(self):
+        """recent_high=False, consecutive=True but not met -> no alert."""
+        history = [
+            {"date": "2026-02-09", "close": 31.5},
+            {"date": "2026-02-10", "close": 31.0},  # Decrease resets count
+            {"date": "2026-02-11", "close": 31.2},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=True,
+        )
+
+        assert result.should_alert is False
+        assert result.alert_on_recent_high is False
+        assert result.alert_on_consecutive_increase is True
+        assert result.consecutive_increases < 3
+
+    def test_near_high_but_consecutive_not_met_should_suggest_observe(self):
+        """near_high=True, recent_high toggle off, consecutive on but not met -> 觀察建議."""
+        history = [
+            {"date": "2026-01-15", "close": 30.0},
+            {"date": "2026-02-10", "close": 31.8},
+            {"date": "2026-02-11", "close": 32.0},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            5,  # consecutive threshold high enough to not be met
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=True,
+        )
+
+        assert result.should_alert is False
+        assert result.is_recent_high is True
+        assert result.consecutive_increases < 5
+        assert "接近高點但上漲動能不足" in result.recommendation_zh
+        assert "建議再觀察" in result.reasoning_zh
+
+    def test_consecutive_met_but_not_near_high_should_suggest_wait(self):
+        """consec >= threshold, consecutive toggle off, recent_high on but not near -> 等待建議."""
+        history = [
+            {"date": "2026-01-15", "close": 35.0},  # Far higher than current
+            {"date": "2026-02-08", "close": 30.0},
+            {"date": "2026-02-09", "close": 30.5},
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 31.5},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=False,
+        )
+
+        assert result.should_alert is False
+        assert result.is_recent_high is False
+        assert result.consecutive_increases >= 3
+        assert "持續上漲但未達高點" in result.recommendation_zh
+        assert "可能還有上漲空間" in result.reasoning_zh

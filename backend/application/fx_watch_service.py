@@ -87,11 +87,6 @@ def create_watch(
     return created
 
 
-def get_watch_by_id(session: Session, watch_id: int) -> FXWatchConfig | None:
-    """根據 ID 查詢單一外匯監控配置。"""
-    return find_fx_watch_by_id(session, watch_id)
-
-
 def get_all_watches(
     session: Session, user_id: str = DEFAULT_USER_ID, active_only: bool = False
 ) -> list[FXWatchConfig]:
@@ -206,8 +201,13 @@ def get_forex_history(base: str, quote: str) -> list[dict]:
 
     Returns:
         日線歷史 [{"date": "YYYY-MM-DD", "close": float}, ...]
+        若資料來源失敗，回傳空列表。
     """
-    return get_forex_history_long(base.upper(), quote.upper())
+    try:
+        return get_forex_history_long(base.upper(), quote.upper())
+    except Exception as e:
+        logger.warning("外匯歷史資料取得失敗：%s/%s - %s", base, quote, e)
+        return []
 
 
 # ===========================================================================
@@ -311,7 +311,11 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
     for watch in watches:
         # 檢查冷卻時間
         if watch.last_alerted_at:
-            cooldown_until = watch.last_alerted_at + timedelta(
+            # SQLite 回傳的 datetime 可能不含時區資訊，統一轉為 UTC
+            last_alerted = watch.last_alerted_at
+            if last_alerted.tzinfo is None:
+                last_alerted = last_alerted.replace(tzinfo=timezone.utc)
+            cooldown_until = last_alerted + timedelta(
                 hours=watch.reminder_interval_hours
             )
             if now < cooldown_until:
