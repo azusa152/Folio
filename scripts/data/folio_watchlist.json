@@ -20,12 +20,6 @@
     "is_etf": true
   },
   {
-    "ticker": "BRK-B",
-    "category": "Trend_Setter",
-    "thesis": "波克夏海瑟威。老巴的動作是市場過熱與否的溫度計。觀察現金水位：現金爆高代表市場太貴買不下手；開始回購自家股票代表價值浮現。",
-    "tags": ["Conglomerate", "Value_Investing", "Buffett", "Smart_Money"]
-  },
-  {
     "ticker": "MSFT",
     "category": "Trend_Setter",
     "thesis": "AI 資本支出領頭羊，Copilot 與 Azure 雙引擎。觀察重點在於鉅額的 Capex 能否轉化為實際營收 (變現能力)。",
@@ -48,12 +42,6 @@
     "category": "Trend_Setter",
     "thesis": "擁有最強開源模型 Llama。廣告現金流強勁，足以支撐祖克柏購買大量 GPU 來訓練 AI。是用戶數據與算力結合的典範。",
     "tags": ["AI", "AdTech", "Social", "Capex_King"]
-  },
-  {
-    "ticker": "ORCL",
-    "category": "Trend_Setter",
-    "thesis": "雲端老四的反擊。Larry Ellison 在 AI 基礎建設上急起直追，狂買 GPU 蓋 Cluster，是除了四大天王外值得關注的 Capex 新勢力。",
-    "tags": ["Cloud", "AI", "Enterprise", "Capex_Player"]
   },
   {
     "ticker": "TSM",

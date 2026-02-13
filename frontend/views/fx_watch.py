@@ -4,23 +4,26 @@ FX Watch — 外匯換匯時機監控
 """
 
 import streamlit as st
-import requests
 from datetime import datetime
 
 from config import (
-    BACKEND_URL,
-    API_POST_TIMEOUT,
-    API_PATCH_TIMEOUT,
-    API_DELETE_TIMEOUT,
     FX_CURRENCY_OPTIONS,
     PRIVACY_TOGGLE_LABEL,
 )
 from utils import (
+    create_fx_watch,
+    delete_fx_watch,
+    fetch_fx_watch_analysis,
     fetch_fx_watches,
     invalidate_fx_watch_caches,
-    refresh_ui as _refresh_ui,
     is_privacy as _is_privacy,
     on_privacy_change as _on_privacy_change,
+    patch_fx_watch,
+    post_fx_watch_alert,
+    post_fx_watch_check,
+    refresh_ui as _refresh_ui,
+    show_toast,
+    toggle_fx_watch,
 )
 
 
@@ -324,20 +327,11 @@ def edit_watch_popover(watch: dict):
                     "reminder_interval_hours": reminder_hours,
                 }
 
-                try:
-                    resp = requests.patch(
-                        f"{BACKEND_URL}/fx-watch/{watch['id']}",
-                        json=payload,
-                        timeout=API_PATCH_TIMEOUT,
-                    )
-                    if resp.ok:
-                        st.success("✅ 已更新")
-                        invalidate_fx_watch_caches()
-                        _refresh_ui()
-                    else:
-                        st.error(f"❌ 更新失敗：{resp.text}")
-                except Exception as e:
-                    st.error(f"❌ 更新失敗：{e}")
+                level, msg = patch_fx_watch(watch["id"], payload)
+                show_toast(level, msg)
+                if level == "success":
+                    invalidate_fx_watch_caches()
+                    _refresh_ui()
 
 
 # ---------------------------------------------------------------------------
@@ -453,21 +447,12 @@ def add_watch_dialog():
                     "reminder_interval_hours": reminder_hours,
                 }
 
-                try:
-                    resp = requests.post(
-                        f"{BACKEND_URL}/fx-watch",
-                        json=payload,
-                        timeout=API_POST_TIMEOUT,
-                    )
-                    if resp.ok:
-                        st.success(f"✅ 已新增 {base_currency}/{quote_currency} 監控")
-                        invalidate_fx_watch_caches()
-                        st.session_state["show_add_dialog"] = False
-                        st.rerun()
-                    else:
-                        st.error(f"❌ 新增失敗：{resp.text}")
-                except Exception as e:
-                    st.error(f"❌ 新增失敗：{e}")
+                level, msg = create_fx_watch(payload)
+                show_toast(level, msg)
+                if level == "success":
+                    invalidate_fx_watch_caches()
+                    st.session_state["show_add_dialog"] = False
+                    st.rerun()
 
 # Main content: Fetch watches
 watches = fetch_fx_watches()
@@ -509,41 +494,21 @@ with top_row[3]:
     # Manual check button (disabled if no watches)
     if st.button("🔍 檢查", use_container_width=True, help="立即分析所有監控配置（不發送通知）", disabled=not watches):
         with st.spinner("分析中..."):
-            try:
-                resp = requests.post(
-                    f"{BACKEND_URL}/fx-watch/check",
-                    timeout=API_POST_TIMEOUT,
-                )
-                if resp.ok:
-                    data = resp.json()
-                    st.success(f"✅ 已完成 {data.get('total_watches', 0)} 筆監控分析")
-                    invalidate_fx_watch_caches()
-                    _refresh_ui()
-                else:
-                    st.error(f"❌ 檢查失敗：{resp.text}")
-            except Exception as e:
-                st.error(f"❌ 檢查失敗：{e}")
+            level, msg = post_fx_watch_check()
+            show_toast(level, msg)
+            if level == "success":
+                invalidate_fx_watch_caches()
+                _refresh_ui()
 
 with top_row[4]:
     # Instant alert button (disabled if no watches)
     if st.button("📨 警報", use_container_width=True, help="手動觸發 Telegram 通知（受冷卻機制限制）", disabled=not watches):
         with st.spinner("發送中..."):
-            try:
-                resp = requests.post(
-                    f"{BACKEND_URL}/fx-watch/alert",
-                    timeout=API_POST_TIMEOUT,
-                )
-                if resp.ok:
-                    data = resp.json()
-                    st.success(
-                        f"✅ {data.get('triggered_alerts', 0)} 筆觸發，{data.get('sent_alerts', 0)} 筆已發送"
-                    )
-                    invalidate_fx_watch_caches()
-                    _refresh_ui()
-                else:
-                    st.error(f"❌ 發送失敗：{resp.text}")
-            except Exception as e:
-                st.error(f"❌ 發送失敗：{e}")
+            level, msg = post_fx_watch_alert()
+            show_toast(level, msg)
+            if level == "success":
+                invalidate_fx_watch_caches()
+                _refresh_ui()
 
 with top_row[5]:
     # Add watch button (always enabled)
@@ -564,38 +529,10 @@ if st.session_state.get("show_add_dialog", False):
 # Empty state check
 if not watches:
     st.info("📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始")
+    st.caption("💡 最常用的監控配置：USD/TWD（美元兌台幣），可追蹤換匯時機。")
     st.stop()
 
-# Fetch real-time analysis for all watches
-@st.cache_data(ttl=60, show_spinner=False)
-def fetch_fx_watch_analysis() -> dict[int, dict]:
-    """
-    Fetch real-time FX analysis for all active watches.
-    Returns mapping of watch_id -> {recommendation, reasoning, should_alert}
-    """
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/fx-watch/check",
-            timeout=API_POST_TIMEOUT,
-        )
-        if resp.ok:
-            data = resp.json()
-            results = data.get("results", [])
-            # Create watch_id -> analysis mapping
-            return {
-                r["watch_id"]: {
-                    "recommendation": r["result"]["recommendation_zh"],
-                    "reasoning": r["result"]["reasoning_zh"],
-                    "should_alert": r["result"]["should_alert"],
-                    "current_rate": r["result"]["current_rate"],
-                }
-                for r in results
-            }
-        return {}
-    except Exception:
-        return {}
-
-# Get analysis data
+# Get analysis data (helper lives in utils.py, shared cache with invalidation)
 analysis_map = fetch_fx_watch_analysis()
 
 # ---------------------------------------------------------------------------
@@ -642,33 +579,22 @@ for watch in watches:
                 use_container_width=True,
                 help="啟用/停用監控"
             ):
-                try:
-                    resp = requests.patch(
-                        f"{BACKEND_URL}/fx-watch/{watch_id}",
-                        json={"is_active": not is_active},
-                        timeout=API_PATCH_TIMEOUT,
-                    )
-                    if resp.ok:
-                        invalidate_fx_watch_caches()
-                        _refresh_ui()
-                except Exception:
-                    pass
+                if toggle_fx_watch(watch_id, is_active):
+                    invalidate_fx_watch_caches()
+                    _refresh_ui()
+                else:
+                    st.error("❌ 切換失敗，請稍後再試")
 
         with action_cols[1]:
             edit_watch_popover(watch)
 
         with action_cols[2]:
             if st.button("🗑️ 刪除", key=f"delete_{watch_id}", use_container_width=True):
-                try:
-                    resp = requests.delete(
-                        f"{BACKEND_URL}/fx-watch/{watch_id}",
-                        timeout=API_DELETE_TIMEOUT,
-                    )
-                    if resp.ok:
-                        invalidate_fx_watch_caches()
-                        _refresh_ui()
-                except Exception:
-                    pass
+                if delete_fx_watch(watch_id):
+                    invalidate_fx_watch_caches()
+                    _refresh_ui()
+                else:
+                    st.error("❌ 刪除失敗，請稍後再試")
 
         st.divider()
 

@@ -231,6 +231,23 @@ else:
 
 
 # ---------------------------------------------------------------------------
+# Onboarding: first-time user with no data at all
+# ---------------------------------------------------------------------------
+# Page paths must match the strings in app.py st.Page(...) registration.
+if not stocks_data and not rebalance_data:
+    st.divider()
+    st.info("👋 歡迎使用 Folio！開始設定你的投資組合。")
+    _onb_a, _onb_b, _ = st.columns([1, 1, 2])
+    with _onb_a:
+        if st.button("💼 設定投資人格", use_container_width=True):
+            st.switch_page("views/allocation.py")
+    with _onb_b:
+        if st.button("📡 追蹤股票", use_container_width=True):
+            st.switch_page("views/radar.py")
+    st.stop()
+
+
+# ---------------------------------------------------------------------------
 # Section 0: Fear & Greed Gauge Chart
 # ---------------------------------------------------------------------------
 fear_greed_data = fetch_fear_greed()
@@ -472,7 +489,14 @@ if rebalance_data and profile_data and rebalance_data.get("categories"):
             for item in advice[:5]:
                 st.write(item)
 else:
-    st.info("📈 尚無配置資料。請先設定投資人格並新增持倉。")
+    st.info("📭 尚無配置資料。請先設定投資人格並新增持倉。")
+    col_a, col_b, _ = st.columns([1, 1, 2])
+    with col_a:
+        if st.button("💼 前往設定投資人格", use_container_width=True):
+            st.switch_page("views/allocation.py")
+    with col_b:
+        if st.button("📡 前往追蹤股票", use_container_width=True):
+            st.switch_page("views/radar.py")
 
 
 # ---------------------------------------------------------------------------
@@ -496,7 +520,11 @@ if stocks_data:
     else:
         st.success("✅ 所有追蹤股票訊號正常！")
 else:
-    st.caption("尚未追蹤任何股票。")
+    st.info("📭 尚未追蹤任何股票。前往投資雷達開始追蹤。")
+    _sig_a, _ = st.columns([1, 3])
+    with _sig_a:
+        if st.button("📡 前往投資雷達新增股票", use_container_width=True):
+            st.switch_page("views/radar.py")
 
 
 # ---------------------------------------------------------------------------
@@ -538,4 +566,8 @@ if rebalance_data and rebalance_data.get("holdings_detail"):
     else:
         st.caption("無持倉資料。")
 else:
-    st.info("📊 尚無持倉資料。請先新增持倉以查看分析。")
+    st.info("📭 尚無持倉資料。請先新增持倉以查看分析。")
+    _hold_a, _ = st.columns([1, 3])
+    with _hold_a:
+        if st.button("💼 前往新增持倉", use_container_width=True):
+            st.switch_page("views/allocation.py")

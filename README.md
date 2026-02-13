@@ -42,7 +42,7 @@
 
 ### 資產配置
 
-- **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析
+- **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析、聰明提款
 - **穿透式持倉 X-Ray** — 自動解析 ETF 成分股，計算直接+間接真實曝險，超門檻自動警告
 - **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，三層級匯率變動偵測（單日 / 5日 / 3月），Telegram 警報
 - **外匯換匯時機監控** — 完整的換匯時機管理系統：
@@ -54,7 +54,7 @@
   - 一鍵操作：內嵌切換啟用/停用按鈕、刪除按鈕，手動檢查（不發通知）、立即發送 Telegram 警報
 - **隱私模式** — 一鍵遮蔽金額與數量，設定儲存於資料庫，跨裝置同步
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
-- **聰明提款機** — Liquidity Waterfall 三層優先演算法產生賣出建議（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
+- **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 
 ### 介面與操作
 
@@ -122,9 +122,10 @@ graph LR
 ```
 
 - **Backend** — FastAPI + SQLModel，負責 API、資料庫、掃描邏輯
-- **Frontend** — Streamlit 三頁面 Dashboard（總覽 + 雷達 + 資產配置）
+- **Frontend** — Streamlit 四頁面 Dashboard（總覽 + 雷達 + 資產配置 + 外匯監控）
 - **Database** — SQLite，透過 Docker Volume 持久化
 - **資料來源** — yfinance，含多層快取、速率限制與自動重試機制
+- **啟動快取預熱** — 後端啟動時非阻塞式背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股），前端首次載入即命中暖快取
 - **通知** — Telegram Bot API 雙模式，支援差異通知、價格警報、每週摘要
 - **再平衡引擎** — 比較目標配置 vs 實際持倉，產生偏移分析與再平衡建議
 - **匯率曝險引擎** — 分離現金/全資產幣別分佈，偵測顯著匯率變動
@@ -217,6 +218,8 @@ docker compose up --build
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:8501
 - **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）
+
+> **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
 
 ### 3. 匯入觀察名單
 
@@ -669,7 +672,8 @@ azusa-stock/
 │   │   └── withdrawal.py             #   純計算：聰明提款 Liquidity Waterfall（可獨立測試）
 │   │
 │   ├── application/                  # 應用層：Use Case 編排
-│   │   └── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
+│   │   ├── services.py               #   Stock / Thesis / Scan / Portfolio Summary 服務
+│   │   └── prewarm_service.py        #   啟動快取預熱（非阻塞背景執行）
 │   │
 │   ├── infrastructure/               # 基礎設施層：外部適配器
 │   │   ├── database.py               #   SQLite engine + session 管理

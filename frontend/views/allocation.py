@@ -7,16 +7,12 @@ import json
 import re
 
 import pandas as pd
-import requests
 import streamlit as st
 
 from collections import defaultdict
 
 from config import (
     ALLOCATION_CHART_HEIGHT,
-    API_POST_TIMEOUT,
-    API_PUT_TIMEOUT,
-    BACKEND_URL,
     CASH_ACCOUNT_TYPE_OPTIONS,
     CASH_CURRENCY_OPTIONS,
     CATEGORY_COLOR_FALLBACK,
@@ -33,6 +29,7 @@ from config import (
     STOCK_CATEGORY_OPTIONS,
     STOCK_MARKET_OPTIONS,
     STOCK_MARKET_PLACEHOLDERS,
+    WITHDRAW_PRIORITY_LABELS,
     XRAY_TOP_N_DISPLAY,
     XRAY_WARN_THRESHOLD_PCT,
 )
@@ -48,6 +45,7 @@ from utils import (
     fetch_profile,
     fetch_rebalance,
     fetch_templates,
+    fetch_withdraw,
     format_utc_timestamp,
     invalidate_all_caches,
     invalidate_holding_caches,
@@ -57,7 +55,14 @@ from utils import (
     mask_money as _mask_money,
     mask_qty as _mask_qty,
     on_privacy_change as _on_privacy_change,
+    post_digest,
+    post_fx_exposure_alert,
+    post_telegram_test,
+    post_xray_alert,
+    put_notification_preferences,
+    put_telegram_settings,
     refresh_ui,
+    show_toast,
 )
 
 
@@ -191,6 +196,25 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 
 ---
 
+### Step 5 — 聰明提款（Smart Withdrawal）
+
+當你需要從投資組合中提取現金時，系統會透過 **Liquidity Waterfall** 三層優先演算法，自動建議最佳賣出方案：
+
+1. **🔄 再平衡**（Priority 1）：優先賣出超配資產，順便回歸目標配置
+2. **📉 節稅**（Priority 2）：賣出帳面虧損持倉，進行 Tax-Loss Harvesting
+3. **💧 流動性**（Priority 3）：按流動性順序（現金 → 債券 → 成長 → 護城河 → 風向球）賣出
+
+#### 使用方式
+
+- 輸入**提款金額**與**幣別**，點擊「💰 計算提款建議」
+- 系統會顯示賣出建議表格（標的、數量、金額、原因）與摘要指標（目標金額、可賣出總額、缺口）
+- 若投資組合市值不足，會顯示**缺口金額**警告
+- 可選擇開啟「📡 發送 Telegram 通知」，將建議同步至 Telegram
+
+> 💡 聰明提款的核心理念：先賣該賣的（超配），再賣能省稅的（虧損），最後才動用流動性高的資產，保護你的複利核心持倉。
+
+---
+
 ### Telegram 通知設定（雙模式）
 
 - **系統預設 Bot**：使用 `.env` 中的 `TELEGRAM_BOT_TOKEN`，無需額外設定
@@ -198,6 +222,7 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - 啟用自訂 Bot 後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送
 - 未設定或關閉自訂 Bot 時，自動回退使用系統預設 Bot
 - **測試按鈕**：儲存設定後可點擊「📨 發送測試訊息」驗證設定是否正確
+- **每週摘要**：點擊「📬 發送每週摘要」可手動觸發每週投資組合健康報告（背景執行，結果透過 Telegram 發送）
 """)
 
 
@@ -949,7 +974,7 @@ with tab_warroom:
         st.subheader("📊 Step 3 — 再平衡分析")
 
         if profile and holdings:
-            # Currency selector
+            # Currency selector + refresh button
             cur_cols = st.columns([2, 2, 2])
             with cur_cols[0]:
                 display_cur = st.selectbox(
@@ -960,33 +985,34 @@ with tab_warroom:
                 )
             with cur_cols[1]:
                 st.write("")  # vertical spacer
-                _do_load = st.button(
-                    "📊 載入再平衡分析",
-                    type="primary",
-                    key="btn_load_rebalance",
-                )
-            # Persist loaded state so currency change doesn't lose data
-            if _do_load:
-                st.session_state["rebalance_loaded"] = True
+                if st.button(
+                    "🔄 重新整理",
+                    type="secondary",
+                    key="btn_refresh_rebalance",
+                ):
+                    fetch_rebalance.clear()
+                    st.rerun()
 
+            # Auto-fetch rebalance (cached TTL = CACHE_TTL_REBALANCE)
             rebalance = None
-            if st.session_state.get("rebalance_loaded"):
-                with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
-                    rebalance = fetch_rebalance(display_currency=display_cur)
-                    if rebalance:
-                        _rb_status.update(
-                            label="✅ 再平衡分析載入完成",
-                            state="complete",
-                            expanded=False,
-                        )
-                    else:
-                        _rb_status.update(
-                            label="⚠️ 載入失敗或無持倉資料",
-                            state="error",
-                            expanded=True,
-                        )
-            else:
-                st.info("💡 點擊上方「載入再平衡分析」按鈕以取得最新資料。")
+            with st.status("📊 載入再平衡分析中...", expanded=True) as _rb_status:
+                rebalance = fetch_rebalance(display_currency=display_cur)
+                if rebalance:
+                    _rb_status.update(
+                        label="✅ 再平衡分析載入完成",
+                        state="complete",
+                        expanded=False,
+                    )
+                else:
+                    _rb_status.update(
+                        label="⚠️ 載入失敗",
+                        state="error",
+                        expanded=True,
+                    )
+                    st.warning(
+                        "載入再平衡分析失敗，"
+                        "請稍後再試或確認網路連線正常。"
+                    )
             if rebalance:
                 calc_at = rebalance.get("calculated_at", "")
                 if calc_at:
@@ -1397,28 +1423,8 @@ with tab_warroom:
                         "📨 發送 X-Ray 警告至 Telegram",
                         key="xray_tg_btn",
                     ):
-                        try:
-                            resp = requests.post(
-                                f"{BACKEND_URL}/rebalance/xray-alert",
-                                params={
-                                    "display_currency": display_cur
-                                },
-                                timeout=API_POST_TIMEOUT,
-                            )
-                            if resp.ok:
-                                data = resp.json()
-                                w_count = len(
-                                    data.get("warnings", [])
-                                )
-                                st.success(
-                                    f"✅ {data.get('message', f'{w_count} 筆警告已發送')}"
-                                )
-                            else:
-                                st.error(
-                                    f"❌ 發送失敗：{resp.text}"
-                                )
-                        except Exception as ex:
-                            st.error(f"❌ 發送失敗：{ex}")
+                        level, msg = post_xray_alert(display_cur)
+                        show_toast(level, msg)
 
                 # -----------------------------------------------------------
                 # Section 4: Currency Exposure Monitor
@@ -1640,21 +1646,8 @@ with tab_warroom:
                                 "📨 發送匯率曝險警報至 Telegram",
                                 key="fx_alert_tg_cash_btn",
                             ):
-                                try:
-                                    resp = requests.post(
-                                        f"{BACKEND_URL}/currency-exposure/alert",
-                                        timeout=API_POST_TIMEOUT,
-                                    )
-                                    if resp.ok:
-                                        data = resp.json()
-                                        a_count = len(data.get("alerts", []))
-                                        st.success(
-                                            f"✅ {data.get('message', f'{a_count} 筆警報已發送')}"
-                                        )
-                                    else:
-                                        st.error(f"❌ 發送失敗：{resp.text}")
-                                except Exception as ex:
-                                    st.error(f"❌ 發送失敗：{ex}")
+                                level, msg = post_fx_exposure_alert()
+                                show_toast(level, msg)
 
                     # === Total tab ===
                     with fx_tab_total:
@@ -1690,11 +1683,188 @@ with tab_warroom:
                             st.markdown("**💡 匯率曝險建議：**")
                             _render_advice(advice)
 
-            else:
-                st.info(
-                    "⏳ 無法計算再平衡，"
-                    "請確認已設定目標配置並輸入持倉。"
+            # -----------------------------------------------------------
+            # Section 5: Smart Withdrawal
+            # -----------------------------------------------------------
+            st.divider()
+            st.subheader("💰 Step 5 — 聰明提款")
+
+            with st.form("withdraw_form"):
+                w_cols = st.columns([2, 2, 2])
+                with w_cols[0]:
+                    w_amount = st.number_input(
+                        "提款金額",
+                        min_value=0.01,
+                        value=1000.0,
+                        step=100.0,
+                        format="%.2f",
+                    )
+                with w_cols[1]:
+                    w_currency = st.selectbox(
+                        "幣別",
+                        options=DISPLAY_CURRENCY_OPTIONS,
+                        key="withdraw_currency",
+                    )
+                with w_cols[2]:
+                    st.write("")  # vertical spacer
+                    w_notify = st.toggle(
+                        "📡 發送 Telegram 通知",
+                        value=False,
+                        key="withdraw_notify",
+                    )
+                w_submit = st.form_submit_button(
+                    "💰 計算提款建議", type="primary"
                 )
+
+            # Fetch on submit; persist result in session_state so it
+            # survives Streamlit re-runs (e.g. privacy toggle).
+            if w_submit and w_amount > 0:
+                with st.status(
+                    "💰 計算聰明提款中...", expanded=True
+                ) as _wd_status:
+                    result = fetch_withdraw(
+                        w_amount, w_currency, w_notify
+                    )
+                    if result and "error_code" in result:
+                        # 404: no profile or no holdings
+                        _wd_status.update(
+                            label="⚠️ 計算失敗",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.warning(
+                            result.get("detail", "請先完成 Step 1 與 Step 2。")
+                        )
+                        st.session_state.pop("withdraw_result", None)
+                    elif result:
+                        st.session_state["withdraw_result"] = result
+                        st.session_state["withdraw_display_cur"] = w_currency
+                        _wd_status.update(
+                            label="✅ 聰明提款建議完成",
+                            state="complete",
+                            expanded=False,
+                        )
+                    else:
+                        st.session_state.pop("withdraw_result", None)
+                        _wd_status.update(
+                            label="⚠️ 計算失敗",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.warning(
+                            "計算提款建議失敗，"
+                            "請稍後再試或確認網路連線正常。"
+                        )
+
+            # Render persisted result (survives re-runs).
+            wd = st.session_state.get("withdraw_result")
+            wd_cur = st.session_state.get("withdraw_display_cur", "USD")
+            if wd:
+                # --- Summary message ---
+                msg = wd.get("message", "")
+                if msg:
+                    st.markdown(f"**{msg}**")
+
+                # --- Metrics row ---
+                m1, m2, m3 = st.columns(3)
+                m1.metric(
+                    "目標提款",
+                    _mask_money(
+                        wd["target_amount"],
+                        f"{wd_cur} {{:,.0f}}",
+                    ),
+                )
+                m2.metric(
+                    "可賣出總額",
+                    _mask_money(
+                        wd["total_sell_value"],
+                        f"{wd_cur} {{:,.0f}}",
+                    ),
+                )
+                shortfall = wd.get("shortfall", 0)
+                if shortfall > 0:
+                    m3.metric(
+                        "缺口",
+                        _mask_money(
+                            shortfall,
+                            f"{wd_cur} {{:,.0f}}",
+                        ),
+                        delta="不足",
+                        delta_color="inverse",
+                    )
+                    st.warning(
+                        "投資組合市值不足以完全覆蓋提款需求。"
+                    )
+                else:
+                    m3.metric(
+                        "缺口", "0", delta="充足", delta_color="normal"
+                    )
+
+                # --- Recommendations table ---
+                recs = wd.get("recommendations", [])
+                if recs:
+                    st.markdown("**📋 賣出建議：**")
+                    rows = []
+                    for r in recs:
+                        cat = r["category"]
+                        icon = CATEGORY_ICON_SHORT.get(cat, "")
+                        upl = r.get("unrealized_pl")
+                        rows.append(
+                            {
+                                "優先序": WITHDRAW_PRIORITY_LABELS.get(
+                                    r["priority"], "?"
+                                ),
+                                "標的": r["ticker"],
+                                "類別": f"{icon} {cat}",
+                                "賣出數量": _mask_qty(
+                                    r["quantity_to_sell"]
+                                ),
+                                "賣出金額": _mask_money(
+                                    r["sell_value"],
+                                    f"{wd_cur} {{:,.2f}}",
+                                ),
+                                "未實現損益": (
+                                    _mask_money(
+                                        upl,
+                                        f"{wd_cur} {{:+,.2f}}",
+                                    )
+                                    if upl is not None
+                                    else "—"
+                                ),
+                                "原因": (
+                                    PRIVACY_MASK
+                                    if _is_privacy()
+                                    else r["reason"]
+                                ),
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                # --- Post-sell drifts ---
+                drifts = wd.get("post_sell_drifts", {})
+                if drifts:
+                    st.markdown("**📊 賣出後預估配置偏移：**")
+                    drift_rows = []
+                    for cat, d in drifts.items():
+                        icon = CATEGORY_ICON_SHORT.get(cat, "")
+                        drift_rows.append(
+                            {
+                                "類別": f"{icon} {cat}",
+                                "目標 %": f"{d['target_pct']:.1f}%",
+                                "預估 %": f"{d['current_pct']:.1f}%",
+                                "偏移": f"{d['drift_pct']:+.1f}%",
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(drift_rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
         elif not profile:
             st.caption("請先完成 Step 1（設定目標配置）。")
         else:
@@ -1771,41 +1941,22 @@ with tab_telegram:
                 }
                 if tg_token.strip():
                     payload["custom_bot_token"] = tg_token.strip()
-                try:
-                    resp = requests.put(
-                        f"{BACKEND_URL}/settings/telegram",
-                        json=payload,
-                        timeout=API_PUT_TIMEOUT,
-                    )
-                    if resp.status_code == 200:
-                        st.success("✅ Telegram 設定已儲存")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ 儲存失敗：{resp.text}")
-                except requests.RequestException as e:
-                    st.error(f"❌ 請求失敗：{e}")
+                level, msg = put_telegram_settings(payload)
+                show_toast(level, msg)
+                if level == "success":
+                    st.rerun()
 
-    # Test button (outside form)
+    # Action buttons (outside form)
     if tg_settings and tg_settings.get("telegram_chat_id"):
-        if st.button("📨 發送測試訊息", key="test_telegram_btn"):
-            try:
-                resp = requests.post(
-                    f"{BACKEND_URL}/settings/telegram/test",
-                    timeout=API_POST_TIMEOUT,
-                )
-                if resp.status_code == 200:
-                    st.success(resp.json().get("message", "✅ 已發送"))
-                else:
-                    detail = (
-                        resp.json().get("detail", resp.text)
-                        if resp.headers.get("content-type", "").startswith(
-                            "application/json"
-                        )
-                        else resp.text
-                    )
-                    st.error(f"❌ {detail}")
-            except requests.RequestException as e:
-                st.error(f"❌ 請求失敗：{e}")
+        btn_cols = st.columns(2)
+        with btn_cols[0]:
+            if st.button("📨 發送測試訊息", key="test_telegram_btn"):
+                level, msg = post_telegram_test()
+                show_toast(level, msg)
+        with btn_cols[1]:
+            if st.button("📬 發送每週摘要", key="trigger_digest_btn"):
+                level, msg = post_digest()
+                show_toast(level, msg)
 
     # -------------------------------------------------------------------
     # Notification Preferences — selective alert toggles
@@ -1840,20 +1991,8 @@ with tab_telegram:
             )
 
         if st.form_submit_button("💾 儲存通知偏好"):
-            try:
-                resp = requests.put(
-                    f"{BACKEND_URL}/settings/preferences",
-                    json={
-                        "privacy_mode": current_privacy,
-                        "notification_preferences": new_prefs,
-                    },
-                    timeout=API_PUT_TIMEOUT,
-                )
-                if resp.status_code == 200:
-                    st.success("✅ 通知偏好已儲存")
-                    fetch_preferences.clear()
-                    st.rerun()
-                else:
-                    st.error(f"❌ 儲存失敗：{resp.text}")
-            except requests.RequestException as e:
-                st.error(f"❌ 請求失敗：{e}")
+            level, msg = put_notification_preferences(current_privacy, new_prefs)
+            show_toast(level, msg)
+            if level == "success":
+                fetch_preferences.clear()
+                st.rerun()
