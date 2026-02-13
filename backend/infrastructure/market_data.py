@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Callable, Optional, TypeVar
 
 import diskcache
-import requests as http_requests
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -345,7 +344,9 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
                 change_pct if change_pct is not None else 0.0,
             )
         else:
-            logger.debug("%s 歷史資料不足（%d 筆），無法計算日漲跌", ticker, len(closes))
+            logger.debug(
+                "%s 歷史資料不足（%d 筆），無法計算日漲跌", ticker, len(closes)
+            )
 
         # 使用 domain 層的純計算函式
         rsi = compute_rsi(closes)
@@ -1203,7 +1204,8 @@ def get_cnn_fear_greed() -> dict | None:
     此為非官方 API，失敗時靜默回傳 None（graceful degradation）。
     """
     try:
-        resp = http_requests.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
+        session = _get_session()
+        resp = session.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
         resp.raise_for_status()
 
         data = resp.json()

@@ -69,7 +69,7 @@ MOCK_MOAT = {
 }
 
 MOCK_FEAR_GREED = {
-    "composite_score": 35,
+    "composite_score": 38,
     "composite_level": "FEAR",
     "vix": {
         "value": 22.5,

@@ -145,24 +145,28 @@ class TestVixToScore:
 
 
 class TestCompositeScore:
-    """Tests for compute_composite_fear_greed — weighted composite calculation."""
+    """Tests for compute_composite_fear_greed — CNN primary, VIX fallback."""
 
-    def test_composite_should_use_both_sources_when_available(self):
-        # VIX=25 (Fear), CNN=35 (Fear)
+    def test_composite_should_use_cnn_when_both_available(self):
+        # CNN=35 (Fear) — CNN is primary, VIX is ignored
         level, score = compute_composite_fear_greed(25.0, 35)
-        assert isinstance(level, FearGreedLevel)
-        assert 0 <= score <= 100
-        # VIX=25 → _vix_to_score(25) = 35 (piecewise: midpoint of 30→20 maps to 25→45)
-        # Composite = 35*0.4 + 35*0.6 = 14 + 21 = 35
         assert score == 35
+        assert level == FearGreedLevel.FEAR
 
-    def test_composite_should_fallback_to_vix_only_when_cnn_none(self):
+    def test_composite_should_prefer_cnn_over_vix(self):
+        # CNN=80 (Extreme Greed) even though VIX=40 (Extreme Fear)
+        # CNN is primary: VIX is irrelevant when CNN is available
+        level, score = compute_composite_fear_greed(40.0, 80)
+        assert score == 80
+        assert level == FearGreedLevel.EXTREME_GREED
+
+    def test_composite_should_fallback_to_vix_when_cnn_none(self):
         # VIX=20 → _vix_to_score(20) = 45 (breakpoint: fear/neutral boundary)
         level, score = compute_composite_fear_greed(20.0, None)
         assert score == 45
         assert level == FearGreedLevel.FEAR
 
-    def test_composite_should_fallback_to_cnn_only_when_vix_none(self):
+    def test_composite_should_use_cnn_when_vix_none(self):
         level, score = compute_composite_fear_greed(None, 80)
         assert score == 80
         assert level == FearGreedLevel.EXTREME_GREED
@@ -173,14 +177,12 @@ class TestCompositeScore:
         assert score == 50
 
     def test_composite_should_clamp_to_0_100_range(self):
-        # VIX=5 → _vix_to_score(5) = 100 (clamped to ceiling)
-        # CNN=100 → Composite = 100*0.4 + 100*0.6 = 100
+        # CNN=100 → directly used
         level, score = compute_composite_fear_greed(5.0, 100)
         assert score == 100
 
-    def test_composite_should_handle_high_vix_and_low_cnn(self):
-        # VIX=40 → _vix_to_score(40) = 0 (floor)
-        # CNN=10 → Composite = 0*0.4 + 10*0.6 = 6
+    def test_composite_should_use_cnn_directly_ignoring_vix(self):
+        # CNN=10 (Extreme Fear) — VIX doesn't matter
         level, score = compute_composite_fear_greed(40.0, 10)
-        assert score == 6
+        assert score == 10
         assert level == FearGreedLevel.EXTREME_FEAR

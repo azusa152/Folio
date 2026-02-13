@@ -12,8 +12,6 @@ from domain.constants import (
     CNN_FG_FEAR,
     CNN_FG_GREED,
     CNN_FG_NEUTRAL_HIGH,
-    FG_WEIGHT_CNN,
-    FG_WEIGHT_VIX,
     MARKET_CAUTION_BELOW_60MA_PCT,
     MOAT_MARGIN_DETERIORATION_THRESHOLD,
     RSI_CONTRARIAN_BUY_THRESHOLD,
@@ -228,17 +226,6 @@ def classify_cnn_fear_greed(score: Optional[int]) -> FearGreedLevel:
     return FearGreedLevel.EXTREME_GREED
 
 
-# 各等級對應的 0–100 分數中心值（用於 VIX 等級→分數轉換）
-_LEVEL_SCORE: dict[FearGreedLevel, int] = {
-    FearGreedLevel.EXTREME_FEAR: 10,
-    FearGreedLevel.FEAR: 30,
-    FearGreedLevel.NEUTRAL: 50,
-    FearGreedLevel.GREED: 70,
-    FearGreedLevel.EXTREME_GREED: 90,
-    FearGreedLevel.NOT_AVAILABLE: 50,  # fallback
-}
-
-
 def _vix_to_score(vix_value: Optional[float]) -> int:
     """
     將 VIX 值以分段線性映射至 0–100 恐懼貪婪分數。
@@ -277,19 +264,18 @@ def compute_composite_fear_greed(
     cnn_score: Optional[int],
 ) -> tuple[FearGreedLevel, int]:
     """
-    綜合 VIX 與 CNN Fear & Greed Index 計算複合恐懼貪婪等級與分數。
-    VIX 權重 40%，CNN 權重 60%。若 CNN 不可用，100% 使用 VIX。
+    恐懼與貪婪指數：CNN 優先，VIX 備援。
+
+    CNN Fear & Greed Index 本身已是 7 項指標（含 VIX）的綜合分數，
+    直接採用可避免 VIX 被重複加權。VIX 僅在 CNN 不可用時作為備援。
+
     回傳 (等級, 0–100 分數)。
     純函式，無副作用。
     """
-    vix_score = _vix_to_score(vix_value) if vix_value is not None else None
-
-    if vix_score is not None and cnn_score is not None:
-        composite = round(vix_score * FG_WEIGHT_VIX + cnn_score * FG_WEIGHT_CNN)
-    elif vix_score is not None:
-        composite = vix_score
-    elif cnn_score is not None:
+    if cnn_score is not None:
         composite = cnn_score
+    elif vix_value is not None:
+        composite = _vix_to_score(vix_value)
     else:
         return FearGreedLevel.NOT_AVAILABLE, 50
 

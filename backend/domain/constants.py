@@ -214,10 +214,6 @@ CNN_FG_GREED = 75  # 55–75 → 貪婪
 CNN_FG_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 CNN_FG_REQUEST_TIMEOUT = 10  # seconds
 
-# 綜合權重：VIX 40%, CNN 60%
-FG_WEIGHT_VIX = 0.4
-FG_WEIGHT_CNN = 0.6
-
 # Fear & Greed Cache
 FEAR_GREED_CACHE_MAXSIZE = 10
 FEAR_GREED_CACHE_TTL = 1800  # L1: 30 minutes

@@ -13,14 +13,14 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_rebalance_change"
 )
 
-from unittest.mock import patch
+from unittest.mock import patch  # noqa: E402
 
-import pytest
-from sqlmodel import Session
+import pytest  # noqa: E402
+from sqlmodel import Session  # noqa: E402
 
-from application.rebalance_service import calculate_rebalance
-from domain.entities import Holding, UserInvestmentProfile
-from domain.enums import StockCategory
+from application.rebalance_service import calculate_rebalance  # noqa: E402
+from domain.entities import Holding, UserInvestmentProfile  # noqa: E402
+from domain.enums import StockCategory  # noqa: E402
 
 
 class TestRebalancePortfolioChange:
@@ -164,11 +164,12 @@ class TestRebalancePortfolioChange:
         # Act
         result = calculate_rebalance(db_session, "USD")
 
-        # Assert — no previous_close: fallback to current price, daily change = 0
+        # Assert — no previous_close: holding change_pct is None (N/A in UI)
+        # Portfolio-level totals still balance (prev_mv falls back to mv)
         holding_detail = result["holdings_detail"][0]
         assert result["total_value"] == pytest.approx(550.0, rel=0.01)
         assert result["previous_total_value"] == pytest.approx(550.0, rel=0.01)
-        assert holding_detail["change_pct"] == pytest.approx(0.0, abs=0.01)
+        assert holding_detail["change_pct"] is None
 
     @patch("application.rebalance_service.get_exchange_rates")
     def test_calculate_rebalance_should_handle_zero_previous_total_value(

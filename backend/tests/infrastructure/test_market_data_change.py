@@ -8,14 +8,16 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 import domain.constants
 
-domain.constants.DISK_CACHE_DIR = os.path.join(tempfile.gettempdir(), "folio_test_cache_change")
+domain.constants.DISK_CACHE_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_cache_change"
+)
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch  # noqa: E402
 
-import pandas as pd
-import pytest
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
 
-from infrastructure.market_data import _fetch_signals_from_yf
+from infrastructure.market_data import _fetch_signals_from_yf  # noqa: E402
 
 
 class TestDailyChangeCalculation:
@@ -41,7 +43,9 @@ class TestDailyChangeCalculation:
         # Assert
         assert result["price"] == 120.0
         assert result["previous_close"] == 115.0
-        assert result["change_pct"] == pytest.approx(4.35, rel=0.01)  # (120-115)/115*100
+        assert result["change_pct"] == pytest.approx(
+            4.35, rel=0.01
+        )  # (120-115)/115*100
 
     @patch("infrastructure.market_data._yf_history")
     def test_fetch_signals_should_return_error_when_insufficient_history(self, mock_yf):
@@ -102,7 +106,9 @@ class TestDailyChangeCalculation:
         result = _fetch_signals_from_yf("NVDA")
 
         # Assert
-        assert result["change_pct"] == pytest.approx(10.0, rel=0.01)  # (110-100)/100*100
+        assert result["change_pct"] == pytest.approx(
+            10.0, rel=0.01
+        )  # (110-100)/100*100
 
     @patch("infrastructure.market_data._yf_history")
     def test_fetch_signals_should_calculate_negative_change(self, mock_yf):
@@ -122,7 +128,9 @@ class TestDailyChangeCalculation:
         result = _fetch_signals_from_yf("NVDA")
 
         # Assert
-        assert result["change_pct"] == pytest.approx(-9.09, rel=0.01)  # (100-110)/110*100
+        assert result["change_pct"] == pytest.approx(
+            -9.09, rel=0.01
+        )  # (100-110)/110*100
 
     @patch("infrastructure.market_data._yf_history")
     def test_fetch_signals_should_round_change_to_two_decimals(self, mock_yf):

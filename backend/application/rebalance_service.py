@@ -68,10 +68,13 @@ def _compute_holding_market_values(
         price: float | None = None
         previous_close: float | None = None
 
+        has_prev_close = False
+
         if h.is_cash:
             # 現金部位無日內價格變動
             market_value = h.quantity * fx
             previous_market_value = market_value  # 現金前後市值相同
+            has_prev_close = True  # 現金視為「有前日資料」（變動固定為 0）
             price = 1.0
             cash_currency_values[h.currency] = (
                 cash_currency_values.get(h.currency, 0.0) + market_value
@@ -93,8 +96,9 @@ def _compute_holding_market_values(
             # 計算前一交易日市值
             if previous_close is not None and isinstance(previous_close, (int, float)):
                 previous_market_value = h.quantity * previous_close * fx
+                has_prev_close = True
             else:
-                # 無 previous_close 時回退至當前市值，日漲跌為 0
+                # 無 previous_close 時回退至當前市值，使組合層級日漲跌不受影響
                 previous_market_value = market_value
 
         currency_values[h.currency] = (
@@ -113,10 +117,13 @@ def _compute_holding_market_values(
                 "cost_qty": 0.0,
                 "price": price,
                 "fx": fx,
+                "has_prev_close": False,
             }
         ticker_agg[key]["qty"] += h.quantity
         ticker_agg[key]["mv"] += market_value
         ticker_agg[key]["prev_mv"] += previous_market_value
+        if has_prev_close:
+            ticker_agg[key]["has_prev_close"] = True
         if h.cost_basis is not None:
             ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
             ticker_agg[key]["cost_qty"] += h.quantity
@@ -220,8 +227,11 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         )
         cur_price = agg["price"]
 
-        # 計算個股日漲跌百分比
-        holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
+        # 計算個股日漲跌百分比（無前日資料時回傳 None → 前端顯示 N/A）
+        if agg["has_prev_close"]:
+            holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
+        else:
+            holding_change_pct = None
 
         holdings_detail.append(
             {
