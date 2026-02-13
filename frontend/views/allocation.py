@@ -50,6 +50,8 @@ from utils import (
     fetch_rebalance,
     fetch_templates,
     fetch_withdraw,
+    post_digest,
+    post_telegram_test,
     format_utc_timestamp,
     invalidate_all_caches,
     invalidate_holding_caches,
@@ -219,6 +221,7 @@ with st.expander("📖 個人資產配置：使用說明書", expanded=False):
 - 啟用自訂 Bot 後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送
 - 未設定或關閉自訂 Bot 時，自動回退使用系統預設 Bot
 - **測試按鈕**：儲存設定後可點擊「📨 發送測試訊息」驗證設定是否正確
+- **每週摘要**：點擊「📬 發送每週摘要」可手動觸發每週投資組合健康報告（背景執行，結果透過 Telegram 發送）
 """)
 
 
@@ -1984,27 +1987,17 @@ with tab_telegram:
                 except requests.RequestException as e:
                     st.error(f"❌ 請求失敗：{e}")
 
-    # Test button (outside form)
+    # Action buttons (outside form)
     if tg_settings and tg_settings.get("telegram_chat_id"):
-        if st.button("📨 發送測試訊息", key="test_telegram_btn"):
-            try:
-                resp = requests.post(
-                    f"{BACKEND_URL}/settings/telegram/test",
-                    timeout=API_POST_TIMEOUT,
-                )
-                if resp.status_code == 200:
-                    st.success(resp.json().get("message", "✅ 已發送"))
-                else:
-                    detail = (
-                        resp.json().get("detail", resp.text)
-                        if resp.headers.get("content-type", "").startswith(
-                            "application/json"
-                        )
-                        else resp.text
-                    )
-                    st.error(f"❌ {detail}")
-            except requests.RequestException as e:
-                st.error(f"❌ 請求失敗：{e}")
+        btn_cols = st.columns(2)
+        with btn_cols[0]:
+            if st.button("📨 發送測試訊息", key="test_telegram_btn"):
+                level, msg = post_telegram_test()
+                getattr(st, level)(msg)
+        with btn_cols[1]:
+            if st.button("📬 發送每週摘要", key="trigger_digest_btn"):
+                level, msg = post_digest()
+                getattr(st, level)(msg)
 
     # -------------------------------------------------------------------
     # Notification Preferences — selective alert toggles

@@ -448,6 +448,63 @@ def fetch_withdraw(
         return None
 
 
+def post_telegram_test() -> tuple[str, str]:
+    """POST /settings/telegram/test — 發送 Telegram 測試訊息。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"warning"`` / ``"error"``, suitable for
+    ``getattr(st, level)(message)``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/settings/telegram/test",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return ("success", resp.json().get("message", "✅ 已發送"))
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("Telegram 測試 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ {detail}")
+    except requests.RequestException as exc:
+        logger.error("Telegram 測試 API 連線失敗: %s", exc)
+        return ("error", f"❌ 請求失敗：{exc}")
+
+
+def post_digest() -> tuple[str, str]:
+    """POST /digest — 觸發每週摘要（背景執行）。
+
+    Returns ``(level, message)`` where *level* is one of
+    ``"success"`` / ``"warning"`` / ``"error"``.
+    """
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/digest",
+            timeout=API_POST_TIMEOUT,
+        )
+        if resp.status_code == 200:
+            return ("success", resp.json().get("message", "✅ 已啟動"))
+        if resp.status_code == 409:
+            try:
+                msg = resp.json().get("detail", {}).get(
+                    "detail", "每週摘要正在生成中，請稍後再試。"
+                )
+            except Exception:
+                msg = "每週摘要正在生成中，請稍後再試。"
+            return ("warning", msg)
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        logger.warning("摘要 API 回傳 %s: %s", resp.status_code, detail)
+        return ("error", f"❌ {detail}")
+    except requests.RequestException as exc:
+        logger.error("摘要 API 連線失敗: %s", exc)
+        return ("error", f"❌ 請求失敗：{exc}")
+
+
 # ---------------------------------------------------------------------------
 # Dashboard — Cached API Helpers
 # ---------------------------------------------------------------------------
