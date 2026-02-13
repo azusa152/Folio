@@ -161,6 +161,13 @@ FOREX_HISTORY_LONG_CACHE_MAXSIZE = 50
 FOREX_HISTORY_LONG_CACHE_TTL = 7200  # 2 hours L1
 
 # ---------------------------------------------------------------------------
+# FX Watch (Exchange Timing Alerts)
+# ---------------------------------------------------------------------------
+FX_WATCH_DEFAULT_LOOKBACK_DAYS = 30  # 30-day recent high window
+FX_WATCH_DEFAULT_CONSECUTIVE_DAYS = 3  # 3-day consecutive increase threshold
+FX_WATCH_DEFAULT_REMINDER_HOURS = 24  # 24-hour cooldown between alerts
+
+# ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
 # ---------------------------------------------------------------------------
 XRAY_SINGLE_STOCK_WARN_PCT = 15.0  # Telegram warning threshold (%)
@@ -174,17 +181,17 @@ VIX_HISTORY_PERIOD = "5d"
 
 # VIX 閾值（對應恐懼與貪婪等級）
 VIX_EXTREME_FEAR = 30  # VIX > 30 → 極度恐懼
-VIX_FEAR = 20          # VIX 20–30 → 恐懼
+VIX_FEAR = 20  # VIX 20–30 → 恐懼
 VIX_NEUTRAL_HIGH = 20  # VIX 15–20 → 中性
 VIX_NEUTRAL_LOW = 15
-VIX_GREED = 10         # VIX 10–15 → 貪婪
+VIX_GREED = 10  # VIX 10–15 → 貪婪
 # VIX < 10 → 極度貪婪
 
 # CNN Fear & Greed Index 閾值（0–100 分）
-CNN_FG_EXTREME_FEAR = 25   # 0–25 → 極度恐懼
-CNN_FG_FEAR = 45           # 25–45 → 恐懼
-CNN_FG_NEUTRAL_HIGH = 55   # 45–55 → 中性
-CNN_FG_GREED = 75          # 55–75 → 貪婪
+CNN_FG_EXTREME_FEAR = 25  # 0–25 → 極度恐懼
+CNN_FG_FEAR = 45  # 25–45 → 恐懼
+CNN_FG_NEUTRAL_HIGH = 55  # 45–55 → 中性
+CNN_FG_GREED = 75  # 55–75 → 貪婪
 # 75–100 → 極度貪婪
 
 CNN_FG_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
@@ -197,7 +204,7 @@ FG_WEIGHT_CNN = 0.6
 # Fear & Greed Cache
 FEAR_GREED_CACHE_MAXSIZE = 10
 FEAR_GREED_CACHE_TTL = 1800  # L1: 30 minutes
-DISK_FEAR_GREED_TTL = 7200   # L2: 2 hours
+DISK_FEAR_GREED_TTL = 7200  # L2: 2 hours
 
 # ---------------------------------------------------------------------------
 # Disk Cache Key Prefixes
@@ -266,6 +273,10 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
             "currency": "str (display currency, default USD)",
         },
     },
+    "fx_watch": {
+        "description": "Check FX watch configs & send Telegram alerts (with cooldown)",
+        "requires_ticker": False,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -277,8 +288,11 @@ NOTIFICATION_TYPES = {
     "weekly_digest": "每週投資摘要",
     "xray_alerts": "X-Ray 集中度警告",
     "fx_alerts": "匯率曝險警報",
+    "fx_watch_alerts": "外匯換匯時機警報",
 }
-DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {k: True for k in NOTIFICATION_TYPES}
+DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = {
+    k: True for k in NOTIFICATION_TYPES
+}
 
 # ---------------------------------------------------------------------------
 # Error Codes — machine-readable slugs for AI agent error handling
@@ -305,5 +319,5 @@ CURL_CFFI_IMPERSONATE = "chrome"
 # Retry Configuration (yfinance transient network failures)
 # ---------------------------------------------------------------------------
 YFINANCE_RETRY_ATTEMPTS = 3
-YFINANCE_RETRY_WAIT_MIN = 2   # seconds (exponential backoff minimum)
+YFINANCE_RETRY_WAIT_MIN = 2  # seconds (exponential backoff minimum)
 YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)

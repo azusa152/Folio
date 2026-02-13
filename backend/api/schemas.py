@@ -608,3 +608,75 @@ class WebhookResponse(BaseModel):
     success: bool
     message: str
     data: dict = {}
+
+
+# ---------------------------------------------------------------------------
+# FX Watch Schemas
+# ---------------------------------------------------------------------------
+
+
+class FXWatchCreateRequest(BaseModel):
+    """POST /fx-watch 請求 Body：新增外匯監控配置。"""
+
+    base_currency: str
+    quote_currency: str
+    lookback_days: int = 30
+    consecutive_increase_days: int = 3
+    reminder_interval_hours: int = 24
+
+
+class FXWatchUpdateRequest(BaseModel):
+    """PATCH /fx-watch/{id} 請求 Body：更新外匯監控配置。"""
+
+    lookback_days: Optional[int] = None
+    consecutive_increase_days: Optional[int] = None
+    reminder_interval_hours: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class FXWatchResponse(BaseModel):
+    """GET /fx-watch 回傳單筆配置。"""
+
+    id: int
+    user_id: str
+    base_currency: str
+    quote_currency: str
+    lookback_days: int
+    consecutive_increase_days: int
+    reminder_interval_hours: int
+    is_active: bool
+    last_alerted_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class FXTimingResultResponse(BaseModel):
+    """換匯時機分析結果。"""
+
+    base_currency: str
+    quote_currency: str
+    current_rate: float
+    is_recent_high: bool
+    lookback_high: float
+    lookback_days: int
+    consecutive_increases: int
+    consecutive_threshold: int
+    should_alert: bool
+    recommendation_zh: str
+    reasoning_zh: str
+
+
+class FXWatchCheckResponse(BaseModel):
+    """POST /fx-watch/check 回傳結構：分析結果（不發送通知）。"""
+
+    total_watches: int
+    results: list[dict]
+
+
+class FXWatchAlertResponse(BaseModel):
+    """POST /fx-watch/alert 回傳結構：警報發送結果。"""
+
+    total_watches: int
+    triggered_alerts: int
+    sent_alerts: int
+    alerts: list[dict]

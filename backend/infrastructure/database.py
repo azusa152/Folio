@@ -70,7 +70,9 @@ def _load_system_personas() -> None:
 
     from domain.entities import SystemTemplate
 
-    persona_path = pathlib.Path(__file__).parent.parent / "config" / "system_personas.json"
+    persona_path = (
+        pathlib.Path(__file__).parent.parent / "config" / "system_personas.json"
+    )
     if not persona_path.exists():
         logger.warning("system_personas.json 不存在，跳過載入。")
         return

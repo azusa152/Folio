@@ -12,7 +12,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 # Patch disk cache dir before infrastructure.market_data imports it
 import domain.constants  # noqa: E402
 
-domain.constants.DISK_CACHE_DIR = os.path.join(tempfile.gettempdir(), "folio_test_cache")
+domain.constants.DISK_CACHE_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_cache"
+)
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402

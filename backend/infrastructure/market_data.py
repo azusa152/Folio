@@ -151,16 +151,32 @@ _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 # ---------------------------------------------------------------------------
 # L1 快取（記憶體）：避免每次頁面載入都重複呼叫 yfinance
 # ---------------------------------------------------------------------------
-_signals_cache: TTLCache = TTLCache(maxsize=SIGNALS_CACHE_MAXSIZE, ttl=SIGNALS_CACHE_TTL)
+_signals_cache: TTLCache = TTLCache(
+    maxsize=SIGNALS_CACHE_MAXSIZE, ttl=SIGNALS_CACHE_TTL
+)
 _moat_cache: TTLCache = TTLCache(maxsize=MOAT_CACHE_MAXSIZE, ttl=MOAT_CACHE_TTL)
-_earnings_cache: TTLCache = TTLCache(maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNINGS_CACHE_TTL)
-_dividend_cache: TTLCache = TTLCache(maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL)
-_price_history_cache: TTLCache = TTLCache(maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL)
+_earnings_cache: TTLCache = TTLCache(
+    maxsize=EARNINGS_CACHE_MAXSIZE, ttl=EARNINGS_CACHE_TTL
+)
+_dividend_cache: TTLCache = TTLCache(
+    maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL
+)
+_price_history_cache: TTLCache = TTLCache(
+    maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL
+)
 _forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
-_etf_holdings_cache: TTLCache = TTLCache(maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL)
-_forex_history_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL)
-_forex_history_long_cache: TTLCache = TTLCache(maxsize=FOREX_HISTORY_LONG_CACHE_MAXSIZE, ttl=FOREX_HISTORY_LONG_CACHE_TTL)
-_fear_greed_cache: TTLCache = TTLCache(maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL)
+_etf_holdings_cache: TTLCache = TTLCache(
+    maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
+)
+_forex_history_cache: TTLCache = TTLCache(
+    maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL
+)
+_forex_history_long_cache: TTLCache = TTLCache(
+    maxsize=FOREX_HISTORY_LONG_CACHE_MAXSIZE, ttl=FOREX_HISTORY_LONG_CACHE_TTL
+)
+_fear_greed_cache: TTLCache = TTLCache(
+    maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL
+)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +317,9 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         stock, hist = _yf_history(ticker, YFINANCE_HISTORY_PERIOD)
 
         if hist.empty or len(hist) < MIN_HISTORY_DAYS_FOR_SIGNALS:
-            logger.warning("%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist))
+            logger.warning(
+                "%s 歷史資料不足（%d 筆），無法計算技術指標。", ticker, len(hist)
+            )
             return {"error": f"⚠️ {ticker} 歷史資料不足，無法計算技術指標。"}
 
         # Piggyback：將收盤價歷史寫入 price_history 快取，避免後續重複呼叫 yfinance
@@ -320,7 +338,13 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
 
         logger.info(
             "%s 技術訊號：price=%.2f, RSI=%s, 200MA=%s, 60MA=%s, Bias=%s%%, VolRatio=%s",
-            ticker, current_price, rsi, ma200, ma60, bias, volume_ratio,
+            ticker,
+            current_price,
+            rsi,
+            ma200,
+            ma60,
+            bias,
+            volume_ratio,
         )
 
         # 機構持倉 (best-effort，失敗不影響整體回傳)
@@ -338,12 +362,18 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
                         # 將 Timestamp / NaT 等轉為字串
                         if hasattr(val, "isoformat"):
                             holder_entry[col] = val.isoformat()[:10]
-                        elif val is None or (hasattr(val, "item") and str(val) == "NaT"):
+                        elif val is None or (
+                            hasattr(val, "item") and str(val) == "NaT"
+                        ):
                             holder_entry[col] = "N/A"
                         else:
-                            holder_entry[col] = val if not hasattr(val, "item") else val.item()
+                            holder_entry[col] = (
+                                val if not hasattr(val, "item") else val.item()
+                            )
                     institutional_holders.append(holder_entry)
-                logger.debug("%s 機構持倉：取得 %d 筆", ticker, len(institutional_holders))
+                logger.debug(
+                    "%s 機構持倉：取得 %d 筆", ticker, len(institutional_holders)
+                )
         except Exception as holder_err:
             logger.debug("%s 機構持倉取得失敗（非致命）：%s", ticker, holder_err)
 
@@ -371,12 +401,18 @@ def get_technical_signals(ticker: str) -> Optional[dict]:
     結果快取 5 分鐘。錯誤結果僅寫入 L1（短暫），不寫入 L2/磁碟。
     """
     return _cached_fetch(
-        _signals_cache, ticker, DISK_KEY_SIGNALS, DISK_SIGNALS_TTL,
-        _fetch_signals_from_yf, is_error=_is_error_dict,
+        _signals_cache,
+        ticker,
+        DISK_KEY_SIGNALS,
+        DISK_SIGNALS_TTL,
+        _fetch_signals_from_yf,
+        is_error=_is_error_dict,
     )
 
 
-def prewarm_signals_batch(tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE) -> dict[str, dict | None]:
+def prewarm_signals_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, dict | None]:
     """
     並行預熱多檔股票的技術訊號快取。
     已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
@@ -406,7 +442,9 @@ def _extract_price_history(hist) -> list[dict]:
     """從 yfinance history DataFrame 中提取收盤價列表（共用 helper）。"""
     result = []
     for idx, row in hist.iterrows():
-        date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
+        date_str = (
+            idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
+        )
         result.append({"date": date_str, "close": round(row["Close"], 2)})
     return result
 
@@ -416,8 +454,14 @@ def _piggyback_price_history(ticker: str, hist) -> None:
     try:
         price_history = _extract_price_history(hist)
         _price_history_cache[ticker] = price_history
-        _disk_set(f"{DISK_KEY_PRICE_HISTORY}:{ticker}", price_history, DISK_PRICE_HISTORY_TTL)
-        logger.debug("%s 已 piggyback 寫入 price_history 快取（%d 筆）。", ticker, len(price_history))
+        _disk_set(
+            f"{DISK_KEY_PRICE_HISTORY}:{ticker}", price_history, DISK_PRICE_HISTORY_TTL
+        )
+        logger.debug(
+            "%s 已 piggyback 寫入 price_history 快取（%d 筆）。",
+            ticker,
+            len(price_history),
+        )
     except Exception as e:
         logger.debug("%s piggyback price_history 失敗（非致命）：%s", ticker, e)
 
@@ -440,8 +484,10 @@ def get_price_history(ticker: str) -> list[dict] | None:
     通常由 signals 的 piggyback 預先填充快取，幾乎不需額外 yfinance 呼叫。
     """
     return _cached_fetch(
-        _price_history_cache, ticker,
-        DISK_KEY_PRICE_HISTORY, DISK_PRICE_HISTORY_TTL,
+        _price_history_cache,
+        ticker,
+        DISK_KEY_PRICE_HISTORY,
+        DISK_PRICE_HISTORY_TTL,
         _fetch_price_history_from_yf,
     )
 
@@ -458,13 +504,21 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
 
         if financials is None or financials.empty:
             logger.warning("%s 無法取得季報資料。", ticker)
-            return {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
+            return {
+                "ticker": ticker,
+                "moat": MoatStatus.NOT_AVAILABLE.value,
+                "details": "N/A failed to get new data",
+            }
 
         columns = financials.columns.tolist()
 
         if len(columns) < 2:
             logger.warning("%s 季報資料不足（%d 季），無法分析。", ticker, len(columns))
-            return {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
+            return {
+                "ticker": ticker,
+                "moat": MoatStatus.NOT_AVAILABLE.value,
+                "details": "N/A failed to get new data",
+            }
 
         def _get_gross_margin(col) -> Optional[float]:
             try:
@@ -514,8 +568,12 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
 
         result: dict = {
             "ticker": ticker,
-            "current_quarter": str(latest_col.date()) if hasattr(latest_col, "date") else str(latest_col),
-            "yoy_quarter": str(yoy_col.date()) if hasattr(yoy_col, "date") else str(yoy_col),
+            "current_quarter": str(latest_col.date())
+            if hasattr(latest_col, "date")
+            else str(latest_col),
+            "yoy_quarter": str(yoy_col.date())
+            if hasattr(yoy_col, "date")
+            else str(yoy_col),
             "current_margin": current_margin,
             "previous_margin": previous_margin,
             "change": change,
@@ -530,31 +588,48 @@ def _fetch_moat_from_yf(ticker: str) -> dict:
         if moat_status == MoatStatus.DETERIORATING:
             logger.warning(
                 "%s 護城河惡化：毛利率 %.2f%% → 去年同期 %.2f%%（下降 %.2f pp）",
-                ticker, current_margin, previous_margin, abs(change),
+                ticker,
+                current_margin,
+                previous_margin,
+                abs(change),
             )
         else:
             logger.info(
                 "%s 護城河穩健：毛利率 %.2f%% vs 去年同期 %.2f%%（%+.2f pp）",
-                ticker, current_margin, previous_margin, change,
+                ticker,
+                current_margin,
+                previous_margin,
+                change,
             )
 
         return result
 
     except Exception as e:
         logger.error("無法分析 %s 護城河：%s", ticker, e, exc_info=True)
-        return {"ticker": ticker, "moat": MoatStatus.NOT_AVAILABLE.value, "details": "N/A failed to get new data"}
+        return {
+            "ticker": ticker,
+            "moat": MoatStatus.NOT_AVAILABLE.value,
+            "details": "N/A failed to get new data",
+        }
 
 
 def _is_moat_error(result) -> bool:
     """判斷護城河結果是否為失敗回應（NOT_AVAILABLE 狀態）。"""
-    return isinstance(result, dict) and result.get("moat") == MoatStatus.NOT_AVAILABLE.value
+    return (
+        isinstance(result, dict)
+        and result.get("moat") == MoatStatus.NOT_AVAILABLE.value
+    )
 
 
 def analyze_moat_trend(ticker: str) -> dict:
     """分析護城河趨勢。結果快取 1 小時（季報不會頻繁變動）。錯誤結果不寫入 L2/磁碟。"""
     return _cached_fetch(
-        _moat_cache, ticker, DISK_KEY_MOAT, DISK_MOAT_TTL,
-        _fetch_moat_from_yf, is_error=_is_moat_error,
+        _moat_cache,
+        ticker,
+        DISK_KEY_MOAT,
+        DISK_MOAT_TTL,
+        _fetch_moat_from_yf,
+        is_error=_is_moat_error,
     )
 
 
@@ -569,7 +644,11 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
     接受動態的 ticker_list，計算跌破 60MA 的比例。
     """
     if not ticker_list:
-        return {"status": MarketSentiment.POSITIVE.value, "details": "無風向球股票可供分析", "below_60ma_pct": 0.0}
+        return {
+            "status": MarketSentiment.POSITIVE.value,
+            "details": "無風向球股票可供分析",
+            "below_60ma_pct": 0.0,
+        }
 
     try:
         below_count = 0
@@ -590,7 +669,9 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
         if sentiment == MarketSentiment.CAUTION:
             logger.warning(
                 "市場情緒：CAUTION — %.1f%% 的風向球跌破 60MA（%d/%d）",
-                pct, below_count, valid_count,
+                pct,
+                below_count,
+                valid_count,
             )
             return {
                 "status": sentiment.value,
@@ -600,7 +681,9 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
 
         logger.info(
             "市場情緒：POSITIVE — %.1f%% 的風向球跌破 60MA（%d/%d）",
-            pct, below_count, valid_count,
+            pct,
+            below_count,
+            valid_count,
         )
         return {
             "status": sentiment.value,
@@ -610,7 +693,11 @@ def analyze_market_sentiment(ticker_list: list[str]) -> dict:
 
     except Exception as e:
         logger.error("市場情緒分析失敗：%s", e, exc_info=True)
-        return {"status": MarketSentiment.POSITIVE.value, "details": "無法判斷，預設樂觀", "below_60ma_pct": 0.0}
+        return {
+            "status": MarketSentiment.POSITIVE.value,
+            "details": "無法判斷，預設樂觀",
+            "below_60ma_pct": 0.0,
+        }
 
 
 # ===========================================================================
@@ -657,7 +744,11 @@ def _fetch_earnings_from_yf(ticker: str) -> dict:
 def get_earnings_date(ticker: str) -> dict:
     """取得下次財報日期。結果快取 24 小時。"""
     return _cached_fetch(
-        _earnings_cache, ticker, DISK_KEY_EARNINGS, DISK_EARNINGS_TTL, _fetch_earnings_from_yf
+        _earnings_cache,
+        ticker,
+        DISK_KEY_EARNINGS,
+        DISK_EARNINGS_TTL,
+        _fetch_earnings_from_yf,
     )
 
 
@@ -688,7 +779,9 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
 
         return {
             "ticker": ticker,
-            "dividend_yield": round(dividend_yield * 100, 2) if dividend_yield else None,
+            "dividend_yield": round(dividend_yield * 100, 2)
+            if dividend_yield
+            else None,
             "ex_dividend_date": ex_dividend_date,
         }
 
@@ -700,7 +793,11 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
 def get_dividend_info(ticker: str) -> dict:
     """取得股息資訊。結果快取避免重複呼叫 yfinance。"""
     return _cached_fetch(
-        _dividend_cache, ticker, DISK_KEY_DIVIDEND, DISK_DIVIDEND_TTL, _fetch_dividend_from_yf
+        _dividend_cache,
+        ticker,
+        DISK_KEY_DIVIDEND,
+        DISK_DIVIDEND_TTL,
+        _fetch_dividend_from_yf,
     )
 
 
@@ -798,7 +895,10 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
 
         if hist is not None and not hist.empty:
             return [
-                {"date": idx.strftime("%Y-%m-%d"), "close": round(float(row["Close"]), 4)}
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "close": round(float(row["Close"]), 4),
+                }
                 for idx, row in hist.iterrows()
                 if not _is_nan(row.get("Close"))
             ]
@@ -809,7 +909,10 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
 
         if hist_rev is not None and not hist_rev.empty:
             return [
-                {"date": idx.strftime("%Y-%m-%d"), "close": round(1.0 / float(row["Close"]), 4)}
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "close": round(1.0 / float(row["Close"]), 4),
+                }
                 for idx, row in hist_rev.iterrows()
                 if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
             ]
@@ -856,7 +959,10 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
 
         if hist is not None and not hist.empty:
             return [
-                {"date": idx.strftime("%Y-%m-%d"), "close": round(float(row["Close"]), 4)}
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "close": round(float(row["Close"]), 4),
+                }
                 for idx, row in hist.iterrows()
                 if not _is_nan(row.get("Close"))
             ]
@@ -867,7 +973,10 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
 
         if hist_rev is not None and not hist_rev.empty:
             return [
-                {"date": idx.strftime("%Y-%m-%d"), "close": round(1.0 / float(row["Close"]), 4)}
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "close": round(1.0 / float(row["Close"]), 4),
+                }
                 for idx, row in hist_rev.iterrows()
                 if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
             ]
@@ -905,6 +1014,7 @@ def _is_nan(val) -> bool:
         return True
     try:
         import math
+
         return math.isnan(float(val))
     except (TypeError, ValueError):
         return True
@@ -932,7 +1042,9 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
             return None
 
         cols = list(top.columns)
-        logger.debug("%s top_holdings columns=%s, index=%s", ticker, cols, top.index.name)
+        logger.debug(
+            "%s top_holdings columns=%s, index=%s", ticker, cols, top.index.name
+        )
 
         result = []
         for symbol, row in top.head(ETF_TOP_N).iterrows():
@@ -949,9 +1061,7 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
                     "weight": float(weight),
                 }
             )
-        logger.info(
-            "%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N
-        )
+        logger.info("%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N)
         return result if result else None
     except Exception as e:
         logger.debug("%s 非 ETF 或取得成分股失敗：%s", ticker, e)
@@ -981,7 +1091,9 @@ def get_etf_top_holdings(ticker: str) -> list[dict] | None:
     return data if data else None
 
 
-def prewarm_etf_holdings_batch(tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE) -> dict[str, list[dict] | None]:
+def prewarm_etf_holdings_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> dict[str, list[dict] | None]:
     """
     並行預熱多檔 ETF 的成分股快取。
     回傳 {ticker: holdings_list_or_None} 對照表。
@@ -1034,11 +1146,18 @@ def get_vix_data() -> dict:
             }
 
         current_vix = round(float(closes[-1]), 2)
-        change_1d = round(float(closes[-1] - closes[-2]), 2) if len(closes) >= 2 else None
+        change_1d = (
+            round(float(closes[-1] - closes[-2]), 2) if len(closes) >= 2 else None
+        )
 
         vix_level = classify_vix(current_vix)
 
-        logger.info("VIX = %.2f（等級：%s，日變動：%s）", current_vix, vix_level.value, change_1d)
+        logger.info(
+            "VIX = %.2f（等級：%s，日變動：%s）",
+            current_vix,
+            vix_level.value,
+            change_1d,
+        )
 
         return {
             "value": current_vix,

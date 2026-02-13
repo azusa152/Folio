@@ -62,7 +62,9 @@ class TestAnalyzeFxRateChanges:
 
         result = analyze_fx_rate_changes("USD/TWD", 31.7, short, [])
 
-        swing_alerts = [a for a in result if a.alert_type == FXAlertType.SHORT_TERM_SWING]
+        swing_alerts = [
+            a for a in result if a.alert_type == FXAlertType.SHORT_TERM_SWING
+        ]
         assert len(swing_alerts) == 1
         assert swing_alerts[0].period_label == "5 日"
 
@@ -78,7 +80,9 @@ class TestAnalyzeFxRateChanges:
 
         result = analyze_fx_rate_changes("USD/TWD", 31.3, short, [])
 
-        swing_alerts = [a for a in result if a.alert_type == FXAlertType.SHORT_TERM_SWING]
+        swing_alerts = [
+            a for a in result if a.alert_type == FXAlertType.SHORT_TERM_SWING
+        ]
         assert len(swing_alerts) == 0
 
     def test_should_detect_long_term_trend_when_above_threshold(self):
@@ -91,7 +95,9 @@ class TestAnalyzeFxRateChanges:
 
         result = analyze_fx_rate_changes("USD/TWD", 32.5, [], long)
 
-        trend_alerts = [a for a in result if a.alert_type == FXAlertType.LONG_TERM_TREND]
+        trend_alerts = [
+            a for a in result if a.alert_type == FXAlertType.LONG_TERM_TREND
+        ]
         assert len(trend_alerts) == 1
         assert trend_alerts[0].period_label == "3 個月"
 
@@ -104,7 +110,9 @@ class TestAnalyzeFxRateChanges:
 
         result = analyze_fx_rate_changes("USD/TWD", 31.5, [], long)
 
-        trend_alerts = [a for a in result if a.alert_type == FXAlertType.LONG_TERM_TREND]
+        trend_alerts = [
+            a for a in result if a.alert_type == FXAlertType.LONG_TERM_TREND
+        ]
         assert len(trend_alerts) == 0
 
     def test_should_detect_multiple_alert_types_simultaneously(self):
@@ -177,13 +185,17 @@ class TestDetermineFxRiskLevel:
 
     def test_should_return_medium_when_short_term_swing_present(self):
         alerts = [
-            FXRateAlert("USD/TWD", FXAlertType.SHORT_TERM_SWING, 2.5, "up", 32.0, "5 日"),
+            FXRateAlert(
+                "USD/TWD", FXAlertType.SHORT_TERM_SWING, 2.5, "up", 32.0, "5 日"
+            ),
         ]
         assert determine_fx_risk_level(alerts) == "medium"
 
     def test_should_return_low_when_only_long_term_trend(self):
         alerts = [
-            FXRateAlert("USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"),
+            FXRateAlert(
+                "USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"
+            ),
         ]
         assert determine_fx_risk_level(alerts) == "low"
 
@@ -192,14 +204,20 @@ class TestDetermineFxRiskLevel:
 
     def test_should_return_high_when_mixed_alerts_include_spike(self):
         alerts = [
-            FXRateAlert("USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"),
+            FXRateAlert(
+                "USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"
+            ),
             FXRateAlert("JPY/TWD", FXAlertType.DAILY_SPIKE, -1.8, "down", 0.21, "1 日"),
         ]
         assert determine_fx_risk_level(alerts) == "high"
 
     def test_should_return_medium_when_swing_and_trend_present(self):
         alerts = [
-            FXRateAlert("USD/TWD", FXAlertType.SHORT_TERM_SWING, 2.5, "up", 32.0, "5 日"),
-            FXRateAlert("USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"),
+            FXRateAlert(
+                "USD/TWD", FXAlertType.SHORT_TERM_SWING, 2.5, "up", 32.0, "5 日"
+            ),
+            FXRateAlert(
+                "USD/TWD", FXAlertType.LONG_TERM_TREND, 9.0, "up", 32.0, "3 個月"
+            ),
         ]
         assert determine_fx_risk_level(alerts) == "medium"

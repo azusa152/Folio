@@ -30,7 +30,10 @@ from infrastructure.market_data import (
     prewarm_etf_holdings_batch,
     prewarm_signals_batch,
 )
-from infrastructure.notification import is_notification_enabled, send_telegram_message_dual
+from infrastructure.notification import (
+    is_notification_enabled,
+    send_telegram_message_dual,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -78,7 +81,9 @@ def _compute_holding_market_values(
             else:
                 market_value = 0.0
 
-        currency_values[h.currency] = currency_values.get(h.currency, 0.0) + market_value
+        currency_values[h.currency] = (
+            currency_values.get(h.currency, 0.0) + market_value
+        )
 
         key = h.ticker
         if key not in ticker_agg:
@@ -152,7 +157,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
 
     # 4) 使用共用邏輯計算各持倉市值
     currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
-        holdings, fx_rates,
+        holdings,
+        fx_rates,
     )
 
     # 4.5) 取得每個分類的市值合計
@@ -169,9 +175,7 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     holdings_detail = []
     for ticker, agg in ticker_agg.items():
         avg_cost = (
-            round(agg["cost_sum"] / agg["cost_qty"], 2)
-            if agg["cost_qty"] > 0
-            else None
+            round(agg["cost_sum"] / agg["cost_qty"], 2) if agg["cost_qty"] > 0 else None
         )
         weight_pct = (
             round((agg["mv"] / total_value) * 100, 2) if total_value > 0 else 0.0
@@ -203,7 +207,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     # 7) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
     # 先並行預熱所有可能的 ETF 成分股快取
     xray_tickers = [
-        t for t, agg in ticker_agg.items()
+        t
+        for t, agg in ticker_agg.items()
         if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
     ]
     if xray_tickers:
@@ -253,9 +258,15 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
         total_val = data["direct"] + data["indirect"]
         if total_val <= 0:
             continue
-        direct_pct = round((data["direct"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        indirect_pct = round((data["indirect"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        total_pct = round((total_val / total_value) * 100, 2) if total_value > 0 else 0.0
+        direct_pct = (
+            round((data["direct"] / total_value) * 100, 2) if total_value > 0 else 0.0
+        )
+        indirect_pct = (
+            round((data["indirect"] / total_value) * 100, 2) if total_value > 0 else 0.0
+        )
+        total_pct = (
+            round((total_val / total_value) * 100, 2) if total_value > 0 else 0.0
+        )
         xray_entries.append(
             {
                 "symbol": symbol,
@@ -321,7 +332,9 @@ def send_xray_warnings(
 # ===========================================================================
 
 
-def calculate_currency_exposure(session: Session, home_currency: str | None = None) -> dict:
+def calculate_currency_exposure(
+    session: Session, home_currency: str | None = None
+) -> dict:
     """
     計算匯率曝險分析：
     1. 讀取使用者 Profile 的 home_currency（或使用參數覆寫）
@@ -361,7 +374,11 @@ def calculate_currency_exposure(session: Session, home_currency: str | None = No
     # 3) 取得匯率（all currencies → home_currency）
     holding_currencies = list({h.currency for h in holdings})
     fx_rates = get_exchange_rates(home_currency, holding_currencies)
-    logger.info("匯率曝險分析 → %s：%s", home_currency, {k: round(v, 4) for k, v in fx_rates.items()})
+    logger.info(
+        "匯率曝險分析 → %s：%s",
+        home_currency,
+        {k: round(v, 4) for k, v in fx_rates.items()},
+    )
 
     # 3.5) 並行預熱所有非現金持倉的技術訊號
     non_cash_tickers = list({h.ticker for h in holdings if not h.is_cash})
@@ -370,7 +387,8 @@ def calculate_currency_exposure(session: Session, home_currency: str | None = No
 
     # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
     currency_values, cash_currency_values, _ticker_agg = _compute_holding_market_values(
-        holdings, fx_rates,
+        holdings,
+        fx_rates,
     )
 
     total_value_home = sum(currency_values.values())
@@ -380,12 +398,14 @@ def calculate_currency_exposure(session: Session, home_currency: str | None = No
     breakdown = []
     for cur, val in sorted(currency_values.items(), key=lambda x: x[1], reverse=True):
         pct = round((val / total_value_home) * 100, 2) if total_value_home > 0 else 0.0
-        breakdown.append({
-            "currency": cur,
-            "value": round(val, 2),
-            "percentage": pct,
-            "is_home": cur == home_currency,
-        })
+        breakdown.append(
+            {
+                "currency": cur,
+                "value": round(val, 2),
+                "percentage": pct,
+                "is_home": cur == home_currency,
+            }
+        )
 
     non_home_pct = round(
         sum(b["percentage"] for b in breakdown if not b["is_home"]),
@@ -394,14 +414,18 @@ def calculate_currency_exposure(session: Session, home_currency: str | None = No
 
     # 5b) 建立現金幣別分佈
     cash_breakdown = []
-    for cur, val in sorted(cash_currency_values.items(), key=lambda x: x[1], reverse=True):
+    for cur, val in sorted(
+        cash_currency_values.items(), key=lambda x: x[1], reverse=True
+    ):
         pct = round((val / total_cash_home) * 100, 2) if total_cash_home > 0 else 0.0
-        cash_breakdown.append({
-            "currency": cur,
-            "value": round(val, 2),
-            "percentage": pct,
-            "is_home": cur == home_currency,
-        })
+        cash_breakdown.append(
+            {
+                "currency": cur,
+                "value": round(val, 2),
+                "percentage": pct,
+                "is_home": cur == home_currency,
+            }
+        )
 
     cash_non_home_pct = round(
         sum(b["percentage"] for b in cash_breakdown if not b["is_home"]),
@@ -420,13 +444,17 @@ def calculate_currency_exposure(session: Session, home_currency: str | None = No
             last_close = history[-1]["close"]
             if first_close > 0:
                 change_pct = round(((last_close - first_close) / first_close) * 100, 2)
-                direction = "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
-                fx_movements.append({
-                    "pair": f"{cur}/{home_currency}",
-                    "current_rate": last_close,
-                    "change_pct": change_pct,
-                    "direction": direction,
-                })
+                direction = (
+                    "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
+                )
+                fx_movements.append(
+                    {
+                        "pair": f"{cur}/{home_currency}",
+                        "current_rate": last_close,
+                        "change_pct": change_pct,
+                        "direction": direction,
+                    }
+                )
 
     # 6b) 三層匯率變動警報（單日 / 5日 / 3月）
     all_fx_alerts: list[FXRateAlert] = []
@@ -511,17 +539,14 @@ def _generate_fx_advice(
         )
     elif risk_level == "medium":
         advice.append(
-            "🟡 偵測到近期匯率明顯波動（5 日），匯率風險為中等。"
-            "持續關注外幣匯率走勢。"
+            "🟡 偵測到近期匯率明顯波動（5 日），匯率風險為中等。持續關注外幣匯率走勢。"
         )
     else:
         advice.append("🟢 近期匯率變動穩定，匯率風險較低。")
 
     # 非本幣佔比資訊（保留但不作為警報觸發）
     if non_home_pct > 0:
-        advice.append(
-            f"📊 非本幣（{home_currency}）資產佔比 {non_home_pct:.1f}%。"
-        )
+        advice.append(f"📊 非本幣（{home_currency}）資產佔比 {non_home_pct:.1f}%。")
 
     # 現金部位專屬建議
     if cash_breakdown:
@@ -569,27 +594,16 @@ def _generate_fx_advice(
 def check_fx_alerts(session: Session) -> list[str]:
     """
     檢查匯率曝險警報：偵測三層級匯率變動，產出 Telegram 通知文字。
-    回傳警報訊息列表（強調現金部位影響）。
     """
     exposure = calculate_currency_exposure(session)
     alerts: list[str] = []
 
     home_cur = exposure["home_currency"]
-    cash_by_cur = {
-        b["currency"]: b["value"]
-        for b in exposure.get("cash_breakdown", [])
-    }
 
     # 匯率變動警報（三層級偵測）
     for alert_data in exposure.get("fx_rate_alerts", []):
         pair = alert_data["pair"]
         base_cur = pair.split("/")[0]
-        cash_amt = cash_by_cur.get(base_cur, 0.0)
-        cash_note = (
-            f"\n💵 其中 {base_cur} 現金約 {cash_amt:,.0f} {home_cur} 直接受影響。"
-            if cash_amt > 0
-            else ""
-        )
         type_label = FX_ALERT_LABEL.get(
             alert_data["alert_type"], alert_data["alert_type"]
         )
@@ -598,14 +612,14 @@ def check_fx_alerts(session: Session) -> list[str]:
                 f"📈 {pair} {type_label}：{alert_data['period_label']}升值 "
                 f"{alert_data['change_pct']:+.2f}%"
                 f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 購買力上升。{cash_note}"
+                f"您的 {base_cur} 購買力上升。"
             )
         else:
             alerts.append(
                 f"📉 {pair} {type_label}：{alert_data['period_label']}貶值 "
                 f"{alert_data['change_pct']:+.2f}%"
                 f"（現價 {alert_data['current_rate']:.4f}）。"
-                f"您的 {base_cur} 資產以 {home_cur} 計價正在縮水。{cash_note}"
+                f"您的 {base_cur} 資產以 {home_cur} 計價正在縮水。"
             )
 
     return alerts
