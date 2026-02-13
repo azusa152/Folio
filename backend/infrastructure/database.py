@@ -55,6 +55,10 @@ def _run_migrations() -> None:
         "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_consecutive_increase BOOLEAN DEFAULT 1;",
         "ALTER TABLE fxwatchconfig ADD COLUMN recent_high_days INTEGER DEFAULT 30;",
         "UPDATE fxwatchconfig SET recent_high_days = lookback_days WHERE recent_high_days = 30;",
+        # Stock: 新增 is_etf 欄位（ETF 不參與市場情緒計算）
+        "ALTER TABLE stock ADD COLUMN is_etf BOOLEAN DEFAULT 0;",
+        # 回填已知 ETF
+        "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
     ]
 
     with engine.connect() as conn:

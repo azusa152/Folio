@@ -25,6 +25,7 @@ class Stock(SQLModel, table=True):
         default=ScanSignal.NORMAL.value, description="上次掃描訊號"
     )
     is_active: bool = Field(default=True, description="是否追蹤中")
+    is_etf: bool = Field(default=False, description="是否為 ETF（市場情緒排除用）")
 
 
 class ThesisLog(SQLModel, table=True):

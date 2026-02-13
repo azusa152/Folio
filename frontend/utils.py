@@ -108,7 +108,7 @@ def invalidate_profile_caches() -> None:
 
 
 def invalidate_all_caches() -> None:
-    """Nuclear option — only for explicit refresh button."""
+    """Clear frontend Streamlit caches, forcing re-fetch from backend API."""
     st.cache_data.clear()
 
 
@@ -202,6 +202,18 @@ def api_get_silent(path: str, timeout: int | None = None) -> dict | list | None:
     """GET request to Backend API (silent mode — no error display)."""
     try:
         resp = requests.get(f"{BACKEND_URL}{path}", timeout=timeout or API_GET_TIMEOUT)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException:
+        return None
+
+
+def api_post_silent(path: str, json_data: dict | None = None) -> dict | None:
+    """POST request to Backend API (silent mode — no error display)."""
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}{path}", json=json_data or {}, timeout=API_POST_TIMEOUT
+        )
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
@@ -883,14 +895,23 @@ def render_stock_card(stock: dict, enrichment: dict | None = None) -> None:
     else:
         signals = fetch_signals(ticker) or {}
 
-    # Build expander header with signal icon, ticker, category, price, and market
+    # Build expander header with signal icon, ticker, category, price, daily change, and market
     last_signal = stock.get("last_scan_signal", "NORMAL")
     signal_icon = SCAN_SIGNAL_ICONS.get(last_signal, "⚪")
     cat_label_short = CATEGORY_LABELS.get(cat, cat).split("(")[0].strip()
     price = signals.get("price", "")
     price_str = f" | ${price}" if price and price != "N/A" else ""
+
+    # Add daily change to header
+    change_pct = signals.get("change_pct")
+    if change_pct is not None:
+        arrow = "▲" if change_pct >= 0 else "▼"
+        change_str = f" ({arrow}{abs(change_pct):.2f}%)"
+    else:
+        change_str = ""
+
     market_label = infer_market_label(ticker)
-    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str} | {market_label}"
+    header = f"{signal_icon} {ticker} — {cat_label_short}{price_str}{change_str} | {market_label}"
 
     with st.expander(header, expanded=False):
         col1, col2 = st.columns([1, 2])

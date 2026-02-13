@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlmodel import Session, select
 
 from application.stock_service import StockNotFoundError
+from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     XRAY_SINGLE_STOCK_WARN_PCT,
@@ -49,12 +50,13 @@ def _compute_holding_market_values(
     fx_rates: dict[str, float],
 ) -> tuple[dict[str, float], dict[str, float], dict[str, dict]]:
     """
-    共用邏輯：計算所有持倉的市值（已換算目標幣別）。
+    共用邏輯：計算所有持倉的當前與前一交易日市值（已換算目標幣別）。
     回傳 (currency_values, cash_currency_values, ticker_agg)。
 
-    - currency_values: {幣別: 總市值} — 全部持倉
+    - currency_values: {幣別: 總市值} — 全部持倉（當前）
     - cash_currency_values: {幣別: 現金市值} — 僅現金部位
-    - ticker_agg: {ticker: {category, currency, qty, mv, cost_sum, cost_qty, price, fx}}
+    - ticker_agg: {ticker: {category, currency, qty, mv, prev_mv, cost_sum, cost_qty, price, fx}}
+      其中 prev_mv 為前一交易日市值，用於日漲跌計算
     """
     currency_values: dict[str, float] = {}
     cash_currency_values: dict[str, float] = {}
@@ -64,22 +66,40 @@ def _compute_holding_market_values(
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
         fx = fx_rates.get(h.currency, 1.0)
         price: float | None = None
+        previous_close: float | None = None
+
+        has_prev_close = False
 
         if h.is_cash:
+            # 現金部位無日內價格變動
             market_value = h.quantity * fx
+            previous_market_value = market_value  # 現金前後市值相同
+            has_prev_close = True  # 現金視為「有前日資料」（變動固定為 0）
             price = 1.0
             cash_currency_values[h.currency] = (
                 cash_currency_values.get(h.currency, 0.0) + market_value
             )
         else:
+            # 非現金持倉：取得當前與前一交易日價格
             signals = get_technical_signals(h.ticker)
             price = signals.get("price") if signals else None
+            previous_close = signals.get("previous_close") if signals else None
+
+            # 計算當前市值
             if price is not None and isinstance(price, (int, float)):
                 market_value = h.quantity * price * fx
             elif h.cost_basis is not None:
                 market_value = h.quantity * h.cost_basis * fx
             else:
                 market_value = 0.0
+
+            # 計算前一交易日市值
+            if previous_close is not None and isinstance(previous_close, (int, float)):
+                previous_market_value = h.quantity * previous_close * fx
+                has_prev_close = True
+            else:
+                # 無 previous_close 時回退至當前市值，使組合層級日漲跌不受影響
+                previous_market_value = market_value
 
         currency_values[h.currency] = (
             currency_values.get(h.currency, 0.0) + market_value
@@ -92,13 +112,18 @@ def _compute_holding_market_values(
                 "currency": h.currency,
                 "qty": 0.0,
                 "mv": 0.0,
+                "prev_mv": 0.0,
                 "cost_sum": 0.0,
                 "cost_qty": 0.0,
                 "price": price,
                 "fx": fx,
+                "has_prev_close": False,
             }
         ticker_agg[key]["qty"] += h.quantity
         ticker_agg[key]["mv"] += market_value
+        ticker_agg[key]["prev_mv"] += previous_market_value
+        if has_prev_close:
+            ticker_agg[key]["has_prev_close"] = True
         if h.cost_basis is not None:
             ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
             ticker_agg[key]["cost_qty"] += h.quantity
@@ -170,8 +195,26 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     # 5) 委託 domain 純函式計算
     result = _pure_rebalance(category_values, target_config)
 
-    # 6) 建立個股明細（含佔比）
+    # 6) 計算投資組合日漲跌
     total_value = result["total_value"]
+    previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
+    total_value_change = round(total_value - previous_total_value, 2)
+    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
+
+    logger.info(
+        "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
+        previous_total_value,
+        total_value,
+        total_value_change,
+        total_value_change_pct if total_value_change_pct is not None else 0.0,
+    )
+
+    # 加入結果
+    result["previous_total_value"] = round(previous_total_value, 2)
+    result["total_value_change"] = round(total_value_change, 2)
+    result["total_value_change_pct"] = total_value_change_pct
+
+    # 7) 建立個股明細（含佔比）
     holdings_detail = []
     for ticker, agg in ticker_agg.items():
         avg_cost = (
@@ -181,6 +224,13 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
             round((agg["mv"] / total_value) * 100, 2) if total_value > 0 else 0.0
         )
         cur_price = agg["price"]
+
+        # 計算個股日漲跌百分比（無前日資料時回傳 None → 前端顯示 N/A）
+        if agg["has_prev_close"]:
+            holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
+        else:
+            holding_change_pct = None
+
         holdings_detail.append(
             {
                 "ticker": ticker,
@@ -196,15 +246,16 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
                     else None
                 ),
                 "fx": round(agg["fx"], 6),
+                "change_pct": holding_change_pct,
             }
         )
 
-    # Sort by weight descending (largest positions first)
+    # 依權重降序排列（最大持倉在前）
     holdings_detail.sort(key=lambda x: x["weight_pct"], reverse=True)
     result["holdings_detail"] = holdings_detail
     result["display_currency"] = display_currency
 
-    # 7) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
+    # 8) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
     # 先並行預熱所有可能的 ETF 成分股快取
     xray_tickers = [
         t

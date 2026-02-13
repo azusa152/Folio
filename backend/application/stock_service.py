@@ -19,6 +19,7 @@ from domain.enums import CATEGORY_LABEL, ScanSignal, StockCategory
 from infrastructure import repositories as repo
 from infrastructure.market_data import (
     analyze_moat_trend,
+    detect_is_etf,
     get_dividend_info,
     get_earnings_date,
     get_technical_signals,
@@ -111,9 +112,11 @@ def create_stock(
     category: StockCategory,
     thesis: str,
     tags: list[str] | None = None,
+    is_etf: bool | None = None,
 ) -> Stock:
     """
     新增股票到追蹤清單，同時建立第一筆觀點紀錄。
+    is_etf=None 時自動透過 yfinance 偵測。
     """
     ticker_upper = ticker.upper()
     tags = tags or []
@@ -126,12 +129,16 @@ def create_stock(
     if existing:
         raise StockAlreadyExistsError(f"股票 {ticker_upper} 已存在追蹤清單中。")
 
+    if is_etf is None:
+        is_etf = detect_is_etf(ticker_upper)
+
     stock = Stock(
         ticker=ticker_upper,
         category=category,
         current_thesis=thesis,
         current_tags=tags_str,
         is_active=True,
+        is_etf=is_etf,
     )
     session.add(stock)
 
@@ -164,6 +171,7 @@ def list_active_stocks(session: Session) -> list[dict]:
             "current_tags": _str_to_tags(stock.current_tags),
             "display_order": stock.display_order,
             "is_active": stock.is_active,
+            "is_etf": stock.is_etf,
         }
         for stock in stocks
     ]
@@ -270,6 +278,7 @@ def export_stocks(session: Session) -> list[dict]:
             "category": stock.category.value,
             "thesis": stock.current_thesis,
             "tags": _str_to_tags(stock.current_tags),
+            "is_etf": stock.is_etf,
         }
         for stock in stocks
     ]
@@ -421,16 +430,24 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
             if tags:
                 existing.current_tags = tags_str
             existing.category = category
+            # 更新 is_etf（如有提供）
+            imported_is_etf = item.get("is_etf")
+            if imported_is_etf is not None:
+                existing.is_etf = bool(imported_is_etf)
             repo.update_stock(session, existing)
             updated += 1
         else:
-            # 新增
+            # 新增：auto-detect ETF if not specified
+            imported_is_etf = item.get("is_etf")
+            if imported_is_etf is None:
+                imported_is_etf = detect_is_etf(ticker)
             stock = Stock(
                 ticker=ticker,
                 category=category,
                 current_thesis=thesis,
                 current_tags=tags_str,
                 is_active=True,
+                is_etf=bool(imported_is_etf),
             )
             session.add(stock)
             thesis_log = ThesisLog(
@@ -500,6 +517,7 @@ def get_enriched_stocks(session: Session) -> list[dict]:
             "display_order": stock.display_order,
             "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
+            "is_etf": stock.is_etf,
             "signals": None,
             "earnings": None,
             "dividend": None,

@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Callable, Optional, TypeVar
 
 import diskcache
-import requests as http_requests
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -28,6 +27,7 @@ from domain.analysis import (
     classify_vix,
     compute_bias,
     compute_composite_fear_greed,
+    compute_daily_change_pct,
     compute_moving_average,
     compute_rsi,
     compute_volume_ratio,
@@ -81,6 +81,7 @@ from domain.constants import (
     MA200_WINDOW,
     MA60_WINDOW,
     MARGIN_TREND_QUARTERS,
+    MIN_CLOSE_PRICES_FOR_CHANGE,
     MIN_HISTORY_DAYS_FOR_SIGNALS,
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
@@ -201,6 +202,27 @@ def _disk_set(key: str, value, ttl: int) -> None:
         pass
 
 
+def clear_all_caches() -> dict:
+    """清除所有 L1 記憶體快取與 L2 磁碟快取。"""
+    l1_caches = [
+        _signals_cache,
+        _moat_cache,
+        _earnings_cache,
+        _dividend_cache,
+        _price_history_cache,
+        _forex_cache,
+        _etf_holdings_cache,
+        _forex_history_cache,
+        _forex_history_long_cache,
+        _fear_greed_cache,
+    ]
+    for cache in l1_caches:
+        cache.clear()
+    _disk_cache.clear()
+    logger.info("已清除所有快取（L1×%d + L2 磁碟）。", len(l1_caches))
+    return {"l1_cleared": len(l1_caches), "l2_cleared": True}
+
+
 def _cached_fetch(
     l1_cache: TTLCache,
     ticker: str,
@@ -290,6 +312,15 @@ def _yf_info(ticker: str):
     return stock.info or {}
 
 
+def detect_is_etf(ticker: str) -> bool:
+    """透過 yfinance quoteType 偵測是否為 ETF。失敗時回傳 False。"""
+    try:
+        info = _yf_info(ticker)
+        return info.get("quoteType", "") == "ETF"
+    except Exception:
+        return False
+
+
 @_yf_retry
 def _yf_history_short(ticker: str, period: str = "5d"):
     """取得 yfinance 短期歷史（匯率等，含重試）。"""
@@ -328,6 +359,24 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         closes = hist["Close"].tolist()
         volumes = hist["Volume"].tolist() if "Volume" in hist.columns else []
         current_price = round(closes[-1], 2)
+
+        # 計算日漲跌（前一交易日 vs. 當日收盤價）
+        previous_close = None
+        change_pct = None
+        if len(closes) >= MIN_CLOSE_PRICES_FOR_CHANGE:
+            previous_close = round(closes[-2], 2)
+            change_pct = compute_daily_change_pct(current_price, previous_close)
+            logger.debug(
+                "%s 日漲跌：previous=%.2f, current=%.2f, change=%.2f%%",
+                ticker,
+                previous_close,
+                current_price,
+                change_pct if change_pct is not None else 0.0,
+            )
+        else:
+            logger.debug(
+                "%s 歷史資料不足（%d 筆），無法計算日漲跌", ticker, len(closes)
+            )
 
         # 使用 domain 層的純計算函式
         rsi = compute_rsi(closes)
@@ -380,6 +429,8 @@ def _fetch_signals_from_yf(ticker: str) -> dict:
         raw_signals = {
             "ticker": ticker,
             "price": current_price,
+            "previous_close": previous_close,
+            "change_pct": change_pct,
             "rsi": rsi,
             "ma200": ma200,
             "ma60": ma60,
@@ -1183,7 +1234,8 @@ def get_cnn_fear_greed() -> dict | None:
     此為非官方 API，失敗時靜默回傳 None（graceful degradation）。
     """
     try:
-        resp = http_requests.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
+        session = _get_session()
+        resp = session.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
         resp.raise_for_status()
 
         data = resp.json()

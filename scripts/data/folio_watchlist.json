@@ -9,13 +9,15 @@
     "ticker": "VTI",
     "category": "Trend_Setter",
     "thesis": "美股大盤 ETF。買下全美國，不管是巨頭還是中小企業全包。適合不想選股、相信美國國運的長期配置 (Beta)。",
-    "tags": ["Index", "US_Market"]
+    "tags": ["Index", "US_Market"],
+    "is_etf": true
   },
   {
     "ticker": "VT",
     "category": "Trend_Setter",
     "thesis": "全球股市 ETF。相信人類經濟會持續成長的終極選擇。不用賭美股強還是新興市場強，適合極度保守或超長期持有的部位。",
-    "tags": ["Index", "Global_Market"]
+    "tags": ["Index", "Global_Market"],
+    "is_etf": true
   },
   {
     "ticker": "BRK-B",
@@ -123,7 +125,8 @@
     "ticker": "SOXX",
     "category": "Moat",
     "thesis": "費城半導體 ETF。直接買下整個半導體賽道 (Nvidia, AMD, Broadcom, TSM)。相信 AI 算力是未來十年的石油，就直接買這桶油。",
-    "tags": ["Semiconductor", "Sector_Index"]
+    "tags": ["Semiconductor", "Sector_Index"],
+    "is_etf": true
   },
   {
     "ticker": "PLTR",

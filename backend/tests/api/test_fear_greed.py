@@ -15,7 +15,7 @@ class TestGetFearGreedEndpoint:
         # Assert
         assert resp.status_code == 200
         data = resp.json()
-        assert data["composite_score"] == 35
+        assert data["composite_score"] == 38
         assert data["composite_level"] == "FEAR"
         assert "恐懼" in data["composite_label"]
         assert data["vix"] is not None
@@ -114,5 +114,5 @@ class TestFearGreedWebhookAction:
         data = resp.json()
         assert data["success"] is True
         assert "恐懼貪婪指數" in data["message"]
-        assert data["data"]["composite_score"] == 35
+        assert data["data"]["composite_score"] == 38
         assert data["data"]["composite_level"] == "FEAR"

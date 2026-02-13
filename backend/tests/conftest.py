@@ -50,6 +50,8 @@ def _override_get_session() -> Generator[Session, None, None]:
 MOCK_SIGNALS = {
     "ticker": "NVDA",
     "price": 120.0,
+    "previous_close": 118.0,
+    "change_pct": 1.69,  # (120-118)/118*100 = 1.69%
     "rsi": 55.0,
     "ma200": 100.0,
     "ma60": 110.0,
@@ -67,7 +69,7 @@ MOCK_MOAT = {
 }
 
 MOCK_FEAR_GREED = {
-    "composite_score": 35,
+    "composite_score": 38,  # CNN-primary: equals CNN mock score directly
     "composite_level": "FEAR",
     "vix": {
         "value": 22.5,
@@ -143,6 +145,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.stock_service.get_technical_signals", MOCK_SIGNALS),
     ("application.stock_service.get_earnings_date", _MOCK_EARNINGS),
     ("application.stock_service.get_dividend_info", _MOCK_DIVIDEND),
+    ("application.stock_service.detect_is_etf", False),
     # API routes
     ("api.scan_routes.get_fear_greed_index", MOCK_FEAR_GREED),
 ]
@@ -164,3 +167,11 @@ def client() -> Generator[TestClient, None, None]:
         p.stop()
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def db_session() -> Generator[Session, None, None]:
+    """Standalone DB session fixture for service layer unit tests."""
+    with Session(test_engine) as session:
+        yield session
+        session.rollback()

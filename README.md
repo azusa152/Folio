@@ -60,6 +60,7 @@
 
 - **三頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、個人資產配置（War Room）
 - **投資組合總覽** — 市場情緒、恐懼貪婪指數、總市值、健康分數、配置圓餅圖、Drift 長條圖、訊號警報
+- **日漲跌追蹤** — 投資組合總市值與個股均顯示日漲跌幅，數據來自 yfinance 歷史資料（前一交易日 vs. 當日收盤價）
 - **拖曳排序** — drag-and-drop 調整顯示順位，寫入資料庫持久化
 - **移除與封存** — 移除股票時記錄原因，封存至「已移除」分頁，支援重新啟用
 - **匯出 / 匯入** — JSON 格式匯出觀察名單，Dashboard 上傳或 CLI 腳本匯入
@@ -72,7 +73,7 @@
 
 | 分類 | 說明 | Layer 1 參與 |
 |------|------|:------------:|
-| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex | 是 |
+| **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex（ETF 不參與情緒計算） | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
 | **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
@@ -374,10 +375,25 @@ LOG_DIR=/tmp/folio_test_logs DATABASE_URL="sqlite://" python -m pytest tests/ -v
 | `DELETE` | `/fx-watch/{id}` | 刪除外匯監控配置 |
 | `POST` | `/fx-watch/check` | 檢查所有外匯監控（分析結果，不發送 Telegram） |
 | `POST` | `/fx-watch/alert` | 檢查外匯監控並發送 Telegram 警報（帶冷卻機制） |
+| `POST` | `/admin/cache/clear` | 清除所有後端快取（L1 記憶體 + L2 磁碟） |
 | `GET` | `/docs` | Swagger UI（互動式 API 文件） |
 | `GET` | `/openapi.json` | OpenAPI 規範（JSON） |
 
 </details>
+
+### 🆕 日漲跌功能 (Daily Change Tracking)
+
+以下端點已新增每日變動欄位：
+
+**GET `/ticker/{ticker}/signals`** — 技術訊號回應新增：
+- `previous_close` (float, optional): 前一交易日收盤價
+- `change_pct` (float, optional): 日漲跌幅百分比
+
+**GET `/rebalance`** — 再平衡分析回應新增：
+- `previous_total_value` (float, optional): 前一交易日投資組合總市值
+- `total_value_change` (float, optional): 投資組合總市值日變動金額
+- `total_value_change_pct` (float, optional): 投資組合總市值日變動百分比
+- `holdings_detail[].change_pct` (float, optional): 個股日漲跌幅百分比
 
 <details>
 <summary>🧪 curl 範例集（點擊展開）</summary>
@@ -494,6 +510,14 @@ curl -s -X POST http://localhost:8000/withdraw \
 curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
   -d '{"action": "withdraw", "params": {"amount": 50000, "currency": "TWD"}}'
+```
+
+### 清除後端快取（Admin）
+
+```bash
+# 清除所有後端快取（L1 記憶體 × 10 + L2 磁碟），適用於快取資料過期但 TTL 未到的情況
+curl -X POST http://localhost:8000/admin/cache/clear
+# => {"status":"ok","l1_cleared":10,"l2_cleared":true}
 ```
 
 ### 設定自訂 Telegram Bot

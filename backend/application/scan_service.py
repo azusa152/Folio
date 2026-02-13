@@ -65,8 +65,12 @@ def run_scan(session: Session) -> dict:
     trend_stocks = repo.find_active_stocks_by_category(
         session, StockCategory.TREND_SETTER
     )
-    trend_tickers = [s.ticker for s in trend_stocks]
-    logger.info("Layer 1 — 風向球股票：%s", trend_tickers)
+    # ETF 不參與市場情緒計算（VTI/VT 本身就是大盤，會造成循環推理）
+    excluded_etfs = [s.ticker for s in trend_stocks if s.is_etf]
+    if excluded_etfs:
+        logger.info("Layer 1 — 排除 ETF：%s", excluded_etfs)
+    trend_tickers = [s.ticker for s in trend_stocks if not s.is_etf]
+    logger.info("Layer 1 — 風向球股票（情緒計算用）：%s", trend_tickers)
 
     market_sentiment = analyze_market_sentiment(trend_tickers)
     market_status_value = market_sentiment.get("status", MarketSentiment.POSITIVE.value)

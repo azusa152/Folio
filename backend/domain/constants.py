@@ -13,6 +13,7 @@ VOLUME_RATIO_SHORT_DAYS = 5
 VOLUME_RATIO_LONG_DAYS = 20
 YFINANCE_HISTORY_PERIOD = "1y"
 MIN_HISTORY_DAYS_FOR_SIGNALS = 60
+MIN_CLOSE_PRICES_FOR_CHANGE = 2  # 計算日漲跌所需的最少收盤價數據點（前日 + 當日）
 
 # ---------------------------------------------------------------------------
 # Decision Engine Thresholds
@@ -191,6 +192,18 @@ VIX_NEUTRAL_LOW = 15
 VIX_GREED = 10  # VIX 10–15 → 貪婪
 # VIX < 10 → 極度貪婪
 
+# VIX → 0–100 分數的分段線性映射斷點（對齊 CNN 分級閾值）
+VIX_SCORE_BREAKPOINTS: list[tuple[int, int]] = [
+    (30, 25),  # VIX 30 → score 25（極度恐懼/恐懼 邊界）
+    (20, 45),  # VIX 20 → score 45（恐懼/中性 邊界）
+    (15, 55),  # VIX 15 → score 55（中性/貪婪 邊界）
+    (10, 75),  # VIX 10 → score 75（貪婪/極度貪婪 邊界）
+]
+VIX_SCORE_FLOOR = 0  # VIX ≥ VIX_SCORE_FLOOR_VIX → score 0
+VIX_SCORE_CEILING = 100  # VIX ≤ VIX_SCORE_CEILING_VIX → score 100
+VIX_SCORE_FLOOR_VIX = 40  # 恐懼分數地板對應的 VIX 值
+VIX_SCORE_CEILING_VIX = 8  # 貪婪分數天花板對應的 VIX 值
+
 # CNN Fear & Greed Index 閾值（0–100 分）
 CNN_FG_EXTREME_FEAR = 25  # 0–25 → 極度恐懼
 CNN_FG_FEAR = 45  # 25–45 → 恐懼
@@ -200,10 +213,6 @@ CNN_FG_GREED = 75  # 55–75 → 貪婪
 
 CNN_FG_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 CNN_FG_REQUEST_TIMEOUT = 10  # seconds
-
-# 綜合權重：VIX 40%, CNN 60%
-FG_WEIGHT_VIX = 0.4
-FG_WEIGHT_CNN = 0.6
 
 # Fear & Greed Cache
 FEAR_GREED_CACHE_MAXSIZE = 10

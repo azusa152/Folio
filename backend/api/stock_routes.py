@@ -72,7 +72,12 @@ def create_ticker_route(
     """新增股票到追蹤清單。"""
     try:
         stock = create_stock(
-            session, payload.ticker, payload.category, payload.thesis, payload.tags
+            session,
+            payload.ticker,
+            payload.category,
+            payload.thesis,
+            payload.tags,
+            is_etf=payload.is_etf,
         )
     except StockAlreadyExistsError as e:
         raise HTTPException(
@@ -86,6 +91,7 @@ def create_ticker_route(
         current_thesis=stock.current_thesis,
         current_tags=payload.tags,
         is_active=stock.is_active,
+        is_etf=stock.is_etf,
     )
 
 
