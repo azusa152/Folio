@@ -17,6 +17,9 @@ tenacity==9.0.0
 # Security - Rate Limiting
 slowapi==0.1.9
 
+# Security - Data Encryption
+cryptography==44.0.0
+
 # Testing & Linting
 pytest==8.3.4
 httpx==0.28.1

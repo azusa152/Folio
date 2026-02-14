@@ -11,6 +11,10 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 # Disable auth in tests by default (individual tests can override)
 os.environ.pop("FOLIO_API_KEY", None)
 
+# Set test Fernet key for encryption tests (required for Phase 4)
+# This key is only used in tests and is not a real secret
+os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
+
 # Patch disk cache dir before infrastructure.market_data imports it
 import domain.constants  # noqa: E402
 

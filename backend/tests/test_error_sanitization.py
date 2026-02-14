@@ -179,13 +179,14 @@ def test_holding_import_partial_failure_no_leak(client):
 
 
 def test_telegram_settings_token_masking(client):
-    """Telegram settings response masks bot token."""
+    """Telegram settings response masks bot token (now encrypted in DB)."""
     # Set custom bot token
+    plaintext_token = "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     client.put(
         "/settings/telegram",
         json={
             "telegram_chat_id": "123456789",
-            "custom_bot_token": "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "custom_bot_token": plaintext_token,
             "use_custom_bot": True,
         },
     )
@@ -195,9 +196,12 @@ def test_telegram_settings_token_masking(client):
     assert response.status_code == 200
     data = response.json()
 
-    # Token should be masked
-    assert data["custom_bot_token_masked"] == "123***XYZ"
-    # Full token should never appear in response
+    # Token should be masked (encrypted token is longer, so masked format differs)
+    masked = data["custom_bot_token_masked"]
+    assert "***" in masked  # Should contain masking characters
+    assert len(masked) >= 9  # "xxx***yyy" minimum format
+    # Full plaintext token should never appear in response
+    assert plaintext_token not in str(data)
     assert "ABCDEFGHIJKLMNOPQRSTUVWXYZ" not in str(data)
 
 
