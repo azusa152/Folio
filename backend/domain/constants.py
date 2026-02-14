@@ -334,3 +334,20 @@ CURL_CFFI_IMPERSONATE = "chrome"
 YFINANCE_RETRY_ATTEMPTS = 3
 YFINANCE_RETRY_WAIT_MIN = 2  # seconds (exponential backoff minimum)
 YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)
+
+# ---------------------------------------------------------------------------
+# Beta Cache Configuration (Stress Test)
+# ---------------------------------------------------------------------------
+BETA_CACHE_MAXSIZE = 200
+BETA_CACHE_TTL = 86400  # 24 hours (L1)
+DISK_BETA_TTL = 604800  # 7 days (L2)
+DISK_KEY_BETA = "beta"
+
+# Category Fallback Beta (when yfinance returns None)
+CATEGORY_FALLBACK_BETA: dict[str, float] = {
+    "Trend_Setter": 1.0,
+    "Moat": 1.2,
+    "Growth": 1.5,
+    "Bond": 0.3,
+    "Cash": 0.0,
+}
