@@ -84,8 +84,8 @@ class TestWebhookScan:
     """Tests for the 'scan' action."""
 
     def test_scan_should_accept_background_job(self, client):
-        # Act — mock Thread so _bg_scan doesn't run against the test DB
-        with patch("threading.Thread"):
+        # Act — mock run_scan so it doesn't actually run the scan in the background
+        with patch("application.webhook_service.run_scan"):
             resp = client.post("/webhook", json={"action": "scan"})
 
         # Assert
