@@ -19,6 +19,7 @@ from config import (
     CASH_ACCOUNT_TYPE_OPTIONS,
     CASH_CURRENCY_OPTIONS,
     CATEGORY_LABELS,
+    DISPLAY_CURRENCY_OPTIONS,
     HOLDING_IMPORT_TEMPLATE,
     HOLDINGS_EXPORT_FILENAME,
     PRIVACY_TOGGLE_LABEL,
@@ -31,9 +32,12 @@ from utils import (
     api_post,
     api_put,
     build_radar_lookup,
+    fetch_currency_exposure,
     fetch_holdings,
     fetch_preferences,
     fetch_profile,
+    fetch_rebalance,
+    fetch_stress_test,
     fetch_templates,
     invalidate_all_caches,
     invalidate_holding_caches,
@@ -582,40 +586,58 @@ with tab_warroom:
         profile = fetch_profile()
         holdings = fetch_holdings() or []
 
-        # Step 1: Target Allocation
-        render_target(templates, profile, holdings)
+        # Step 1 — collapsible when profile exists
+        with st.expander(
+            "🎯 Step 1 — 設定目標配置",
+            expanded=not profile,
+        ):
+            render_target(templates, profile, holdings)
 
-        st.divider()
-
-        # Step 2: Holdings Management
+        # Step 2 — always visible
+        st.subheader("💼 Step 2 — 持倉管理")
         render_holdings(holdings)
 
         st.divider()
 
-        # Steps 3-5: Analysis (require profile + holdings)
+        # Steps 3-6 — sub-tabs (only one analysis visible at a time)
         if profile and holdings:
-            display_cur = "USD"
-            render_rebalance(profile, holdings, default_currency=display_cur)
-            st.divider()
-            render_currency_exposure(profile, holdings, display_cur)
-            st.divider()
-            render_withdrawal(profile, holdings)
-        elif not profile:
-            st.caption("請先完成 Step 1（設定目標配置）。")
-        else:
-            st.caption("請先完成 Step 2（輸入持倉）。")
+            # Shared display currency selector + refresh button
+            _ctrl_cols = st.columns([3, 1])
+            with _ctrl_cols[0]:
+                display_cur = st.selectbox(
+                    "顯示幣別",
+                    options=DISPLAY_CURRENCY_OPTIONS,
+                    index=DISPLAY_CURRENCY_OPTIONS.index("USD"),
+                    key="display_currency",
+                )
+            with _ctrl_cols[1]:
+                st.write("")  # vertical spacer
+                if st.button(
+                    "🔄 重新整理",
+                    type="secondary",
+                    key="btn_refresh_analysis",
+                ):
+                    fetch_rebalance.clear()
+                    fetch_stress_test.clear()
+                    fetch_currency_exposure.clear()
+                    st.rerun()
 
-        # Step 6: Stress Test
-        st.divider()
-        if holdings:
-            # Read display_cur from rebalance selectbox (session_state)
-            stress_display_cur = st.session_state.get(
-                "display_currency", "USD"
-            )
-            render_stress_test(display_currency=stress_display_cur)
+            tab_rebal, tab_fx, tab_withdraw, tab_stress = st.tabs([
+                "📊 再平衡分析",
+                "💱 匯率曝險",
+                "💰 聰明提款",
+                "🧪 壓力測試",
+            ])
+            with tab_rebal:
+                render_rebalance(profile, holdings, display_cur)
+            with tab_fx:
+                render_currency_exposure(profile, holdings, display_cur)
+            with tab_withdraw:
+                render_withdrawal(profile, holdings)
+            with tab_stress:
+                render_stress_test(display_currency=display_cur)
         else:
-            st.subheader("📊 Step 6 — 壓力測試")
-            st.info("請先在 Step 2 新增持倉，才能進行壓力測試。")
+            st.info("請先完成 Step 1 與 Step 2 以啟用分析功能。")
 
     except Exception as e:
         st.error(f"❌ 資產配置載入失敗：{e}")

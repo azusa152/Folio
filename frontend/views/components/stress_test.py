@@ -21,8 +21,6 @@ def render_stress_test(display_currency: str = "USD") -> None:
     Args:
         display_currency: Currency for display (USD, TWD, JPY, etc.)
     """
-    st.markdown("### 📊 Step 6 — 壓力測試（Stress Test）")
-
     st.markdown(
         """
         **模擬大盤崩盤情境，檢視你的組合能承受多大衝擊。**

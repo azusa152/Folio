@@ -33,8 +33,6 @@ def render_withdrawal(
         profile: Current user profile (reserved for future use).
         holdings: Current holdings list (reserved for future use).
     """
-    st.subheader("💰 Step 5 — 聰明提款")
-
     with st.form("withdraw_form"):
         w_cols = st.columns([2, 2, 2])
         with w_cols[0]:

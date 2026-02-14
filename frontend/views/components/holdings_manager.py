@@ -26,8 +26,6 @@ def render_holdings(holdings: list[dict]) -> None:
     Args:
         holdings: Current holdings list from backend.
     """
-    st.subheader("💼 Step 2 — 持倉管理")
-
     if not holdings:
         st.caption(
             "目前無持倉資料，請透過左側面板新增股票、債券或現金。"

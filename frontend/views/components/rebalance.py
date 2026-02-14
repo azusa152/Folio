@@ -17,7 +17,6 @@ from config import (
     CATEGORY_COLOR_MAP,
     CATEGORY_ICON_SHORT,
     CATEGORY_LABELS,
-    DISPLAY_CURRENCY_OPTIONS,
     DRIFT_CHART_HEIGHT,
     PRIVACY_MASK,
     XRAY_TOP_N_DISPLAY,
@@ -25,7 +24,6 @@ from config import (
 )
 from utils import (
     fetch_rebalance,
-    fetch_stress_test,
     format_utc_timestamp,
     is_privacy as _is_privacy,
     mask_money as _mask_money,
@@ -54,46 +52,19 @@ def _hex_to_rgb_str(hex_color: str) -> str:
 def render_rebalance(
     profile: dict,
     holdings: list[dict],
-    default_currency: str = "USD",
+    display_cur: str = "USD",
 ) -> None:
     """Render Step 3 — Rebalance Analysis.
 
-    Includes the display currency selector, refresh button, pie charts,
-    drift chart, holdings detail table, and X-Ray overlap analysis.
+    Renders pie charts, drift chart, holdings detail table, and X-Ray
+    overlap analysis. The display currency selectbox and refresh button
+    are owned by the orchestrator (allocation.py).
 
     Args:
         profile: Current user profile.
         holdings: Current holdings list.
-        default_currency: Initial selectbox value on first render;
-            subsequent renders use Streamlit session state via key="display_currency".
+        display_cur: Selected display currency (resolved by the orchestrator).
     """
-    st.subheader("📊 Step 3 — 再平衡分析")
-
-    # Currency selector + refresh button
-    cur_cols = st.columns([2, 2, 2])
-    with cur_cols[0]:
-        cur_index = (
-            DISPLAY_CURRENCY_OPTIONS.index(default_currency)
-            if default_currency in DISPLAY_CURRENCY_OPTIONS
-            else 0
-        )
-        display_cur = st.selectbox(
-            "顯示幣別",
-            options=DISPLAY_CURRENCY_OPTIONS,
-            index=cur_index,
-            key="display_currency",
-        )
-    with cur_cols[1]:
-        st.write("")  # vertical spacer
-        if st.button(
-            "🔄 重新整理",
-            type="secondary",
-            key="btn_refresh_rebalance",
-        ):
-            fetch_rebalance.clear()
-            fetch_stress_test.clear()
-            st.rerun()
-
     # Auto-fetch rebalance (cached TTL = CACHE_TTL_REBALANCE)
     rebalance = None
     with st.status(
@@ -123,11 +94,10 @@ def render_rebalance(
     # Timestamp display
     calc_at = rebalance.get("calculated_at", "")
     if calc_at:
-        with cur_cols[1]:
-            browser_tz = st.session_state.get("browser_tz")
-            st.caption(
-                f"🕐 資料更新時間：{format_utc_timestamp(calc_at, browser_tz)}"
-            )
+        browser_tz = st.session_state.get("browser_tz")
+        st.caption(
+            f"🕐 資料更新時間：{format_utc_timestamp(calc_at, browser_tz)}"
+        )
 
     st.metric(
         f"💰 投資組合總市值（{display_cur}）",

@@ -76,8 +76,6 @@ def render_currency_exposure(
         holdings: Current holdings list (reserved for future use).
         display_cur: Display currency from rebalance (reserved for future use).
     """
-    st.subheader("💱 Step 4 — 匯率曝險監控")
-
     with st.status(
         "💱 載入匯率曝險分析中...", expanded=True
     ) as _fx_status:

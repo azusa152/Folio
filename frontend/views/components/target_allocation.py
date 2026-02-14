@@ -29,8 +29,6 @@ def render_target(
         profile: Current user profile (or None if not yet configured).
         holdings: Current holdings list (unused here, reserved for future).
     """
-    st.subheader("🎯 Step 1 — 設定目標配置")
-
     if profile:
         _render_existing_profile(templates, profile)
     else:
