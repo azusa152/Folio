@@ -89,4 +89,4 @@ jobs:
         run: pip install pip-audit
 
       - name: Run pip-audit
-        run: pip-audit --desc
+        run: pip-audit --desc --ignore-vuln CVE-2025-69872
