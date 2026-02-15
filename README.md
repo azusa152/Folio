@@ -347,7 +347,7 @@ Folio 採用多層次安全防護，確保資料安全與系統穩定性。
 # 1. 生成 API Key（使用 Makefile）
 make generate-key
 
-# 2. 將 Key 加入 backend/.env
+# 2. 將 Key 加入 .env（專案根目錄）
 FOLIO_API_KEY=your-generated-key-here
 
 # 3. 重啟服務
@@ -376,7 +376,7 @@ curl http://localhost:8000/summary
 # 1. 生成加密金鑰
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# 2. 將 Key 加入 backend/.env
+# 2. 將 Key 加入 .env（專案根目錄）
 FERNET_KEY=your-generated-fernet-key-here
 
 # 3. 重啟服務（自動加密既有 Token）
