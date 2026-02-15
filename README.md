@@ -347,7 +347,7 @@ Folio 採用多層次安全防護，確保資料安全與系統穩定性。
 # 1. 生成 API Key（使用 Makefile）
 make generate-key
 
-# 2. 將 Key 加入 backend/.env
+# 2. 將 Key 加入 .env（專案根目錄）
 FOLIO_API_KEY=your-generated-key-here
 
 # 3. 重啟服務
@@ -376,7 +376,7 @@ curl http://localhost:8000/summary
 # 1. 生成加密金鑰
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# 2. 將 Key 加入 backend/.env
+# 2. 將 Key 加入 .env（專案根目錄）
 FERNET_KEY=your-generated-fernet-key-here
 
 # 3. 重啟服務（自動加密既有 Token）
@@ -657,18 +657,18 @@ openclaw onboard
 
 **方式一：使用 Skill 檔案**
 
-將 `scripts/openclaw/folio/` 資料夾複製到 OpenClaw skills 目錄：
+將 `docs/agents/folio/` 資料夾複製到 OpenClaw skills 目錄：
 
 ```bash
-cp -r scripts/openclaw/folio/ ~/.openclaw/skills/folio/
+cp -r docs/agents/folio/ ~/.openclaw/skills/folio/
 ```
 
 **方式二：使用 AGENTS.md**
 
-將 `scripts/openclaw/AGENTS.md` 複製到 OpenClaw workspace：
+將 `docs/agents/AGENTS.md` 複製到 OpenClaw workspace：
 
 ```bash
-cp scripts/openclaw/AGENTS.md ~/.openclaw/workspace/AGENTS.md
+cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 ```
 
 ### Agent-Friendly Endpoints
