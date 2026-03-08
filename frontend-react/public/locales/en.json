@@ -518,6 +518,11 @@
       "confirm_switch": "Confirm Switch",
       "tags_placeholder": "Tags (comma-separated)",
       "held": "Held",
+      "section_signals": "Signals & Trend",
+      "section_fundamentals": "Fundamentals",
+      "section_thesis": "Thesis",
+      "section_portfolio": "Portfolio Context",
+      "section_actions": "Actions",
       "fundamentals": {
         "tab_title": "Fundamentals",
         "market_cap_short": "MCap",

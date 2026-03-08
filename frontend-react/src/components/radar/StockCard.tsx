@@ -1,41 +1,13 @@
-import { type ReactNode, useEffect, useState } from "react"
-import { ChevronDown } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { GlossaryTerm } from "@/components/GlossaryTerm"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  SCAN_SIGNAL_ICONS,
-  CATEGORY_ICON_SHORT,
-  STOCK_CATEGORIES,
-  MARKET_OPTIONS,
-  BUY_OPPORTUNITY_SIGNALS,
-  RISK_WARNING_SIGNALS,
-} from "@/lib/constants"
-import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
-import { formatMarketCap, formatPrice, isMarketOpen } from "@/lib/format"
-import { useAddThesis, useUpdateCategory, useDeactivateStock, useThesisHistory, usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
-import type { RadarStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
-import { PriceChart } from "@/components/radar/PriceChart"
-import { GrossMarginChart } from "@/components/radar/GrossMarginChart"
-import { SparklineHeader } from "@/components/radar/SparklineHeader"
-import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { FINANCE_BADGE, FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
-
-const SKIP_DIVIDEND_CATEGORIES = new Set(["Trend_Setter", "Growth", "Cash"])
-const GLOSSARY_KEYS = {
-  rsi: "rsi",
-  bias: "bias",
-  volumeRatio: "volume_ratio",
-  ma200: "ma200",
-  ma60: "ma60",
-} as const
+import { MARKET_OPTIONS } from "@/lib/constants"
+import { isMarketOpen } from "@/lib/format"
+import { usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
+import type { RadarStock, RadarEnrichedStock, ResonanceMap } from "@/api/types/radar"
+import { StockCardHeader } from "@/components/radar/StockCardHeader"
+import { StockCardInsights } from "@/components/radar/StockCardInsights"
+import { StockCardActions } from "@/components/radar/StockCardActions"
 
 function infer_market_label(ticker: string): string {
   if (ticker.endsWith(".TW")) return "🇹🇼 TW"
@@ -59,223 +31,8 @@ interface Props {
   index?: number
 }
 
-function MetricChip({
-  label,
-  value,
-  color,
-}: {
-  label: ReactNode
-  value: string | number | null | undefined
-  color?: string
-}) {
-  if (value == null) return null
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${color ?? "border-border text-foreground"}`}>
-      {label}: {value}
-    </span>
-  )
-}
-
-function ThesisSection({ ticker, stock }: { ticker: string; stock: RadarStock }) {
-  const { t } = useTranslation()
-  const [thesisText, setThesisText] = useState("")
-  const [tags, setTagsText] = useState("")
-  const [feedback, setFeedback] = useState<string | null>(null)
-  const addThesis = useAddThesis()
-
-  const handleSubmit = () => {
-    if (!thesisText.trim()) {
-      setFeedback(t("radar.stock_card.error_no_thesis"))
-      return
-    }
-    const tagList = tags
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-    addThesis.mutate(
-      { ticker, payload: { content: thesisText.trim(), tags: tagList.length ? tagList : stock.current_tags } },
-      {
-        onSuccess: () => {
-          setFeedback(t("common.success"))
-          toast.success(t("common.success"))
-          setThesisText("")
-          setTagsText("")
-        },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
-        },
-      },
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      <textarea
-        className="w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
-        rows={3}
-        placeholder={t("radar.stock_card.update_thesis_placeholder")}
-        value={thesisText}
-        onChange={(e) => setThesisText(e.target.value)}
-      />
-      <input
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
-        placeholder={t("radar.stock_card.tags_placeholder")}
-        value={tags}
-        onChange={(e) => setTagsText(e.target.value)}
-      />
-      <Button size="sm" onClick={handleSubmit} disabled={addThesis.isPending}>
-        {t("radar.stock_card.update_button")}
-      </Button>
-      {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
-    </div>
-  )
-}
-
-function ThesisHistorySection({ ticker }: { ticker: string }) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const { data: history, isLoading } = useThesisHistory(ticker, open)
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-      >
-        <span className="inline-flex items-center gap-1">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
-          {t("radar.stock_card.history")}
-        </span>
-      </button>
-      {open && (
-        <div className="mt-2 space-y-2">
-          {isLoading ? (
-            <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
-          ) : !history?.length ? (
-            <p className="text-xs text-muted-foreground">{t("radar.stock_card.no_history")}</p>
-          ) : (
-            history.map((entry) => (
-              <div key={entry.version} className="rounded border border-border p-2 text-xs">
-                <p className="font-semibold text-muted-foreground">
-                  v{entry.version} — {entry.created_at.slice(0, 10)}
-                </p>
-                <p className="mt-0.5">{entry.content}</p>
-                {entry.tags.length > 0 && (
-                  <p className="mt-0.5 text-muted-foreground">{entry.tags.map((tag) => `#${tag}`).join(" ")}</p>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ChangeCategorySection({ ticker, currentCategory }: { ticker: string; currentCategory: StockCategory }) {
-  const { t } = useTranslation()
-  const [selected, setSelected] = useState<StockCategory>(
-    STOCK_CATEGORIES.find((c) => c !== currentCategory) ?? "Growth",
-  )
-  const [feedback, setFeedback] = useState<string | null>(null)
-  const updateCategory = useUpdateCategory()
-
-  const others = STOCK_CATEGORIES.filter((c) => c !== currentCategory)
-
-  const handleConfirm = () => {
-    updateCategory.mutate(
-      { ticker, payload: { category: selected } },
-      {
-        onSuccess: (data) => {
-          const msg = data?.message ?? t("common.success")
-          setFeedback(msg)
-          toast.success(msg)
-        },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
-        },
-      },
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
-        {t("radar.stock_card.current_category_label", { cat: currentCategory })}
-      </p>
-      <Select value={selected} onValueChange={(v) => setSelected(v as StockCategory)}>
-        <SelectTrigger className="text-xs h-8">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {others.map((c) => (
-            <SelectItem key={c} value={c} className="text-xs">
-              {CATEGORY_ICON_SHORT[c] ?? ""} {c.replace("_", " ")}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button size="sm" variant="outline" onClick={handleConfirm} disabled={updateCategory.isPending}>
-        {t("radar.stock_card.confirm_switch")}
-      </Button>
-      {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
-    </div>
-  )
-}
-
-function RemoveSection({ ticker }: { ticker: string }) {
-  const { t } = useTranslation()
-  const [reason, setReason] = useState("")
-  const [feedback, setFeedback] = useState<string | null>(null)
-  const deactivate = useDeactivateStock()
-
-  const handleRemove = () => {
-    if (!reason.trim()) {
-      setFeedback(t("radar.stock_card.remove_reason_required"))
-      return
-    }
-    deactivate.mutate(
-      { ticker, payload: { reason: reason.trim() } },
-      {
-        onSuccess: (data) => {
-          const msg = data?.message ?? t("common.success")
-          setFeedback(msg)
-          toast.success(msg)
-        },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
-        },
-      },
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-amber-600">{t("radar.stock_card.remove_warning")}</p>
-      <textarea
-        className="w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
-        rows={2}
-        placeholder={t("radar.stock_card.remove_reason_placeholder")}
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      <Button size="sm" variant="destructive" onClick={handleRemove} disabled={deactivate.isPending}>
-        {t("radar.stock_card.confirm_remove")}
-      </Button>
-      {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
-    </div>
-  )
-}
-
-type TabKey = "metrics" | "fundamentals" | "thesis" | "category" | "remove"
-
 export function StockCard({ stock, enrichment, resonance, isHeld = false, index = 0 }: Props) {
-  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabKey>("metrics")
   const [sparklineEnabled, setSparklineEnabled] = useState(index === 0)
 
   useEffect(() => {
@@ -288,296 +45,60 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
     return () => window.clearTimeout(timer)
   }, [expanded, index, sparklineEnabled])
 
-  // Keep header sparkline responsive by prefetching progressively across cards,
-  // while still allowing immediate fetch when users expand a card early.
   const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded || sparklineEnabled)
   const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
   const isCrypto = stock.category === "Crypto"
   const showMoatChart = !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
-  const signalIcon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
-  const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
-
-  // Backend nests live data under enrichment.signals — fall back to top-level for compatibility
   const sig = enrichment?.signals
   const price = sig?.price ?? enrichment?.price
   const prevClose = sig?.previous_close
   const changePct = sig?.change_pct ?? enrichment?.change_pct
   const changeAbs = price != null && prevClose != null ? price - prevClose : null
-  const rsi = sig?.rsi ?? enrichment?.rsi
-  const bias = sig?.bias ?? enrichment?.bias
-  const volumeRatio = sig?.volume_ratio ?? enrichment?.volume_ratio
   const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
 
+  const currency = useMemo(() => infer_currency(stock.ticker), [stock.ticker])
   const marketLabel = infer_market_label(stock.ticker)
-  const currency = infer_currency(stock.ticker)
+  const handleToggle = useCallback(() => setExpanded((v) => !v), [])
   const marketKey = MARKET_OPTIONS.find((m) => m.suffix && stock.ticker.endsWith(m.suffix))?.key ?? "US"
   const marketOpen = isMarketOpen(marketKey)
-  const resonanceBadge = resonance?.length ? `🏆×${resonance.length}` : ""
-  const signalLabel =
-    signal !== "NORMAL"
-      ? getSignalLabel(t, signal)
-      : ""
-  const signalDescription =
-    signal !== "NORMAL"
-      ? getSignalDescription(t, signal)
-      : ""
-  const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
-    ? `shrink-0 text-[10px] rounded px-1.5 py-0.5 ${FINANCE_BADGE.gain}`
-    : RISK_WARNING_SIGNALS.has(signal)
-      ? `shrink-0 text-[10px] rounded px-1.5 py-0.5 ${FINANCE_BADGE.loss}`
-      : "shrink-0 text-[10px] bg-muted text-muted-foreground rounded px-1.5 py-0.5"
-
-  const identityParts = [
-    `${signalIcon} ${stock.ticker}`,
-    `${catIcon} ${stock.category.replace("_", " ")}`,
-    marketLabel,
-    resonanceBadge || null,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-
-  const TABS: { key: TabKey; label: string }[] = [
-    { key: "metrics", label: t("radar.stock_card.signals") },
-    { key: "fundamentals", label: t("radar.stock_card.fundamentals.tab_title") },
-    { key: "thesis", label: t("radar.stock_card.thesis") },
-    { key: "category", label: t("radar.stock_card.change_category") },
-    { key: "remove", label: t("radar.stock_card.remove") },
-  ]
-
-  const isUp = changePct != null ? changePct >= 0 : null
-  const changeColor = isUp === null ? "" : isUp ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
 
   return (
     <Card className={cn("border-border/70", isHeld && "border-l-[3px] border-l-primary")}>
-      <button
-        className="w-full text-left p-3 font-medium text-sm hover:bg-muted/30 transition-colors rounded-t-lg"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <span className="flex items-center justify-between gap-2">
-          {/* Left: identity */}
-          <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
-            <span className="truncate">{identityParts}</span>
-              {signalLabel && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className={signalBadgeClass}
-                        aria-label={signalDescription}
-                      >
-                        {signalLabel}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={6}>{signalDescription}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {marketCap != null && (
-                <span className="shrink-0 inline-flex items-center rounded-md border border-border px-1.5 py-0 h-4 text-[10px] font-medium text-muted-foreground">
-                  {t("radar.stock_card.fundamentals.market_cap_short")}: {formatMarketCap(marketCap)}
-                </span>
-              )}
-            {isHeld && (
-              <span className="shrink-0 inline-flex items-center rounded-md border border-primary px-1.5 py-0 h-4 text-[10px] font-medium text-primary">
-                {t("radar.stock_card.held")}
-              </span>
-            )}
-          </span>
-
-          {/* Right: price block + sparkline + chevron */}
-          <span className="flex items-center gap-2 shrink-0">
-            {price != null && (
-              <span className="flex flex-col items-end leading-tight">
-                <span className="text-sm font-semibold tabular-nums">
-                  {currency.symbol}{formatPrice(price, currency.code)}
-                </span>
-                {changePct != null && (
-                  <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
-                    {isUp ? "▲" : "▼"}{" "}
-                    {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
-                    ({Math.abs(changePct).toFixed(2)}%{isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
-                  </span>
-                )}
-              </span>
-            )}
-            {!expanded && (
-              priceHistory && priceHistory.length >= 5
-                ? <SparklineHeader data={priceHistory} />
-                : <Skeleton className="h-8 w-20 shrink-0" />
-            )}
-            <span className={`text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}>
-              {marketOpen ? "●" : "○"}
-            </span>
-            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
-          </span>
-        </span>
-      </button>
+      <StockCardHeader
+        ticker={stock.ticker}
+        category={stock.category}
+        signal={signal}
+        price={price}
+        changePct={changePct}
+        changeAbs={changeAbs}
+        currency={currency}
+        marketOpen={marketOpen}
+        isCrypto={isCrypto}
+        expanded={expanded}
+        priceHistory={priceHistory}
+        onToggle={handleToggle}
+      />
 
       {expanded && (
-        <CardContent className="pt-0 pb-3 px-3 space-y-3">
-          {/* At-a-Glance metrics */}
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            {!isCrypto && (
-              <>
-                <MetricChip
-                  label={<GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>}
-                  value={rsi != null ? rsi.toFixed(1) : null}
-                  color={
-                    rsi != null && rsi < 35
-                      ? FINANCE_CHIP.gain
-                      : rsi != null && rsi > 70
-                        ? FINANCE_CHIP.loss
-                        : undefined
-                  }
-                />
-                <MetricChip
-                  label={<GlossaryTerm termKey={GLOSSARY_KEYS.bias}>{t("utils.signals.bias")}</GlossaryTerm>}
-                  value={bias != null ? `${bias.toFixed(1)}%` : null}
-                  color={
-                    bias != null && bias > 20
-                      ? FINANCE_CHIP.loss
-                      : bias != null && bias < -5
-                        ? FINANCE_CHIP.gain
-                        : undefined
-                  }
-                />
-                {volumeRatio != null && (
-                  <MetricChip
-                    label={
-                      <GlossaryTerm termKey={GLOSSARY_KEYS.volumeRatio}>
-                        {t("utils.signals.volume_ratio")}
-                      </GlossaryTerm>
-                    }
-                    value={`${volumeRatio.toFixed(1)}x`}
-                  />
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Current thesis */}
-          <div className="rounded-md bg-muted/30 p-2 text-sm">
-            {stock.current_thesis || <span className="text-muted-foreground italic">{t("radar.stock_card.no_thesis")}</span>}
-          </div>
-
-          {/* Tags */}
-          {stock.current_tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {stock.current_tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Earnings & Dividend */}
-          {enrichment && (
-            <div className="flex gap-4 text-xs text-muted-foreground">
-              {enrichment.earnings?.next_earnings_date && (
-                <span>
-                  📅 {t("radar.stock_card.earnings")}: {enrichment.earnings.next_earnings_date}
-                  {enrichment.earnings.days_until != null && enrichment.earnings.days_until <= 14 && (
-                    <span className="ml-1 text-amber-500">({enrichment.earnings.days_until}d)</span>
-                  )}
-                </span>
-              )}
-              {!SKIP_DIVIDEND_CATEGORIES.has(stock.category) && enrichment.dividend?.dividend_yield != null && (
-                <span>
-                  💰 {t("radar.stock_card.dividend")}: {enrichment.dividend.dividend_yield.toFixed(2)}%
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Resonance */}
-          {resonance && resonance.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              🏆 {resonance.map((r) => r.guru_display_name).join(", ")} ({resonance.length})
-            </p>
-          )}
-
-          {/* Detail tabs */}
-          <div className="border-t border-border/50 pt-2">
-            <div className="flex gap-1 flex-wrap mb-2">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
-                    activeTab === tab.key
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="pt-1">
-              {activeTab === "metrics" && (
-                <div className="space-y-3">
-                  {/* Text metrics row */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {enrichment?.signals?.price != null && (
-                      <span>{t("utils.signals.price")}: {currency.symbol}{formatPrice(enrichment.signals.price as number, currency.code)}</span>
-                    )}
-                    {!isCrypto && enrichment?.signals?.ma200 != null && (
-                      <span>
-                        <GlossaryTerm termKey={GLOSSARY_KEYS.ma200}>{t("utils.signals.ma200")}</GlossaryTerm>:{" "}
-                        {currency.symbol}{formatPrice(enrichment.signals.ma200 as number, currency.code)}
-                      </span>
-                    )}
-                    {!isCrypto && enrichment?.signals?.ma60 != null && (
-                      <span>
-                        <GlossaryTerm termKey={GLOSSARY_KEYS.ma60}>{t("utils.signals.ma60")}</GlossaryTerm>:{" "}
-                        {currency.symbol}{formatPrice(enrichment.signals.ma60 as number, currency.code)}
-                      </span>
-                    )}
-                    {isCrypto && changePct != null && (
-                      <span>{t("allocation.crypto.change_24h_short")}: {changePct >= 0 ? "+" : "-"}{Math.abs(changePct).toFixed(2)}%</span>
-                    )}
-                  </div>
-
-                  {/* Price trend chart */}
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">
-                      {t("radar.stock_card.price_chart_title")}
-                    </p>
-                    {priceLoading ? (
-                      <Skeleton className="h-[200px] w-full" />
-                    ) : priceHistory && priceHistory.length >= 5 ? (
-                      <PriceChart data={priceHistory} />
-                    ) : (
-                      <p className="text-xs text-muted-foreground">{t("chart.insufficient_data")}</p>
-                    )}
-                  </div>
-
-                  {/* Gross margin chart — hidden when backend returns N/A (Bond/Cash) */}
-                  {moatLoading ? (
-                    <Skeleton className="h-[160px] w-full" />
-                  ) : showMoatChart ? (
-                    <GrossMarginChart data={moatData} />
-                  ) : null}
-
-                  <ThesisHistorySection ticker={stock.ticker} />
-                </div>
-              )}
-              {activeTab === "fundamentals" && (
-                <FundamentalsTab
-                  ticker={stock.ticker}
-                  fundamentals={enrichment?.fundamentals}
-                />
-              )}
-              {activeTab === "thesis" && <ThesisSection ticker={stock.ticker} stock={stock} />}
-              {activeTab === "category" && <ChangeCategorySection ticker={stock.ticker} currentCategory={stock.category} />}
-              {activeTab === "remove" && <RemoveSection ticker={stock.ticker} />}
-            </div>
-          </div>
+        <CardContent className="pt-0 pb-3 px-3 space-y-4">
+          <StockCardInsights
+            stock={stock}
+            enrichment={enrichment}
+            resonance={resonance}
+            isHeld={isHeld}
+            isCrypto={isCrypto}
+            currency={currency}
+            marketLabel={marketLabel}
+            marketCap={marketCap}
+            priceHistory={priceHistory}
+            priceLoading={priceLoading}
+            moatData={moatData}
+            moatLoading={moatLoading}
+            showMoatChart={showMoatChart}
+          />
+          <StockCardActions stock={stock} />
         </CardContent>
       )}
     </Card>

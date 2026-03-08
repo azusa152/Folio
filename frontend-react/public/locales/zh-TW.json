@@ -518,6 +518,11 @@
       "confirm_switch": "確認切換",
       "tags_placeholder": "標籤（逗號分隔）",
       "held": "持有",
+      "section_signals": "技術訊號與趨勢",
+      "section_fundamentals": "基本面",
+      "section_thesis": "投資觀點",
+      "section_portfolio": "投資組合",
+      "section_actions": "操作",
       "fundamentals": {
         "tab_title": "基本面",
         "market_cap_short": "市值",

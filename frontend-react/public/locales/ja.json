@@ -518,6 +518,11 @@
       "confirm_switch": "切替確認",
       "tags_placeholder": "タグ（カンマ区切り）",
       "held": "保有中",
+      "section_signals": "テクニカルシグナル",
+      "section_fundamentals": "ファンダメンタルズ",
+      "section_thesis": "投資テーゼ",
+      "section_portfolio": "ポートフォリオ",
+      "section_actions": "アクション",
       "fundamentals": {
         "tab_title": "ファンダメンタルズ",
         "market_cap_short": "時価総額",
