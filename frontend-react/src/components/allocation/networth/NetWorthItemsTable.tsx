@@ -6,6 +6,7 @@ import { useDeleteNetWorthItem, useUpdateNetWorthItem } from "@/api/hooks/useNet
 import { formatPrice } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
 import type { NetWorthItemResponse } from "@/api/types/networth"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   items: NetWorthItemResponse[]
@@ -40,7 +41,7 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
           setEditingId(null)
           toast.success(t("common.success"))
         },
-        onError: () => toast.error(t("common.error")),
+        onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
       },
     )
   }
@@ -51,7 +52,7 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
         setDeleteId(null)
         toast.success(t("common.success"))
       },
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 

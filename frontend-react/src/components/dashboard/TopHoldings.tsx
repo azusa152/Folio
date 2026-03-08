@@ -2,10 +2,9 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency } from "@/lib/format"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -46,7 +45,7 @@ function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: Holding
         {isPos ? "▲" : "▼"}{Math.abs(returnPct).toFixed(1)}%
       </td>
       <td className={`text-right px-3 py-2 text-sm ${colorClass}`}>
-        {isPrivate ? "***" : `${isPos ? "+" : "-"}${formatCurrency(Math.abs(gainLoss), displayCurrency, 0)}`}
+        {isPrivate ? "***" : `${isPos ? "+" : "-"}${maskMoney(Math.abs(gainLoss), displayCurrency, 0)}`}
       </td>
     </>
   )
@@ -55,7 +54,7 @@ function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: Holding
 export function TopHoldings({ rebalance }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const isPrivate = usePrivacyMode((s) => s.isPrivate)
+  const isPrivate = useIsPrivate()
   const displayCurrency = rebalance?.display_currency ?? "USD"
 
   if (!rebalance?.holdings_detail?.length) {
@@ -104,7 +103,7 @@ export function TopHoldings({ rebalance }: Props) {
                   </td>
                   <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
                   <td className="text-right px-3 py-2">
-                    {isPrivate ? "***" : formatCurrency(h.market_value, displayCurrency)}
+                    {maskMoney(h.market_value, displayCurrency)}
                   </td>
                   <ChangeCell
                     value={h.change_pct}

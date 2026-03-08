@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { useTelegramSettings, useSaveTelegram, useTestTelegram, useTriggerDigest } from "@/api/hooks/useAllocation"
 
 interface Props {
@@ -42,8 +42,8 @@ export function TelegramSettings({ privacyMode }: Props) {
           toast.success(t("common.success"))
           setEditOpen(false)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -54,9 +54,9 @@ export function TelegramSettings({ privacyMode }: Props) {
       onSuccess: () => {
         toast.success(t("common.success"))
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 
@@ -65,9 +65,9 @@ export function TelegramSettings({ privacyMode }: Props) {
       onSuccess: () => {
         toast.success(t("common.success"))
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 

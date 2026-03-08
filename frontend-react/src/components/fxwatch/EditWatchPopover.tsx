@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useUpdateFxWatch } from "@/api/hooks/useFxWatch"
 import type { FxWatch } from "@/api/types/fxWatch"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   watch: FxWatch
@@ -59,8 +60,8 @@ export function EditWatchPopover({ watch }: Props) {
           setFeedback(t("common.success"))
           setOpen(false)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

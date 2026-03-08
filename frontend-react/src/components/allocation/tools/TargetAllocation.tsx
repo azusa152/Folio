@@ -6,6 +6,7 @@ import { useTemplates, useCreateProfile, useUpdateProfile } from "@/api/hooks/us
 import { useProfile } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { getErrorMessage } from "@/lib/utils"
 
 function mergeConfig(config: Record<string, unknown>): Record<string, number> {
   const base = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
@@ -66,9 +67,9 @@ export function TargetAllocation() {
             toast.success(t("common.success"))
             setUserSliders(null)
           },
-          onError: () => {
-            toast.error(t("common.error"))
-          },
+          onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
         },
       )
     } else {
@@ -77,8 +78,8 @@ export function TargetAllocation() {
           toast.success(t("common.success"))
           setUserSliders(null)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       })
     }

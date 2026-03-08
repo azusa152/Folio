@@ -99,9 +99,9 @@ export function HoldingsManager({ privacyMode }: Props) {
         setDeleteId(null)
         toast.success(t("common.success"))
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 

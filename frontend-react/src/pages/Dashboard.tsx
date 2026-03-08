@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { SendHorizonal } from "lucide-react"
 import { isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatLocalTime, formatRelativeTime } from "@/lib/utils"
+import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useStocks,
   useEnrichedStocks,
@@ -62,7 +62,7 @@ export default function Dashboard() {
   const handleDigest = () => {
     digestMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 

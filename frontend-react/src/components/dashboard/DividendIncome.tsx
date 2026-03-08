@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"
-import { formatCurrency } from "@/lib/format"
+import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { InfoPopover } from "./InfoPopover"
 import type { RebalanceResponse, EnrichedStock } from "@/api/types/dashboard"
 
@@ -12,7 +11,7 @@ interface Props {
 
 export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
   const { t } = useTranslation()
-  const isPrivate = usePrivacyMode((s) => s.isPrivate)
+  useIsPrivate()
 
   if (!rebalance || !enrichedStocks.length) return null
 
@@ -60,7 +59,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
 
   if (ytdDivIncome === 0) return null
 
-  const formatted = formatCurrency(ytdDivIncome, currency)
+  const formatted = maskMoney(ytdDivIncome, currency)
 
   return (
     <Card>
@@ -81,14 +80,14 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
                 </thead>
                 <tbody>
                   {breakdown.map((row) => {
-                    const fmtNative = (v: number) => formatCurrency(v, row.nativeCurrency)
+                    const fmtNative = (v: number) => maskMoney(v, row.nativeCurrency)
                     return (
                       <tr key={row.ticker}>
                         <td className="font-medium pr-2">{row.ticker}</td>
                         <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
                         <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
                         <td className="text-right tabular-nums">
-                          {formatCurrency(row.convertedSubtotal, currency)}
+                          {maskMoney(row.convertedSubtotal, currency)}
                         </td>
                       </tr>
                     )
@@ -99,7 +98,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
           </InfoPopover>
         </div>
         <p className="text-2xl font-bold tabular-nums mt-1">
-          {isPrivate ? "***" : formatted}
+          {formatted}
         </p>
         <p className="text-xs text-muted-foreground mt-1">{t("dashboard.ytd_dividend_actual")}</p>
       </CardContent>

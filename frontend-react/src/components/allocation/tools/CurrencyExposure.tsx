@@ -7,7 +7,7 @@ import { useCurrencyExposure, useFxExposureAlert, useUpdateProfile } from "@/api
 import type { ProfileResponse } from "@/api/types/allocation"
 import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
@@ -66,7 +66,7 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
             { id: profile.id, payload: { home_currency: e.target.value } },
             {
               onSuccess: () => toast.success(t("common.success")),
-              onError: () => toast.error(t("common.error_backend")),
+              onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error_backend")),
             },
           )}
             className="text-xs border border-border rounded px-2 py-1 bg-background"
@@ -191,7 +191,7 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
           className="text-xs"
           onClick={() => alertMutation.mutate(undefined, {
             onSuccess: () => toast.success(t("common.success")),
-            onError: () => toast.error(t("common.error_backend")),
+            onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error_backend")),
           })}
           disabled={alertMutation.isPending}
         >

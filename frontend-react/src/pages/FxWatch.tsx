@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { formatLocalTime, parseUtc } from "@/lib/utils"
+import { formatLocalTime, parseUtc, getErrorMessage } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -62,14 +62,14 @@ export default function FxWatch() {
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 
   const handleAlert = () => {
     alertMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 
@@ -147,7 +147,10 @@ export default function FxWatch() {
             {/* SOP info popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="rounded-full min-h-[44px] min-w-[44px] text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center">
+                <button
+                  aria-label={t("fx_watch.sop_title")}
+                  className="rounded-full min-h-[44px] min-w-[44px] text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                >
                   ?
                 </button>
               </PopoverTrigger>

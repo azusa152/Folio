@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 import { useIsPrivate } from "@/hooks/usePrivacyMode"
+import { getErrorMessage } from "@/lib/utils"
 
 const PREF_KEYS = [
   "scan_alerts",
@@ -78,8 +79,8 @@ export function NotificationPreferences() {
         onSuccess: () => {
           toast.success(t("common.success"))
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       }
     )

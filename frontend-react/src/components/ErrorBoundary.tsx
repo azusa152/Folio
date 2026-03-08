@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import i18n from "@/lib/i18n"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   children: ReactNode
@@ -15,7 +16,7 @@ export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, message: "" }
 
   static getDerivedStateFromError(error: unknown): State {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = getErrorMessage(error) || String(error)
     return { hasError: true, message }
   }
 

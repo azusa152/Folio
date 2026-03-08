@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/components/ui/button"
 import { useReorderStocks } from "@/api/hooks/useRadar"
 import type { RadarStock } from "@/api/types/radar"
+import { getErrorMessage } from "@/lib/utils"
 
 const MIN_STOCKS_FOR_REORDER = 2
 
@@ -84,8 +85,8 @@ export function ReorderSection({ stocks }: Props) {
           setFeedback(t("radar.stock_card.success_order"))
           setReorderOn(false)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

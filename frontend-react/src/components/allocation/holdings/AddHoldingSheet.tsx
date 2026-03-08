@@ -16,6 +16,7 @@ import { useHoldings } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
 import type { StockCategory } from "@/api/types/allocation"
 import type { components } from "@/api/types/generated"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -98,8 +99,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -135,8 +136,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -162,8 +163,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           toast.success(t("allocation.sidebar.cash_added", { label: currency, amount: cashAmount }))
           resetForm()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -200,8 +201,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -238,9 +239,9 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         toast.success(t("allocation.sidebar.import_success"))
         setPendingImport(null)
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 

@@ -24,6 +24,7 @@ import {
 import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import client from "@/api/client"
 import type { AddStockRequest, StockCategory, StockImportItem } from "@/api/types/radar"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -96,8 +97,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           setThesis("")
           setSelectedTags([])
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -124,8 +125,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           setThesis("")
           setSelectedTags([])
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -158,9 +159,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
         setCryptoQuery("")
         setCryptoCoinId(null)
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 
@@ -177,9 +178,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           toast.success(msg)
         }
       },
-      onError: () => {
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 
@@ -222,9 +223,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
             setImportFeedback(null)
             toast.success(msg)
           },
-          onError: () => {
-            toast.error(t("common.error"))
-          },
+          onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
         })
       } catch {
         setImportFeedback(t("radar.import.error_json"))

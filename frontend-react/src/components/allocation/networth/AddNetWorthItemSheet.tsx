@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { NET_WORTH_ASSET_CATEGORIES, NET_WORTH_LIABILITY_CATEGORIES } from "@/lib/constants"
 import { useCreateNetWorthItem } from "@/api/hooks/useNetWorth"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -82,8 +83,8 @@ export function AddNetWorthItemSheet({
           reset()
           onClose()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

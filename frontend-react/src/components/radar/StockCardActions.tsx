@@ -7,6 +7,7 @@ import { STOCK_CATEGORIES, CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { useAddThesis, useUpdateCategory, useDeactivateStock } from "@/api/hooks/useRadar"
 import type { RadarStock, StockCategory } from "@/api/types/radar"
+import { getErrorMessage } from "@/lib/utils"
 
 function ThesisForm({ ticker, stock }: { ticker: string; stock: RadarStock }) {
   const { t } = useTranslation()
@@ -32,8 +33,8 @@ function ThesisForm({ ticker, stock }: { ticker: string; stock: RadarStock }) {
           setThesisText("")
           setTagsText("")
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -80,8 +81,8 @@ function ChangeCategoryForm({ ticker, currentCategory }: { ticker: string; curre
           const msg = data?.message ?? t("common.success")
           setFeedback(msg)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -130,8 +131,8 @@ function RemoveForm({ ticker }: { ticker: string }) {
           const msg = data?.message ?? t("common.success")
           setFeedback(msg)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

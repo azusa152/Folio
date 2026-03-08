@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { FINANCE_TEXT } from "@/lib/colors"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import {
   useGuruFiling,
@@ -16,7 +16,7 @@ import {
   useGuruQoQ,
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
 import { ActionBadge } from "./ActionBadge"
 import { QoQTable } from "./QoQTable"
@@ -84,7 +84,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => syncMutation.mutate(guruId, { onError: () => toast.error(t("common.error")) })}
+          onClick={() => syncMutation.mutate(guruId, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
           disabled={syncMutation.isPending}
         >
           {syncing ? t("smart_money.sidebar.syncing") : t("smart_money.sidebar.sync_button")}
@@ -108,7 +108,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         <>
           {/* Stale warning */}
           {isStale(filing.report_date) && (
-            <div className={`rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs ${FINANCE_TEXT.warning}`}>
+            <div className={`rounded-md border px-3 py-2 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
               {t("smart_money.lagging_banner", {
                 report_date: filing.report_date ?? "—",
                 filing_date: filing.filing_date ?? "—",

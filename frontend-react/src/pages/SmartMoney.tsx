@@ -99,7 +99,7 @@ export default function SmartMoney() {
             size="sm"
             variant="outline"
             className="text-xs shrink-0 min-h-[44px]"
-            onClick={() => syncAllMutation.mutate(undefined, { onError: () => toast.error(t("common.error")) })}
+            onClick={() => syncAllMutation.mutate(undefined, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
             disabled={syncAllMutation.isPending || activeGurus.length === 0}
           >
             {syncAllMutation.isPending

@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
-import { FINANCE_TEXT } from "@/lib/colors"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { AddHoldingSheet } from "@/components/allocation/holdings/AddHoldingSheet"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
@@ -19,7 +19,7 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 import {
   useNetWorthHistory,
   useNetWorthItems,
@@ -131,7 +131,7 @@ export default function Allocation() {
 
       {/* Setup guard — show hint when no holdings but still show Settings tab */}
       {!hasSetup && (
-        <div className={`rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm ${FINANCE_TEXT.warning}`}>
+        <div className={`rounded-md border px-4 py-3 text-sm ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
           {t("allocation.setup_required")}
         </div>
       )}
@@ -185,7 +185,7 @@ export default function Allocation() {
               onClick={() => {
                 netWorthTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
               }}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-300"
+              className={`w-full rounded-md border px-3 py-2 text-left text-xs hover:bg-amber-500/20 ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}
             >
               {t("net_worth.stale_banner", { count: netWorthSummary?.stale_count ?? 0 })}
             </button>
@@ -267,9 +267,9 @@ export default function Allocation() {
                           }
                           setSeedFeedback(t("net_worth.seed_already_done"))
                         },
-                        onError: () => {
-                          toast.error(t("common.error"))
-                        },
+                        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
                       })
                     }}
                   >

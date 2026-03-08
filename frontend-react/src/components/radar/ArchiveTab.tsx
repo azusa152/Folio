@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { useReactivateStock, useRemovalHistory, useThesisHistory } from "@/api/hooks/useRadar"
 import type { RemovedStock, StockCategory } from "@/api/types/radar"
 
@@ -124,8 +124,8 @@ function ReactivateSection({ ticker }: { ticker: string }) {
           const msg = data?.message ?? t("radar.removed.reactivate_success")
           setFeedback(msg)
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

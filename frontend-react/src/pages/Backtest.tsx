@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_BADGE } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { cn, formatLocalTime } from "@/lib/utils"
 
@@ -226,9 +227,9 @@ export default function Backtest() {
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase",
                           signal.confidence === "high" &&
-                            "bg-emerald-500/20 text-emerald-400",
+                            FINANCE_BADGE.gain,
                           signal.confidence === "medium" &&
-                            "bg-amber-500/20 text-amber-300",
+                            FINANCE_BADGE.warning,
                           signal.confidence === "low" && "bg-zinc-500/20 text-zinc-300",
                         )}
                       >

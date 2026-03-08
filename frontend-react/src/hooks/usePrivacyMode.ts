@@ -29,12 +29,18 @@ export function useIsPrivate(): boolean {
   return usePrivacyMode((s) => s.isPrivate)
 }
 
-export function maskMoney(value: number, currency = "USD"): string {
+export function maskMoney(value: number, currency = "USD", fractionDigits?: number): string {
   if (usePrivacyMode.getState().isPrivate) return "***"
+  const digits =
+    fractionDigits != null
+      ? fractionDigits
+      : currency === "JPY" || currency === "TWD"
+        ? 0
+        : 2
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: currency === "JPY" || currency === "TWD" ? 0 : 2,
-    maximumFractionDigits: currency === "JPY" || currency === "TWD" ? 0 : 2,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(value)
 }

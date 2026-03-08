@@ -82,7 +82,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
             <span
               className={
                 isNew
-                  ? "text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
+                  ? `text-xs font-semibold px-1.5 py-0.5 rounded animate-pulse ${FINANCE_BADGE.warning}`
                   : "text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
               }
             >

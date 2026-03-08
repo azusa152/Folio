@@ -15,7 +15,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
-import { FINANCE_TEXT } from "@/lib/colors"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
+import { getErrorMessage } from "@/lib/utils"
 import type { Snapshot } from "@/api/types/dashboard"
 
 const PERIOD_OPTIONS: { key: string; labelKey: string; days: number | "YTD" | "ALL" }[] = [
@@ -121,9 +122,9 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
           toast.error(t("dashboard.performance_backfill_timeout"))
         }
       }, 4000)
-    } catch {
+    } catch (err) {
       setBackfilling(false)
-      toast.error(t("common.error"))
+      toast.error(getErrorMessage(err) || t("common.error"))
     }
   }, [queryClient, stopPolling, t])
 
@@ -461,7 +462,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
             <button
               onClick={handleBackfill}
               disabled={backfilling}
-              className={`text-xs px-2 py-0.5 rounded border border-amber-500 ${FINANCE_TEXT.warning} hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+              className={`text-xs px-2 py-0.5 rounded border ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning} disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
             >
               {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
             </button>

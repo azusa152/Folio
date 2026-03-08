@@ -10,6 +10,7 @@ import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   privacyMode: boolean
@@ -32,7 +33,7 @@ export function SmartWithdrawal({ privacyMode }: Props) {
       { target_amount: Number(amount), display_currency: currency, notify },
       {
         onSuccess: (data) => setResult(data),
-        onError: () => toast.error(t("common.error")),
+        onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
       },
     )
   }

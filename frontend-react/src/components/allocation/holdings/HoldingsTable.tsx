@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency } from "@/lib/format"
+import { maskMoney } from "@/hooks/usePrivacyMode"
 
 interface Props {
   holdings: HoldingDetail[]
@@ -12,17 +12,6 @@ interface Props {
 function fmt(v: number | null | undefined, decimals = 2): string {
   if (v == null) return "—"
   return v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
-
-function fmtMaskedCurrency(
-  v: number | null | undefined,
-  currency: string,
-  privacyMode: boolean,
-  decimals?: number,
-): string {
-  if (privacyMode) return "***"
-  if (v == null) return "—"
-  return formatCurrency(v, currency, decimals)
 }
 
 function fmtQuantity(ticker: string, category: string, quantity: number, privacyMode: boolean): string {
@@ -86,11 +75,15 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
                   <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
-                  <td className="py-0.5 pr-2 text-right">{fmtMaskedCurrency(h.market_value, displayCurrency ?? h.currency, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}
+                  </td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-0.5 pr-2 text-right">{fmtMaskedCurrency(h.cost_total, displayCurrency ?? h.currency, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {h.cost_total == null ? "—" : maskMoney(h.cost_total, displayCurrency ?? h.currency)}
+                  </td>
                   <td className="py-0.5 text-right">
                     <div
                       className={h.change_pct != null ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss) : undefined}

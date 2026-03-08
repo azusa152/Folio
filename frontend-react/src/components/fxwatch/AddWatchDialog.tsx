@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FX_CURRENCY_OPTIONS } from "@/lib/constants"
 import { useCreateFxWatch } from "@/api/hooks/useFxWatch"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -60,8 +61,8 @@ export function AddWatchDialog({ open, onClose }: Props) {
           toast.success(t("common.success"))
           onClose()
         },
-        onError: () => {
-          toast.error(t("common.error_backend"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error_backend"))
         },
       },
     )

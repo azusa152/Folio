@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useXRayAlert } from "@/api/hooks/useAllocation"
 import type { XRayEntry } from "@/api/types/allocation"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   xray: XRayEntry[]
@@ -35,7 +36,7 @@ export function XRayOverlap({ xray }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => alertMutation.mutate(undefined, { onError: () => toast.error(t("common.error")) })}
+          onClick={() => alertMutation.mutate(undefined, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
           disabled={alertMutation.isPending}
         >
           {t("allocation.xray.alert_button")}

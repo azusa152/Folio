@@ -1,7 +1,7 @@
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
-import { maskMoney } from "@/hooks/usePrivacyMode"
+import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import type { NetWorthSummaryResponse } from "@/api/types/networth"
 
 interface Props {
@@ -12,6 +12,7 @@ const COLORS = ["#3b82f6", "#22c55e", "#ef4444"]
 
 export function NetWorthOverview({ summary }: Props) {
   const { t } = useTranslation()
+  useIsPrivate()
   if (!summary) return null
 
   const chartData = [

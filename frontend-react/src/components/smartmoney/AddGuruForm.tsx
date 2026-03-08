@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { useAddGuru } from "@/api/hooks/useSmartMoney"
 import { GURU_STYLE_CONFIG } from "@/lib/constants"
 import type { AddGuruRequest } from "@/api/types/smartMoney"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   onSuccess: () => void
@@ -47,8 +48,8 @@ export function AddGuruForm({ onSuccess }: Props) {
           setTier("")
           onSuccess()
         },
-        onError: () => {
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )

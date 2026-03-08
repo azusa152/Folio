@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStressTest } from "@/api/hooks/useAllocation"
-import { FINANCE_TEXT } from "@/lib/colors"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { cn } from "@/lib/utils"
 
@@ -20,10 +20,10 @@ const PAIN_TEXT_CLASSES: Record<string, string> = {
 }
 
 const PAIN_SURFACE_CLASSES: Record<string, string> = {
-  low: "border-green-500/40 bg-green-500/10",
-  moderate: "border-amber-500/40 bg-amber-500/10",
+  low: FINANCE_SURFACE.gain,
+  moderate: FINANCE_SURFACE.warning,
   high: "border-orange-500/40 bg-orange-500/10",
-  panic: "border-red-500/40 bg-red-500/10",
+  panic: FINANCE_SURFACE.loss,
 }
 
 function fmtValue(v: number, currency: string): string {
