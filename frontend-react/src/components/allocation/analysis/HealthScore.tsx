@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { formatLocalTime } from "@/lib/utils"
+import { FINANCE_TEXT } from "@/lib/colors"
 
 interface Props {
   score: number
@@ -8,9 +9,9 @@ interface Props {
 }
 
 function scoreColor(level: string): string {
-  if (level === "healthy") return "text-green-600 dark:text-green-400"
-  if (level === "caution") return "text-yellow-600 dark:text-yellow-400"
-  return "text-red-600 dark:text-red-400"
+  if (level === "healthy") return FINANCE_TEXT.gain
+  if (level === "caution") return FINANCE_TEXT.warning
+  return FINANCE_TEXT.loss
 }
 
 export function HealthScore({ score, level, calculatedAt }: Props) {

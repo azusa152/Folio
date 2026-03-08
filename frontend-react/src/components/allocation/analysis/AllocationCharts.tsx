@@ -115,8 +115,8 @@ export function AllocationCharts({ categories }: Props) {
                   label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
                   labelLine={false}
                 >
-                  {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+                  {pieData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -159,8 +159,8 @@ export function AllocationCharts({ categories }: Props) {
                   label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
                   labelLine={false}
                 >
-                  {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+                  {pieData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip

@@ -10,7 +10,7 @@ import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
 import { cn } from "@/lib/utils"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { formatPrice, formatMarketCap } from "@/lib/format"
-import { FINANCE_CHIP } from "@/lib/colors"
+import { FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
 import { useThesisHistory } from "@/api/hooks/useRadar"
 import type { PricePoint, MoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap } from "@/api/types/radar"
@@ -51,6 +51,7 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
@@ -263,7 +264,7 @@ export const StockCardInsights = memo(function StockCardInsights({
           <p className="text-xs text-muted-foreground">
             📅 {t("radar.stock_card.earnings")}: {enrichment.earnings.next_earnings_date}
             {enrichment.earnings.days_until != null && enrichment.earnings.days_until <= 14 && (
-              <span className="ml-1 text-amber-500">({enrichment.earnings.days_until}d)</span>
+              <span className={`ml-1 ${FINANCE_TEXT.warning}`}>({enrichment.earnings.days_until}d)</span>
             )}
           </p>
         )}

@@ -7,6 +7,7 @@ import {
   type IChartApi,
 } from "lightweight-charts"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { FxHistoryPoint } from "@/api/types/fxWatch"
 
 const PERIOD_OPTIONS = [
@@ -121,7 +122,7 @@ export function FxChart({ data, recentHighDays }: Props) {
         {changePctFormatted && (
           <span
             className={`text-xs font-medium tabular-nums ${
-              (periodChangePct ?? 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+              (periodChangePct ?? 0) >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
             }`}
           >
             {changePctFormatted}

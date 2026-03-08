@@ -63,8 +63,8 @@ export function DriftChart({ categories }: Props) {
           <ReferenceLine x={10} stroke="#f97316" strokeDasharray="4 2" strokeWidth={1} />
           <ReferenceLine x={-10} stroke="#f97316" strokeDasharray="4 2" strokeWidth={1} />
           <Bar dataKey="drift" radius={[0, 3, 3, 0]}>
-            {chartData.map((entry, i) => (
-              <Cell key={i} fill={entry.fill} />
+            {chartData.map((entry) => (
+              <Cell key={entry.name} fill={entry.fill} />
             ))}
             <LabelList
               dataKey="drift"

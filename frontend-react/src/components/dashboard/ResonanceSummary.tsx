@@ -80,6 +80,7 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
             {/* Expandable detail */}
             <button
               onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
             >
               <span className="inline-flex items-center gap-1">
@@ -96,14 +97,14 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
                       {stock.ticker} ×{stock.guru_count}
                     </p>
                     <div className="mt-1 space-y-0.5">
-                      {stock.gurus.map((g, i) => {
+                      {stock.gurus.map((g) => {
                         const icon = HOLDING_ACTION_ICONS[g.action] ?? "⚪"
                         const label = getActionLabel(g.action)
                         const weight = g.weight_pct != null && g.action !== "SOLD_OUT"
                           ? ` ${g.weight_pct.toFixed(1)}%`
                           : ""
                         return (
-                          <p key={i} className="text-xs text-muted-foreground">
+                          <p key={g.guru_display_name} className="text-xs text-muted-foreground">
                             {g.guru_display_name} {icon} {label}{weight}
                           </p>
                         )

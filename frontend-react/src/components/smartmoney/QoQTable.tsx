@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { formatShares } from "./formatters"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { QoQResponse } from "@/api/types/smartMoney"
 
 const TREND_ICON: Record<string, string> = {
@@ -11,11 +12,11 @@ const TREND_ICON: Record<string, string> = {
 }
 
 const TREND_COLOR: Record<string, string> = {
-  increasing: "text-green-600 dark:text-green-400",
-  decreasing: "text-red-600 dark:text-red-400",
+  increasing: FINANCE_TEXT.gain,
+  decreasing: FINANCE_TEXT.loss,
   new: "text-blue-600 dark:text-blue-400",
-  exited: "text-muted-foreground",
-  stable: "text-muted-foreground",
+  exited: FINANCE_TEXT.neutral,
+  stable: FINANCE_TEXT.neutral,
 }
 
 function TrendIndicator({ trend }: { trend: string }) {
@@ -53,8 +54,8 @@ export function QoQTable({ data }: { data: QoQResponse }) {
           </tr>
         </thead>
         <tbody>
-          {data.items.map((item, i) => (
-            <tr key={i} className="border-b border-border/50">
+          {data.items.map((item) => (
+            <tr key={item.ticker} className="border-b border-border/50">
               <td className="py-0.5 pr-2 font-medium">{item.ticker ?? "—"}</td>
               <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
                 {item.company_name}

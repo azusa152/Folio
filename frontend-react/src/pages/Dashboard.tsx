@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { SendHorizonal } from "lucide-react"
 import { isMarketOpen } from "@/lib/format"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { formatLocalTime, formatRelativeTime } from "@/lib/utils"
 import {
   useStocks,
@@ -66,7 +67,7 @@ export default function Dashboard() {
   }
 
   // Fast (DB-only) queries — fired immediately on mount.
-  const { data: stocks, isLoading: stocksLoading } = useStocks()
+  const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useStocks()
   const { data: holdings } = useHoldings()
   const { data: lastScan } = useLastScan()
   const { data: signalActivity } = useSignalActivity()
@@ -80,7 +81,7 @@ export default function Dashboard() {
   // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
   // both depend on it. Its response is cached on the backend (60s TTL) so repeat
   // requests are fast; placeholderData keeps old data visible on currency switch.
-  const { data: rebalance, isLoading: rebalanceLoading } = useRebalance(displayCurrency)
+  const { data: rebalance, isLoading: rebalanceLoading, isError: rebalanceError } = useRebalance(displayCurrency)
 
   // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
   // requests above can claim FastAPI threadpool workers first. Note: LazySection
@@ -95,6 +96,25 @@ export default function Dashboard() {
   })
 
   const heroLoading = stocksLoading || rebalanceLoading
+  const heroError = stocksError || rebalanceError
+
+  if (!heroLoading && heroError) {
+    return (
+      <div className="p-3 sm:p-6 space-y-4">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("dashboard.title")}</h1>
+        <EmptyState
+          icon="⚠️"
+          message={t("common.error_backend")}
+          title={t("common.error")}
+          description={t("common.error_backend")}
+          action={{
+            label: t("common.retry"),
+            onClick: () => window.location.reload(),
+          }}
+        />
+      </div>
+    )
+  }
 
   // Onboarding: no data at all
   if (!stocksLoading && !rebalanceLoading && !stocks?.length && !rebalance) {
@@ -176,7 +196,7 @@ export default function Dashboard() {
           {/* eslint-disable-next-line i18next/no-literal-string */}
           {priceTs && scanTs && <span> ｜ </span>}
           {scanTs && (
-            <span className={isScanStale ? "text-amber-500 font-medium" : undefined}>
+            <span className={isScanStale ? `${FINANCE_TEXT.warning} font-medium` : undefined}>
               {t("dashboard.last_scan", { timestamp: scanTs })}
               {!usMarketOpen && (
                 <span className="text-muted-foreground font-normal">

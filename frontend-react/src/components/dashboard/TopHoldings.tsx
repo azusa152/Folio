@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatCurrency } from "@/lib/format"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -25,7 +26,7 @@ function ChangeCell({ value, category, change24hLabel }: { value?: number | null
   )
 }
 
-function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate: boolean }) {
+function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: HoldingDetail; isPrivate: boolean; displayCurrency: string }) {
   const { cost_total, market_value } = holding
   if (!cost_total || cost_total <= 0) {
     return (
@@ -45,7 +46,7 @@ function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate
         {isPos ? "▲" : "▼"}{Math.abs(returnPct).toFixed(1)}%
       </td>
       <td className={`text-right px-3 py-2 text-sm ${colorClass}`}>
-        {isPrivate ? "***" : `${isPos ? "+" : "-"}$${Math.abs(gainLoss).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
+        {isPrivate ? "***" : `${isPos ? "+" : "-"}${formatCurrency(Math.abs(gainLoss), displayCurrency, 0)}`}
       </td>
     </>
   )
@@ -55,6 +56,7 @@ export function TopHoldings({ rebalance }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
+  const displayCurrency = rebalance?.display_currency ?? "USD"
 
   if (!rebalance?.holdings_detail?.length) {
     return (
@@ -102,14 +104,14 @@ export function TopHoldings({ rebalance }: Props) {
                   </td>
                   <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
                   <td className="text-right px-3 py-2">
-                    {isPrivate ? "***" : `$${h.market_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                    {isPrivate ? "***" : formatCurrency(h.market_value, displayCurrency)}
                   </td>
                   <ChangeCell
                     value={h.change_pct}
                     category={h.category}
                     change24hLabel={t("allocation.crypto.change_24h_short")}
                   />
-                  <ReturnCells holding={h} isPrivate={isPrivate} />
+                  <ReturnCells holding={h} isPrivate={isPrivate} displayCurrency={displayCurrency} />
                 </tr>
               ))}
             </tbody>

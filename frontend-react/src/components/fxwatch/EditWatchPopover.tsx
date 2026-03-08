@@ -57,11 +57,9 @@ export function EditWatchPopover({ watch }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
-          toast.success(t("common.success"))
           setOpen(false)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -144,8 +142,9 @@ export function EditWatchPopover({ watch }: Props) {
 
         {/* Reminder hours */}
         <div>
-          <label className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+          <label htmlFor="edit-watch-reminder-hours" className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
           <input
+            id="edit-watch-reminder-hours"
             type="number"
             min={1}
             max={168}

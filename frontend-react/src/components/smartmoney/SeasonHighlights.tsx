@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { formatValue } from "./formatters"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { SeasonHighlights as SeasonHighlightsType } from "@/api/types/smartMoney"
 
 const TOP_N = 5
@@ -32,11 +33,11 @@ export function SeasonHighlights({ data }: Props) {
       {/* Summary metrics */}
       <div className="flex flex-wrap gap-4 text-xs">
         <div>
-          <span className="font-semibold text-green-500">{new_positions.length}</span>{" "}
+          <span className={`font-semibold ${FINANCE_TEXT.gain}`}>{new_positions.length}</span>{" "}
           {t("smart_money.overview.highlights_new_count")}
         </div>
         <div>
-          <span className="font-semibold text-red-500">{sold_outs.length}</span>{" "}
+          <span className={`font-semibold ${FINANCE_TEXT.loss}`}>{sold_outs.length}</span>{" "}
           {t("smart_money.overview.highlights_sold_count")}
         </div>
         <div>
@@ -50,7 +51,7 @@ export function SeasonHighlights({ data }: Props) {
         {/* New positions */}
         {new_positions.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-green-600">
+            <p className={`text-xs font-semibold ${FINANCE_TEXT.gain}`}>
               {t("smart_money.overview.new_positions_header")}
             </p>
             {visibleNew.map((item, i) => (
@@ -89,7 +90,7 @@ export function SeasonHighlights({ data }: Props) {
         {/* Sold outs */}
         {sold_outs.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-red-600">
+            <p className={`text-xs font-semibold ${FINANCE_TEXT.loss}`}>
               {t("smart_money.overview.sold_outs_header")}
             </p>
             {visibleSold.map((item, i) => (

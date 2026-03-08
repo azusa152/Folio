@@ -201,6 +201,7 @@ function FearGreedComponentBars({ components }: ComponentBarsProps) {
 }
 
 function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
+  const { t } = useTranslation()
   const { recent, isUp } = useMemo(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
@@ -243,7 +244,13 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
 
   if (recent.length < 2) return null
 
-  return <LightweightChartWrapper height={60} onInit={onInit} />
+  return (
+    <LightweightChartWrapper
+      height={60}
+      onInit={onInit}
+      ariaLabel={t("accessibility.chart_portfolio_sparkline")}
+    />
+  )
 }
 
 interface Props {
@@ -360,13 +367,13 @@ export function PortfolioPulse({
           <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
           {totalVal != null ? (
             <>
-              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal)}</p>
+              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal, displayCurrency)}</p>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 {changePct != null && changeAmt != null && (
                   <span className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
                     {changePct >= 0 ? "▲" : "▼"}
                     {Math.abs(changePct).toFixed(2)}%
-                    {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
+                    {!isPrivate && ` (${maskMoney(Math.abs(changeAmt), displayCurrency)})`}
                   </span>
                 )}
                 {ytdTwr != null && (

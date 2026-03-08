@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useXRayAlert } from "@/api/hooks/useAllocation"
 import type { XRayEntry } from "@/api/types/allocation"
@@ -34,7 +35,7 @@ export function XRayOverlap({ xray }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => alertMutation.mutate()}
+          onClick={() => alertMutation.mutate(undefined, { onError: () => toast.error(t("common.error")) })}
           disabled={alertMutation.isPending}
         >
           {t("allocation.xray.alert_button")}
@@ -59,9 +60,9 @@ export function XRayOverlap({ xray }: Props) {
             </tr>
           </thead>
           <tbody>
-            {top15.map((e, i) => (
+            {top15.map((e) => (
               <tr
-                key={i}
+                key={e.symbol}
                 className={`border-b border-border/50 ${e.total_weight_pct > XRAY_WARNING_THRESHOLD ? "text-orange-600 dark:text-orange-400" : ""}`}
               >
                 <td className="py-0.5 pr-2 font-medium">{e.symbol}</td>

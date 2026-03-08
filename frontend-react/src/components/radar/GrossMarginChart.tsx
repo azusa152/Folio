@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { FINANCE_TEXT } from "@/lib/colors"
 import {
   BarChart,
   Bar,
@@ -11,6 +12,7 @@ import {
   ReferenceLine,
 } from "recharts"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import type { MoatAnalysis } from "@/api/hooks/useRadar"
 
 interface Props {
@@ -18,10 +20,10 @@ interface Props {
 }
 
 const MOAT_STATUS_COLOR: Record<string, string> = {
-  HEALTHY: "text-green-600 dark:text-green-400",
-  DETERIORATING: "text-red-600 dark:text-red-400",
-  STABLE: "text-yellow-600 dark:text-yellow-400",
-  NOT_AVAILABLE: "text-muted-foreground",
+  HEALTHY: FINANCE_TEXT.gain,
+  DETERIORATING: FINANCE_TEXT.loss,
+  STABLE: FINANCE_TEXT.warning,
+  NOT_AVAILABLE: FINANCE_TEXT.neutral,
 }
 
 export function GrossMarginChart({ data }: Props) {
@@ -33,7 +35,9 @@ export function GrossMarginChart({ data }: Props) {
   if (trend.length === 0) {
     return (
       <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">{t("radar.stock_card.moat_chart_title")}</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          <GlossaryTerm termKey="moat">{t("radar.stock_card.moat_chart_title")}</GlossaryTerm>
+        </p>
         <p className="text-xs text-muted-foreground">{t("chart.insufficient_data")}</p>
       </div>
     )
@@ -49,7 +53,9 @@ export function GrossMarginChart({ data }: Props) {
 
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium text-muted-foreground">{t("radar.stock_card.moat_chart_title")}</p>
+      <p className="text-xs font-medium text-muted-foreground">
+        <GlossaryTerm termKey="moat">{t("radar.stock_card.moat_chart_title")}</GlossaryTerm>
+      </p>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={chartData} margin={{ top: 18, right: 8, left: -16, bottom: 0 }}>
           <XAxis
@@ -80,8 +86,8 @@ export function GrossMarginChart({ data }: Props) {
             />
           )}
           <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-            {chartData.map((entry, index) => (
-              <Cell key={index} fill={entry.fill} />
+            {chartData.map((entry) => (
+              <Cell key={entry.date} fill={entry.fill} />
             ))}
             <LabelList
               dataKey="value"

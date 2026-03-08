@@ -36,7 +36,7 @@ describe("usePrivacyMode", () => {
 
 
 describe("maskMoney", () => {
-  it("formats money when privacy mode is off", () => {
+  it("formats USD when privacy mode is off", () => {
     usePrivacyMode.setState({ isPrivate: false });
     expect(maskMoney(1234.56)).toBe("$1,234.56");
   });
@@ -54,5 +54,20 @@ describe("maskMoney", () => {
   it("formats large numbers with thousands separators", () => {
     usePrivacyMode.setState({ isPrivate: false });
     expect(maskMoney(1000000)).toBe("$1,000,000.00");
+  });
+
+  it("formats JPY without decimals", () => {
+    usePrivacyMode.setState({ isPrivate: false });
+    expect(maskMoney(1234.56, "JPY")).toBe("¥1,235");
+  });
+
+  it("formats TWD without decimals", () => {
+    usePrivacyMode.setState({ isPrivate: false });
+    expect(maskMoney(5000, "TWD")).toBe("NT$5,000");
+  });
+
+  it("formats EUR with symbol and decimals", () => {
+    usePrivacyMode.setState({ isPrivate: false });
+    expect(maskMoney(1234.56, "EUR")).toMatch(/1,234\.56/);
   });
 });

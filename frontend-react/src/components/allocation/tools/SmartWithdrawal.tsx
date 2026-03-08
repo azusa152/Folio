@@ -1,20 +1,18 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useWithdraw } from "@/api/hooks/useAllocation"
 import type { WithdrawResponse } from "@/api/types/allocation"
 import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
+import { maskMoney } from "@/hooks/usePrivacyMode"
+import { FINANCE_TEXT } from "@/lib/colors"
 
 interface Props {
   privacyMode: boolean
-}
-
-function fmtCurrency(v: number, currency: string, privacyMode: boolean): string {
-  if (privacyMode) return "***"
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v)
 }
 
 export function SmartWithdrawal({ privacyMode }: Props) {
@@ -34,6 +32,7 @@ export function SmartWithdrawal({ privacyMode }: Props) {
       { target_amount: Number(amount), display_currency: currency, notify },
       {
         onSuccess: (data) => setResult(data),
+        onError: () => toast.error(t("common.error")),
       },
     )
   }
@@ -45,8 +44,9 @@ export function SmartWithdrawal({ privacyMode }: Props) {
       {/* Input form */}
       <div className="space-y-3 max-w-sm">
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("allocation.withdraw.amount_label")}</label>
+          <label htmlFor="withdraw-amount" className="text-xs font-medium">{t("allocation.withdraw.amount_label")}</label>
           <Input
+            id="withdraw-amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             type="number"
@@ -55,8 +55,9 @@ export function SmartWithdrawal({ privacyMode }: Props) {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("allocation.withdraw.currency_label")}</label>
+          <label htmlFor="withdraw-currency" className="text-xs font-medium">{t("allocation.withdraw.currency_label")}</label>
           <select
+            id="withdraw-currency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -94,16 +95,16 @@ export function SmartWithdrawal({ privacyMode }: Props) {
             <div className="grid grid-cols-1 gap-3 text-xs mt-2 sm:grid-cols-3">
               <div>
                 <p className="text-muted-foreground">{t("allocation.withdraw.target")}</p>
-                <p className="font-semibold">{fmtCurrency(result.target_amount, currency, privacyMode)}</p>
+                <p className="font-semibold">{maskMoney(result.target_amount, currency)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">{t("allocation.withdraw.total_sell")}</p>
-                <p className="font-semibold">{fmtCurrency(result.total_sell_value, currency, privacyMode)}</p>
+                <p className="font-semibold">{maskMoney(result.total_sell_value, currency)}</p>
               </div>
               {result.shortfall > 0 && (
                 <div>
                   <p className="text-muted-foreground">{t("allocation.withdraw.shortfall")}</p>
-                  <p className="font-semibold text-red-500">{fmtCurrency(result.shortfall, currency, privacyMode)}</p>
+                  <p className={`font-semibold ${FINANCE_TEXT.loss}`}>{maskMoney(result.shortfall, currency)}</p>
                 </div>
               )}
             </div>
@@ -123,12 +124,12 @@ export function SmartWithdrawal({ privacyMode }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.recommendations.map((r, i) => (
-                    <tr key={i} className="border-b border-border/50">
+                  {result.recommendations.map((r) => (
+                    <tr key={r.ticker} className="border-b border-border/50">
                       <td className="py-0.5 pr-2 font-medium">{r.ticker}</td>
                       <td className="py-0.5 pr-2 text-muted-foreground">{r.category}</td>
                       <td className="py-0.5 pr-2 text-right">{privacyMode ? "***" : r.quantity_to_sell.toFixed(2)}</td>
-                      <td className="py-0.5 pr-2 text-right">{fmtCurrency(r.sell_value, currency, privacyMode)}</td>
+                      <td className="py-0.5 pr-2 text-right">{maskMoney(r.sell_value, currency)}</td>
                       <td className="py-0.5 text-muted-foreground">{r.reason}</td>
                     </tr>
                   ))}
@@ -155,8 +156,8 @@ export function SmartWithdrawal({ privacyMode }: Props) {
                     label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
                     labelLine={false}
                   >
-                    {Object.keys(result.post_sell_drifts).map((_, i) => (
-                      <Cell key={i} fill={DRIFT_COLORS[i % DRIFT_COLORS.length]} />
+                    {Object.keys(result.post_sell_drifts).map((name, i) => (
+                      <Cell key={name} fill={DRIFT_COLORS[i % DRIFT_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip

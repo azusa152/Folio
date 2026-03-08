@@ -11,6 +11,7 @@ import { useGuruHeatmap } from "@/api/hooks/useSmartMoney"
 import { ACTION_COLORS } from "@/components/smartmoney/formatters"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { FINANCE_TEXT } from "@/lib/colors"
 
 type ViewMode = "sector" | "guru"
 
@@ -220,7 +221,7 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <div className={`rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs ${FINANCE_TEXT.warning}`}>
         {data.filing_delay_note || t("smart_money.heatmap.delay_note", { report_date: data.report_date ?? "-" })}
       </div>
       {viewMode === "sector" && dominantActions.length === 1 && (

@@ -47,6 +47,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     components["schemas"]["HoldingImportItem"][] | null
   >(null)
   const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const addHoldingMutation = useAddHolding()
   const addCashMutation = useAddCashHolding()
@@ -72,8 +73,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       setFeedback(t("allocation.sidebar.error_ticker"))
       return
     }
-    if (!quantity.trim() || isNaN(Number(quantity))) {
+    const quantityNum = Number(quantity)
+    if (!quantity.trim() || Number.isNaN(quantityNum) || quantityNum <= 0) {
       setFeedback(t("allocation.sidebar.error_quantity"))
+      return
+    }
+    if (avgCost.trim() && Number(avgCost) < 0) {
+      setFeedback(t("allocation.sidebar.error_avg_cost"))
       return
     }
     setFeedback(null)
@@ -81,19 +87,18 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         ticker: ticker.trim().toUpperCase(),
         category,
-        quantity: Number(quantity),
+        quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
         currency,
       },
       {
         onSuccess: () => {
-          setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          setFeedback(null)
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -105,8 +110,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       setFeedback(t("allocation.sidebar.error_bond_ticker"))
       return
     }
-    if (!quantity.trim() || isNaN(Number(quantity))) {
+    const quantityNum = Number(quantity)
+    if (!quantity.trim() || Number.isNaN(quantityNum) || quantityNum <= 0) {
       setFeedback(t("allocation.sidebar.error_quantity"))
+      return
+    }
+    if (avgCost.trim() && Number(avgCost) < 0) {
+      setFeedback(t("allocation.sidebar.error_avg_cost"))
       return
     }
     setFeedback(null)
@@ -114,19 +124,18 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       {
         ticker: ticker.trim().toUpperCase(),
         category: "Bond",
-        quantity: Number(quantity),
+        quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
         currency,
       },
       {
         onSuccess: () => {
-          setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          setFeedback(null)
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -134,7 +143,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   }
 
   const handleSubmitCash = () => {
-    if (!cashAmount.trim() || isNaN(Number(cashAmount))) {
+    const cashAmountNum = Number(cashAmount)
+    if (!cashAmount.trim() || Number.isNaN(cashAmountNum) || cashAmountNum <= 0) {
       setFeedback(t("allocation.sidebar.error_cash_amount"))
       return
     }
@@ -142,18 +152,17 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     addCashMutation.mutate(
       {
         currency,
-        amount: Number(cashAmount),
+        amount: cashAmountNum,
         broker: cashBank || undefined,
         account_type: cashAccountType || undefined,
       },
       {
         onSuccess: () => {
-          setFeedback(t("allocation.sidebar.cash_added", { label: currency, amount: cashAmount }))
+          setFeedback(null)
           toast.success(t("allocation.sidebar.cash_added", { label: currency, amount: cashAmount }))
           resetForm()
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -165,8 +174,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       setFeedback(t("allocation.sidebar.crypto_select_required"))
       return
     }
-    if (!quantity.trim() || isNaN(Number(quantity))) {
+    const quantityNum = Number(quantity)
+    if (!quantity.trim() || Number.isNaN(quantityNum) || quantityNum <= 0) {
       setFeedback(t("allocation.sidebar.error_quantity"))
+      return
+    }
+    if (avgCost.trim() && Number(avgCost) < 0) {
+      setFeedback(t("allocation.sidebar.error_avg_cost"))
       return
     }
     setFeedback(null)
@@ -175,19 +189,18 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         ticker: ticker.trim().toUpperCase(),
         coingecko_id: cryptoCoinId ?? undefined,
         category: "Crypto",
-        quantity: Number(quantity),
+        quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
         currency: "USD",
       },
       {
         onSuccess: () => {
-          setFeedback(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
+          setFeedback(null)
           toast.success(t("allocation.sidebar.added", { ticker: ticker.trim().toUpperCase() }))
           resetForm()
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -211,6 +224,9 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         setImportFeedback(t("allocation.sidebar.import_error_json"))
       }
     }
+    reader.onerror = () => {
+      setImportFeedback(t("allocation.sidebar.import_error_json"))
+    }
     reader.readAsText(file)
   }
 
@@ -218,18 +234,18 @@ export function AddHoldingSheet({ open, onClose }: Props) {
     if (!pendingImport) return
     importMutation.mutate(pendingImport, {
       onSuccess: () => {
-        setImportFeedback(t("allocation.sidebar.import_success"))
+        setImportFeedback(null)
         toast.success(t("allocation.sidebar.import_success"))
         setPendingImport(null)
       },
       onError: () => {
-        setImportFeedback(t("common.error"))
         toast.error(t("common.error"))
       },
     })
   }
 
   const handleExport = async () => {
+    setExporting(true)
     try {
       const headers: HeadersInit = {}
       const apiKey = import.meta.env.VITE_API_KEY
@@ -247,6 +263,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
       URL.revokeObjectURL(url)
     } catch {
       toast.error(t("common.error"))
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -304,6 +322,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("allocation.sidebar.category")}</p>
                 <select
+                  aria-label={t("allocation.sidebar.category")}
                   value={category}
                   onChange={(e) => setCategory(e.target.value as StockCategory)}
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -354,6 +373,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("allocation.sidebar.currency_label")}</p>
                 <select
+                  aria-label={t("allocation.sidebar.currency_label")}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -395,6 +415,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("allocation.sidebar.currency_label")}</p>
                 <select
+                  aria-label={t("allocation.sidebar.currency_label")}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -418,6 +439,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("allocation.sidebar.cash_account_type")}</p>
                 <select
+                  aria-label={t("allocation.sidebar.cash_account_type")}
                   value={cashAccountType}
                   onChange={(e) => setCashAccountType(e.target.value)}
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -507,7 +529,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
             </div>
           )}
 
-          {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
+          {feedback && <p className="text-xs text-destructive">{feedback}</p>}
 
           <hr className="border-border" />
 
@@ -517,8 +539,8 @@ export function AddHoldingSheet({ open, onClose }: Props) {
             <p className="text-xs text-muted-foreground">
               {t("allocation.sidebar.export_count", { count: holdings?.length ?? 0 })}
             </p>
-            <Button size="sm" variant="outline" className="w-full text-xs" onClick={handleExport}>
-              {t("allocation.sidebar.download_json")}
+            <Button size="sm" variant="outline" className="w-full text-xs" onClick={handleExport} disabled={exporting}>
+              {exporting ? t("common.loading") : t("allocation.sidebar.download_json")}
             </Button>
           </div>
 
@@ -556,7 +578,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
                 {t("allocation.csv_import.download_template")}
               </a>
             </Button>
-            {importFeedback && <p className="text-xs text-muted-foreground">{importFeedback}</p>}
+            {importFeedback && <p className="text-xs text-destructive">{importFeedback}</p>}
             {pendingImport && (
               <Button
                 size="sm"

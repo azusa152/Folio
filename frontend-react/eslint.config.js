@@ -37,7 +37,7 @@ export default defineConfig([
             exclude: [
               // HTML / React core
               'className', 'style', 'key', 'id', 'htmlFor', 'name', 'type', 'role',
-              'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-controls',
+              'aria-label', 'ariaLabel', 'aria-labelledby', 'aria-describedby', 'aria-controls',
               'href', 'src', 'alt', 'target', 'rel', 'download',
               // Routing
               'path', 'to', 'from', 'exact',
@@ -52,7 +52,7 @@ export default defineConfig([
               // Misc non-translatable
               'icon', 'format', 'unit', 'prefix', 'suffix',
               // Component-specific props
-              'message', 'guruName',
+              'message', 'guruName', 'termKey',
             ],
           },
           // Components where literal strings are always acceptable.

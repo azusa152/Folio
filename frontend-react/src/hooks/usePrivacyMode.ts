@@ -29,7 +29,12 @@ export function useIsPrivate(): boolean {
   return usePrivacyMode((s) => s.isPrivate)
 }
 
-export function maskMoney(value: number): string {
+export function maskMoney(value: number, currency = "USD"): string {
   if (usePrivacyMode.getState().isPrivate) return "***"
-  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: currency === "JPY" || currency === "TWD" ? 0 : 2,
+    maximumFractionDigits: currency === "JPY" || currency === "TWD" ? 0 : 2,
+  }).format(value)
 }

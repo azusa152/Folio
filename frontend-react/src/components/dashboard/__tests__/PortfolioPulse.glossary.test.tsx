@@ -31,6 +31,10 @@ vi.mock("@/hooks/usePrivacyMode", () => ({
   maskMoney: (v: number) => `$${v.toFixed(2)}`,
 }))
 
+vi.mock("@/lib/format", () => ({
+  formatCurrency: (v: number) => `$${v.toFixed(2)}`,
+}))
+
 vi.mock("@/components/LightweightChartWrapper", () => ({
   LightweightChartWrapper: () => <div data-testid="chart" />,
 }))

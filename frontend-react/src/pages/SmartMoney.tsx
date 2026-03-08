@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -12,7 +13,7 @@ import { GrandPortfolioTab } from "@/components/smartmoney/GrandPortfolioTab"
 import { HeatmapTab } from "@/components/smartmoney/HeatmapTab"
 import { GuruBacktestTab } from "@/components/smartmoney/GuruBacktestTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
 const GRAND_PORTFOLIO_TAB = "grand_portfolio"
@@ -85,23 +86,34 @@ export default function SmartMoney() {
           <h1 className="text-xl sm:text-2xl font-bold">{t("smart_money.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("smart_money.caption")}</p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-xs shrink-0 min-h-[44px]"
-          onClick={() => syncAllMutation.mutate()}
-          disabled={syncAllMutation.isPending || activeGurus.length === 0}
-        >
-          {syncAllMutation.isPending
-            ? t("smart_money.sidebar.syncing")
-            : t("smart_money.sidebar.sync_button")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs shrink-0 min-h-[44px]"
+            onClick={() => setActiveTab(ADD_GURU_TAB)}
+          >
+            {t("smart_money.overview.add_guru_tab")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs shrink-0 min-h-[44px]"
+            onClick={() => syncAllMutation.mutate(undefined, { onError: () => toast.error(t("common.error")) })}
+            disabled={syncAllMutation.isPending || activeGurus.length === 0}
+          >
+            {syncAllMutation.isPending
+              ? t("smart_money.sidebar.syncing")
+              : t("smart_money.sidebar.sync_button")}
+          </Button>
+        </div>
       </div>
 
       {/* SOP collapsible */}
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
+          aria-expanded={sopOpen}
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.sop.title")}</span>
@@ -123,13 +135,7 @@ export default function SmartMoney() {
       {syncAllMutation.isError && (
         <p className="text-xs text-destructive">
           {t("smart_money.sidebar.sync_error", {
-            msg: String(
-              (syncAllMutation.error as { detail?: string; message?: string } | null)
-                ?.detail ??
-                (syncAllMutation.error as { message?: string } | null)?.message ??
-                syncAllMutation.error ??
-                "",
-            ),
+            msg: getErrorMessage(syncAllMutation.error),
           })}
         </p>
       )}
@@ -180,7 +186,6 @@ export default function SmartMoney() {
                 {guru.display_name}
               </TabsTrigger>
             ))}
-            <TabsTrigger value={ADD_GURU_TAB} className="min-h-[44px]">{t("smart_money.overview.add_guru_tab")}</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>

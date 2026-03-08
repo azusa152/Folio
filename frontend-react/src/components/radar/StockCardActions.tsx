@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STOCK_CATEGORIES, CATEGORY_ICON_SHORT } from "@/lib/constants"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { useAddThesis, useUpdateCategory, useDeactivateStock } from "@/api/hooks/useRadar"
 import type { RadarStock, StockCategory } from "@/api/types/radar"
 
@@ -28,12 +29,10 @@ function ThesisForm({ ticker, stock }: { ticker: string; stock: RadarStock }) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
-          toast.success(t("common.success"))
           setThesisText("")
           setTagsText("")
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -80,10 +79,8 @@ function ChangeCategoryForm({ ticker, currentCategory }: { ticker: string; curre
         onSuccess: (data) => {
           const msg = data?.message ?? t("common.success")
           setFeedback(msg)
-          toast.success(msg)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -132,10 +129,8 @@ function RemoveForm({ ticker }: { ticker: string }) {
         onSuccess: (data) => {
           const msg = data?.message ?? t("common.success")
           setFeedback(msg)
-          toast.success(msg)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -144,7 +139,7 @@ function RemoveForm({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-amber-600">{t("radar.stock_card.remove_warning")}</p>
+      <p className={`text-xs ${FINANCE_TEXT.warning}`}>{t("radar.stock_card.remove_warning")}</p>
       <textarea
         className="w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
         rows={2}

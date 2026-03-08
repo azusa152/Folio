@@ -23,6 +23,7 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
@@ -37,8 +38,8 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
           ) : !history?.length ? (
             <p className="text-xs text-muted-foreground">{t("radar.removed.no_history")}</p>
           ) : (
-            history.map((entry, i) => (
-              <div key={i} className="rounded border border-border p-2 text-xs">
+            history.map((entry) => (
+              <div key={entry.created_at} className="rounded border border-border p-2 text-xs">
                 <p className="font-semibold text-muted-foreground">{entry.created_at.slice(0, 10)}</p>
                 <p>{entry.reason}</p>
               </div>
@@ -59,6 +60,7 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
@@ -100,6 +102,7 @@ function ReactivateSection({ ticker }: { ticker: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-expanded={false}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
@@ -120,10 +123,8 @@ function ReactivateSection({ ticker }: { ticker: string }) {
         onSuccess: (data) => {
           const msg = data?.message ?? t("radar.removed.reactivate_success")
           setFeedback(msg)
-          toast.success(msg)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },
@@ -134,6 +135,7 @@ function ReactivateSection({ ticker }: { ticker: string }) {
     <div className="space-y-2">
       <button
         onClick={() => setOpen(false)}
+        aria-expanded={true}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">

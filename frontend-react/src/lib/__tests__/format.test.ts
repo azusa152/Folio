@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import {
+  formatCurrency,
   formatMarketCap,
   formatPercent,
   formatPrice,
@@ -117,6 +118,33 @@ describe("isMarketOpen", () => {
     // 2025-02-25 (Tuesday) 05:31 UTC = 13:31 CST
     vi.setSystemTime(new Date("2025-02-25T05:31:00Z"))
     expect(isMarketOpen("TW")).toBe(false)
+  })
+})
+
+describe("formatCurrency", () => {
+  it("formats USD with dollar sign and 2 decimals", () => {
+    expect(formatCurrency(1234.56, "USD")).toBe("$1,234.56")
+  })
+
+  it("formats JPY with yen sign and no decimals", () => {
+    expect(formatCurrency(1234.56, "JPY")).toBe("¥1,235")
+  })
+
+  it("formats TWD with no decimals", () => {
+    expect(formatCurrency(5000, "TWD")).toBe("NT$5,000")
+  })
+
+  it("respects explicit fractionDigits override", () => {
+    expect(formatCurrency(1234.567, "USD", 0)).toBe("$1,235")
+  })
+
+  it("formats zero correctly", () => {
+    expect(formatCurrency(0, "USD")).toBe("$0.00")
+  })
+
+  it("formats EUR with symbol", () => {
+    const result = formatCurrency(1234.56, "EUR")
+    expect(result).toContain("1,234.56")
   })
 })
 

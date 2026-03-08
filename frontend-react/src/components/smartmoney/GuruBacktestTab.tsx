@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useGuruBacktest } from "@/api/hooks/useSmartMoney"
 import type { Guru } from "@/api/types/smartMoney"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
+import { FINANCE_TEXT } from "@/lib/colors"
 import {
   GURU_BACKTEST_BENCHMARK_OPTIONS,
   GURU_BACKTEST_QUARTER_OPTIONS,
@@ -56,13 +57,7 @@ export function GuruBacktestTab({
     }))
   }, [data])
 
-  const errMsg = (() => {
-    if (!error) return ""
-    if (typeof error === "object" && error && "detail" in error) {
-      return String((error as { detail?: string }).detail ?? "")
-    }
-    return ""
-  })()
+  const errMsg = getErrorMessage(error)
 
   if (gurus.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("smart_money.no_gurus_hint")}</p>
@@ -70,7 +65,7 @@ export function GuruBacktestTab({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <div className={`rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs ${FINANCE_TEXT.warning}`}>
         {t("smart_money.backtest.disclaimer")}
       </div>
 

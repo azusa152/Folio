@@ -130,9 +130,7 @@ export function CsvImportDialog({ open, onClose }: Props) {
         handleClose()
       },
       onError: () => {
-        const message = t("allocation.csv_import.import_error")
-        setFeedback(message)
-        toast.error(message)
+        toast.error(t("allocation.csv_import.import_error"))
       },
     })
   }

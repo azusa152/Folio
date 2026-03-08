@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatCurrency } from "@/lib/format"
 
 interface Props {
   holdings: HoldingDetail[]
   privacyMode: boolean
+  displayCurrency?: string
 }
 
 function fmt(v: number | null | undefined, decimals = 2): string {
@@ -12,9 +14,15 @@ function fmt(v: number | null | undefined, decimals = 2): string {
   return v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 
-function fmtMasked(v: number | null | undefined, privacyMode: boolean, decimals = 0): string {
+function fmtMaskedCurrency(
+  v: number | null | undefined,
+  currency: string,
+  privacyMode: boolean,
+  decimals?: number,
+): string {
   if (privacyMode) return "***"
-  return fmt(v, decimals)
+  if (v == null) return "—"
+  return formatCurrency(v, currency, decimals)
 }
 
 function fmtQuantity(ticker: string, category: string, quantity: number, privacyMode: boolean): string {
@@ -38,7 +46,7 @@ function computeFxReturn(purchaseFx: number | null | undefined, currentFx: numbe
   return (currentFx / purchaseFx - 1) * 100
 }
 
-export function HoldingsTable({ holdings, privacyMode }: Props) {
+export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props) {
   const { t } = useTranslation()
 
   if (!holdings || holdings.length === 0) {
@@ -74,15 +82,15 @@ export function HoldingsTable({ holdings, privacyMode }: Props) {
                   : null
 
               return (
-                <tr key={i} className="border-b border-border/50">
+                <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
                   <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
-                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.market_value, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">{fmtMaskedCurrency(h.market_value, displayCurrency ?? h.currency, privacyMode)}</td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-0.5 pr-2 text-right">{fmtMasked(h.cost_total, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">{fmtMaskedCurrency(h.cost_total, displayCurrency ?? h.currency, privacyMode)}</td>
                   <td className="py-0.5 text-right">
                     <div
                       className={h.change_pct != null ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss) : undefined}

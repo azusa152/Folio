@@ -1,12 +1,14 @@
 import { useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { AddHoldingSheet } from "@/components/allocation/holdings/AddHoldingSheet"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
@@ -86,14 +88,7 @@ export default function Allocation() {
   const hasSetup = holdings.length > 0
   const hasSeedableCash = (netWorthSeedPreview?.cash_positions?.length ?? 0) > 0
 
-  const formatDisplayCurrency = (value: number) => {
-    if (privacyMode) return "***"
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: displayCurrency,
-      minimumFractionDigits: 2,
-    }).format(value)
-  }
+  const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
@@ -116,6 +111,7 @@ export default function Allocation() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
+          aria-expanded={sopOpen}
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("allocation.sop.title")}</span>
@@ -135,7 +131,7 @@ export default function Allocation() {
 
       {/* Setup guard — show hint when no holdings but still show Settings tab */}
       {!hasSetup && (
-        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
+        <div className={`rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm ${FINANCE_TEXT.warning}`}>
           {t("allocation.setup_required")}
         </div>
       )}
@@ -154,8 +150,9 @@ export default function Allocation() {
         <TabsContent value="portfolio" className="mt-4 space-y-4">
           {/* Display currency selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("allocation.display_currency")}</span>
+            <label htmlFor="alloc-currency" className="text-xs text-muted-foreground">{t("allocation.display_currency")}</label>
             <select
+              id="alloc-currency"
               value={displayCurrency}
               onChange={(e) => setDisplayCurrency(e.target.value)}
               className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
@@ -197,6 +194,7 @@ export default function Allocation() {
           <div className="rounded-md border border-border">
             <button
               onClick={() => setNetWorthSopOpen((v) => !v)}
+              aria-expanded={netWorthSopOpen}
               className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
             >
               <span>{t("net_worth.title")}</span>
@@ -213,8 +211,9 @@ export default function Allocation() {
 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{t("allocation.display_currency")}</span>
+              <label htmlFor="nw-currency" className="text-xs text-muted-foreground">{t("allocation.display_currency")}</label>
               <select
+                id="nw-currency"
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
                 className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
@@ -268,6 +267,9 @@ export default function Allocation() {
                           }
                           setSeedFeedback(t("net_worth.seed_already_done"))
                         },
+                        onError: () => {
+                          toast.error(t("common.error"))
+                        },
                       })
                     }}
                   >
@@ -302,7 +304,7 @@ export default function Allocation() {
             </div>
           ) : (
             <>
-              <NetWorthOverview summary={netWorthSummary} privacyMode={privacyMode} />
+              <NetWorthOverview summary={netWorthSummary} />
               <NetWorthHistoryChart
                 history={netWorthHistory ?? []}
                 isLoading={netWorthHistoryLoading}
@@ -319,13 +321,29 @@ export default function Allocation() {
 
         {/* Settings tab */}
         <TabsContent value="settings" className="mt-4 space-y-8">
-          <TargetAllocation />
-          <hr className="border-border" />
-          <HoldingsManager privacyMode={privacyMode} />
-          <hr className="border-border" />
-          <TelegramSettings privacyMode={privacyMode} />
-          <hr className="border-border" />
-          <NotificationPreferences />
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("allocation.tab.portfolio")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TargetAllocation />
+            </div>
+            <div className="rounded-md border border-border p-4">
+              <HoldingsManager privacyMode={privacyMode} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("allocation.telegram.title")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TelegramSettings privacyMode={privacyMode} />
+            </div>
+            <div className="rounded-md border border-border p-4">
+              <NotificationPreferences />
+            </div>
+          </section>
         </TabsContent>
       </Tabs>
 

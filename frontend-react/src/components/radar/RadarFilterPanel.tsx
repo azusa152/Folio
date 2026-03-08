@@ -201,6 +201,7 @@ export function RadarFilterPanel({
           }
           onToggleOpen()
         }}
+        aria-expanded={isOpen}
         className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
       >
         <span className="inline-flex items-center gap-2">

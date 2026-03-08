@@ -6,6 +6,7 @@ import { useHoldings } from "@/api/hooks/useDashboard"
 import { useUpdateHolding, useDeleteHolding } from "@/api/hooks/useAllocation"
 import type { Holding } from "@/api/types/allocation"
 import { formatPrice } from "@/lib/format"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   privacyMode: boolean
@@ -80,19 +81,7 @@ export function HoldingsManager({ privacyMode }: Props) {
           setEditing(null)
         },
         onError: (err: unknown) => {
-          // openapi-fetch errors are plain objects like { detail: string }, not Error instances.
-          const apiDetail =
-            err !== null && typeof err === "object" && "detail" in err
-              ? (err as { detail: unknown }).detail
-              : undefined
-          const detail =
-            typeof apiDetail === "string"
-              ? apiDetail
-              : err instanceof Error
-                ? err.message
-                : null
-          const msg = detail ?? t("common.error")
-          setEditing((prev) => (prev ? { ...prev, error: msg } : prev))
+          const msg = getErrorMessage(err) || t("common.error")
           toast.error(msg)
         },
       },

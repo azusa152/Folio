@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { useDeleteNetWorthItem, useUpdateNetWorthItem } from "@/api/hooks/useNetWorth"
 import { formatPrice } from "@/lib/format"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { NetWorthItemResponse } from "@/api/types/networth"
 
 interface Props {
@@ -186,7 +187,7 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
           <tbody>
             {assets.length > 0 && (
               <tr>
-                <td colSpan={6} className="pt-3 pb-1 text-[11px] font-semibold text-green-600">
+                <td colSpan={6} className={`pt-3 pb-1 text-[11px] font-semibold ${FINANCE_TEXT.gain}`}>
                   {t("net_worth.kind.asset")}
                 </td>
               </tr>
@@ -195,7 +196,7 @@ export function NetWorthItemsTable({ items, privacyMode }: Props) {
 
             {liabilities.length > 0 && (
               <tr>
-                <td colSpan={6} className="pt-3 pb-1 text-[11px] font-semibold text-red-600">
+                <td colSpan={6} className={`pt-3 pb-1 text-[11px] font-semibold ${FINANCE_TEXT.loss}`}>
                   {t("net_worth.kind.liability")}
                 </td>
               </tr>

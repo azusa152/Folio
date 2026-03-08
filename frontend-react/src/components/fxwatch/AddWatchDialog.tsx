@@ -41,6 +41,10 @@ export function AddWatchDialog({ open, onClose }: Props) {
       setError(t("fx_watch.form.error_no_alert"))
       return
     }
+    if (!Number.isFinite(reminderHours) || reminderHours < 1 || reminderHours > 168) {
+      setError(t("fx_watch.form.error_reminder_hours"))
+      return
+    }
     create.mutate(
       {
         base_currency: base,
@@ -57,7 +61,6 @@ export function AddWatchDialog({ open, onClose }: Props) {
           onClose()
         },
         onError: () => {
-          setError(t("common.error"))
           toast.error(t("common.error_backend"))
         },
       },
@@ -77,7 +80,7 @@ export function AddWatchDialog({ open, onClose }: Props) {
             <div>
               <label className="text-xs text-muted-foreground">{t("fx_watch.form.base_currency")}</label>
               <Select value={base} onValueChange={setBase}>
-                <SelectTrigger className="text-xs h-8 mt-0.5">
+                <SelectTrigger aria-label={t("fx_watch.form.base_currency")} className="text-xs h-8 mt-0.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -90,7 +93,7 @@ export function AddWatchDialog({ open, onClose }: Props) {
             <div>
               <label className="text-xs text-muted-foreground">{t("fx_watch.form.quote_currency")}</label>
               <Select value={quote} onValueChange={setQuote}>
-                <SelectTrigger className="text-xs h-8 mt-0.5">
+                <SelectTrigger aria-label={t("fx_watch.form.quote_currency")} className="text-xs h-8 mt-0.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -168,8 +171,9 @@ export function AddWatchDialog({ open, onClose }: Props) {
 
           {/* Reminder hours */}
           <div>
-            <label className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+            <label htmlFor="add-watch-reminder-hours" className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
             <input
+              id="add-watch-reminder-hours"
               type="number"
               min={1}
               max={168}

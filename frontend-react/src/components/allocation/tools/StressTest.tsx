@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStressTest } from "@/api/hooks/useAllocation"
+import { FINANCE_TEXT } from "@/lib/colors"
+import { maskMoney } from "@/hooks/usePrivacyMode"
+import { cn } from "@/lib/utils"
 
 interface Props {
   displayCurrency: string
@@ -9,16 +12,22 @@ interface Props {
   enabled: boolean
 }
 
-const PAIN_COLORS: Record<string, string> = {
-  low: "#22c55e",
-  moderate: "#f59e0b",
-  high: "#f97316",
-  panic: "#ef4444",
+const PAIN_TEXT_CLASSES: Record<string, string> = {
+  low: FINANCE_TEXT.gain,
+  moderate: FINANCE_TEXT.warning,
+  high: "text-orange-600 dark:text-orange-400",
+  panic: FINANCE_TEXT.loss,
 }
 
-function fmtValue(v: number, currency: string, privacyMode: boolean): string {
-  if (privacyMode) return "***"
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v)
+const PAIN_SURFACE_CLASSES: Record<string, string> = {
+  low: "border-green-500/40 bg-green-500/10",
+  moderate: "border-amber-500/40 bg-amber-500/10",
+  high: "border-orange-500/40 bg-orange-500/10",
+  panic: "border-red-500/40 bg-red-500/10",
+}
+
+function fmtValue(v: number, currency: string): string {
+  return maskMoney(v, currency)
 }
 
 export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
@@ -35,7 +44,9 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
 
   const { data, isLoading } = useStressTest(-debouncedDrop, displayCurrency, enabled)
 
-  const painColor = data ? (PAIN_COLORS[data.pain_level.level] ?? "#9ca3af") : "#9ca3af"
+  const painLevel = data?.pain_level.level
+  const painTextClass = painLevel ? (PAIN_TEXT_CLASSES[painLevel] ?? FINANCE_TEXT.neutral) : FINANCE_TEXT.neutral
+  const painSurfaceClass = painLevel ? (PAIN_SURFACE_CLASSES[painLevel] ?? "border-border bg-muted/30") : "border-border bg-muted/30"
 
   return (
     <div className="space-y-4">
@@ -45,7 +56,7 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <label htmlFor="stress-market-drop" className="text-xs text-muted-foreground">{t("allocation.stress.slider_label")}</label>
-          <span className="text-sm font-semibold text-red-600 dark:text-red-400">-{sliderValue}%</span>
+          <span className={`text-sm font-semibold ${FINANCE_TEXT.loss}`}>-{sliderValue}%</span>
         </div>
         <input
           id="stress-market-drop"
@@ -81,16 +92,16 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="text-muted-foreground">{t("allocation.stress.loss")}</p>
-              <p className="text-xl font-bold text-red-500">
+              <p className={`text-xl font-bold ${FINANCE_TEXT.loss}`}>
                 {privacyMode ? "***" : `-${data.total_loss_pct.toFixed(1)}%`}
               </p>
               <p className="text-xs text-muted-foreground">
-                {fmtValue(data.total_loss, data.display_currency, privacyMode)}
+                {fmtValue(data.total_loss, data.display_currency)}
               </p>
             </div>
-            <div className="rounded-lg border border-border p-3" style={{ borderColor: `${painColor}40`, backgroundColor: `${painColor}10` }}>
+            <div className={cn("rounded-lg border p-3", painSurfaceClass)}>
               <p className="text-muted-foreground">{t("allocation.stress.pain_level")}</p>
-              <p className="text-base font-bold" style={{ color: painColor }}>
+              <p className={cn("text-base font-bold", painTextClass)}>
                 {data.pain_level.emoji} {t(`allocation.stress.pain_labels.${data.pain_level.level}`)}
               </p>
             </div>
@@ -99,8 +110,8 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
           {/* Advice */}
           {data.advice.length > 0 && (
             <ul className="space-y-1">
-              {data.advice.map((a, i) => (
-                <li key={i} className="text-xs text-muted-foreground">• {a}</li>
+              {data.advice.map((a) => (
+                <li key={a} className="text-xs text-muted-foreground">• {a}</li>
               ))}
             </ul>
           )}
@@ -121,15 +132,15 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
                 </thead>
                 <tbody>
                   {data.holdings_breakdown.map((h, i) => (
-                    <tr key={i} className="border-b border-border/50">
+                    <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
                       <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
                       <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
                       <td className="py-0.5 pr-2 text-right">{h.beta.toFixed(2)}</td>
-                      <td className="py-0.5 pr-2 text-right text-red-500">
+                      <td className={`py-0.5 pr-2 text-right ${FINANCE_TEXT.loss}`}>
                         -{h.expected_drop_pct.toFixed(1)}%
                       </td>
-                      <td className="py-0.5 text-right text-red-500">
-                        {privacyMode ? "***" : fmtValue(h.expected_loss, data.display_currency, false)}
+                      <td className={`py-0.5 text-right ${FINANCE_TEXT.loss}`}>
+                        {fmtValue(h.expected_loss, data.display_currency)}
                       </td>
                     </tr>
                   ))}

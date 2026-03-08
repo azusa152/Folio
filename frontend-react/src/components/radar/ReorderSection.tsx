@@ -82,11 +82,9 @@ export function ReorderSection({ stocks }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("radar.stock_card.success_order"))
-          toast.success(t("radar.stock_card.success_order"))
           setReorderOn(false)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       },

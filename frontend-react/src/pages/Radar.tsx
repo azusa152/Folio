@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { cn, formatLocalTime } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { useLastScan, useHoldings } from "@/api/hooks/useDashboard"
 import {
   useRadarStocks,
@@ -134,7 +135,7 @@ export default function Radar() {
         </div>
         <div className="flex items-center gap-2">
           {isScanning && (
-            <span className="text-xs text-amber-500 animate-pulse">{t("radar.scan.running")}</span>
+            <span className={`text-xs ${FINANCE_TEXT.warning} animate-pulse`}>{t("radar.scan.running")}</span>
           )}
           <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => setDrawerOpen(true)}>
             {t("radar.panel_header")}
@@ -146,6 +147,7 @@ export default function Radar() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
+          aria-expanded={sopOpen}
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("radar.sop.title")}</span>

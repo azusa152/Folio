@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { formatCurrency } from "@/lib/format"
 import { InfoPopover } from "./InfoPopover"
 import type { RebalanceResponse, EnrichedStock } from "@/api/types/dashboard"
 
@@ -59,11 +60,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
 
   if (ytdDivIncome === 0) return null
 
-  const formatted = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(ytdDivIncome)
+  const formatted = formatCurrency(ytdDivIncome, currency)
 
   return (
     <Card>
@@ -84,23 +81,14 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
                 </thead>
                 <tbody>
                   {breakdown.map((row) => {
-                    const fmtNative = (v: number) =>
-                      new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: row.nativeCurrency,
-                        minimumFractionDigits: 2,
-                      }).format(v)
+                    const fmtNative = (v: number) => formatCurrency(v, row.nativeCurrency)
                     return (
                       <tr key={row.ticker}>
                         <td className="font-medium pr-2">{row.ticker}</td>
                         <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
                         <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
                         <td className="text-right tabular-nums">
-                          {new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency,
-                            minimumFractionDigits: 2,
-                          }).format(row.convertedSubtotal)}
+                          {formatCurrency(row.convertedSubtotal, currency)}
                         </td>
                       </tr>
                     )

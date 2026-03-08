@@ -46,8 +46,8 @@ export function ConsensusStocks({ items }: { items: ConsensusStockItem[] }) {
 
           {/* Per-guru action row */}
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {item.gurus.map((g, i) => (
-              <span key={i} className="text-xs text-muted-foreground">
+            {item.gurus.map((g) => (
+              <span key={g.display_name} className="text-xs text-muted-foreground">
                 {g.display_name}
                 <span className="ml-1">
                   <ActionBadge action={g.action} />

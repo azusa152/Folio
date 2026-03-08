@@ -10,6 +10,7 @@ import {
   RISK_WARNING_SIGNALS,
 } from "@/lib/constants"
 import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_BADGE } from "@/lib/colors"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
 
@@ -34,9 +35,9 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
   const signalDescription = getSignalDescription(t, signal)
 
   const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
-    ? "text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded"
+    ? `text-xs ${FINANCE_BADGE.gain} px-1.5 py-0.5 rounded`
     : RISK_WARNING_SIGNALS.has(signal)
-      ? "text-xs bg-red-500/15 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded"
+      ? `text-xs ${FINANCE_BADGE.loss} px-1.5 py-0.5 rounded`
       : "text-xs bg-muted px-1.5 py-0.5 rounded"
 
   const isNew = activity?.is_new ?? false
@@ -160,7 +161,7 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
             }}
           />
         ) : buyStocks.length === 0 && riskStocks.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-md bg-green-500/10 text-green-700 dark:text-green-400 px-3 py-2 text-sm">
+          <div className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}>
             {t("dashboard.all_signals_normal")}
           </div>
         ) : (
@@ -205,8 +206,8 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("dashboard.rebalance_advice_title")}
                     </p>
-                    {advice.slice(0, 5).map((item, i) => (
-                      <p key={i} className="text-xs text-muted-foreground py-0.5">
+                    {advice.slice(0, 5).map((item) => (
+                      <p key={item} className="text-xs text-muted-foreground py-0.5">
                         • {item}
                       </p>
                     ))}

@@ -110,8 +110,8 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
                     outerRadius="80%"
                     paddingAngle={1}
                   >
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -135,8 +135,8 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
                     outerRadius="80%"
                     paddingAngle={1}
                   >
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -185,8 +185,8 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
               <ReferenceLine y={5} stroke="#f97316" strokeDasharray="3 3" strokeWidth={1} />
               <ReferenceLine y={-5} stroke="#f97316" strokeDasharray="3 3" strokeWidth={1} />
               <Bar dataKey="drift" radius={[3, 3, 0, 0]}>
-                {driftData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
+                {driftData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
                 ))}
                 <LabelList
                   dataKey="drift"

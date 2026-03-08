@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useTemplates, useCreateProfile, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { useProfile } from "@/api/hooks/useDashboard"
 import { STOCK_CATEGORIES } from "@/lib/constants"
+import { FINANCE_TEXT } from "@/lib/colors"
 
 function mergeConfig(config: Record<string, unknown>): Record<string, number> {
   const base = Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))
@@ -22,7 +23,6 @@ export function TargetAllocation() {
   const updateMutation = useUpdateProfile()
 
   const [selectedTemplate, setSelectedTemplate] = useState("")
-  const [feedback, setFeedback] = useState<string | null>(null)
 
   // Base values derived from saved profile — re-computed whenever profile loads or changes.
   // This ensures sliders show the correct saved values even when the component mounts
@@ -52,7 +52,6 @@ export function TargetAllocation() {
   }
 
   const handleSave = () => {
-    setFeedback(null)
     const payload = {
       name: profile?.name ?? "My Portfolio",
       home_currency: profile?.home_currency ?? "USD",
@@ -64,12 +63,10 @@ export function TargetAllocation() {
         { id: profile.id, payload: { config: sliders } },
         {
           onSuccess: () => {
-            setFeedback(t("common.success"))
             toast.success(t("common.success"))
             setUserSliders(null)
           },
           onError: () => {
-            setFeedback(t("common.error"))
             toast.error(t("common.error"))
           },
         },
@@ -77,12 +74,10 @@ export function TargetAllocation() {
     } else {
       createMutation.mutate(payload, {
         onSuccess: () => {
-          setFeedback(t("common.success"))
           toast.success(t("common.success"))
           setUserSliders(null)
         },
         onError: () => {
-          setFeedback(t("common.error"))
           toast.error(t("common.error"))
         },
       })
@@ -96,8 +91,9 @@ export function TargetAllocation() {
       {/* Template selector */}
       {templates && templates.length > 0 && (
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("allocation.target.template_label")}</label>
+          <label htmlFor="target-template" className="text-xs font-medium">{t("allocation.target.template_label")}</label>
           <select
+            id="target-template"
             value={selectedTemplate}
             onChange={(e) => handleTemplateChange(e.target.value)}
             className="w-full max-w-xs text-xs border border-border rounded px-2 py-1.5 bg-background"
@@ -143,7 +139,7 @@ export function TargetAllocation() {
         })}
 
         {/* Sum validation */}
-        <div className={`text-xs font-semibold ${Math.abs(remaining) < 0.01 ? "text-green-600" : "text-yellow-600"}`}>
+        <div className={`text-xs font-semibold ${Math.abs(remaining) < 0.01 ? FINANCE_TEXT.gain : FINANCE_TEXT.warning}`}>
           {t("allocation.target.sum_label")}: {total.toFixed(0)}% ({remaining >= 0 ? "+" : ""}{remaining.toFixed(0)}% {t("allocation.target.remaining")})
         </div>
 
@@ -154,7 +150,6 @@ export function TargetAllocation() {
         >
           {t("allocation.target.save_button")}
         </Button>
-        {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
       </div>
     </div>
   )

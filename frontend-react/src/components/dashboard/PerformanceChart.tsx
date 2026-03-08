@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { Snapshot } from "@/api/types/dashboard"
 
 const PERIOD_OPTIONS: { key: string; labelKey: string; days: number | "YTD" | "ALL" }[] = [
@@ -381,7 +382,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
           {crosshair ? (
             <span
               className={`text-xs font-mono tabular-nums shrink-0 ${
-                crosshair.portfolio >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                crosshair.portfolio >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
               }`}
             >
               {crosshair.portfolio >= 0 ? "+" : ""}
@@ -398,7 +399,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
             periodStats && (
               <span
                 className={`text-sm font-bold tabular-nums shrink-0 ${
-                  periodStats.returnPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                  periodStats.returnPct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
                 }`}
               >
                 {periodStats.returnPct >= 0 ? "+" : ""}
@@ -450,7 +451,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
         {/* No-data notice + backfill trigger */}
         {!hasBenchmarkData && hasPeriodData && (
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-xs text-amber-500">
+            <p className={`text-xs ${FINANCE_TEXT.warning}`}>
               {t("dashboard.performance_no_benchmark_data", {
                 benchmark: t(
                   BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
@@ -460,7 +461,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
             <button
               onClick={handleBackfill}
               disabled={backfilling}
-              className="text-xs px-2 py-0.5 rounded border border-amber-500 text-amber-500 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className={`text-xs px-2 py-0.5 rounded border border-amber-500 ${FINANCE_TEXT.warning} hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
             >
               {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
             </button>
