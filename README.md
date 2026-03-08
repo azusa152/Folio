@@ -17,7 +17,7 @@
 | api/routes/networth\_routes.py                        |       46 |        3 |     93% |50, 160-161 |
 | api/routes/persona\_routes.py                         |       35 |        0 |    100% |           |
 | api/routes/preferences\_routes.py                     |       16 |        0 |    100% |           |
-| api/routes/scan\_routes.py                            |       82 |        2 |     98% |  150, 186 |
+| api/routes/scan\_routes.py                            |       82 |        1 |     99% |       186 |
 | api/routes/snapshot\_routes.py                        |       80 |        8 |     90% |37-38, 41-42, 56-57, 74, 116 |
 | api/routes/stock\_routes.py                           |      159 |       44 |     72% |135-138, 151, 157-168, 176, 190, 254-255, 264-267, 287, 303, 309, 334-339, 351-353, 367-378, 390-392, 403-405, 418-420 |
 | api/routes/telegram\_routes.py                        |       19 |        0 |    100% |           |
@@ -35,14 +35,14 @@
 | api/schemas/scan.py                                   |       87 |        0 |    100% |           |
 | api/schemas/stock.py                                  |       59 |        1 |     98% |        78 |
 | application/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
-| application/formatters.py                             |      113 |        8 |     93% |82-83, 122, 272, 274, 301-303 |
+| application/formatters.py                             |      106 |        8 |     92% |82-83, 122, 265, 267, 294-296 |
 | application/guru/\_\_init\_\_.py                      |        4 |        0 |    100% |           |
 | application/guru/backtest\_service.py                 |      109 |       16 |     85% |62, 72, 89, 92-97, 148, 200, 212-214, 235-236, 239, 244, 259-260 |
 | application/guru/guru\_service.py                     |       47 |        2 |     96% |  103, 105 |
 | application/guru/heatmap\_service.py                  |       83 |       17 |     80% |40, 55-56, 62-63, 66-67, 72-77, 98, 133, 141, 149 |
 | application/guru/resonance\_service.py                |       95 |       12 |     87% |39, 71, 77-78, 81-82, 87-92 |
 | application/messaging/\_\_init\_\_.py                 |        3 |        0 |    100% |           |
-| application/messaging/notification\_service.py        |      253 |       19 |     92% |52-56, 61-66, 122, 209-210, 266-267, 385, 464-465 |
+| application/messaging/notification\_service.py        |      247 |       15 |     94% |52-56, 61-66, 136, 357, 436-437 |
 | application/messaging/telegram\_settings\_service.py  |       54 |        1 |     98% |        85 |
 | application/messaging/webhook\_service.py             |      130 |       14 |     89% |80, 141-149, 194-195, 206-207, 297-298 |
 | application/portfolio/\_\_init\_\_.py                 |       11 |        0 |    100% |           |
@@ -113,7 +113,7 @@
 | infrastructure/persistence/repositories.py            |      454 |       53 |     88% |61-69, 93-101, 111, 127-140, 145-159, 171, 184-186, 354-357, 362-366, 383, 388-389, 478, 609, 1283-1286, 1305-1308, 1343-1346 |
 | infrastructure/repositories.py                        |        1 |        0 |    100% |           |
 | infrastructure/sec\_edgar.py                          |        1 |        0 |    100% |           |
-| **TOTAL**                                             | **8483** | **1257** | **85%** |           |
+| **TOTAL**                                             | **8470** | **1252** | **85%** |           |
 
 
 ## Setup coverage badge
