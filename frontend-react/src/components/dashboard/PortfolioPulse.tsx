@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { InfoPopover } from "./InfoPopover"
 import { getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -18,17 +20,24 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#ef4444", label: "EF" },
-  { range: [25, 45] as [number, number], color: "#f97316", label: "F" },
-  { range: [45, 55] as [number, number], color: "#eab308", label: "N" },
-  { range: [55, 75] as [number, number], color: "#86efac", label: "G" },
-  { range: [75, 100] as [number, number], color: "#22c55e", label: "EG" },
+  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear" },
+  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear" },
+  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral" },
+  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed" },
+  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed" },
 ]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
   positive: "bullish",
   caution: "bearish",
 }
+
+const GLOSSARY_KEYS = {
+  twr: "twr",
+  fearGreed: "fear_greed",
+  marketSentiment: "market_sentiment",
+  healthScore: "health_score",
+} as const
 
 function computeHealthScore(
   stocks: Stock[],
@@ -45,13 +54,14 @@ function computeHealthScore(
 }
 
 function healthScoreColor(pct: number): string {
-  if (pct >= 80) return "text-green-500"
-  if (pct >= 50) return "text-yellow-500"
-  return "text-red-500"
+  if (pct >= 80) return FINANCE_TEXT.gain
+  if (pct >= 50) return FINANCE_TEXT.warning
+  return FINANCE_TEXT.loss
 }
 
 /** Semi-circle SVG gauge for Fear & Greed (0-100). */
 function FearGreedGauge({ score, level }: { score: number; level: string }) {
+  const { t } = useTranslation()
   const cx = 100
   const cy = 100
   const r = 70
@@ -85,7 +95,11 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
   const tipY = cy - (r - strokeW / 2 - 4) * Math.sin(Math.PI - (needleAngleDeg * Math.PI) / 180)
 
   // Label display
-  const gaugeTitle = level.includes(" ") ? level.split(" ").slice(1).join(" ") : level
+  const clampedScore = Math.max(0, Math.min(100, score))
+  const currentBand = FEAR_GREED_BANDS.find(
+    (band) => clampedScore >= band.range[0] && clampedScore <= band.range[1],
+  )
+  const gaugeTitle = currentBand ? t(currentBand.labelKey) : level
 
   return (
     <svg viewBox="0 0 200 110" className="w-full" style={{ maxHeight: 160 }}>
@@ -101,7 +115,7 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
       {/* Colored band arcs */}
       {FEAR_GREED_BANDS.map((band) => (
         <path
-          key={band.label}
+          key={band.labelKey}
           d={arcPath(band.range[0], band.range[1])}
           fill="none"
           stroke={band.color}
@@ -187,6 +201,7 @@ function FearGreedComponentBars({ components }: ComponentBarsProps) {
 }
 
 function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
+  const { t } = useTranslation()
   const { recent, isUp } = useMemo(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
@@ -208,8 +223,8 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
       })
 
       const series = chart.addSeries(AreaSeries, {
-        lineColor: isUp ? "#22c55e" : "#ef4444",
-        topColor: isUp ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)",
+        lineColor: isUp ? "#16a34a" : "#dc2626",
+        topColor: isUp ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
         bottomColor: "rgba(0,0,0,0)",
         lineWidth: 1,
         priceLineVisible: false,
@@ -229,7 +244,13 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
 
   if (recent.length < 2) return null
 
-  return <LightweightChartWrapper height={60} onInit={onInit} />
+  return (
+    <LightweightChartWrapper
+      height={60}
+      onInit={onInit}
+      ariaLabel={t("accessibility.chart_portfolio_sparkline")}
+    />
+  )
 }
 
 interface Props {
@@ -341,25 +362,28 @@ export function PortfolioPulse({
   return (
     <Card>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-        {/* Left: Total Portfolio Value */}
+        {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
         <div className="space-y-1 md:col-span-1">
           <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
           {totalVal != null ? (
             <>
-              <p className="text-3xl font-bold tabular-nums">{maskMoney(totalVal)}</p>
-              {changePct != null && changeAmt != null && (
-                <p className={`text-sm font-medium ${changePct >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {changePct >= 0 ? "▲" : "▼"}
-                  {Math.abs(changePct).toFixed(2)}%
-                  {!isPrivate && ` (${new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency, minimumFractionDigits: 2 }).format(Math.abs(changeAmt))})`}
-                </p>
-              )}
-              {ytdTwr != null && (
-                <p className={`text-sm ${ytdTwr >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {t("dashboard.ytd_return")} {ytdTwr >= 0 ? "▲" : "▼"}
-                  {Math.abs(ytdTwr).toFixed(2)}%
-                </p>
-              )}
+              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal, displayCurrency)}</p>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                {changePct != null && changeAmt != null && (
+                  <span className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                    {changePct >= 0 ? "▲" : "▼"}
+                    {Math.abs(changePct).toFixed(2)}%
+                    {!isPrivate && ` (${maskMoney(Math.abs(changeAmt), displayCurrency)})`}
+                  </span>
+                )}
+                {ytdTwr != null && (
+                  <span className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{t("dashboard.ytd_return")}</GlossaryTerm>{" "}
+                    {ytdTwr >= 0 ? "▲" : "▼"}
+                    {Math.abs(ytdTwr).toFixed(2)}%
+                  </span>
+                )}
+              </div>
               {snapshots.length >= 2 && !isPrivate && (
                 <SparklineMini snapshots={snapshots} />
               )}
@@ -372,7 +396,9 @@ export function PortfolioPulse({
         {/* Center: Fear & Greed Gauge */}
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1">
-            <p className="text-xs text-muted-foreground">{t("dashboard.fear_greed_title")}</p>
+            <p className="text-xs text-muted-foreground">
+              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>{t("dashboard.fear_greed_title")}</GlossaryTerm>
+            </p>
             {fearGreed && (
               <InfoPopover align="center">
                 <p className="text-xs font-medium">
@@ -403,7 +429,18 @@ export function PortfolioPulse({
           </div>
           {fearGreed ? (
             <>
+              <p className="sr-only" aria-live="polite">
+                {t("dashboard.fear_greed_title")}: {fgScore}/100, {fgLevel}
+              </p>
               <FearGreedGauge score={fgScore} level={fgLevel} />
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {FEAR_GREED_BANDS.map((band) => (
+                  <span key={band.labelKey} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: band.color }} />
+                    {t(band.labelKey)}
+                  </span>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground text-center">
                 {vixVal != null && (
                   <>
@@ -427,7 +464,9 @@ export function PortfolioPulse({
         <div className="space-y-4">
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground">{t("dashboard.market_sentiment")}</p>
+              <p className="text-xs text-muted-foreground">
+                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>{t("dashboard.market_sentiment")}</GlossaryTerm>
+              </p>
               <InfoPopover align="end">
                 {lastScan?.market_status_details ? (
                   <p className="text-xs">{lastScan.market_status_details}</p>
@@ -439,11 +478,13 @@ export function PortfolioPulse({
                 </p>
               </InfoPopover>
             </div>
-            <p className="text-lg font-semibold">{sentimentLabel}</p>
+            <p className="text-base font-semibold">{sentimentLabel}</p>
           </div>
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground">{t("dashboard.health_score")}</p>
+              <p className="text-xs text-muted-foreground">
+                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>{t("dashboard.health_score")}</GlossaryTerm>
+              </p>
               <InfoPopover align="end">
                 {nonNormalStocks.length > 0 ? (
                   <>
@@ -471,7 +512,7 @@ export function PortfolioPulse({
             </div>
             {totalCnt > 0 ? (
               <>
-                <p className={`text-lg font-semibold ${healthScoreColor(healthPct)}`}>
+                <p className={`text-base font-semibold ${healthScoreColor(healthPct)}`}>
                   {healthPct.toFixed(0)}%
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -479,7 +520,7 @@ export function PortfolioPulse({
                 </p>
               </>
             ) : (
-              <p className="text-lg font-semibold text-muted-foreground">N/A</p>
+              <p className="text-base font-semibold text-muted-foreground">N/A</p>
             )}
           </div>
           <div>

@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 import { useIsPrivate } from "@/hooks/usePrivacyMode"
+import { getErrorMessage } from "@/lib/utils"
 
 const PREF_KEYS = [
   "scan_alerts",
@@ -33,7 +34,6 @@ export function NotificationPreferences() {
     Object.fromEntries(PREF_KEYS.map((k) => [k, true]))
   )
   const [rateLimits, setRateLimits] = useState<RateLimits>({})
-  const [feedback, setFeedback] = useState<string | null>(null)
   const [prevData, setPrevData] = useState(data)
 
   if (prevData !== data) {
@@ -67,7 +67,6 @@ export function NotificationPreferences() {
   }
 
   const handleSave = () => {
-    setFeedback(null)
     const limits = cleanedRateLimits()
     setRateLimits(limits)
     saveMutation.mutate(
@@ -78,12 +77,10 @@ export function NotificationPreferences() {
       },
       {
         onSuccess: () => {
-          setFeedback(t("common.success"))
           toast.success(t("common.success"))
         },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       }
     )
@@ -171,7 +168,6 @@ export function NotificationPreferences() {
       <Button onClick={handleSave} disabled={saveMutation.isPending} size="sm">
         {t("allocation.telegram.save_notif")}
       </Button>
-      {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
     </div>
   )
 }

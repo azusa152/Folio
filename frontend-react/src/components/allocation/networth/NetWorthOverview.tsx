@@ -1,18 +1,18 @@
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
-import { maskMoney } from "@/hooks/usePrivacyMode"
+import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import type { NetWorthSummaryResponse } from "@/api/types/networth"
 
 interface Props {
   summary?: NetWorthSummaryResponse | null
-  privacyMode: boolean
 }
 
 const COLORS = ["#3b82f6", "#22c55e", "#ef4444"]
 
-export function NetWorthOverview({ summary, privacyMode }: Props) {
+export function NetWorthOverview({ summary }: Props) {
   const { t } = useTranslation()
+  useIsPrivate()
   if (!summary) return null
 
   const chartData = [
@@ -38,16 +38,7 @@ export function NetWorthOverview({ summary, privacyMode }: Props) {
       <CardContent className="p-4 sm:p-6 space-y-4">
         <div>
           <p className="text-xs text-muted-foreground">{t("net_worth.overview_title")}</p>
-          <p className="text-2xl font-bold tabular-nums">{maskMoney(summary.net_worth)}</p>
-          {!privacyMode && (
-            <p className="text-xs text-muted-foreground">
-              {new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: summary.display_currency,
-                minimumFractionDigits: 2,
-              }).format(summary.net_worth)}
-            </p>
-          )}
+          <p className="text-2xl font-bold tabular-nums">{maskMoney(summary.net_worth, summary.display_currency)}</p>
           <p className="text-xs text-muted-foreground mt-1">{t("net_worth.summary_formula")}</p>
         </div>
 
@@ -61,9 +52,8 @@ export function NetWorthOverview({ summary, privacyMode }: Props) {
               </Pie>
               <Tooltip
                 formatter={(value: number | string | undefined) => {
-                  if (privacyMode) return "***"
                   const numeric = typeof value === "number" ? value : Number(value ?? 0)
-                  return Number.isFinite(numeric) ? numeric.toFixed(2) : "0.00"
+                  return maskMoney(Number.isFinite(numeric) ? numeric : 0, summary.display_currency)
                 }}
               />
             </PieChart>

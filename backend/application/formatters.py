@@ -206,7 +206,6 @@ def format_weekly_digest_html(
     lang: str,
     title: str,
     portfolio_value_line: str | None,
-    benchmark_line: str | None,
     health_line: str,
     fear_greed_line: str,
     top_movers_lines: list[str],
@@ -214,7 +213,6 @@ def format_weekly_digest_html(
     signal_changes: dict[str, int],
     signal_transitions: dict[str, tuple[str, str]] | None = None,
     drift_lines: list[str],
-    smart_money_lines: list[str],
     all_normal_line: str,
 ) -> str:
     """
@@ -227,7 +225,6 @@ def format_weekly_digest_html(
         lang: language code passed to t() for section header translations
         title: report title line
         portfolio_value_line: portfolio value + WoW line, or None if no data
-        benchmark_line: S&P 500 benchmark line, or None if unavailable
         health_line: health-score line
         fear_greed_line: fear & greed line
         top_movers_lines: list of individual mover lines (may be empty)
@@ -235,7 +232,6 @@ def format_weekly_digest_html(
         signal_changes: mapping of ticker → change count for the period
         signal_transitions: mapping of ticker → (from_signal, to_signal) for the period
         drift_lines: list of formatted drift lines (may be empty)
-        smart_money_lines: list of formatted resonance-alert lines (may be empty)
         all_normal_line: translated "all positions normal" string
 
     Returns:
@@ -243,12 +239,9 @@ def format_weekly_digest_html(
     """
     parts: list[str] = [f"<b>{title}</b>", ""]
 
-    # --- Portfolio value + benchmark ---
+    # --- Portfolio value ---
     if portfolio_value_line:
         parts.append(portfolio_value_line)
-    if benchmark_line:
-        parts.append(benchmark_line)
-    if portfolio_value_line or benchmark_line:
         parts.append("")
 
     # --- Health + Fear & Greed ---
@@ -307,12 +300,6 @@ def format_weekly_digest_html(
     if drift_lines:
         parts.append(f"<b>{t('notification.drift_title', lang=lang)}</b>")
         parts.extend(drift_lines)
-        parts.append("")
-
-    # --- Smart money ---
-    if smart_money_lines:
-        parts.append(f"<b>{t('notification.smart_money_title', lang=lang)}</b>")
-        parts.extend(smart_money_lines)
         parts.append("")
 
     # --- All normal (only when no signals and no changes) ---

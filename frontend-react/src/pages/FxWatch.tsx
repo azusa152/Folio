@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { formatLocalTime, parseUtc } from "@/lib/utils"
+import { useSearchParams } from "react-router-dom"
+import { formatLocalTime, formatRelativeTime, parseUtc, getErrorMessage } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -30,12 +31,50 @@ function computeAbsChangePct(history: { close: number }[]): number | null {
 }
 
 export default function FxWatch() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [sortMode, setSortMode] = useState<SortMode>("alert_first")
-  const [filterMode, setFilterMode] = useState<FilterMode>("all")
+  const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
+  const rawSort = searchParams.get("sort")
+  const rawFilter = searchParams.get("filter")
+  const sortMode: SortMode =
+    rawSort === "alphabetical" || rawSort === "volatility" || rawSort === "alert_first"
+      ? rawSort
+      : "alert_first"
+  const filterMode: FilterMode = rawFilter === "active_only" ? "active_only" : "all"
 
-  const { data: watches, isLoading, isError } = useFxWatches()
+  const { data: watches, isLoading, isError, dataUpdatedAt } = useFxWatches()
+  const setSortMode = (nextSortMode: SortMode) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (nextSortMode === "alert_first") next.delete("sort")
+      else next.set("sort", nextSortMode)
+      return next
+    })
+  }
+
+  const setFilterMode = (nextFilterMode: FilterMode) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (nextFilterMode === "all") next.delete("filter")
+      else next.set("filter", nextFilterMode)
+      return next
+    })
+  }
+
+  const updatedAgo =
+    dataUpdatedAt > 0
+      ? formatRelativeTime(nowEpochSeconds - Math.floor(dataUpdatedAt / 1000), i18n.language)
+      : ""
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
+      60_000,
+    )
+    return () => window.clearInterval(timer)
+  }, [])
+
   const hasWatches = (watches?.length ?? 0) > 0
   const { data: analysisMap = {}, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
   const checkMutation = useCheckFxWatches()
@@ -62,14 +101,14 @@ export default function FxWatch() {
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 
   const handleAlert = () => {
     alertMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: () => toast.error(t("common.error")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
 
@@ -147,7 +186,10 @@ export default function FxWatch() {
             {/* SOP info popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="rounded-full min-h-[44px] min-w-[44px] text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center">
+                <button
+                  aria-label={t("fx_watch.sop_title")}
+                  className="rounded-full min-h-[44px] min-w-[44px] text-xs border border-border text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                >
                   ?
                 </button>
               </PopoverTrigger>
@@ -160,6 +202,9 @@ export default function FxWatch() {
             </Popover>
           </div>
           <p className="text-sm text-muted-foreground">{t("fx_watch.caption")}</p>
+          {updatedAgo ? (
+            <p className="text-xs text-muted-foreground">{t("common.last_updated_relative", { time: updatedAgo })}</p>
+          ) : null}
         </div>
 
         {/* Action buttons */}

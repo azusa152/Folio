@@ -15,6 +15,8 @@ interface Props {
   enrichedMap: Record<string, RadarEnrichedStock>
   resonanceMap: ResonanceMap
   heldTickers: Set<string>
+  activeCategory?: StockCategory | "archive"
+  onCategoryChange?: (category: StockCategory | "archive") => void
 }
 
 function inferMarket(ticker: string): string {
@@ -32,6 +34,8 @@ export function CategoryTabs({
   enrichedMap,
   resonanceMap,
   heldTickers,
+  activeCategory,
+  onCategoryChange,
 }: Props) {
   const { t } = useTranslation()
   const [selectedMarket, setSelectedMarket] = useState("ALL")
@@ -98,7 +102,7 @@ export function CategoryTabs({
         </div>
       )}
 
-      <Tabs defaultValue="Trend_Setter">
+      <Tabs value={activeCategory ?? "Trend_Setter"} onValueChange={(value) => onCategoryChange?.(value as StockCategory | "archive")}>
         <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
           {RADAR_CATEGORIES.map((cat) => (
             <TabsTrigger key={cat} value={cat} className="text-xs min-h-[44px]">

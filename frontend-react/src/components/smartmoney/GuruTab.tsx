@@ -1,8 +1,11 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import {
   useGuruFiling,
@@ -13,6 +16,7 @@ import {
   useGuruQoQ,
   useSyncGuru,
 } from "@/api/hooks/useSmartMoney"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { formatValue, formatShares, ACTION_COLORS, ACTION_ICONS, isStale } from "./formatters"
 import { ActionBadge } from "./ActionBadge"
 import { QoQTable } from "./QoQTable"
@@ -41,7 +45,7 @@ function PerfCell({ value }: { value: number | null | undefined }) {
   return (
     <span
       className={
-        value >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+        value >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
       }
     >
       {value >= 0 ? "+" : ""}
@@ -80,7 +84,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => syncMutation.mutate(guruId)}
+          onClick={() => syncMutation.mutate(guruId, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
           disabled={syncMutation.isPending}
         >
           {syncing ? t("smart_money.sidebar.syncing") : t("smart_money.sidebar.sync_button")}
@@ -104,7 +108,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         <>
           {/* Stale warning */}
           {isStale(filing.report_date) && (
-            <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+            <div className={`rounded-md border px-3 py-2 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
               {t("smart_money.lagging_banner", {
                 report_date: filing.report_date ?? "—",
                 filing_date: filing.filing_date ?? "—",
@@ -147,6 +151,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           {/* Filing history collapsible */}
           <button
             onClick={() => setHistoryOpen((v) => !v)}
+            aria-expanded={historyOpen}
             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
           >
             {filingsResp
@@ -154,7 +159,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                   count: filingsResp.filings.length,
                 })
               : t("smart_money.tab.changes")}
-            <span>{historyOpen ? "▲" : "▼"}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", historyOpen && "rotate-180")} />
           </button>
           {historyOpen && filingsResp && (
             <div className="space-y-0.5 pl-2 border-l border-border">
@@ -232,8 +237,8 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((h, i) => (
-                        <tr key={i} className="border-b border-border/50">
+                      {items.map((h) => (
+                        <tr key={h.ticker} className="border-b border-border/50">
                           <td className="py-0.5 pr-2 font-medium">{h.ticker ?? "—"}</td>
                           <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
                             {h.company_name}
@@ -309,8 +314,8 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                     cursor={{ fill: "rgba(128,128,128,0.08)" }}
                   />
                   <Bar dataKey="weight" radius={[0, 3, 3, 0]}>
-                    {barData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
+                    {barData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
                     ))}
                     <LabelList
                       dataKey="weight"
@@ -342,7 +347,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
               </thead>
               <tbody>
                 {topHoldings.map((h, i) => (
-                  <tr key={i} className="border-b border-border/50">
+                  <tr key={h.ticker} className="border-b border-border/50">
                     <td className="py-0.5 pr-2 text-muted-foreground">{i + 1}</td>
                     <td className="py-0.5 pr-2 font-medium">{h.ticker ?? "—"}</td>
                     <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
@@ -380,10 +385,11 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
     <section className="space-y-2">
       <button
         onClick={() => setGreatMindsOpen((v) => !v)}
+        aria-expanded={greatMindsOpen}
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.great_minds")}
-        <span className="text-muted-foreground text-xs">{greatMindsOpen ? "▲" : "▼"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", greatMindsOpen && "rotate-180")} />
       </button>
       {greatMindsOpen && (
         <>
@@ -427,10 +433,11 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
     <section className="space-y-2">
       <button
         onClick={() => setQoqOpen((v) => !v)}
+        aria-expanded={qoqOpen}
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.qoq")}
-        <span className="text-muted-foreground text-xs">{qoqOpen ? "▲" : "▼"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", qoqOpen && "rotate-180")} />
       </button>
       {qoqOpen &&
         (qoqData ? (

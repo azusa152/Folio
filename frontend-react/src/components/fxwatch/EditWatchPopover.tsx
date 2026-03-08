@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useUpdateFxWatch } from "@/api/hooks/useFxWatch"
 import type { FxWatch } from "@/api/types/fxWatch"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   watch: FxWatch
@@ -57,12 +58,10 @@ export function EditWatchPopover({ watch }: Props) {
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
-          toast.success(t("common.success"))
           setOpen(false)
         },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -82,32 +81,40 @@ export function EditWatchPopover({ watch }: Props) {
 
         {/* Recent high days */}
         <div>
-          <label className="text-xs text-muted-foreground">
+          <label htmlFor={`edit-recent-high-${watch.id}`} className="text-xs text-muted-foreground">
             {t("fx_watch.form.recent_high_days")}: {recentHighDays}
           </label>
           <input
+            id={`edit-recent-high-${watch.id}`}
             type="range"
             min={5}
             max={90}
             step={5}
             value={recentHighDays}
             onChange={(e) => setRecentHighDays(Number(e.target.value))}
+            aria-valuemin={5}
+            aria-valuemax={90}
+            aria-valuenow={recentHighDays}
             className="w-full"
           />
         </div>
 
         {/* Consecutive days */}
         <div>
-          <label className="text-xs text-muted-foreground">
+          <label htmlFor={`edit-consecutive-${watch.id}`} className="text-xs text-muted-foreground">
             {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
           </label>
           <input
+            id={`edit-consecutive-${watch.id}`}
             type="range"
             min={2}
             max={10}
             step={1}
             value={consecutiveDays}
             onChange={(e) => setConsecutiveDays(Number(e.target.value))}
+            aria-valuemin={2}
+            aria-valuemax={10}
+            aria-valuenow={consecutiveDays}
             className="w-full"
           />
         </div>
@@ -136,8 +143,9 @@ export function EditWatchPopover({ watch }: Props) {
 
         {/* Reminder hours */}
         <div>
-          <label className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+          <label htmlFor="edit-watch-reminder-hours" className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
           <input
+            id="edit-watch-reminder-hours"
             type="number"
             min={1}
             max={168}

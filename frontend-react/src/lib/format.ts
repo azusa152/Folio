@@ -26,6 +26,29 @@ export function formatPrice(value: number, currencyCode: string): string {
   return DEFAULT_FORMATTER.format(value)
 }
 
+/**
+ * Format money with currency symbol and sensible decimals.
+ * JPY/TWD default to 0 decimals, others to 2 decimals.
+ */
+export function formatCurrency(
+  value: number,
+  currencyCode: string,
+  fractionDigits?: number,
+): string {
+  const digits =
+    fractionDigits != null
+      ? fractionDigits
+      : currencyCode === "JPY" || currencyCode === "TWD"
+        ? 0
+        : 2
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currencyCode,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
 export function formatMarketCap(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—"
   return COMPACT_FORMATTER.format(value)

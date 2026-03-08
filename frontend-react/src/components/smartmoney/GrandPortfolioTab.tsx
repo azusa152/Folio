@@ -75,9 +75,9 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
               cursor={{ fill: "rgba(128,128,128,0.08)" }}
             />
             <Bar dataKey="weight" radius={[0, 3, 3, 0]}>
-              {top20.map((entry, i) => (
+              {top20.map((entry) => (
                 <Cell
-                  key={i}
+                  key={entry.ticker}
                   fill={
                     ACTION_COLORS[entry.dominant_action as keyof typeof ACTION_COLORS] ??
                     ACTION_COLORS.UNCHANGED
@@ -123,7 +123,7 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
             </thead>
             <tbody>
               {data.items.map((item, i) => (
-                <tr key={i} className="border-b border-border/50">
+                <tr key={item.ticker} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 text-muted-foreground">{i + 1}</td>
                   <td className="py-0.5 pr-2 font-medium">{item.ticker ?? "—"}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground max-w-[140px] truncate">

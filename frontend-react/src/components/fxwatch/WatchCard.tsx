@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { formatLocalTime } from "@/lib/utils"
+import { cn, formatLocalTime } from "@/lib/utils"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +25,7 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { FxChart } from "./FxChart"
 import { FxSparkline } from "./FxSparkline"
 import { EditWatchPopover } from "./EditWatchPopover"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import type { FxWatch, FxAnalysis, FxHistoryPoint } from "@/api/types/fxWatch"
 
 interface Props {
@@ -115,6 +118,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
         {/* Collapsible header */}
         <button
           onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
           className="w-full text-left px-4 py-3 hover:bg-muted/30 transition-colors rounded-[inherit]"
         >
           <div className="flex items-center gap-3">
@@ -135,8 +139,8 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                   <span
                     className={`text-xs font-medium tabular-nums ${
                       (dailyChangePct ?? 0) >= 0
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-500"
+                        ? FINANCE_TEXT.gain
+                        : FINANCE_TEXT.loss
                     }`}
                   >
                     {dailyChangeStr}
@@ -180,9 +184,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
             </div>
 
             {/* Chevron */}
-            <span className="text-muted-foreground text-xs shrink-0">
-              {expanded ? "▲" : "▼"}
-            </span>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform duration-200", expanded && "rotate-180")} />
           </div>
         </button>
 
@@ -257,8 +259,12 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                       <div className="space-y-2">
                         {/* Near high indicator */}
                         <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                          <span className="text-muted-foreground">{t("fx_watch.indicator.near_high", { days: analysis.lookback_days })}</span>
-                          <span className={`font-medium ${analysis.is_recent_high ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                          <span className="text-muted-foreground">
+                            <GlossaryTerm termKey="lookback_high">
+                              {t("fx_watch.indicator.near_high", { days: analysis.lookback_days })}
+                            </GlossaryTerm>
+                          </span>
+                          <span className={`font-medium ${analysis.is_recent_high ? FINANCE_TEXT.warning : "text-muted-foreground"}`}>
                             {analysis.is_recent_high ? "✓" : "—"}
                             {analysis.lookback_high > 0 && ` ${analysis.lookback_high.toFixed(4)}`}
                           </span>
@@ -266,7 +272,11 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
 
                         {/* Consecutive rises bar */}
                         <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                          <span className="text-muted-foreground">{t("fx_watch.indicator.consecutive", { current: analysis.consecutive_increases, threshold: analysis.consecutive_threshold })}</span>
+                          <span className="text-muted-foreground">
+                            <GlossaryTerm termKey="consecutive_rises">
+                              {t("fx_watch.indicator.consecutive", { current: analysis.consecutive_increases, threshold: analysis.consecutive_threshold })}
+                            </GlossaryTerm>
+                          </span>
                           <span className="flex gap-0.5 items-center">
                             {Array.from({ length: analysis.consecutive_threshold }).map((_, i) => (
                               <span
@@ -296,7 +306,11 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                     <p className="font-medium text-foreground">{t("fx_watch.settings.title")}</p>
                     <p>{t("fx_watch.settings.recent_high", { days: watch.recent_high_days })}</p>
                     <p>{t("fx_watch.settings.consecutive", { days: watch.consecutive_increase_days })}</p>
-                    <p>{t("fx_watch.settings.interval", { hours: watch.reminder_interval_hours })}</p>
+                    <p>
+                      <GlossaryTerm termKey="reminder_interval">
+                        {t("fx_watch.settings.interval", { hours: watch.reminder_interval_hours })}
+                      </GlossaryTerm>
+                    </p>
                     <p>{t("fx_watch.settings.high_alert", { icon: watch.alert_on_recent_high ? "✅" : "❌" })}</p>
                     <p>{t("fx_watch.settings.consec_alert", { icon: watch.alert_on_consecutive_increase ? "✅" : "❌" })}</p>
                     {watch.last_alerted_at ? (

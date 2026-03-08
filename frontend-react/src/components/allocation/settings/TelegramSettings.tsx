@@ -1,8 +1,10 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { useTelegramSettings, useSaveTelegram, useTestTelegram, useTriggerDigest } from "@/api/hooks/useAllocation"
 
 interface Props {
@@ -20,7 +22,6 @@ export function TelegramSettings({ privacyMode }: Props) {
   const [chatId, setChatId] = useState("")
   const [token, setToken] = useState("")
   const [useCustom, setUseCustom] = useState(false)
-  const [feedback, setFeedback] = useState<string | null>(null)
 
   const handleEditOpen = () => {
     setChatId(data?.telegram_chat_id ?? "")
@@ -30,7 +31,6 @@ export function TelegramSettings({ privacyMode }: Props) {
   }
 
   const handleSave = () => {
-    setFeedback(null)
     saveMutation.mutate(
       {
         telegram_chat_id: chatId,
@@ -39,43 +39,35 @@ export function TelegramSettings({ privacyMode }: Props) {
       },
       {
         onSuccess: () => {
-          setFeedback(t("common.success"))
           toast.success(t("common.success"))
           setEditOpen(false)
         },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
   }
 
   const handleTest = () => {
-    setFeedback(null)
     testMutation.mutate(undefined, {
       onSuccess: () => {
-        setFeedback(t("common.success"))
         toast.success(t("common.success"))
       },
-      onError: () => {
-        setFeedback(t("common.error"))
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 
   const handleDigest = () => {
-    setFeedback(null)
     digestMutation.mutate(undefined, {
       onSuccess: () => {
-        setFeedback(t("common.success"))
         toast.success(t("common.success"))
       },
-      onError: () => {
-        setFeedback(t("common.error"))
-        toast.error(t("common.error"))
-      },
+      onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
     })
   }
 
@@ -110,16 +102,19 @@ export function TelegramSettings({ privacyMode }: Props) {
       {/* Edit collapsible */}
       <button
         onClick={() => editOpen ? setEditOpen(false) : handleEditOpen()}
+        aria-expanded={editOpen}
         className="text-xs text-primary hover:underline flex items-center gap-1"
       >
-        {t("allocation.telegram.edit_title")} {editOpen ? "▲" : "▼"}
+        {t("allocation.telegram.edit_title")}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", editOpen && "rotate-180")} />
       </button>
 
       {editOpen && (
         <div className="space-y-3 max-w-sm pl-2 border-l border-border">
           <div className="space-y-1">
-            <label className="text-xs font-medium">{t("allocation.telegram.chat_id_input")}</label>
+            <label htmlFor="tg-chat-id" className="text-xs font-medium">{t("allocation.telegram.chat_id_input")}</label>
             <Input
+              id="tg-chat-id"
               value={chatId}
               onChange={(e) => setChatId(e.target.value)}
               placeholder={t("allocation.telegram.chat_id_placeholder")}
@@ -127,8 +122,9 @@ export function TelegramSettings({ privacyMode }: Props) {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium">{t("allocation.telegram.token_input")}</label>
+            <label htmlFor="tg-token" className="text-xs font-medium">{t("allocation.telegram.token_input")}</label>
             <Input
+              id="tg-token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               type="password"
@@ -162,7 +158,6 @@ export function TelegramSettings({ privacyMode }: Props) {
         </Button>
       </div>
 
-      {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
     </div>
   )
 }

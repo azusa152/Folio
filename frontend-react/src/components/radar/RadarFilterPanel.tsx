@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { CircleHelp } from "lucide-react"
+import { ChevronDown, CircleHelp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -201,13 +201,14 @@ export function RadarFilterPanel({
           }
           onToggleOpen()
         }}
+        aria-expanded={isOpen}
         className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
       >
         <span className="inline-flex items-center gap-2">
           {t("radar.filter.toggle")}
           {activeCountLabel && <Badge variant="secondary" className="text-[10px]">{activeCountLabel}</Badge>}
         </span>
-        <span className="text-muted-foreground text-xs">{isOpen ? "▲" : "▼"}</span>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (

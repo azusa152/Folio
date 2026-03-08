@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import {
   CartesianGrid,
@@ -13,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useGuruBacktest } from "@/api/hooks/useSmartMoney"
 import type { Guru } from "@/api/types/smartMoney"
+import { cn, getErrorMessage } from "@/lib/utils"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import {
   GURU_BACKTEST_BENCHMARK_OPTIONS,
   GURU_BACKTEST_QUARTER_OPTIONS,
@@ -54,13 +57,7 @@ export function GuruBacktestTab({
     }))
   }, [data])
 
-  const errMsg = (() => {
-    if (!error) return ""
-    if (typeof error === "object" && error && "detail" in error) {
-      return String((error as { detail?: string }).detail ?? "")
-    }
-    return ""
-  })()
+  const errMsg = getErrorMessage(error)
 
   if (gurus.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("smart_money.no_gurus_hint")}</p>
@@ -68,7 +65,7 @@ export function GuruBacktestTab({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <div className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
         {t("smart_money.backtest.disclaimer")}
       </div>
 
@@ -79,7 +76,7 @@ export function GuruBacktestTab({
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.backtest.sop_title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -91,9 +88,10 @@ export function GuruBacktestTab({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs">
+        <label htmlFor="backtest-guru" className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("smart_money.backtest.guru_label")}</span>
           <select
+            id="backtest-guru"
             value={effectiveGuruId ?? ""}
             onChange={(event) => setSelectedGuruId(Number(event.target.value))}
             className="h-9 min-h-[44px] rounded-md border border-input bg-background px-2"
@@ -106,9 +104,10 @@ export function GuruBacktestTab({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-xs">
+        <label htmlFor="backtest-quarters" className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("smart_money.backtest.quarters_label")}</span>
           <select
+            id="backtest-quarters"
             value={selectedQuarters}
             onChange={(event) => setSelectedQuarters(Number(event.target.value))}
             className="h-9 min-h-[44px] rounded-md border border-input bg-background px-2"
@@ -121,9 +120,10 @@ export function GuruBacktestTab({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-xs">
+        <label htmlFor="backtest-benchmark" className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">{t("smart_money.backtest.benchmark_label")}</span>
           <select
+            id="backtest-benchmark"
             value={selectedBenchmark}
             onChange={(event) => setSelectedBenchmark(event.target.value)}
             className="h-9 min-h-[44px] rounded-md border border-input bg-background px-2"

@@ -1,11 +1,14 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronDown, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { AddHoldingSheet } from "@/components/allocation/holdings/AddHoldingSheet"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
@@ -16,6 +19,7 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { cn, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useNetWorthHistory,
   useNetWorthItems,
@@ -29,11 +33,19 @@ import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWor
 import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
 
 export default function Allocation() {
-  const { t } = useTranslation()
-  const [searchParams] = useSearchParams()
+  const { t, i18n } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "net-worth" ? "net-worth" : "portfolio")
+  const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
+  const tabParam = searchParams.get("tab")
+  const activeTab =
+    tabParam === "risk" ||
+    tabParam === "actions" ||
+    tabParam === "net-worth" ||
+    tabParam === "settings"
+      ? tabParam
+      : "portfolio"
   const [netWorthSheetOpen, setNetWorthSheetOpen] = useState(false)
   const [netWorthSheetKind, setNetWorthSheetKind] = useState<"asset" | "liability">("asset")
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
@@ -43,7 +55,7 @@ export default function Allocation() {
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
-  const { data: holdings, isLoading: holdingsLoading } = useHoldings()
+  const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
   const { data: netWorthSummary } = useNetWorthSummary(displayCurrency, activeTab === "net-worth")
   const { data: netWorthItems } = useNetWorthItems(displayCurrency, activeTab === "net-worth")
   const { data: netWorthHistory, isLoading: netWorthHistoryLoading } = useNetWorthHistory(
@@ -60,6 +72,27 @@ export default function Allocation() {
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
+  const updatedAgo =
+    holdingsUpdatedAt > 0
+      ? formatRelativeTime(nowEpochSeconds - Math.floor(holdingsUpdatedAt / 1000), i18n.language)
+      : ""
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (tab === "portfolio") next.delete("tab")
+      else next.set("tab", tab)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
+      60_000,
+    )
+    return () => window.clearInterval(timer)
+  }, [])
 
   if (isLoading) {
     return (
@@ -84,14 +117,7 @@ export default function Allocation() {
   const hasSetup = holdings.length > 0
   const hasSeedableCash = (netWorthSeedPreview?.cash_positions?.length ?? 0) > 0
 
-  const formatDisplayCurrency = (value: number) => {
-    if (privacyMode) return "***"
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: displayCurrency,
-      minimumFractionDigits: 2,
-    }).format(value)
-  }
+  const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
@@ -100,6 +126,12 @@ export default function Allocation() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">{t("allocation.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("allocation.caption")}</p>
+          {updatedAgo ? (
+            <p className="text-xs text-muted-foreground inline-flex items-center gap-1 mt-0.5">
+              <Clock3 className="h-3.5 w-3.5" />
+              {t("common.last_updated_relative", { time: updatedAgo })}
+            </p>
+          ) : null}
         </div>
         <Button
           size="sm"
@@ -114,10 +146,11 @@ export default function Allocation() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
+          aria-expanded={sopOpen}
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("allocation.sop.title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -133,7 +166,7 @@ export default function Allocation() {
 
       {/* Setup guard — show hint when no holdings but still show Settings tab */}
       {!hasSetup && (
-        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">
+        <div className={`rounded-md border px-4 py-3 text-sm ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
           {t("allocation.setup_required")}
         </div>
       )}
@@ -152,8 +185,9 @@ export default function Allocation() {
         <TabsContent value="portfolio" className="mt-4 space-y-4">
           {/* Display currency selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("allocation.display_currency")}</span>
+            <label htmlFor="alloc-currency" className="text-xs text-muted-foreground">{t("allocation.display_currency")}</label>
             <select
+              id="alloc-currency"
               value={displayCurrency}
               onChange={(e) => setDisplayCurrency(e.target.value)}
               className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
@@ -186,7 +220,7 @@ export default function Allocation() {
               onClick={() => {
                 netWorthTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
               }}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-300"
+              className={`w-full rounded-md border px-3 py-2 text-left text-xs hover:bg-amber-500/20 ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}
             >
               {t("net_worth.stale_banner", { count: netWorthSummary?.stale_count ?? 0 })}
             </button>
@@ -195,10 +229,11 @@ export default function Allocation() {
           <div className="rounded-md border border-border">
             <button
               onClick={() => setNetWorthSopOpen((v) => !v)}
+              aria-expanded={netWorthSopOpen}
               className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
             >
               <span>{t("net_worth.title")}</span>
-              <span className="text-muted-foreground text-xs">{netWorthSopOpen ? "▲" : "▼"}</span>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", netWorthSopOpen && "rotate-180")} />
             </button>
             {netWorthSopOpen && (
               <div className="px-4 pb-4 text-xs text-muted-foreground space-y-1">
@@ -211,8 +246,9 @@ export default function Allocation() {
 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{t("allocation.display_currency")}</span>
+              <label htmlFor="nw-currency" className="text-xs text-muted-foreground">{t("allocation.display_currency")}</label>
               <select
+                id="nw-currency"
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
                 className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
@@ -266,6 +302,9 @@ export default function Allocation() {
                           }
                           setSeedFeedback(t("net_worth.seed_already_done"))
                         },
+                        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
                       })
                     }}
                   >
@@ -300,7 +339,7 @@ export default function Allocation() {
             </div>
           ) : (
             <>
-              <NetWorthOverview summary={netWorthSummary} privacyMode={privacyMode} />
+              <NetWorthOverview summary={netWorthSummary} />
               <NetWorthHistoryChart
                 history={netWorthHistory ?? []}
                 isLoading={netWorthHistoryLoading}
@@ -317,13 +356,29 @@ export default function Allocation() {
 
         {/* Settings tab */}
         <TabsContent value="settings" className="mt-4 space-y-8">
-          <TargetAllocation />
-          <hr className="border-border" />
-          <HoldingsManager privacyMode={privacyMode} />
-          <hr className="border-border" />
-          <TelegramSettings privacyMode={privacyMode} />
-          <hr className="border-border" />
-          <NotificationPreferences />
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("allocation.tab.portfolio")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TargetAllocation />
+            </div>
+            <div className="rounded-md border border-border p-4">
+              <HoldingsManager privacyMode={privacyMode} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("allocation.telegram.title")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TelegramSettings privacyMode={privacyMode} />
+            </div>
+            <div className="rounded-md border border-border p-4">
+              <NotificationPreferences />
+            </div>
+          </section>
         </TabsContent>
       </Tabs>
 

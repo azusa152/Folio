@@ -1,4 +1,5 @@
 import { useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { AreaSeries, type IChartApi } from "lightweight-charts"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import type { PricePoint } from "@/api/hooks/useRadar"
@@ -9,6 +10,7 @@ interface Props {
 
 /** Tiny 40px area sparkline for stock card collapsed headers. No axes, no grid, no crosshair. */
 export function SparklineHeader({ data }: Props) {
+  const { t } = useTranslation()
   const onInit = useCallback(
     (chart: IChartApi) => {
       chart.applyOptions({
@@ -24,8 +26,8 @@ export function SparklineHeader({ data }: Props) {
       const last = data[data.length - 1]?.close ?? 0
       const first = data[0]?.close ?? 0
       const isUp = last >= first
-      const lineColor = isUp ? "#22c55e" : "#ef4444"
-      const topColor = isUp ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"
+      const lineColor = isUp ? "#16a34a" : "#dc2626"
+      const topColor = isUp ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"
 
       const series = chart.addSeries(AreaSeries, {
         lineColor,
@@ -51,7 +53,11 @@ export function SparklineHeader({ data }: Props) {
 
   return (
     <div className="w-16 shrink-0">
-      <LightweightChartWrapper height={40} onInit={onInit} />
+      <LightweightChartWrapper
+        height={40}
+        onInit={onInit}
+        ariaLabel={t("accessibility.chart_stock_sparkline")}
+      />
     </div>
   )
 }

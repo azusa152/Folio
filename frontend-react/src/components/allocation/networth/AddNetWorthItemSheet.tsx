@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { NET_WORTH_ASSET_CATEGORIES, NET_WORTH_LIABILITY_CATEGORIES } from "@/lib/constants"
 import { useCreateNetWorthItem } from "@/api/hooks/useNetWorth"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -31,6 +32,7 @@ export function AddNetWorthItemSheet({
   const [interestRate, setInterestRate] = useState("")
   const [minimumPayment, setMinimumPayment] = useState("")
   const [note, setNote] = useState("")
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const categories = useMemo(
     () => (kind === "asset" ? NET_WORTH_ASSET_CATEGORIES : NET_WORTH_LIABILITY_CATEGORIES),
@@ -46,12 +48,22 @@ export function AddNetWorthItemSheet({
     setInterestRate("")
     setMinimumPayment("")
     setNote("")
+    setValidationError(null)
   }
 
   const onSubmit = () => {
     const parsed = Number(value)
-    if (!name.trim() || !Number.isFinite(parsed) || parsed <= 0) {
-      toast.error(t("common.error"))
+    setValidationError(null)
+    if (!name.trim()) {
+      setValidationError(t("net_worth.validation.name_required"))
+      return
+    }
+    if (!Number.isFinite(parsed)) {
+      setValidationError(t("net_worth.validation.value_invalid"))
+      return
+    }
+    if (parsed <= 0) {
+      setValidationError(t("net_worth.validation.value_positive"))
       return
     }
     createMutation.mutate(
@@ -71,7 +83,9 @@ export function AddNetWorthItemSheet({
           reset()
           onClose()
         },
-        onError: () => toast.error(t("common.error")),
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
+        },
       },
     )
   }
@@ -224,6 +238,7 @@ export function AddNetWorthItemSheet({
           <Button onClick={onSubmit} disabled={createMutation.isPending} className="w-full min-h-[44px]">
             {t("net_worth.add_item")}
           </Button>
+          {validationError && <p className="text-xs text-destructive">{validationError}</p>}
         </div>
       </SheetContent>
     </Sheet>

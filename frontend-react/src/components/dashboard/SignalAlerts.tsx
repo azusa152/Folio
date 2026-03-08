@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/EmptyState"
 import {
   CATEGORY_ICON_SHORT,
   SCAN_SIGNAL_ICONS,
@@ -10,6 +10,7 @@ import {
   RISK_WARNING_SIGNALS,
 } from "@/lib/constants"
 import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_BADGE } from "@/lib/colors"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
 
@@ -34,9 +35,9 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
   const signalDescription = getSignalDescription(t, signal)
 
   const signalBadgeClass = BUY_OPPORTUNITY_SIGNALS.has(signal)
-    ? "text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded"
+    ? `text-xs ${FINANCE_BADGE.gain} px-1.5 py-0.5 rounded`
     : RISK_WARNING_SIGNALS.has(signal)
-      ? "text-xs bg-red-500/15 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded"
+      ? `text-xs ${FINANCE_BADGE.loss} px-1.5 py-0.5 rounded`
       : "text-xs bg-muted px-1.5 py-0.5 rounded"
 
   const isNew = activity?.is_new ?? false
@@ -81,7 +82,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
             <span
               className={
                 isNew
-                  ? "text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
+                  ? `text-xs font-semibold px-1.5 py-0.5 rounded animate-pulse ${FINANCE_BADGE.warning}`
                   : "text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
               }
             >
@@ -144,20 +145,28 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{t("dashboard.signal_alerts_title")}</CardTitle>
-          {activeStocks.length === 0 && (
-            <Button size="sm" variant="outline" onClick={() => navigate("/radar")}>
-              {t("dashboard.button_goto_radar")}
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-base">{t("dashboard.signal_alerts_title")}</CardTitle>
       </CardHeader>
       <CardContent>
+        {activeStocks.length > 0 && (
+          <p className="sr-only" aria-live="polite">
+            {t("dashboard.signal_buy_title")}: {buyStocks.length}. {t("dashboard.signal_risk_title")}: {riskStocks.length}.
+          </p>
+        )}
         {activeStocks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("dashboard.no_tracking_stocks")}</p>
+          <EmptyState
+            icon="📡"
+            message={t("dashboard.no_tracking_stocks")}
+            title={t("dashboard.no_tracking_stocks_title")}
+            description={t("dashboard.no_tracking_stocks_description")}
+            className="py-6"
+            action={{
+              label: t("dashboard.button_goto_radar"),
+              onClick: () => navigate("/radar"),
+            }}
+          />
         ) : buyStocks.length === 0 && riskStocks.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-md bg-green-500/10 text-green-700 dark:text-green-400 px-3 py-2 text-sm">
+          <div className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}>
             {t("dashboard.all_signals_normal")}
           </div>
         ) : (
@@ -202,8 +211,8 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("dashboard.rebalance_advice_title")}
                     </p>
-                    {advice.slice(0, 5).map((item, i) => (
-                      <p key={i} className="text-xs text-muted-foreground py-0.5">
+                    {advice.slice(0, 5).map((item) => (
+                      <p key={item} className="text-xs text-muted-foreground py-0.5">
                         • {item}
                       </p>
                     ))}

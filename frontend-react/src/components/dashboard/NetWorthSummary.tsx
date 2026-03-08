@@ -15,7 +15,13 @@ interface Props {
   isLoading: boolean
 }
 
-function NetWorthSparkline({ history }: { history: NetWorthSnapshotResponse[] }) {
+function NetWorthSparkline({
+  history,
+  ariaLabel,
+}: {
+  history: NetWorthSnapshotResponse[]
+  ariaLabel: string
+}) {
   const recent = useMemo(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
@@ -55,7 +61,7 @@ function NetWorthSparkline({ history }: { history: NetWorthSnapshotResponse[] })
   )
 
   if (recent.length < 2) return null
-  return <LightweightChartWrapper height={56} onInit={onInit} />
+  return <LightweightChartWrapper height={56} onInit={onInit} ariaLabel={ariaLabel} />
 }
 
 export function NetWorthSummary({ summary, history = [], isLoading }: Props) {
@@ -99,15 +105,7 @@ export function NetWorthSummary({ summary, history = [], isLoading }: Props) {
 
         {hasAnyValue ? (
           <>
-            <p className="text-3xl font-bold tabular-nums">{maskMoney(summary.net_worth)}</p>
-            <p className="text-xs text-muted-foreground">
-              {!isPrivate &&
-                new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: summary.display_currency,
-                  minimumFractionDigits: 2,
-                }).format(summary.net_worth)}
-            </p>
+            <p className="text-3xl font-bold tabular-nums">{maskMoney(summary.net_worth, summary.display_currency)}</p>
             <p className="text-xs text-muted-foreground">{t("net_worth.summary_formula")}</p>
 
             <div className="h-2 w-full rounded-full overflow-hidden bg-muted/40 flex">
@@ -122,7 +120,12 @@ export function NetWorthSummary({ summary, history = [], isLoading }: Props) {
               <p>{t("net_worth.segment_liabilities")} {liabPct.toFixed(0)}%</p>
             </div>
 
-            {!isPrivate && <NetWorthSparkline history={history} />}
+            {!isPrivate && (
+              <NetWorthSparkline
+                history={history}
+                ariaLabel={t("accessibility.chart_net_worth_sparkline")}
+              />
+            )}
           </>
         ) : (
           <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">

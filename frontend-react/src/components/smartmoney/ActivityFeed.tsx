@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { formatValue } from "./formatters"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { ActivityFeed, ActivityFeedItem } from "@/api/types/smartMoney"
 
 function FeedList({ items, emptyKey }: { items: ActivityFeedItem[]; emptyKey: string }) {
@@ -34,13 +35,13 @@ export function ActivityFeed({ data }: { data: ActivityFeed }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-green-600 dark:text-green-400">
+        <p className={`text-xs font-semibold ${FINANCE_TEXT.gain}`}>
           {t("smart_money.activity.most_bought")}
         </p>
         <FeedList items={data.most_bought} emptyKey="smart_money.activity.empty_bought" />
       </div>
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+        <p className={`text-xs font-semibold ${FINANCE_TEXT.loss}`}>
           {t("smart_money.activity.most_sold")}
         </p>
         <FeedList items={data.most_sold} emptyKey="smart_money.activity.empty_sold" />

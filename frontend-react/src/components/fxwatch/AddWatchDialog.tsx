@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FX_CURRENCY_OPTIONS } from "@/lib/constants"
 import { useCreateFxWatch } from "@/api/hooks/useFxWatch"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -41,6 +42,10 @@ export function AddWatchDialog({ open, onClose }: Props) {
       setError(t("fx_watch.form.error_no_alert"))
       return
     }
+    if (!Number.isFinite(reminderHours) || reminderHours < 1 || reminderHours > 168) {
+      setError(t("fx_watch.form.error_reminder_hours"))
+      return
+    }
     create.mutate(
       {
         base_currency: base,
@@ -56,9 +61,8 @@ export function AddWatchDialog({ open, onClose }: Props) {
           toast.success(t("common.success"))
           onClose()
         },
-        onError: () => {
-          setError(t("common.error"))
-          toast.error(t("common.error_backend"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error_backend"))
         },
       },
     )
@@ -77,7 +81,7 @@ export function AddWatchDialog({ open, onClose }: Props) {
             <div>
               <label className="text-xs text-muted-foreground">{t("fx_watch.form.base_currency")}</label>
               <Select value={base} onValueChange={setBase}>
-                <SelectTrigger className="text-xs h-8 mt-0.5">
+                <SelectTrigger aria-label={t("fx_watch.form.base_currency")} className="text-xs h-8 mt-0.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -90,7 +94,7 @@ export function AddWatchDialog({ open, onClose }: Props) {
             <div>
               <label className="text-xs text-muted-foreground">{t("fx_watch.form.quote_currency")}</label>
               <Select value={quote} onValueChange={setQuote}>
-                <SelectTrigger className="text-xs h-8 mt-0.5">
+                <SelectTrigger aria-label={t("fx_watch.form.quote_currency")} className="text-xs h-8 mt-0.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -107,30 +111,38 @@ export function AddWatchDialog({ open, onClose }: Props) {
           {/* Sliders */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground">
+              <label htmlFor="add-recent-high-days" className="text-xs text-muted-foreground">
                 {t("fx_watch.form.recent_high_days")}: {recentHighDays}
               </label>
               <input
+                id="add-recent-high-days"
                 type="range"
                 min={5}
                 max={90}
                 step={5}
                 value={recentHighDays}
                 onChange={(e) => setRecentHighDays(Number(e.target.value))}
+                aria-valuemin={5}
+                aria-valuemax={90}
+                aria-valuenow={recentHighDays}
                 className="w-full mt-0.5"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">
+              <label htmlFor="add-consecutive-days" className="text-xs text-muted-foreground">
                 {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
               </label>
               <input
+                id="add-consecutive-days"
                 type="range"
                 min={2}
                 max={10}
                 step={1}
                 value={consecutiveDays}
                 onChange={(e) => setConsecutiveDays(Number(e.target.value))}
+                aria-valuemin={2}
+                aria-valuemax={10}
+                aria-valuenow={consecutiveDays}
                 className="w-full mt-0.5"
               />
             </div>
@@ -160,8 +172,9 @@ export function AddWatchDialog({ open, onClose }: Props) {
 
           {/* Reminder hours */}
           <div>
-            <label className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+            <label htmlFor="add-watch-reminder-hours" className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
             <input
+              id="add-watch-reminder-hours"
               type="number"
               min={1}
               max={168}

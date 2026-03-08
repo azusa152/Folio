@@ -59,3 +59,16 @@ export function formatRelativeTime(seconds: number, locale?: string): string {
   const days = Math.max(1, Math.floor(safeSeconds / (24 * 60 * 60)))
   return rtf.format(-days, "day")
 }
+
+/** Safely extract a human-readable message from an unknown error value. */
+export function getErrorMessage(err: unknown): string {
+  if (err == null) return ""
+  if (typeof err === "string") return err
+  if (typeof err === "object") {
+    if ("detail" in err && typeof (err as Record<string, unknown>).detail === "string")
+      return (err as Record<string, unknown>).detail as string
+    if ("message" in err && typeof (err as Record<string, unknown>).message === "string")
+      return (err as Record<string, unknown>).message as string
+  }
+  return String(err)
+}

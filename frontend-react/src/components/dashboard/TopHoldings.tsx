@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
+import { FINANCE_TEXT } from "@/lib/colors"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -17,14 +18,14 @@ function ChangeCell({ value, category, change24hLabel }: { value?: number | null
   const isPos = value >= 0
   const isCrypto = category === "Crypto"
   return (
-    <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? "text-green-500" : "text-red-500"}`}>
+    <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
       {isPos ? "▲" : "▼"}{Math.abs(value).toFixed(2)}%
       {isCrypto ? <span className="ml-1 text-[10px] text-muted-foreground">({change24hLabel})</span> : null}
     </td>
   )
 }
 
-function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate: boolean }) {
+function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: HoldingDetail; isPrivate: boolean; displayCurrency: string }) {
   const { cost_total, market_value } = holding
   if (!cost_total || cost_total <= 0) {
     return (
@@ -37,14 +38,14 @@ function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate
   const gainLoss = market_value - cost_total
   const returnPct = (gainLoss / cost_total) * 100
   const isPos = returnPct >= 0
-  const colorClass = isPos ? "text-green-500" : "text-red-500"
+  const colorClass = isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
   return (
     <>
       <td className={`text-right px-3 py-2 text-sm font-medium ${colorClass}`}>
         {isPos ? "▲" : "▼"}{Math.abs(returnPct).toFixed(1)}%
       </td>
       <td className={`text-right px-3 py-2 text-sm ${colorClass}`}>
-        {isPrivate ? "***" : `${isPos ? "+" : "-"}$${Math.abs(gainLoss).toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
+        {isPrivate ? "***" : `${isPos ? "+" : "-"}${maskMoney(Math.abs(gainLoss), displayCurrency, 0)}`}
       </td>
     </>
   )
@@ -53,7 +54,8 @@ function ReturnCells({ holding, isPrivate }: { holding: HoldingDetail; isPrivate
 export function TopHoldings({ rebalance }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const isPrivate = usePrivacyMode((s) => s.isPrivate)
+  const isPrivate = useIsPrivate()
+  const displayCurrency = rebalance?.display_currency ?? "USD"
 
   if (!rebalance?.holdings_detail?.length) {
     return (
@@ -101,14 +103,14 @@ export function TopHoldings({ rebalance }: Props) {
                   </td>
                   <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
                   <td className="text-right px-3 py-2">
-                    {isPrivate ? "***" : `$${h.market_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                    {maskMoney(h.market_value, displayCurrency)}
                   </td>
                   <ChangeCell
                     value={h.change_pct}
                     category={h.category}
                     change24hLabel={t("allocation.crypto.change_24h_short")}
                   />
-                  <ReturnCells holding={h} isPrivate={isPrivate} />
+                  <ReturnCells holding={h} isPrivate={isPrivate} displayCurrency={displayCurrency} />
                 </tr>
               ))}
             </tbody>

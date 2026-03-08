@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { cn, getErrorMessage } from "@/lib/utils"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { useSyncGuru } from "@/api/hooks/useSmartMoney"
 import { formatValue, isStale } from "./formatters"
 import { GuruStyleBadge } from "./GuruStyleBadge"
@@ -77,7 +79,7 @@ export function GuruStatusCards({ gurus }: Props) {
                       className={cn(
                         "block font-medium",
                         guru.top5_concentration_pct >= HIGH_CONVICTION_THRESHOLD
-                          ? "text-amber-600 dark:text-amber-400"
+                          ? FINANCE_TEXT.warning
                           : guru.top5_concentration_pct <= DIVERSIFIED_THRESHOLD
                             ? "text-blue-600 dark:text-blue-400"
                             : "text-foreground",
@@ -113,7 +115,7 @@ export function GuruStatusCards({ gurus }: Props) {
                 size="sm"
                 variant="outline"
                 className="w-full text-xs mt-1"
-                onClick={() => syncMutation.mutate(guru.id)}
+                onClick={() => syncMutation.mutate(guru.id, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
                 disabled={syncMutation.isPending}
               >
                 {syncing ? t("smart_money.sidebar.syncing") : t("smart_money.overview.sync_button")}

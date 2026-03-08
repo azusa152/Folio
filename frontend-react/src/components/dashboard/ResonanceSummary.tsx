@@ -1,8 +1,10 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { GreatMindsResponse } from "@/api/types/dashboard"
 
 const HOLDING_ACTION_ICONS: Record<string, string> = {
@@ -78,9 +80,13 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
             {/* Expandable detail */}
             <button
               onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
             >
-              {expanded ? "▲" : "▼"} {t("dashboard.resonance.details_expander")}
+              <span className="inline-flex items-center gap-1">
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", expanded && "rotate-180")} />
+                {t("dashboard.resonance.details_expander")}
+              </span>
             </button>
 
             {expanded && (
@@ -91,14 +97,14 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
                       {stock.ticker} ×{stock.guru_count}
                     </p>
                     <div className="mt-1 space-y-0.5">
-                      {stock.gurus.map((g, i) => {
+                      {stock.gurus.map((g) => {
                         const icon = HOLDING_ACTION_ICONS[g.action] ?? "⚪"
                         const label = getActionLabel(g.action)
                         const weight = g.weight_pct != null && g.action !== "SOLD_OUT"
                           ? ` ${g.weight_pct.toFixed(1)}%`
                           : ""
                         return (
-                          <p key={i} className="text-xs text-muted-foreground">
+                          <p key={g.guru_display_name} className="text-xs text-muted-foreground">
                             {g.guru_display_name} {icon} {label}{weight}
                           </p>
                         )

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Download } from "lucide-react"
+import { ChevronDown, Download } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -21,7 +21,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { getSignalLabel } from "@/lib/signal-label"
+import { FINANCE_BADGE } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { cn, formatLocalTime } from "@/lib/utils"
 
@@ -41,6 +43,7 @@ export default function Backtest() {
   const { data: backfillStatus } = useBackfillStatus()
   const selectedSignal = summary?.signals?.[0]?.signal ?? ""
   const [activeSignal, setActiveSignal] = useState("")
+  const [exporting, setExporting] = useState(false)
   const currentSignal = activeSignal || selectedSignal
   const { data: detail } = useBacktestDetail(currentSignal, 50, !!currentSignal)
   const wasBackfillingRef = useRef(false)
@@ -54,6 +57,7 @@ export default function Backtest() {
   const showEmptyState = !isBackfilling && !hasSignals
 
   const handleExportCsv = async () => {
+    setExporting(true)
     try {
       const headers: HeadersInit = {}
       const apiKey = import.meta.env.VITE_API_KEY
@@ -71,6 +75,8 @@ export default function Backtest() {
       URL.revokeObjectURL(url)
     } catch {
       toast.error(t("common.error"))
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -139,9 +145,9 @@ export default function Backtest() {
             {t("backtest.computed_at", { time: formatLocalTime(summary.computed_at) })}
           </p>
           {hasSignals && (
-            <Button variant="outline" size="sm" onClick={handleExportCsv}>
+            <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={exporting}>
               <Download className="h-4 w-4 mr-1" />
-              {t("backtest.export_csv")}
+              {exporting ? t("common.loading") : t("backtest.export_csv")}
             </Button>
           )}
         </div>
@@ -150,10 +156,11 @@ export default function Backtest() {
       <div className="rounded-md border border-border">
         <button
           onClick={() => setSopOpen((v) => !v)}
+          aria-expanded={sopOpen}
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("backtest.sop.title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -182,6 +189,9 @@ export default function Backtest() {
                 completed: completedStocks,
                 total: totalStocks,
               })}
+            </p>
+            <p className="sr-only" aria-live="polite">
+              {Math.round(progressPct)}%
             </p>
           </CardContent>
         </Card>
@@ -220,30 +230,30 @@ export default function Backtest() {
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase",
                           signal.confidence === "high" &&
-                            "bg-emerald-500/20 text-emerald-400",
+                            FINANCE_BADGE.gain,
                           signal.confidence === "medium" &&
-                            "bg-amber-500/20 text-amber-300",
+                            FINANCE_BADGE.warning,
                           signal.confidence === "low" && "bg-zinc-500/20 text-zinc-300",
                         )}
                       >
-                        {signal.confidence}
+                        <GlossaryTerm termKey="confidence">{signal.confidence}</GlossaryTerm>
                       </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1 text-xs">
                     <p>
-                      {t("backtest.card.direction")}: {signal.direction}
+                      <GlossaryTerm termKey="direction">{t("backtest.card.direction")}</GlossaryTerm>: {signal.direction}
                     </p>
                     <p>
-                      {t("backtest.card.hit_rate", { window: selectedWindow })}:{" "}
+                      <GlossaryTerm termKey="hit_rate">{t("backtest.card.hit_rate", { window: selectedWindow })}</GlossaryTerm>:{" "}
                       {((metric?.hit_rate ?? 0) * 100).toFixed(1)}%
                     </p>
                     <p>
-                      {t("backtest.card.avg_return", { window: selectedWindow })}:{" "}
+                      <GlossaryTerm termKey="avg_return">{t("backtest.card.avg_return", { window: selectedWindow })}</GlossaryTerm>:{" "}
                       {(metric?.avg_return_pct ?? 0).toFixed(2)}%
                     </p>
                     <p>
-                      {t("backtest.card.samples", { window: selectedWindow })}:{" "}
+                      <GlossaryTerm termKey="samples">{t("backtest.card.samples", { window: selectedWindow })}</GlossaryTerm>:{" "}
                       {metric?.sample_count ?? 0}
                     </p>
                   </CardContent>
@@ -254,7 +264,9 @@ export default function Backtest() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t("backtest.forward_returns_title")}</CardTitle>
+              <CardTitle>
+                <GlossaryTerm termKey="forward_returns">{t("backtest.forward_returns_title")}</GlossaryTerm>
+              </CardTitle>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -344,7 +356,7 @@ export default function Backtest() {
                         {t("backtest.table.signal_date")}
                       </th>
                       <th className="text-left px-3 py-2">
-                        {t("backtest.table.market_status")}
+                        <GlossaryTerm termKey="market_status">{t("backtest.table.market_status")}</GlossaryTerm>
                       </th>
                       {WINDOWS.map((days) => (
                         <th key={days} className="text-right px-3 py-2">

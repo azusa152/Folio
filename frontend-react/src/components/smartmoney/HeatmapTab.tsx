@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import {
   ResponsiveContainer,
@@ -9,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useGuruHeatmap } from "@/api/hooks/useSmartMoney"
 import { ACTION_COLORS } from "@/components/smartmoney/formatters"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 
 type ViewMode = "sector" | "guru"
 
@@ -218,7 +221,7 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+      <div className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
         {data.filing_delay_note || t("smart_money.heatmap.delay_note", { report_date: data.report_date ?? "-" })}
       </div>
       {viewMode === "sector" && dominantActions.length === 1 && (
@@ -236,7 +239,7 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.heatmap.sop_title")}</span>
-          <span className="text-muted-foreground text-xs">{sopOpen ? "▲" : "▼"}</span>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">

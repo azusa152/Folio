@@ -47,8 +47,8 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
         <section className="space-y-1">
           <p className="text-sm font-semibold">{t("allocation.health.advice_title")}</p>
           <ul className="space-y-1">
-            {data.advice.map((a, i) => (
-              <li key={i} className="text-xs text-muted-foreground">• {a}</li>
+            {data.advice.map((a) => (
+              <li key={a} className="text-xs text-muted-foreground">• {a}</li>
             ))}
           </ul>
         </section>
@@ -67,7 +67,7 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
       <hr className="border-border" />
 
       {/* Holdings detail table */}
-      <HoldingsTable holdings={data.holdings_detail} privacyMode={privacyMode} />
+      <HoldingsTable holdings={data.holdings_detail} privacyMode={privacyMode} displayCurrency={displayCurrency} />
 
       <hr className="border-border" />
 

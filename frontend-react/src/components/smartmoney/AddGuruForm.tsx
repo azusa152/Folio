@@ -1,10 +1,12 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAddGuru } from "@/api/hooks/useSmartMoney"
 import { GURU_STYLE_CONFIG } from "@/lib/constants"
 import type { AddGuruRequest } from "@/api/types/smartMoney"
+import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   onSuccess: () => void
@@ -37,7 +39,8 @@ export function AddGuruForm({ onSuccess }: Props) {
       },
       {
         onSuccess: () => {
-          setFeedback(t("smart_money.add_guru.success", { display_name: displayName.trim() }))
+          setFeedback(null)
+          toast.success(t("smart_money.add_guru.success", { display_name: displayName.trim() }))
           setName("")
           setCik("")
           setDisplayName("")
@@ -45,8 +48,8 @@ export function AddGuruForm({ onSuccess }: Props) {
           setTier("")
           onSuccess()
         },
-        onError: () => {
-          setFeedback(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -61,8 +64,9 @@ export function AddGuruForm({ onSuccess }: Props) {
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("smart_money.add_guru.name_label")}</label>
+          <label htmlFor="guru-name" className="text-xs font-medium">{t("smart_money.add_guru.name_label")}</label>
           <Input
+            id="guru-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("smart_money.add_guru.name_placeholder")}
@@ -71,8 +75,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("smart_money.add_guru.cik_label")}</label>
+          <label htmlFor="guru-cik" className="text-xs font-medium">{t("smart_money.add_guru.cik_label")}</label>
           <Input
+            id="guru-cik"
             value={cik}
             onChange={(e) => setCik(e.target.value)}
             placeholder={t("smart_money.add_guru.cik_placeholder")}
@@ -81,8 +86,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("smart_money.add_guru.display_label")}</label>
+          <label htmlFor="guru-display" className="text-xs font-medium">{t("smart_money.add_guru.display_label")}</label>
           <Input
+            id="guru-display"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder={t("smart_money.add_guru.display_placeholder")}
@@ -91,8 +97,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("smart_money.add_guru.style_label")}</label>
+          <label htmlFor="guru-style" className="text-xs font-medium">{t("smart_money.add_guru.style_label")}</label>
           <select
+            id="guru-style"
             value={style}
             onChange={(e) => setStyle(e.target.value)}
             className="w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background"
@@ -107,8 +114,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">{t("smart_money.add_guru.tier_label")}</label>
+          <label htmlFor="guru-tier" className="text-xs font-medium">{t("smart_money.add_guru.tier_label")}</label>
           <select
+            id="guru-tier"
             value={tier}
             onChange={(e) => setTier(e.target.value)}
             className="w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background"
@@ -130,7 +138,7 @@ export function AddGuruForm({ onSuccess }: Props) {
       </Button>
 
       {feedback && (
-        <p className="text-xs text-muted-foreground">{feedback}</p>
+        <p className="text-xs text-destructive">{feedback}</p>
       )}
     </div>
   )

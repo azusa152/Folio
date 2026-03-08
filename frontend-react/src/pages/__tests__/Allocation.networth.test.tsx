@@ -34,6 +34,7 @@ vi.mock("react-router-dom", () => ({
 
 vi.mock("@/hooks/usePrivacyMode", () => ({
   usePrivacyMode: () => false,
+  maskMoney: (v: number) => `$${v.toFixed(2)}`,
 }))
 
 vi.mock("@/api/hooks/useDashboard", () => ({

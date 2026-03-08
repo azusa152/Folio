@@ -26,7 +26,7 @@ from domain.constants import (
 from domain.enums import CATEGORY_LABEL, HoldingAction, ScanSignal
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
-from infrastructure.market_data import get_fear_greed_index, get_technical_signals
+from infrastructure.market_data import get_fear_greed_index
 from infrastructure.notification import (
     is_notification_enabled,
     send_telegram_message_dual,
@@ -67,22 +67,36 @@ def _save_wow_state(state: dict) -> None:
 
 
 # ===========================================================================
+# Weekly Digest Helpers
+# ===========================================================================
+
+
+def _format_health_line(score: float, normal: int, total: int, lang: str) -> str:
+    """Return a traffic-light health line: green/yellow/red based on score."""
+    if score >= 100:
+        key = "notification.health_all_clear"
+    elif score >= 70:
+        key = "notification.health_attention"
+    else:
+        key = "notification.health_review"
+    return t(key, lang=lang, normal=normal, total=total)
+
+
+# ===========================================================================
 # Weekly Digest Service
 # ===========================================================================
 
 
 def send_weekly_digest(session: Session) -> dict:
     """
-    發送每週 Telegram 摘要：
+    發送每週 Telegram 摘要（僅限持有部位）：
     - 投資組合總值 + 週漲跌幅（WoW）
-    - S&P 500 基準 + Alpha
     - 投資組合健康分數
     - 恐懼貪婪指數
     - 本週漲跌幅前三名
-    - 目前所有非 NORMAL 股票
-    - 過去 7 天訊號變化
+    - 持有股票的非 NORMAL 訊號
+    - 過去 7 天持有股票的訊號變化
     - 配置偏移
-    - Smart Money 大師動態
     """
     logger.info("開始生成每週摘要...")
     lang = get_user_language(session)
@@ -175,39 +189,26 @@ def send_weekly_digest(session: Session) -> dict:
         wow_state["last_total_value"] = current_total
         _save_wow_state(wow_state)
 
-    # --- S&P 500 基準 + Alpha ---
-    # NOTE: get_technical_signals returns a *daily* change_pct (previous close vs
-    # current), not a weekly one.  Alpha here is therefore portfolio-WoW vs S&P-daily,
-    # which is an approximation only meaningful when the digest runs weekly — callers
-    # should treat it as indicative, not precise.
-    # `prev_total` captured above is the value from the *previous* run, before saving.
-    benchmark_line: str | None = None
-    try:
-        sp500 = get_technical_signals("^GSPC")
-        sp500_pct = sp500.get("change_pct") if sp500 is not None else None
-        if sp500_pct is not None and current_total is not None:
-            if prev_total and prev_total > 0:
-                port_pct = (current_total - prev_total) / prev_total * 100
-                alpha: float | None = port_pct - sp500_pct
-            else:
-                alpha = None
-            sp_sign = "+" if sp500_pct >= 0 else ""
-            if alpha is not None:
-                alpha_sign = "+" if alpha >= 0 else "-"
-                alpha_str = f"{abs(alpha):.1f}"
-            else:
-                alpha_sign = ""
-                alpha_str = "N/A"
-            benchmark_line = t(
-                "notification.benchmark_label",
-                lang=lang,
-                sign=sp_sign,
-                pct=f"{abs(sp500_pct):.1f}",
-                sign_a=alpha_sign,
-                alpha=alpha_str,
-            )
-    except Exception as exc:
-        logger.warning("無法取得 S&P 500 資料：%s", exc)
+    # --- Scope signals to owned stocks only ---
+    # When rebalance is unavailable, holdings_detail is empty and owned_tickers
+    # will be an empty set — the filter is skipped and the digest falls back to
+    # showing all watchlist signals (graceful degradation).
+    owned_tickers: set[str] = {h["ticker"] for h in holdings_detail}
+    if owned_tickers:
+        non_normal_stocks = [s for s in non_normal_stocks if s.ticker in owned_tickers]
+        signal_changes = {k: v for k, v in signal_changes.items() if k in owned_tickers}
+        signal_transitions = {
+            k: v for k, v in signal_transitions.items() if k in owned_tickers
+        }
+        owned_stocks = [s for s in all_stocks if s.ticker in owned_tickers]
+        owned_total = len(owned_stocks)
+        owned_normal = sum(
+            1 for s in owned_stocks if s.last_scan_signal == ScanSignal.NORMAL.value
+        )
+        if owned_total > 0:
+            health_score = round(owned_normal / owned_total * 100, 1)
+            normal_count = owned_normal
+            total = owned_total
 
     # --- 本週漲跌幅前三名 ---
     top_movers_lines: list[str] = []
@@ -245,27 +246,6 @@ def send_weekly_digest(session: Session) -> dict:
                 t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}")
             )
 
-    # --- Smart Money 大師動態 ---
-    # Lazy import to avoid circular dependency: notification_service ↔ resonance_service.
-    smart_money_lines: list[str] = []
-    try:
-        from application.guru.resonance_service import compute_portfolio_resonance
-
-        resonance = compute_portfolio_resonance(session)
-        smart_money_lines.extend(
-            format_resonance_alert(
-                holding["ticker"],
-                entry["guru_display_name"],
-                holding["action"],
-                lang=lang,
-            )
-            for entry in resonance
-            for holding in entry["holdings"]
-            if holding["action"] in _ALERT_ACTIONS
-        )
-    except Exception as exc:
-        logger.warning("無法取得 Smart Money 資料：%s", exc)
-
     # --- 組合訊息 ---
     non_normal_dicts: list[dict] = []
     for s in non_normal_stocks:
@@ -283,14 +263,7 @@ def send_weekly_digest(session: Session) -> dict:
         lang=lang,
         title=t("notification.weekly_digest_title", lang=lang),
         portfolio_value_line=portfolio_value_line,
-        benchmark_line=benchmark_line,
-        health_line=t(
-            "notification.health_score",
-            lang=lang,
-            score=health_score,
-            normal=normal_count,
-            total=total,
-        ),
+        health_line=_format_health_line(health_score, normal_count, total, lang),
         fear_greed_line=t(
             "notification.fear_greed", lang=lang, label=fg_label, vix=vix_text
         ),
@@ -299,7 +272,6 @@ def send_weekly_digest(session: Session) -> dict:
         signal_changes=signal_changes,
         signal_transitions=signal_transitions,
         drift_lines=drift_lines,
-        smart_money_lines=smart_money_lines,
         all_normal_line=t("notification.all_normal", lang=lang),
     )
 

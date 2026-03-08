@@ -1,10 +1,12 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
+import { cn, getErrorMessage } from "@/lib/utils"
 import { useReactivateStock, useRemovalHistory, useThesisHistory } from "@/api/hooks/useRadar"
 import type { RemovedStock, StockCategory } from "@/api/types/radar"
 
@@ -21,9 +23,13 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        {open ? "▲" : "▼"} {t("radar.removed.history_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          {t("radar.removed.history_title", { ticker })}
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-1">
@@ -32,8 +38,8 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
           ) : !history?.length ? (
             <p className="text-xs text-muted-foreground">{t("radar.removed.no_history")}</p>
           ) : (
-            history.map((entry, i) => (
-              <div key={i} className="rounded border border-border p-2 text-xs">
+            history.map((entry) => (
+              <div key={entry.created_at} className="rounded border border-border p-2 text-xs">
                 <p className="font-semibold text-muted-foreground">{entry.created_at.slice(0, 10)}</p>
                 <p>{entry.reason}</p>
               </div>
@@ -54,9 +60,13 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        {open ? "▲" : "▼"} {t("radar.removed.thesis_history_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          {t("radar.removed.thesis_history_title", { ticker })}
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-1">
@@ -92,9 +102,13 @@ function ReactivateSection({ ticker }: { ticker: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-expanded={false}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        ▼ {t("radar.removed.reactivate_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200" />
+          {t("radar.removed.reactivate_title", { ticker })}
+        </span>
       </button>
     )
   }
@@ -109,11 +123,9 @@ function ReactivateSection({ ticker }: { ticker: string }) {
         onSuccess: (data) => {
           const msg = data?.message ?? t("radar.removed.reactivate_success")
           setFeedback(msg)
-          toast.success(msg)
         },
-        onError: () => {
-          setFeedback(t("common.error"))
-          toast.error(t("common.error"))
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err) || t("common.error"))
         },
       },
     )
@@ -123,9 +135,13 @@ function ReactivateSection({ ticker }: { ticker: string }) {
     <div className="space-y-2">
       <button
         onClick={() => setOpen(false)}
+        aria-expanded={true}
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
-        ▲ {t("radar.removed.reactivate_title", { ticker })}
+        <span className="inline-flex items-center gap-1">
+          <ChevronDown className="h-3.5 w-3.5 rotate-180 transition-transform duration-200" />
+          {t("radar.removed.reactivate_title", { ticker })}
+        </span>
       </button>
       <Select value={category} onValueChange={(v) => setCategory(v as StockCategory)}>
         <SelectTrigger className="text-xs h-8">
