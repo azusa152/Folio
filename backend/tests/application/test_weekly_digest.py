@@ -57,7 +57,6 @@ _FG_PATCH = f"{NOTIFICATION_MODULE}.get_fear_greed_index"
 _TG_PATCH = f"{NOTIFICATION_MODULE}.send_telegram_message_dual"
 _NOTIF_PATCH = f"{NOTIFICATION_MODULE}.is_notification_enabled"
 _REBALANCE_PATCH = "application.portfolio.rebalance_service.calculate_rebalance"
-_SP500_PATCH = f"{NOTIFICATION_MODULE}.get_technical_signals"
 _RESONANCE_PATCH = "application.guru.resonance_service.compute_portfolio_resonance"
 _WOW_LOAD_PATCH = f"{NOTIFICATION_MODULE}._load_wow_state"
 _WOW_SAVE_PATCH = f"{NOTIFICATION_MODULE}._save_wow_state"
@@ -86,8 +85,6 @@ MOCK_REBALANCE = {
     },
 }
 
-MOCK_SP500 = {"ticker": "^GSPC", "change_pct": 0.8, "price": 5000.0}
-
 MOCK_RESONANCE = [
     {
         "guru_id": 1,
@@ -113,7 +110,7 @@ MOCK_RESONANCE = [
 
 class TestSendWeeklyDigest:
     def test_should_include_health_score(self, db_session: Session):
-        """Message must contain health score when stocks are present."""
+        """Message must contain traffic-light health indicator when stocks are present."""
         from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
@@ -124,8 +121,6 @@ class TestSendWeeklyDigest:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
@@ -133,10 +128,10 @@ class TestSendWeeklyDigest:
 
         assert result["health_score"] == 100.0
         sent_message = mock_send.call_args[0][0]
-        assert "100.0" in sent_message
+        assert "🟢" in sent_message
 
     def test_should_list_abnormal_stocks(self, db_session: Session):
-        """Non-normal stocks must appear in the Telegram message."""
+        """Non-normal owned stocks must appear in the Telegram message."""
         from application.messaging.notification_service import send_weekly_digest
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
@@ -147,45 +142,38 @@ class TestSendWeeklyDigest:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             result = send_weekly_digest(db_session)
 
-        assert result["health_score"] == 50.0
+        assert result["health_score"] == 0.0
         sent_message = mock_send.call_args[0][0]
         assert "BABA" in sent_message
         assert ScanSignal.THESIS_BROKEN.value in sent_message
 
     def test_should_report_signal_changes(self, db_session: Session):
-        """Tickers with signal changes must appear with correct count, not raw keys."""
+        """Signal changes for owned tickers must appear with transition direction."""
         from application.messaging.notification_service import send_weekly_digest
 
-        _add_stock(db_session, "NIO", ScanSignal.OVERSOLD.value)
-        # Two scan logs with different signals → one change detected
-        _add_scan_log(db_session, "NIO", ScanSignal.NORMAL.value, days_ago=3)
-        _add_scan_log(db_session, "NIO", ScanSignal.OVERSOLD.value, days_ago=1)
+        _add_stock(db_session, "NVDA", ScanSignal.OVERSOLD.value)
+        _add_scan_log(db_session, "NVDA", ScanSignal.NORMAL.value, days_ago=3)
+        _add_scan_log(db_session, "NVDA", ScanSignal.OVERSOLD.value, days_ago=1)
 
         with (
             patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        assert "NIO" in sent_message
-        # Transition direction must be shown in the new format
+        assert "NVDA" in sent_message
         assert "NORMAL" in sent_message
         assert "OVERSOLD" in sent_message
-        # Translated labels must be present, not raw keys
         assert "notification.change_label" not in sent_message
         assert "notification.times_label" not in sent_message
         assert "notification.signal_change_detail" not in sent_message
@@ -216,8 +204,6 @@ class TestSendWeeklyDigest:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=False),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
@@ -237,22 +223,49 @@ class TestSendWeeklyDigest:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        # Raw key must not leak
         assert "notification.all_normal" not in sent_message
-        # The translated "all clear" marker must actually be in the message
         assert "✅" in sent_message
 
 
 # ---------------------------------------------------------------------------
-# send_weekly_digest — new Phase 2 sections
+# _format_health_line — traffic-light levels
+# ---------------------------------------------------------------------------
+
+
+class TestFormatHealthLine:
+    def test_should_return_green_when_all_clear(self):
+        from application.messaging.notification_service import _format_health_line
+
+        result = _format_health_line(100.0, 5, 5, "en")
+        assert "🟢" in result
+
+    def test_should_return_yellow_when_attention_needed(self):
+        from application.messaging.notification_service import _format_health_line
+
+        result = _format_health_line(85.0, 6, 7, "en")
+        assert "🟡" in result
+
+    def test_should_return_red_when_review_needed(self):
+        from application.messaging.notification_service import _format_health_line
+
+        result = _format_health_line(50.0, 2, 4, "en")
+        assert "🔴" in result
+
+    def test_should_return_yellow_at_boundary(self):
+        from application.messaging.notification_service import _format_health_line
+
+        result = _format_health_line(70.0, 7, 10, "en")
+        assert "🟡" in result
+
+
+# ---------------------------------------------------------------------------
+# send_weekly_digest — enriched sections (portfolio value, movers, drift, owned-stock filter)
 # ---------------------------------------------------------------------------
 
 
@@ -263,26 +276,21 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        wow_state = {"last_total_value": 95_000.0}  # previous week total
+        wow_state = {"last_total_value": 95_000.0}
 
         with (
             patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value=wow_state),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        # Portfolio value must appear
         assert "100,000" in sent_message
-        # WoW percentage must appear: $95k→$100k = +5.3% rounded to 1dp
         assert "5.3" in sent_message
-        # "WoW" keyword from the i18n template must be present
         assert "WoW" in sent_message
 
     def test_should_include_portfolio_value_no_prev(self, db_session: Session):
@@ -296,8 +304,6 @@ class TestSendWeeklyDigestEnriched:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
@@ -317,18 +323,14 @@ class TestSendWeeklyDigestEnriched:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        # Both a gainer and a loser from MOCK_REBALANCE must appear
         assert "NVDA" in sent_message
         assert "BABA" in sent_message
-        # Raw key must not appear
         assert "notification.top_movers_title" not in sent_message
 
     def test_should_include_drift_when_over_threshold(self, db_session: Session):
@@ -337,23 +339,18 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        # MOCK_REBALANCE has Growth drift = +7.5% (above threshold of 5%)
         with (
             patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        # Drift title must appear (translated, not raw key)
         assert "notification.drift_title" not in sent_message
-        # Both the drift-title emoji and the specific drift value must appear
         assert "⚖️" in sent_message
         assert "7.5" in sent_message
 
@@ -363,7 +360,6 @@ class TestSendWeeklyDigestEnriched:
 
         _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
 
-        # All drifts below 5%
         rebalance_no_drift = {
             **MOCK_REBALANCE,
             "categories": {
@@ -387,8 +383,6 @@ class TestSendWeeklyDigestEnriched:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=rebalance_no_drift),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
@@ -397,66 +391,25 @@ class TestSendWeeklyDigestEnriched:
         sent_message = mock_send.call_args[0][0]
         assert "⚖️" not in sent_message
 
-    def test_should_include_smart_money_new_position(self, db_session: Session):
-        """Smart Money section must show guru NEW_POSITION alert."""
+    def test_should_exclude_watchlist_only_signals(self, db_session: Session):
+        """Signals for stocks not in holdings must be excluded from digest."""
         from application.messaging.notification_service import send_weekly_digest
 
-        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
+        _add_stock(db_session, "NVDA", ScanSignal.NORMAL.value)
+        _add_stock(db_session, "PLTR", ScanSignal.THESIS_BROKEN.value)
 
         with (
             patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=MOCK_RESONANCE),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
             send_weekly_digest(db_session)
 
         sent_message = mock_send.call_args[0][0]
-        assert "AAPL" in sent_message
-        assert "Buffett" in sent_message
-        assert "notification.smart_money_title" not in sent_message
-
-    def test_should_omit_smart_money_when_only_unchanged(self, db_session: Session):
-        """Smart Money section must be absent when no NEW_POSITION/SOLD_OUT actions."""
-        from application.messaging.notification_service import send_weekly_digest
-
-        _add_stock(db_session, "AAPL", ScanSignal.NORMAL.value)
-
-        resonance_unchanged = [
-            {
-                "guru_id": 1,
-                "guru_display_name": "Warren Buffett",
-                "overlapping_tickers": ["AAPL"],
-                "overlap_count": 1,
-                "holdings": [
-                    {
-                        "ticker": "AAPL",
-                        "action": "UNCHANGED",
-                        "weight_pct": 2.5,
-                        "change_pct": 0.0,
-                    }
-                ],
-            }
-        ]
-
-        with (
-            patch(_FG_PATCH, return_value=MOCK_FEAR_GREED),
-            patch(_TG_PATCH) as mock_send,
-            patch(_NOTIF_PATCH, return_value=True),
-            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=resonance_unchanged),
-            patch(_WOW_LOAD_PATCH, return_value={}),
-            patch(_WOW_SAVE_PATCH),
-        ):
-            send_weekly_digest(db_session)
-
-        sent_message = mock_send.call_args[0][0]
-        assert "🧠" not in sent_message
+        assert "PLTR" not in sent_message
 
     def test_should_gracefully_handle_rebalance_failure(self, db_session: Session):
         """When rebalance data is unavailable, digest must still send without crashing."""
@@ -469,8 +422,6 @@ class TestSendWeeklyDigestEnriched:
             patch(_TG_PATCH) as mock_send,
             patch(_NOTIF_PATCH, return_value=True),
             patch(_REBALANCE_PATCH, side_effect=RuntimeError("yfinance error")),
-            patch(_SP500_PATCH, return_value=MOCK_SP500),
-            patch(_RESONANCE_PATCH, return_value=[]),
             patch(_WOW_LOAD_PATCH, return_value={}),
             patch(_WOW_SAVE_PATCH),
         ):
