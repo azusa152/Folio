@@ -39,7 +39,23 @@
     "dark_mode": "🌙 ダークモード",
     "light_mode": "☀️ ライトモード",
     "error_render": "エラーが発生しました",
-    "retry": "再試行"
+    "retry": "再試行",
+    "offline_banner": "オフラインです。データが最新ではない可能性があります。",
+    "last_updated_relative": "最終更新 {{time}}"
+  },
+  "command_palette": {
+    "title": "コマンドパレット",
+    "description": "ページ移動と操作をすばやく実行",
+    "search_placeholder": "ページと操作を検索...",
+    "no_results": "一致する結果がありません。",
+    "group_pages": "ページ",
+    "group_actions": "アクション",
+    "action_privacy_on": "プライバシーモードをオン",
+    "action_privacy_off": "プライバシーモードをオフ",
+    "action_toggle_theme": "ダーク/ライトテーマを切替",
+    "action_run_scan": "レーダースキャンを実行",
+    "action_send_digest": "週次ダイジェストを送信",
+    "shortcut_hint": "Cmd/Ctrl + K"
   },
   "accessibility": {
     "skip_to_content": "メインコンテンツへスキップ",

@@ -429,6 +429,9 @@ export function PortfolioPulse({
           </div>
           {fearGreed ? (
             <>
+              <p className="sr-only" aria-live="polite">
+                {t("dashboard.fear_greed_title")}: {fgScore}/100, {fgLevel}
+              </p>
               <FearGreedGauge score={fgScore} level={fgLevel} />
               <div className="mt-1 flex flex-wrap justify-center gap-2">
                 {FEAR_GREED_BANDS.map((band) => (

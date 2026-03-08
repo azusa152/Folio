@@ -190,6 +190,9 @@ export default function Backtest() {
                 total: totalStocks,
               })}
             </p>
+            <p className="sr-only" aria-live="polite">
+              {Math.round(progressPct)}%
+            </p>
           </CardContent>
         </Card>
       ) : showEmptyState ? (

@@ -1,5 +1,5 @@
-import { useRef, useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronDown, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
@@ -19,7 +19,7 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import { cn, getErrorMessage } from "@/lib/utils"
+import { cn, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useNetWorthHistory,
   useNetWorthItems,
@@ -33,11 +33,19 @@ import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWor
 import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
 
 export default function Allocation() {
-  const { t } = useTranslation()
-  const [searchParams] = useSearchParams()
+  const { t, i18n } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "net-worth" ? "net-worth" : "portfolio")
+  const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
+  const tabParam = searchParams.get("tab")
+  const activeTab =
+    tabParam === "risk" ||
+    tabParam === "actions" ||
+    tabParam === "net-worth" ||
+    tabParam === "settings"
+      ? tabParam
+      : "portfolio"
   const [netWorthSheetOpen, setNetWorthSheetOpen] = useState(false)
   const [netWorthSheetKind, setNetWorthSheetKind] = useState<"asset" | "liability">("asset")
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
@@ -47,7 +55,7 @@ export default function Allocation() {
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
-  const { data: holdings, isLoading: holdingsLoading } = useHoldings()
+  const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
   const { data: netWorthSummary } = useNetWorthSummary(displayCurrency, activeTab === "net-worth")
   const { data: netWorthItems } = useNetWorthItems(displayCurrency, activeTab === "net-worth")
   const { data: netWorthHistory, isLoading: netWorthHistoryLoading } = useNetWorthHistory(
@@ -64,6 +72,27 @@ export default function Allocation() {
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
+  const updatedAgo =
+    holdingsUpdatedAt > 0
+      ? formatRelativeTime(nowEpochSeconds - Math.floor(holdingsUpdatedAt / 1000), i18n.language)
+      : ""
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (tab === "portfolio") next.delete("tab")
+      else next.set("tab", tab)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
+      60_000,
+    )
+    return () => window.clearInterval(timer)
+  }, [])
 
   if (isLoading) {
     return (
@@ -97,6 +126,12 @@ export default function Allocation() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">{t("allocation.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("allocation.caption")}</p>
+          {updatedAgo ? (
+            <p className="text-xs text-muted-foreground inline-flex items-center gap-1 mt-0.5">
+              <Clock3 className="h-3.5 w-3.5" />
+              {t("common.last_updated_relative", { time: updatedAgo })}
+            </p>
+          ) : null}
         </div>
         <Button
           size="sm"

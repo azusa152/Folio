@@ -39,7 +39,23 @@
     "dark_mode": "🌙 深色模式",
     "light_mode": "☀️ 淺色模式",
     "error_render": "發生錯誤",
-    "retry": "重試"
+    "retry": "重試",
+    "offline_banner": "目前離線中，資料可能不是最新。",
+    "last_updated_relative": "上次更新 {{time}}"
+  },
+  "command_palette": {
+    "title": "快速命令面板",
+    "description": "快速跳轉頁面與執行操作",
+    "search_placeholder": "搜尋頁面與操作...",
+    "no_results": "找不到符合結果。",
+    "group_pages": "頁面",
+    "group_actions": "操作",
+    "action_privacy_on": "開啟隱私模式",
+    "action_privacy_off": "關閉隱私模式",
+    "action_toggle_theme": "切換深色/淺色模式",
+    "action_run_scan": "執行雷達掃描",
+    "action_send_digest": "發送每週摘要",
+    "shortcut_hint": "Cmd/Ctrl + K"
   },
   "accessibility": {
     "skip_to_content": "跳至主要內容",

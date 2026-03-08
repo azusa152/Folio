@@ -148,6 +148,11 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
         <CardTitle className="text-base">{t("dashboard.signal_alerts_title")}</CardTitle>
       </CardHeader>
       <CardContent>
+        {activeStocks.length > 0 && (
+          <p className="sr-only" aria-live="polite">
+            {t("dashboard.signal_buy_title")}: {buyStocks.length}. {t("dashboard.signal_risk_title")}: {riskStocks.length}.
+          </p>
+        )}
         {activeStocks.length === 0 ? (
           <EmptyState
             icon="📡"

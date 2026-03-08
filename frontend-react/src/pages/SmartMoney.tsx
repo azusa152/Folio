@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -13,7 +14,7 @@ import { GrandPortfolioTab } from "@/components/smartmoney/GrandPortfolioTab"
 import { HeatmapTab } from "@/components/smartmoney/HeatmapTab"
 import { GuruBacktestTab } from "@/components/smartmoney/GuruBacktestTab"
 import { AddGuruForm } from "@/components/smartmoney/AddGuruForm"
-import { cn, getErrorMessage } from "@/lib/utils"
+import { cn, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 
 const OVERVIEW_TAB = "overview"
 const GRAND_PORTFOLIO_TAB = "grand_portfolio"
@@ -22,12 +23,15 @@ const BACKTEST_TAB = "backtest"
 const ADD_GURU_TAB = "add_guru"
 
 export default function SmartMoney() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState(OVERVIEW_TAB)
-  const [styleFilter, setStyleFilter] = useState<string | null>(null)
+  const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
 
-  const { data: gurus, isLoading, isError } = useGurus()
+  const activeTab = searchParams.get("tab") ?? OVERVIEW_TAB
+  const styleFilter = searchParams.get("style")
+
+  const { data: gurus, isLoading, isError, dataUpdatedAt } = useGurus()
   const syncAllMutation = useSyncAllGurus()
   const tabsListRef = useRef<HTMLDivElement>(null)
 
@@ -45,6 +49,12 @@ export default function SmartMoney() {
     !filteredGuruIds.has(activeTab)
       ? OVERVIEW_TAB
       : activeTab
+
+  useEffect(() => {
+    const updateNow = () => setNowEpochSeconds(Math.floor(Date.now() / 1000))
+    const timer = window.setInterval(updateNow, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (!tabsListRef.current) return
@@ -78,6 +88,29 @@ export default function SmartMoney() {
     new Set(activeGurus.map((g) => g.style).filter((s): s is string => !!s)),
   )
 
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (tab === OVERVIEW_TAB) next.delete("tab")
+      else next.set("tab", tab)
+      return next
+    })
+  }
+
+  const setStyleFilter = (style: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (style == null) next.delete("style")
+      else next.set("style", style)
+      return next
+    })
+  }
+
+  const updatedAgo =
+    dataUpdatedAt > 0
+      ? formatRelativeTime(nowEpochSeconds - Math.floor(dataUpdatedAt / 1000), i18n.language)
+      : ""
+
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
@@ -85,6 +118,9 @@ export default function SmartMoney() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">{t("smart_money.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("smart_money.caption")}</p>
+          {updatedAgo ? (
+            <p className="text-xs text-muted-foreground">{t("common.last_updated_relative", { time: updatedAgo })}</p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <Button

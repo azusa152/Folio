@@ -39,7 +39,23 @@
     "dark_mode": "🌙 深色模式",
     "light_mode": "☀️ 浅色模式",
     "error_render": "发生错误",
-    "retry": "重试"
+    "retry": "重试",
+    "offline_banner": "当前离线中，数据可能不是最新。",
+    "last_updated_relative": "上次更新 {{time}}"
+  },
+  "command_palette": {
+    "title": "快捷命令面板",
+    "description": "快速跳转页面并执行操作",
+    "search_placeholder": "搜索页面与操作...",
+    "no_results": "没有匹配结果。",
+    "group_pages": "页面",
+    "group_actions": "操作",
+    "action_privacy_on": "开启隐私模式",
+    "action_privacy_off": "关闭隐私模式",
+    "action_toggle_theme": "切换深色/浅色模式",
+    "action_run_scan": "执行雷达扫描",
+    "action_send_digest": "发送每周摘要",
+    "shortcut_hint": "Cmd/Ctrl + K"
   },
   "accessibility": {
     "skip_to_content": "跳至主要内容",

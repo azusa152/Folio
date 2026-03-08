@@ -39,7 +39,23 @@
     "dark_mode": "🌙 Dark mode",
     "light_mode": "☀️ Light mode",
     "error_render": "Something went wrong",
-    "retry": "Retry"
+    "retry": "Retry",
+    "offline_banner": "You are offline. Data may not be current.",
+    "last_updated_relative": "Last updated {{time}}"
+  },
+  "command_palette": {
+    "title": "Command Palette",
+    "description": "Quickly navigate and run actions",
+    "search_placeholder": "Search pages and actions...",
+    "no_results": "No results found.",
+    "group_pages": "Pages",
+    "group_actions": "Actions",
+    "action_privacy_on": "Turn privacy mode on",
+    "action_privacy_off": "Turn privacy mode off",
+    "action_toggle_theme": "Toggle dark/light theme",
+    "action_run_scan": "Run radar scan",
+    "action_send_digest": "Send weekly digest",
+    "shortcut_hint": "Cmd/Ctrl + K"
   },
   "accessibility": {
     "skip_to_content": "Skip to content",

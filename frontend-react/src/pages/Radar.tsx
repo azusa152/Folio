@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { cn, formatLocalTime } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,9 +20,13 @@ import { AddStockDrawer } from "@/components/radar/AddStockDrawer"
 import { RadarFilterPanel } from "@/components/radar/RadarFilterPanel"
 import type { RadarEnrichedStock } from "@/api/types/radar"
 import { filterStocks, useRadarFilters } from "@/hooks/useRadarFilters"
+import type { StockCategory } from "@/api/types/radar"
+
+const RADAR_TAB_VALUES = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto", "archive"] as const
 
 export default function Radar() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -47,6 +52,10 @@ export default function Radar() {
   useScanCompletionEffect()
 
   const isScanning = scanStatus?.is_running ?? false
+  const categoryParam = searchParams.get("category")
+  const activeCategory = RADAR_TAB_VALUES.includes(categoryParam as (typeof RADAR_TAB_VALUES)[number])
+    ? (categoryParam as (typeof RADAR_TAB_VALUES)[number])
+    : "Trend_Setter"
 
   // Build enriched map: ticker → enriched data
   const enrichedMap = useMemo(() => {
@@ -125,6 +134,15 @@ export default function Radar() {
     ? formatLocalTime(lastScan.last_scanned_at)
     : null
 
+  const setActiveCategory = (category: StockCategory | "archive") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (category === "Trend_Setter") next.delete("category")
+      else next.set("category", category)
+      return next
+    })
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header row */}
@@ -135,7 +153,9 @@ export default function Radar() {
         </div>
         <div className="flex items-center gap-2">
           {isScanning && (
-            <span className={`text-xs ${FINANCE_TEXT.warning} animate-pulse`}>{t("radar.scan.running")}</span>
+            <span aria-live="polite" role="status" className={`text-xs ${FINANCE_TEXT.warning} animate-pulse`}>
+              {t("radar.scan.running")}
+            </span>
           )}
           <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => setDrawerOpen(true)}>
             {t("radar.panel_header")}
@@ -207,6 +227,8 @@ export default function Radar() {
         enrichedMap={enrichedMap}
         resonanceMap={resonanceMap ?? {}}
         heldTickers={heldTickers}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
       />
 
       {/* Control panel drawer */}
