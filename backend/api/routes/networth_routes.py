@@ -18,6 +18,7 @@ from api.schemas import (
     UpdateNetWorthItemRequest,
 )
 from application.portfolio import net_worth_service
+from domain.constants import ERROR_NET_WORTH_SEED_NO_CASH_HOLDINGS
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 
@@ -121,7 +122,7 @@ def seed_net_worth_from_portfolio(
         raise HTTPException(
             status_code=400,
             detail={
-                "error_code": "NET_WORTH_SEED_NO_CASH_HOLDINGS",
+                "error_code": ERROR_NET_WORTH_SEED_NO_CASH_HOLDINGS,
                 "detail": t("api.net_worth_seed_no_cash_holdings", lang=lang),
             },
         )

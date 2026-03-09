@@ -24,7 +24,7 @@ from application.portfolio.fx_watch_service import (
     send_fx_watch_alerts,
     update_watch,
 )
-from domain.constants import DEFAULT_USER_ID
+from domain.constants import DEFAULT_USER_ID, ERROR_FX_WATCH_NOT_FOUND
 from domain.entities import FXWatchConfig
 from i18n import get_user_language, t
 from infrastructure.database import get_session
@@ -195,7 +195,11 @@ def update_fx_watch_config(
     )
     if not watch:
         raise HTTPException(
-            status_code=404, detail=f"FX watch config with ID {watch_id} not found"
+            status_code=404,
+            detail={
+                "error_code": ERROR_FX_WATCH_NOT_FOUND,
+                "detail": f"FX watch config with ID {watch_id} not found",
+            },
         )
 
     return _to_watch_response(watch)
@@ -219,7 +223,11 @@ def delete_fx_watch_config(
     success = remove_watch(session, watch_id)
     if not success:
         raise HTTPException(
-            status_code=404, detail=f"FX watch config with ID {watch_id} not found"
+            status_code=404,
+            detail={
+                "error_code": ERROR_FX_WATCH_NOT_FOUND,
+                "detail": f"FX watch config with ID {watch_id} not found",
+            },
         )
 
     return MessageResponse(message=f"FX watch config {watch_id} deleted successfully")

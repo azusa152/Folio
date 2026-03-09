@@ -228,7 +228,7 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Build (prebuild generates types from committed openapi.json)
+      - name: Build (generate-api must be run locally if schemas changed)
         run: npm run build
 
   frontend-test:

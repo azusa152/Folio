@@ -421,7 +421,7 @@ make generate-api
 ```
 
 - `frontend-react/src/api/openapi.json`（已提交）— API 契約，可在 PR 中審查
-- `frontend-react/src/api/types/generated.d.ts`（gitignored）— 建構時自動產生，不提交至版本控制
+- `frontend-react/src/api/types/generated.d.ts`（gitignored）— 由 `make generate-api` 產生，不提交至版本控制
 
 CI 流程（GitHub Actions）會自動驗證 `openapi.json` 是否與後端保持同步，並確認前端可正常編譯。本地可執行 `make check-api-spec` 進行相同驗證。
 

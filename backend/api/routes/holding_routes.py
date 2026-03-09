@@ -32,7 +32,7 @@ from application.services import (
     send_fx_alerts,
     send_xray_warnings,
 )
-from domain.constants import ERROR_HOLDING_NOT_FOUND
+from domain.constants import ERROR_HOLDING_NOT_FOUND, ERROR_INVALID_SCENARIO_DROP
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -322,7 +322,7 @@ def get_stress_test(
         raise HTTPException(
             status_code=422,
             detail={
-                "error_code": "INVALID_SCENARIO_DROP",
+                "error_code": ERROR_INVALID_SCENARIO_DROP,
                 "detail": t(
                     "api.scenario_range_error", lang=get_user_language(session)
                 ),

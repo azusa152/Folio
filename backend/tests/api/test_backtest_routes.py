@@ -69,6 +69,9 @@ def test_backtest_signal_detail_route_should_return_404_for_unknown_signal(
 ) -> None:
     resp = client.get("/backtest/signal/NOT_A_SIGNAL")
     assert resp.status_code == 404
+    detail = resp.json()["detail"]
+    assert detail["error_code"] == "BACKTEST_SIGNAL_UNKNOWN"
+    assert "NOT_A_SIGNAL" in detail["detail"]
 
 
 def test_backfill_status_route_should_return_200_with_response_shape(client) -> None:

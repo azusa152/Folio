@@ -5,6 +5,7 @@
 #  Quick reference (run `make help` for the full list):
 #
 #  Fullstack (composite):
+#    make dev              Start backend + frontend dev servers
 #    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs
 #    make lint             Lint backend + frontend
 #    make test             Test backend + frontend (pytest + Vitest)
@@ -20,6 +21,7 @@
 #
 #  Frontend (granular):
 #    make frontend-lint    ESLint
+#    make frontend-typecheck TypeScript type check
 #    make frontend-dev     Start Vite dev server
 #    make frontend-build   Production build (run generate-api first if types are stale)
 #    make frontend-security npm audit (high severity)
@@ -152,10 +154,13 @@ backend-typecheck: .venv-check ## pyright static type check (basic mode, advisor
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: frontend-lint frontend-dev frontend-build frontend-security
+.PHONY: frontend-lint frontend-typecheck frontend-dev frontend-build frontend-security
 
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-typecheck: .node-check ## TypeScript type check (frontend only)
+	cd $(FRONTEND_DIR) && npm run typecheck
 
 frontend-dev: .node-check generate-api ## Start Vite dev server (requires backend running; or cd frontend-react && npm run dev)
 	cd $(FRONTEND_DIR) && npm run dev
@@ -169,7 +174,15 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: lint test format ci clean frontend-test
+.PHONY: dev lint test format ci clean frontend-test frontend-typecheck
+
+dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
+	@echo "Starting backend on :8000 and frontend on :3000 ..."
+	@echo "Press Ctrl+C to stop both."
+	@trap 'kill 0' INT; \
+		(cd $(BACKEND_DIR) && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000) & \
+		(cd $(FRONTEND_DIR) && npm run dev) & \
+		wait
 
 lint: backend-lint frontend-lint ## Lint entire project (backend + frontend)
 

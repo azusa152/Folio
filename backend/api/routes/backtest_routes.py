@@ -22,6 +22,10 @@ from application.services import (
     get_backtest_summary,
 )
 from domain.analysis import SIGNAL_DIRECTION
+from domain.constants import (
+    ERROR_BACKTEST_DATA_NOT_FOUND,
+    ERROR_BACKTEST_SIGNAL_UNKNOWN,
+)
 from infrastructure.database import get_session
 
 router = APIRouter()
@@ -55,13 +59,22 @@ def get_backtest_signal_detail_route(
 ) -> BacktestDetailResponse:
     signal_upper = signal.upper()
     if signal_upper not in SIGNAL_DIRECTION:
-        raise HTTPException(status_code=404, detail=f"Unknown signal: {signal_upper}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_BACKTEST_SIGNAL_UNKNOWN,
+                "detail": f"Unknown signal: {signal_upper}",
+            },
+        )
 
     data = get_backtest_detail(session, signal_upper, limit=limit)
     if not data:
         raise HTTPException(
             status_code=404,
-            detail=f"No backtest data for signal: {signal_upper}",
+            detail={
+                "error_code": ERROR_BACKTEST_DATA_NOT_FOUND,
+                "detail": f"No backtest data for signal: {signal_upper}",
+            },
         )
     return BacktestDetailResponse(**data)
 

@@ -248,7 +248,9 @@ class TestSyncAll:
         try:
             resp = client.post("/gurus/sync")
             assert resp.status_code == 429
-            assert "in progress" in resp.json()["detail"].lower()
+            detail = resp.json()["detail"]
+            assert detail["error_code"] == "SYNC_IN_PROGRESS"
+            assert "in progress" in detail["detail"].lower()
         finally:
             _sync_lock.release()
 
@@ -321,6 +323,8 @@ class TestGetFiling:
 
         resp = client.get(f"/gurus/{guru_id}/filing")
         assert resp.status_code == 404
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "GURU_FILING_NOT_FOUND"
 
     def test_should_return_filing_summary(self, client):
         with Session(test_engine) as session:
@@ -364,6 +368,8 @@ class TestGetTopHoldings:
     def test_should_return_404_when_no_filing(self, client):
         resp = client.get("/gurus/9999/top")
         assert resp.status_code == 404
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "GURU_FILING_NOT_FOUND"
 
     def test_should_return_top_n_holdings(self, client):
         with Session(test_engine) as session:
@@ -1038,6 +1044,8 @@ class TestGuruBacktestEndpoint:
         with patch(GURU_BACKTEST_TARGET, return_value=None):
             resp = client.get("/gurus/999/backtest")
         assert resp.status_code == 404
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "GURU_NOT_FOUND"
 
     def test_should_return_400_when_not_enough_filings(self, client):
         with patch(GURU_BACKTEST_TARGET, side_effect=ValueError("not_enough_filings")):

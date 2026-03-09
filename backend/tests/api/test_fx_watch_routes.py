@@ -133,7 +133,9 @@ class TestFXWatchCRUD:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        detail = response.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_NOT_FOUND"
+        assert "not found" in detail["detail"].lower()
 
     def test_delete_fx_watch_config(self, client: TestClient):
         # Arrange
@@ -163,7 +165,9 @@ class TestFXWatchCRUD:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        detail = response.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_NOT_FOUND"
+        assert "not found" in detail["detail"].lower()
 
     def test_create_with_only_recent_high_enabled(self, client: TestClient):
         """Create config with only recent high toggle enabled."""
