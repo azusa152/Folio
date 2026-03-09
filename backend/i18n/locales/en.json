@@ -349,5 +349,9 @@
     "not_found": "Account not found",
     "created": "Account created",
     "deactivated": "Account deactivated"
+  },
+  "analytics": {
+    "date_range_both_required": "start and end must both be provided",
+    "date_range_invalid_order": "start must not be later than end"
   }
 }

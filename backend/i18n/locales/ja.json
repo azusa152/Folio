@@ -349,5 +349,9 @@
     "not_found": "アカウントが見つかりません",
     "created": "アカウントを作成しました",
     "deactivated": "アカウントを無効化しました"
+  },
+  "analytics": {
+    "date_range_both_required": "start と end は両方指定してください",
+    "date_range_invalid_order": "start は end より前の日付にしてください"
   }
 }

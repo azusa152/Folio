@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { ASSET_CLASS_COLOR_MAP, CATEGORY_TO_ASSET_CLASS } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
+import { maskMoney } from "@/hooks/usePrivacyMode"
 import { Button } from "@/components/ui/button"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import type { HoldingDetail } from "@/api/types/allocation"
@@ -47,7 +48,7 @@ export function AssetClassDonut({ data, holdings, privacyMode = false, displayCu
     <div className="space-y-2">
       <h3 className="text-sm font-semibold">{t("allocation.asset_class.title")}</h3>
       <ResponsiveContainer width="100%" height={200}>
-        <PieChart>
+        <PieChart role="img" aria-label={t("allocation.asset_class.title")}>
           <Pie
             data={chartData}
             dataKey="value"
@@ -72,7 +73,7 @@ export function AssetClassDonut({ data, holdings, privacyMode = false, displayCu
           <Tooltip
             contentStyle={theme.tooltipStyle}
             formatter={(v: number | undefined, _name: unknown, props: { payload?: { name?: string; pct?: string } }) => [
-              v != null ? v.toLocaleString() : "",
+              v != null ? maskMoney(v, displayCurrency ?? "USD") : "",
               props.payload?.name ? `${props.payload.name} (${props.payload.pct ?? ""}%)` : "",
             ]}
           />

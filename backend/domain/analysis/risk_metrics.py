@@ -18,6 +18,12 @@ import math
 from dataclasses import dataclass
 
 from domain.analysis.drawdown import compute_max_drawdown
+from domain.core.constants import (
+    ANALYTICS_MIN_DAYS_FOR_RATIOS,
+    ANALYTICS_MIN_DOWNSIDE_SAMPLES,
+    ANALYTICS_RISK_FREE_RATE,
+    ANALYTICS_TRADING_DAYS_PER_YEAR,
+)
 
 
 @dataclass(frozen=True)
@@ -33,11 +39,10 @@ class RiskMetrics:
     trading_days: int
 
 
-TRADING_DAYS_PER_YEAR = 252
-RISK_FREE_RATE = 0.04  # 4% — approximate US T-bill rate
-
-MIN_DAYS_FOR_RATIOS = 30
-MIN_DOWNSIDE_SAMPLES = 10
+TRADING_DAYS_PER_YEAR = ANALYTICS_TRADING_DAYS_PER_YEAR
+RISK_FREE_RATE = ANALYTICS_RISK_FREE_RATE
+MIN_DAYS_FOR_RATIOS = ANALYTICS_MIN_DAYS_FOR_RATIOS
+MIN_DOWNSIDE_SAMPLES = ANALYTICS_MIN_DOWNSIDE_SAMPLES
 
 
 def compute_daily_returns(values: list[float]) -> list[float]:

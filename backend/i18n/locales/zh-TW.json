@@ -349,5 +349,9 @@
     "not_found": "找不到帳戶",
     "created": "帳戶已建立",
     "deactivated": "帳戶已停用"
+  },
+  "analytics": {
+    "date_range_both_required": "start 與 end 必須同時提供",
+    "date_range_invalid_order": "start 不得晚於 end"
   }
 }

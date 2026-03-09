@@ -366,10 +366,10 @@ def handle_webhook(
                 interpretation=t("webhook.interpretation.add_stock_ready", lang=lang),
                 params=params,
             )
-        except StockAlreadyExistsError as e:
+        except StockAlreadyExistsError:
             return _wrap_response(
                 success=False,
-                message=str(e),
+                message=t("stock.already_exists", lang=lang, ticker=str(t_ticker)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
             )

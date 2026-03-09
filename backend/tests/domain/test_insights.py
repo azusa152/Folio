@@ -52,6 +52,20 @@ class TestGenerateAllocationInsights:
         assert drift[0].severity == InsightSeverity.ACTION
         assert drift[0].vars["category"] == "Tech"
 
+    def test_should_flag_drift_pct_key_from_rebalance(self):
+        """Rebalance service returns ``drift_pct`` — ensure insights reads it."""
+        categories = {
+            "Tech": {"market_value": 50000, "drift_pct": 8.0},
+            "Bonds": {"market_value": 50000, "drift_pct": -2.0},
+        }
+        insights = generate_allocation_insights(
+            categories, drift_threshold=5.0, health_score=70
+        )
+        drift = [i for i in insights if i.key == "insight.drift_exceeds_threshold"]
+        assert len(drift) == 1
+        assert drift[0].vars["category"] == "Tech"
+        assert drift[0].vars["drift_pct"] == 8.0
+
     def test_should_praise_excellent_health(self):
         insights = generate_allocation_insights(
             {}, drift_threshold=5.0, health_score=90

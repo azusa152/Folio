@@ -30,8 +30,8 @@ def _make_snapshot(
 
 _MOCK_REBALANCE = {
     "categories": {
-        "Tech": {"market_value": 70000, "drift": 8.0},
-        "Bonds": {"market_value": 30000, "drift": -2.0},
+        "Tech": {"market_value": 70000, "drift_pct": 8.0},
+        "Bonds": {"market_value": 30000, "drift_pct": -2.0},
     },
     "health_score": 85,
 }
@@ -209,6 +209,38 @@ class TestGetPortfolioInsights:
         get_portfolio_insights(session, "USD")
 
         assert mock_rebalance.call_count == 1
+
+    @patch("application.portfolio.insight_service.get_risk_metrics")
+    @patch("application.portfolio.insight_service.get_snapshots")
+    @patch("application.portfolio.insight_service.calculate_rebalance")
+    def test_should_handle_malformed_benchmark_json(
+        self,
+        mock_rebalance,
+        mock_snapshots,
+        mock_risk,
+    ):
+        """Malformed benchmark_values must not crash the insights endpoint."""
+        invalidate_insight_cache()
+        mock_rebalance.return_value = {"categories": {}, "health_score": 70}
+        bad_snap = PortfolioSnapshot(
+            id=1,
+            snapshot_date=date(2025, 1, 1),
+            total_value=10000,
+            benchmark_values="NOT VALID JSON",
+        )
+        good_snap = _make_snapshot(30, 11500, 5000)
+        mock_snapshots.return_value = [bad_snap, good_snap]
+        mock_risk.return_value = {
+            **_MOCK_RISK,
+            "max_drawdown_pct": 0,
+            "sharpe_ratio": 0.5,
+        }
+
+        result = get_portfolio_insights(MagicMock(spec=Session), "USD")
+
+        assert isinstance(result, list)
+        bench = [i for i in result if "benchmark" in i["key"]]
+        assert len(bench) == 0
 
 
 class TestInvalidateInsightCache:

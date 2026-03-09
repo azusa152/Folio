@@ -45,7 +45,7 @@ def generate_allocation_insights(
 
     Args:
         categories: Mapping of category name to dict with ``market_value``
-            and optional ``drift`` (percentage points off target).
+            and optional ``drift_pct`` (percentage points off target).
         drift_threshold: Maximum acceptable drift in percentage points.
         health_score: Portfolio health score (0–100).
     """
@@ -66,7 +66,7 @@ def generate_allocation_insights(
                 )
 
     for cat, info in categories.items():
-        drift = abs(info.get("drift", 0))
+        drift = abs(info.get("drift_pct", info.get("drift", 0)))
         if drift > drift_threshold:
             insights.append(
                 Insight(

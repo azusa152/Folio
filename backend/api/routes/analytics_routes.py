@@ -17,19 +17,25 @@ from application.portfolio.analytics_service import (
     get_risk_metrics,
 )
 from application.portfolio.insight_service import get_portfolio_insights
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 
 router = APIRouter(tags=["analytics"])
 
 
-def _validate_date_range(start: date | None, end: date | None) -> None:
+def _validate_date_range(
+    start: date | None, end: date | None, lang: str = "en"
+) -> None:
     if (start is None) != (end is None):
         raise HTTPException(
             status_code=422,
-            detail="start 與 end 必須同時提供",
+            detail=t("analytics.date_range_both_required", lang=lang),
         )
     if start is not None and end is not None and start > end:
-        raise HTTPException(status_code=422, detail="start 不得晚於 end")
+        raise HTTPException(
+            status_code=422,
+            detail=t("analytics.date_range_invalid_order", lang=lang),
+        )
 
 
 @router.get("/analytics/drawdown", response_model=list[DrawdownPointResponse])
@@ -39,7 +45,8 @@ def drawdown(
     end: date | None = Query(None),
     session: Session = Depends(get_session),
 ):
-    _validate_date_range(start, end)
+    lang = get_user_language(session)
+    _validate_date_range(start, end, lang)
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=3600"
     )
@@ -53,7 +60,8 @@ def risk_metrics(
     end: date | None = Query(None),
     session: Session = Depends(get_session),
 ):
-    _validate_date_range(start, end)
+    lang = get_user_language(session)
+    _validate_date_range(start, end, lang)
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=3600"
     )
@@ -70,7 +78,8 @@ def contribution_growth(
     end: date | None = Query(None),
     session: Session = Depends(get_session),
 ):
-    _validate_date_range(start, end)
+    lang = get_user_language(session)
+    _validate_date_range(start, end, lang)
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=3600"
     )

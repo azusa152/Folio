@@ -63,6 +63,8 @@ export function GeographicAllocation({ data, holdings, privacyMode = false, disp
           data={chartData}
           layout="vertical"
           margin={{ top: 4, right: 60, left: 8, bottom: 4 }}
+          role="img"
+          aria-label={t("allocation.geo.title")}
         >
           <XAxis type="number" hide />
           <YAxis

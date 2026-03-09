@@ -75,8 +75,11 @@ def get_portfolio_insights(
 
     benchmark_return: float | None = None
     if len(snapshots) >= 2:
-        first_bm = json.loads(snapshots[0].benchmark_values or "{}")
-        last_bm = json.loads(snapshots[-1].benchmark_values or "{}")
+        try:
+            first_bm = json.loads(snapshots[0].benchmark_values or "{}")
+            last_bm = json.loads(snapshots[-1].benchmark_values or "{}")
+        except (json.JSONDecodeError, TypeError):
+            first_bm, last_bm = {}, {}
         sp_first = first_bm.get("^GSPC")
         sp_last = last_bm.get("^GSPC")
         if sp_first and sp_last and sp_first > 0:

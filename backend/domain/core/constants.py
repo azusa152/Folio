@@ -529,6 +529,14 @@ INSIGHT_POOR_HEALTH_SCORE = 50
 INSIGHT_STRONG_SHARPE = 1.0
 
 # ---------------------------------------------------------------------------
+# Analytics / Risk Metrics
+# ---------------------------------------------------------------------------
+ANALYTICS_TRADING_DAYS_PER_YEAR = 252
+ANALYTICS_RISK_FREE_RATE = 0.04  # approximate US T-bill rate
+ANALYTICS_MIN_DAYS_FOR_RATIOS = 30
+ANALYTICS_MIN_DOWNSIDE_SAMPLES = 10
+
+# ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types
 # ---------------------------------------------------------------------------
 NOTIFICATION_TYPES = {

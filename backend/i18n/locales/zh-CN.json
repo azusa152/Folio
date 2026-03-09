@@ -349,5 +349,9 @@
     "not_found": "找不到账户",
     "created": "账户已创建",
     "deactivated": "账户已停用"
+  },
+  "analytics": {
+    "date_range_both_required": "start 与 end 必须同时提供",
+    "date_range_invalid_order": "start 不得晚于 end"
   }
 }
