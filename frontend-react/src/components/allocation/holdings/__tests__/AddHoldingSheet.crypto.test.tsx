@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { AddHoldingSheet } from "../AddHoldingSheet"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))

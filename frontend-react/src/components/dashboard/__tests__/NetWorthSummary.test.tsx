@@ -4,12 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NetWorthSummary } from "../NetWorthSummary"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("@/components/LightweightChartWrapper", () => ({
   LightweightChartWrapper: () => <div data-testid="sparkline" />,
 }))

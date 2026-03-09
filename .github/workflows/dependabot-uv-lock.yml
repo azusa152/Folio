@@ -1,0 +1,31 @@
+name: Dependabot uv lock
+
+on:
+  pull_request:
+    paths:
+      - "backend/pyproject.toml"
+
+permissions:
+  contents: write
+
+jobs:
+  update-uv-lock:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Regenerate uv lockfile
+        run: uv lock
+        working-directory: backend
+
+      - name: Commit uv.lock
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate uv.lock"

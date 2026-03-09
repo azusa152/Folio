@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { FundamentalsTab } from "../FundamentalsTab"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("@/api/hooks/useRadar", () => ({
   useFundamentals: () => ({ data: undefined, isLoading: false }),
 }))

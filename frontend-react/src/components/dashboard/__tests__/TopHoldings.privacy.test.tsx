@@ -1,15 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { TopHoldings } from "../TopHoldings"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import type { RebalanceResponse } from "@/api/types/dashboard"
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 const rebalance: RebalanceResponse = {
   total_value: 10000,

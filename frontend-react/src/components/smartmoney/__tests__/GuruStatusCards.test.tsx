@@ -3,12 +3,6 @@ import { render, screen } from "@testing-library/react"
 import { GuruStatusCards } from "../GuruStatusCards"
 import type { GuruSummaryItem } from "@/api/types/smartMoney"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
-  }),
-}))
-
 vi.mock("@/api/hooks/useSmartMoney", () => ({
   useSyncGuru: () => ({ isPending: false, variables: undefined, mutate: vi.fn() }),
 }))

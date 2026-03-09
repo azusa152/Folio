@@ -3,12 +3,6 @@ import { render, screen } from "@testing-library/react"
 import { GrandPortfolioTab } from "../GrandPortfolioTab"
 import type { GrandPortfolioResponse } from "@/api/types/smartMoney"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
-  }),
-}))
-
 vi.mock("@/hooks/useRechartsTheme", () => ({
   useRechartsTheme: () => ({
     tickColor: "#666",

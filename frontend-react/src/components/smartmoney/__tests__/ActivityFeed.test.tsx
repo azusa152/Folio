@@ -1,13 +1,7 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { ActivityFeed } from "../ActivityFeed"
 import type { ActivityFeed as ActivityFeedType } from "@/api/types/smartMoney"
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
-  }),
-}))
 
 function makeActivityFeed(
   overrides: Partial<ActivityFeedType> = {},
