@@ -5,13 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-
-interface InsightItem {
-  key: string
-  severity: "info" | "positive" | "warning" | "action"
-  vars: Record<string, string | number>
-  category: string
-}
+import type { InsightItem } from "@/api/hooks/useAnalytics"
 
 interface Props {
   insights: InsightItem[]
@@ -19,7 +13,11 @@ interface Props {
   isLoading?: boolean
 }
 
-const SEVERITY_CONFIG = {
+const SEVERITY_CONFIG: Record<string, {
+  icon: typeof Info
+  color: string
+  bg: string
+}> = {
   info: {
     icon: Info,
     color: "text-blue-500",
@@ -40,7 +38,7 @@ const SEVERITY_CONFIG = {
     color: "text-red-500",
     bg: "bg-red-50 dark:bg-red-950/30",
   },
-} as const
+}
 
 export function InsightCard({ insights, maxVisible = 3, isLoading }: Props) {
   const { t } = useTranslation()
