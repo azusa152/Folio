@@ -337,7 +337,9 @@
     "performance_backfill_run": "バックフィル実行",
     "performance_backfilling": "バックフィル中…",
     "performance_backfill_complete": "基準データを読み込みました — チャートを更新しました",
-    "performance_backfill_timeout": "バックフィルに時間がかかっています — ページを更新してください"
+    "performance_backfill_timeout": "バックフィルに時間がかかっています — ページを更新してください",
+    "show_advanced": "詳細指標を表示",
+    "hide_advanced": "詳細指標を非表示"
   },
   "radar": {
     "title": "📡 Folio",
@@ -748,6 +750,12 @@
       "actions": "💡 アクション",
       "settings": "⚙️ 設定",
       "net_worth": "💎 純資産"
+    },
+    "tab_teaser": {
+      "risk_desc": "通貨エクスポージャーの分析と、市場暴落に対するストレステストを行います。",
+      "actions_desc": "ドリフトと税負担を最小化するスマート売却提案。",
+      "show_details": "詳細を表示",
+      "hide_details": "詳細を非表示"
     },
     "step1_title": "🎯 Step 1 — 目標配分の設定",
     "step2_title": "💼 Step 2 — 保有銘柄管理",
@@ -1764,5 +1772,26 @@
     "moderate_drawdown": "ポートフォリオはピークから{{drawdown_pct}}%下落しています — 通常の範囲内です。",
     "strong_risk_adjusted": "シャープレシオ{{sharpe}}は、優れたリスク調整後リターンを示しています。",
     "negative_risk_adjusted": "シャープレシオ{{sharpe}}は、リスクに見合ったリターンが得られていないことを示しています。"
+  },
+  "simple": {
+    "twr": "ポートフォリオリターン",
+    "drift": "目標とのずれ",
+    "rebalance": "配分調整",
+    "stress_test": "シミュレーション",
+    "xray": "保有内訳",
+    "cost_basis": "取得コスト",
+    "unrealized_pl": "含み損益",
+    "sharpe": "リスク調整スコア",
+    "sortino": "下落リスクスコア",
+    "max_drawdown": "最大下落幅",
+    "calmar": "リターン対下落比",
+    "volatility": "価格変動",
+    "benchmark": "市場平均"
+  },
+  "terminology_settings": {
+    "terminology_mode": "表示モード",
+    "mode_simplified": "シンプル（ほとんどの方に推奨）",
+    "mode_expert": "エキスパート（金融専門用語を表示）",
+    "terminology_hint": "アプリ全体の金融用語の表示方法を切り替えます。"
   }
 }

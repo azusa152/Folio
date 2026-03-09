@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useXRayAlert } from "@/api/hooks/useAllocation"
 import type { XRayEntry } from "@/api/types/allocation"
+import { useTerminology } from "@/hooks/useTerminology"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -13,6 +14,7 @@ const XRAY_WARNING_THRESHOLD = 15
 
 export function XRayOverlap({ xray }: Props) {
   const { t } = useTranslation()
+  const { term } = useTerminology()
   const alertMutation = useXRayAlert()
   const feedback = alertMutation.isSuccess ? t("common.success") : alertMutation.isError ? t("common.error") : null
 
@@ -22,7 +24,7 @@ export function XRayOverlap({ xray }: Props) {
   if (top15.length === 0) {
     return (
       <div className="space-y-1">
-        <p className="text-sm font-semibold">{t("allocation.xray.title")}</p>
+        <p className="text-sm font-semibold">{term("xray", t("allocation.xray.title"))}</p>
         <p className="text-sm text-muted-foreground">{t("allocation.xray.empty")}</p>
       </div>
     )
@@ -31,7 +33,7 @@ export function XRayOverlap({ xray }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{t("allocation.xray.title")}</p>
+        <p className="text-sm font-semibold">{term("xray", t("allocation.xray.title"))}</p>
         <Button
           size="sm"
           variant="outline"

@@ -35,6 +35,13 @@ vi.mock("@/lib/format", () => ({
   formatCurrency: (v: number) => `$${v.toFixed(2)}`,
 }))
 
+vi.mock("@/hooks/useTerminology", () => ({
+  useTerminology: () => ({
+    term: (key: string, fallback?: string) => fallback ?? key,
+    isSimplified: false,
+  }),
+}))
+
 vi.mock("@/components/LightweightChartWrapper", () => ({
   LightweightChartWrapper: () => <div data-testid="chart" />,
 }))

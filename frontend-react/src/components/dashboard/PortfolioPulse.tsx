@@ -4,6 +4,7 @@ import { AreaSeries, type IChartApi } from "lightweight-charts"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
+import { useTerminology } from "@/hooks/useTerminology"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { InfoPopover } from "./InfoPopover"
@@ -278,6 +279,7 @@ export function PortfolioPulse({
 }: Props) {
   const { t } = useTranslation()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
+  const { term } = useTerminology()
 
   if (isLoading) {
     return (
@@ -378,7 +380,7 @@ export function PortfolioPulse({
                 )}
                 {ytdTwr != null && (
                   <span className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{t("dashboard.ytd_return")}</GlossaryTerm>{" "}
+                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{term("twr", t("dashboard.ytd_return"))}</GlossaryTerm>{" "}
                     {ytdTwr >= 0 ? "▲" : "▼"}
                     {Math.abs(ytdTwr).toFixed(2)}%
                   </span>

@@ -337,7 +337,9 @@
     "performance_backfill_run": "執行回填",
     "performance_backfilling": "回填中…",
     "performance_backfill_complete": "基準資料已載入 — 圖表已更新",
-    "performance_backfill_timeout": "回填時間較長，請稍後重新整理頁面"
+    "performance_backfill_timeout": "回填時間較長，請稍後重新整理頁面",
+    "show_advanced": "顯示進階指標",
+    "hide_advanced": "隱藏進階指標"
   },
   "radar": {
     "title": "📡 Folio",
@@ -748,6 +750,12 @@
       "actions": "💡 操作建議",
       "settings": "⚙️ 設定",
       "net_worth": "💎 淨資產"
+    },
+    "tab_teaser": {
+      "risk_desc": "分析貨幣曝險，並對投資組合進行市場崩盤壓力測試。",
+      "actions_desc": "智慧賣出建議，最小化偏離與稅務影響。",
+      "show_details": "顯示詳情",
+      "hide_details": "隱藏詳情"
     },
     "step1_title": "🎯 Step 1 — 設定目標配置",
     "step2_title": "💼 Step 2 — 持倉管理",
@@ -1764,5 +1772,26 @@
     "moderate_drawdown": "投資組合從峰值下跌了{{drawdown_pct}}% — 在正常範圍內。",
     "strong_risk_adjusted": "夏普比率{{sharpe}}表明風險調整後收益優異。",
     "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能補償所承擔的風險。"
+  },
+  "simple": {
+    "twr": "投資組合回報",
+    "drift": "偏離目標",
+    "rebalance": "調整配置",
+    "stress_test": "假設情境",
+    "xray": "持倉明細",
+    "cost_basis": "購入成本",
+    "unrealized_pl": "帳面損益",
+    "sharpe": "風險調整評分",
+    "sortino": "下行風險評分",
+    "max_drawdown": "最大跌幅",
+    "calmar": "報酬與跌幅比",
+    "volatility": "價格波動",
+    "benchmark": "市場平均"
+  },
+  "terminology_settings": {
+    "terminology_mode": "顯示模式",
+    "mode_simplified": "簡化（建議大多數使用者）",
+    "mode_expert": "專業（顯示完整金融術語）",
+    "terminology_hint": "控制應用程式中金融術語的顯示方式。"
   }
 }

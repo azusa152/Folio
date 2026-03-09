@@ -85,6 +85,8 @@ def _run_migrations() -> None:
         "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
         # NetWorthItem: source tracking for seeded portfolio cash
         "ALTER TABLE networthitem ADD COLUMN source TEXT DEFAULT 'manual';",
+        # UserPreferences: terminology display mode (Phase 7)
+        "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
     ]
 
     with engine.connect() as conn:

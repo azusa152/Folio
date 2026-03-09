@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import { useTerminology } from "@/hooks/useTerminology"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useStressTest } from "@/api/hooks/useAllocation"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
@@ -32,6 +33,7 @@ function fmtValue(v: number, currency: string): string {
 
 export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
+  const { term } = useTerminology()
   const [sliderValue, setSliderValue] = useState(20)
   const [debouncedDrop, setDebouncedDrop] = useState(20)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,7 +52,7 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-semibold">{t("allocation.stress.title")}</p>
+      <p className="text-sm font-semibold">{term("stress_test", t("allocation.stress.title"))}</p>
 
       {/* Slider */}
       <div className="space-y-1">

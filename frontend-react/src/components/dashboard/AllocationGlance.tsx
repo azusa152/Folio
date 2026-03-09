@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
+import { useTerminology } from "@/hooks/useTerminology"
 import {
   PieChart,
   Pie,
@@ -34,6 +35,7 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const navigate = useNavigate()
+  const { term } = useTerminology()
 
   if (isLoading) {
     return (
@@ -160,7 +162,7 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
 
         {/* Drift bar chart */}
         <div>
-          <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.drift_title")}</p>
+          <p className="text-xs text-center text-muted-foreground mb-1">{term("drift", t("dashboard.drift_title"))}</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={driftData} margin={{ top: 14, right: 8, left: -16, bottom: 0 }}>
               <XAxis

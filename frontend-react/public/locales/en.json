@@ -337,7 +337,9 @@
     "performance_backfill_run": "Run backfill",
     "performance_backfilling": "Backfilling…",
     "performance_backfill_complete": "Benchmark data loaded — chart updated",
-    "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page"
+    "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page",
+    "show_advanced": "Show advanced metrics",
+    "hide_advanced": "Hide advanced metrics"
   },
   "radar": {
     "title": "📡 Folio",
@@ -748,6 +750,12 @@
       "actions": "💡 Actions",
       "settings": "⚙️ Settings",
       "net_worth": "💎 Net Worth"
+    },
+    "tab_teaser": {
+      "risk_desc": "Analyze currency exposure and stress test your portfolio against market crashes.",
+      "actions_desc": "Smart withdrawal recommendations that minimize drift and tax impact.",
+      "show_details": "Show details",
+      "hide_details": "Hide details"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
     "step2_title": "💼 Step 2 — Holdings Management",
@@ -1764,5 +1772,26 @@
     "moderate_drawdown": "Your portfolio has declined {{drawdown_pct}}% from its peak — within normal range.",
     "strong_risk_adjusted": "Your Sharpe ratio of {{sharpe}} indicates strong risk-adjusted returns.",
     "negative_risk_adjusted": "Your Sharpe ratio of {{sharpe}} suggests returns haven't compensated for risk."
+  },
+  "simple": {
+    "twr": "Portfolio Return",
+    "drift": "Off-Target",
+    "rebalance": "Adjust Allocation",
+    "stress_test": "What-If Scenario",
+    "xray": "Holdings Breakdown",
+    "cost_basis": "Purchase Cost",
+    "unrealized_pl": "Paper Gain/Loss",
+    "sharpe": "Risk-Adjusted Score",
+    "sortino": "Downside Risk Score",
+    "max_drawdown": "Largest Decline",
+    "calmar": "Return vs Decline Ratio",
+    "volatility": "Price Swings",
+    "benchmark": "Market Average"
+  },
+  "terminology_settings": {
+    "terminology_mode": "Display Mode",
+    "mode_simplified": "Simplified (recommended for most users)",
+    "mode_expert": "Expert (full financial terminology)",
+    "terminology_hint": "Controls how financial terms are displayed throughout the app."
   }
 }

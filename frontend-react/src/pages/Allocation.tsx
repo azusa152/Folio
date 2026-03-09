@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, Clock3 } from "lucide-react"
+import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
@@ -18,6 +18,7 @@ import { TargetAllocation } from "@/components/allocation/tools/TargetAllocation
 import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManager"
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
+import { TerminologySettings } from "@/components/allocation/settings/TerminologySettings"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
@@ -51,6 +52,8 @@ export default function Allocation() {
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
   const [netWorthHistoryDays, setNetWorthHistoryDays] = useState<30 | 90 | 180 | 365 | 730>(30)
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const [riskExpanded, setRiskExpanded] = useState(false)
+  const [actionsExpanded, setActionsExpanded] = useState(false)
   const [seedFeedback, setSeedFeedback] = useState("")
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
@@ -202,14 +205,46 @@ export default function Allocation() {
 
         {/* Risk tab */}
         <TabsContent value="risk" className="mt-4 space-y-6">
-          <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "risk"} />
-          <hr className="border-border" />
-          <StressTest displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "risk"} />
+          {riskExpanded ? (
+            <>
+              <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "risk"} />
+              <hr className="border-border" />
+              <StressTest displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "risk"} />
+              <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setRiskExpanded(false)}>
+                <ChevronDown className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.hide_details")}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("allocation.tab_teaser.risk_desc")}</p>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setRiskExpanded(true)}>
+                <ChevronRight className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.show_details")}
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         {/* Actions tab */}
-        <TabsContent value="actions" className="mt-4">
-          <SmartWithdrawal privacyMode={privacyMode} />
+        <TabsContent value="actions" className="mt-4 space-y-6">
+          {actionsExpanded ? (
+            <>
+              <SmartWithdrawal privacyMode={privacyMode} />
+              <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setActionsExpanded(false)}>
+                <ChevronDown className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.hide_details")}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("allocation.tab_teaser.actions_desc")}</p>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setActionsExpanded(true)}>
+                <ChevronRight className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.show_details")}
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         {/* Net Worth tab */}
@@ -365,6 +400,15 @@ export default function Allocation() {
             </div>
             <div className="rounded-md border border-border p-4">
               <HoldingsManager privacyMode={privacyMode} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("terminology_settings.terminology_mode")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TerminologySettings />
             </div>
           </section>
 

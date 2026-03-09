@@ -337,7 +337,9 @@
     "performance_backfill_run": "执行回填",
     "performance_backfilling": "回填中…",
     "performance_backfill_complete": "基准数据已加载 — 图表已更新",
-    "performance_backfill_timeout": "回填时间较长，请稍后刷新页面"
+    "performance_backfill_timeout": "回填时间较长，请稍后刷新页面",
+    "show_advanced": "显示进阶指标",
+    "hide_advanced": "隐藏进阶指标"
   },
   "radar": {
     "title": "📡 Folio",
@@ -748,6 +750,12 @@
       "actions": "💡 操作建议",
       "settings": "⚙️ 设定",
       "net_worth": "💎 净资产"
+    },
+    "tab_teaser": {
+      "risk_desc": "分析货币敞口，并对投资组合进行市场崩盘压力测试。",
+      "actions_desc": "智能卖出建议，最小化偏离与税务影响。",
+      "show_details": "显示详情",
+      "hide_details": "隐藏详情"
     },
     "step1_title": "🎯 Step 1 — 设定目标配置",
     "step2_title": "💼 Step 2 — 持仓管理",
@@ -1764,5 +1772,26 @@
     "moderate_drawdown": "投资组合从峰值下跌了{{drawdown_pct}}% — 在正常范围内。",
     "strong_risk_adjusted": "夏普比率{{sharpe}}表明风险调整后收益优异。",
     "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能补偿所承担的风险。"
+  },
+  "simple": {
+    "twr": "投资组合回报",
+    "drift": "偏离目标",
+    "rebalance": "调整配置",
+    "stress_test": "假设情境",
+    "xray": "持仓明细",
+    "cost_basis": "购入成本",
+    "unrealized_pl": "账面盈亏",
+    "sharpe": "风险调整评分",
+    "sortino": "下行风险评分",
+    "max_drawdown": "最大跌幅",
+    "calmar": "回报与跌幅比",
+    "volatility": "价格波动",
+    "benchmark": "市场平均"
+  },
+  "terminology_settings": {
+    "terminology_mode": "显示模式",
+    "mode_simplified": "简化（推荐大多数用户使用）",
+    "mode_expert": "专业（显示完整金融术语）",
+    "terminology_hint": "控制应用中金融术语的显示方式。"
   }
 }

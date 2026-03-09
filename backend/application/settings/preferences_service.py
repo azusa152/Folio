@@ -35,12 +35,14 @@ def get_preferences(session: Session) -> dict:
         return {
             "language": DEFAULT_LANGUAGE,
             "privacy_mode": False,
+            "terminology_mode": "simplified",
             "notification_preferences": DEFAULT_NOTIFICATION_PREFERENCES,
             "notification_rate_limits": DEFAULT_NOTIFICATION_RATE_LIMITS,
         }
     return {
         "language": prefs.language,
         "privacy_mode": prefs.privacy_mode,
+        "terminology_mode": prefs.terminology_mode,
         "notification_preferences": prefs.get_notification_prefs(),
         "notification_rate_limits": prefs.get_notification_rate_limits(),
     }
@@ -54,6 +56,8 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             if payload.get("language") is not None:
                 prefs.language = payload["language"]
             prefs.privacy_mode = payload["privacy_mode"]
+            if payload.get("terminology_mode") is not None:
+                prefs.terminology_mode = payload["terminology_mode"]
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
             if payload.get("notification_rate_limits") is not None:
@@ -63,6 +67,7 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
                 user_id=DEFAULT_USER_ID,
                 language=payload.get("language") or DEFAULT_LANGUAGE,
                 privacy_mode=payload["privacy_mode"],
+                terminology_mode=payload.get("terminology_mode", "simplified"),
             )
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
@@ -80,6 +85,7 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
         return {
             "language": prefs.language,
             "privacy_mode": prefs.privacy_mode,
+            "terminology_mode": prefs.terminology_mode,
             "notification_preferences": prefs.get_notification_prefs(),
             "notification_rate_limits": prefs.get_notification_rate_limits(),
         }

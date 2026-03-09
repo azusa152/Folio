@@ -10476,6 +10476,21 @@
             "type": "boolean",
             "title": "Privacy Mode"
           },
+          "terminology_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "simplified",
+                  "expert"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminology Mode"
+          },
           "notification_preferences": {
             "anyOf": [
               {
@@ -10524,6 +10539,15 @@
           "privacy_mode": {
             "type": "boolean",
             "title": "Privacy Mode"
+          },
+          "terminology_mode": {
+            "type": "string",
+            "enum": [
+              "simplified",
+              "expert"
+            ],
+            "title": "Terminology Mode",
+            "default": "simplified"
           },
           "notification_preferences": {
             "additionalProperties": {

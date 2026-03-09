@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { maskMoney } from "@/hooks/usePrivacyMode"
@@ -37,6 +38,7 @@ function computeFxReturn(purchaseFx: number | null | undefined, currentFx: numbe
 
 export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props) {
   const { t } = useTranslation()
+  const { term } = useTerminology()
 
   if (!holdings || holdings.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("allocation.holdings.empty")}</p>
@@ -54,7 +56,7 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
               <th className="text-right py-0.5 pr-2">{t("allocation.col.qty")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.value")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.weight_pct")}</th>
-              <th className="text-right py-0.5 pr-2">{t("allocation.col.cost")}</th>
+              <th className="text-right py-0.5 pr-2">{term("cost_basis", t("allocation.col.cost"))}</th>
               <th className="text-right py-0.5">{t("allocation.col.change_pct")}</th>
             </tr>
           </thead>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useTerminology } from "@/hooks/useTerminology"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useAllocRebalance } from "@/api/hooks/useAllocation"
@@ -42,6 +43,7 @@ function filterHoldingsByDrill(
 
 export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
+  const { term } = useTerminology()
   const { data, isLoading } = useAllocRebalance(displayCurrency, enabled)
   const { data: drawdownData, isLoading: drawdownLoading } = useDrawdown(undefined, undefined, enabled)
   const { data: riskData, isLoading: riskLoading } = useRiskMetrics(undefined, undefined, enabled)
@@ -80,7 +82,7 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
       {/* Rebalance advice */}
       {data.advice && data.advice.length > 0 && (
         <section className="space-y-1">
-          <p className="text-sm font-semibold">{t("allocation.health.advice_title")}</p>
+          <p className="text-sm font-semibold">{term("rebalance", t("allocation.health.advice_title"))}</p>
           <ul className="space-y-1">
             {data.advice.map((a) => (
               <li key={a} className="text-xs text-muted-foreground">• {a}</li>

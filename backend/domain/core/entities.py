@@ -239,6 +239,10 @@ class UserPreferences(SQLModel, table=True):
     )
     language: str = Field(default=DEFAULT_LANGUAGE, description="偏好語言")
     privacy_mode: bool = Field(default=False, description="是否啟用隱私模式")
+    terminology_mode: str = Field(
+        default="simplified",
+        description="術語顯示模式：simplified（簡化）或 expert（專業）",
+    )
     notification_preferences: str = Field(
         default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),
         sa_column=Column(String, default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES)),

@@ -1,5 +1,6 @@
 import { Info } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { useTerminology } from "@/hooks/useTerminology"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -61,6 +62,7 @@ function MetricCard({
 
 export function RiskMetricsCards({ data, isLoading }: Props) {
   const { t } = useTranslation()
+  const { term } = useTerminology()
 
   if (isLoading) {
     return (
@@ -91,30 +93,30 @@ export function RiskMetricsCards({ data, isLoading }: Props) {
           colorClass={data.annualized_return >= 0 ? "text-green-500" : "text-red-500"}
         />
         <MetricCard
-          label={t("analytics.volatility")}
+          label={term("volatility", t("analytics.volatility"))}
           value={fmtPct(data.annualized_volatility)}
           tooltip={t("analytics.volatility_tooltip")}
         />
         <MetricCard
-          label={t("analytics.sharpe_ratio")}
+          label={term("sharpe", t("analytics.sharpe_ratio"))}
           value={fmtRatio(data.sharpe_ratio)}
           tooltip={t("analytics.sharpe_tooltip")}
           colorClass={ratingColor(data.sharpe_ratio, { good: 1, moderate: 0.5 })}
         />
         <MetricCard
-          label={t("analytics.sortino_ratio")}
+          label={term("sortino", t("analytics.sortino_ratio"))}
           value={fmtRatio(data.sortino_ratio)}
           tooltip={t("analytics.sortino_tooltip")}
           colorClass={ratingColor(data.sortino_ratio, { good: 1.5, moderate: 0.5 })}
         />
         <MetricCard
-          label={t("analytics.max_drawdown")}
+          label={term("max_drawdown", t("analytics.max_drawdown"))}
           value={fmtPct(data.max_drawdown_pct)}
           tooltip={t("analytics.max_drawdown_tooltip")}
           colorClass={drawdownColor(data.max_drawdown_pct)}
         />
         <MetricCard
-          label={t("analytics.calmar_ratio")}
+          label={term("calmar", t("analytics.calmar_ratio"))}
           value={fmtRatio(data.calmar_ratio)}
           tooltip={t("analytics.calmar_tooltip")}
           colorClass={ratingColor(data.calmar_ratio, { good: 2, moderate: 1 })}
