@@ -1,0 +1,125 @@
+import { Info } from "lucide-react"
+import { useTranslation } from "react-i18next"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import type { RiskMetrics } from "@/api/hooks/useAnalytics"
+
+interface Props {
+  data: RiskMetrics | undefined
+  isLoading?: boolean
+}
+
+function ratingColor(value: number | null | undefined, thresholds: { good: number; moderate: number }): string {
+  if (value == null) return "text-muted-foreground"
+  if (value >= thresholds.good) return "text-green-500"
+  if (value >= thresholds.moderate) return "text-yellow-500"
+  return "text-red-500"
+}
+
+function drawdownColor(pct: number): string {
+  const abs = Math.abs(pct)
+  if (abs < 0.1) return "text-green-500"
+  if (abs < 0.2) return "text-yellow-500"
+  return "text-red-500"
+}
+
+function MetricCard({
+  label,
+  value,
+  tooltip,
+  colorClass,
+}: {
+  label: string
+  value: string
+  tooltip: string
+  colorClass?: string
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3 space-y-1">
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3 w-3 text-muted-foreground cursor-help" aria-label={tooltip} />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-[200px]">{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      <p className={`text-lg font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</p>
+    </div>
+  )
+}
+
+export function RiskMetricsCards({ data, isLoading }: Props) {
+  const { t } = useTranslation()
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-32" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[72px]" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`
+  const fmtRatio = (v: number | null | undefined) => (v != null ? v.toFixed(2) : "—")
+
+  return (
+    <div className="space-y-2" role="img" aria-label={t("accessibility.chart_risk_metrics")}>
+      <p className="text-sm font-semibold">{t("analytics.risk_metrics_title")}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard
+          label={t("analytics.annualized_return")}
+          value={fmtPct(data.annualized_return)}
+          tooltip={t("analytics.annualized_return_tooltip")}
+          colorClass={data.annualized_return >= 0 ? "text-green-500" : "text-red-500"}
+        />
+        <MetricCard
+          label={t("analytics.volatility")}
+          value={fmtPct(data.annualized_volatility)}
+          tooltip={t("analytics.volatility_tooltip")}
+        />
+        <MetricCard
+          label={t("analytics.sharpe_ratio")}
+          value={fmtRatio(data.sharpe_ratio)}
+          tooltip={t("analytics.sharpe_tooltip")}
+          colorClass={ratingColor(data.sharpe_ratio, { good: 1, moderate: 0.5 })}
+        />
+        <MetricCard
+          label={t("analytics.sortino_ratio")}
+          value={fmtRatio(data.sortino_ratio)}
+          tooltip={t("analytics.sortino_tooltip")}
+          colorClass={ratingColor(data.sortino_ratio, { good: 1.5, moderate: 0.5 })}
+        />
+        <MetricCard
+          label={t("analytics.max_drawdown")}
+          value={fmtPct(data.max_drawdown_pct)}
+          tooltip={t("analytics.max_drawdown_tooltip")}
+          colorClass={drawdownColor(data.max_drawdown_pct)}
+        />
+        <MetricCard
+          label={t("analytics.calmar_ratio")}
+          value={fmtRatio(data.calmar_ratio)}
+          tooltip={t("analytics.calmar_tooltip")}
+          colorClass={ratingColor(data.calmar_ratio, { good: 2, moderate: 1 })}
+        />
+      </div>
+    </div>
+  )
+}

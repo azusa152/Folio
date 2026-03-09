@@ -7,6 +7,11 @@ from application.portfolio.account_service import (  # noqa: F401
     remove_account,
     update_account,
 )
+from application.portfolio.analytics_service import (  # noqa: F401
+    get_contribution_vs_growth,
+    get_drawdown_series,
+    get_risk_metrics,
+)
 from application.portfolio.crypto_service import (  # noqa: F401
     get_crypto_details,
     get_crypto_holding_prices,

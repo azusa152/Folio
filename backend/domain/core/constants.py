@@ -494,7 +494,20 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "List accounts with holdings count per account",
         "requires_ticker": False,
     },
+    "analytics": {
+        "description": "Portfolio risk metrics: Sharpe, Sortino, max drawdown, volatility",
+        "requires_ticker": False,
+        "params": {
+            "start": "str (optional — YYYY-MM-DD start date)",
+            "end": "str (optional — YYYY-MM-DD end date)",
+        },
+    },
 }
+
+# ---------------------------------------------------------------------------
+# Analytics — Drawdown & Risk Metrics
+# ---------------------------------------------------------------------------
+ANALYTICS_DEFAULT_LOOKBACK_DAYS = 365 * 10  # ~10 years — effectively "all data"
 
 # ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types

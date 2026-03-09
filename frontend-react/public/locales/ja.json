@@ -66,7 +66,9 @@
     "chart_net_worth": "資産・負債を含む純資産推移チャート",
     "chart_portfolio_sparkline": "30日ポートフォリオ価値トレンド",
     "chart_stock_sparkline": "株価短期トレンドスパークライン",
-    "chart_net_worth_sparkline": "30日純資産トレンド"
+    "chart_net_worth_sparkline": "30日純資産トレンド",
+    "chart_drawdown": "ポートフォリオのドローダウン推移（ピークからトラフまでの下落）",
+    "chart_risk_metrics": "シャープレシオ、ボラティリティ、ドローダウンを含むポートフォリオリスク指標"
   },
   "pwa": {
     "offline_ready": "Folio はオフラインで利用できます",
@@ -1728,5 +1730,24 @@
     "seed_import_btn": "現金を貯蓄資産として取り込む",
     "seed_success": "{{count}}件の現金ポジションを貯蓄資産として取り込みました",
     "seed_already_done": "現金ポジションはすでに取り込み済みです"
+  },
+  "analytics": {
+    "drawdown_title": "ドローダウン分析",
+    "risk_metrics_title": "リスク指標",
+    "annualized_return": "年率リターン",
+    "annualized_return_tooltip": "ポートフォリオの年率複利成長率。",
+    "volatility": "ボラティリティ",
+    "volatility_tooltip": "日次リターンの年率標準偏差。",
+    "sharpe_ratio": "シャープレシオ",
+    "sharpe_tooltip": "リスク1単位あたりのリターンを測定。高いほど良い。",
+    "sortino_ratio": "ソルティノレシオ",
+    "sortino_tooltip": "シャープレシオと同様だが、下落リスクのみを考慮。",
+    "max_drawdown": "最大ドローダウン",
+    "max_drawdown_tooltip": "ピークからトラフまでの最大下落幅。",
+    "calmar_ratio": "カルマーレシオ",
+    "calmar_tooltip": "年率リターンを最大ドローダウンで割った値。高いほど良い。",
+    "contribution_title": "投入額 vs 成長",
+    "contribution_label": "投入総額",
+    "growth_label": "時価総額"
   }
 }

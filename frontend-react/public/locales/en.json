@@ -66,7 +66,9 @@
     "chart_net_worth": "Net worth history chart showing assets and liabilities over time",
     "chart_portfolio_sparkline": "30-day portfolio value trend",
     "chart_stock_sparkline": "Short-term stock trend sparkline",
-    "chart_net_worth_sparkline": "30-day net worth trend"
+    "chart_net_worth_sparkline": "30-day net worth trend",
+    "chart_drawdown": "Portfolio drawdown over time showing peak-to-trough declines",
+    "chart_risk_metrics": "Portfolio risk metrics including Sharpe ratio, volatility, and drawdown"
   },
   "pwa": {
     "offline_ready": "Folio is ready for offline use",
@@ -1728,5 +1730,24 @@
     "seed_import_btn": "Import cash as savings",
     "seed_success": "Imported {{count}} cash positions as savings items",
     "seed_already_done": "Cash positions already imported"
+  },
+  "analytics": {
+    "drawdown_title": "Drawdown Analysis",
+    "risk_metrics_title": "Risk Metrics",
+    "annualized_return": "Annual Return",
+    "annualized_return_tooltip": "Compound annual growth rate of the portfolio.",
+    "volatility": "Volatility",
+    "volatility_tooltip": "Annualized standard deviation of daily returns.",
+    "sharpe_ratio": "Sharpe Ratio",
+    "sharpe_tooltip": "Measures return per unit of risk. Higher is better.",
+    "sortino_ratio": "Sortino Ratio",
+    "sortino_tooltip": "Like Sharpe, but only counts downside risk.",
+    "max_drawdown": "Max Drawdown",
+    "max_drawdown_tooltip": "Largest peak-to-trough decline.",
+    "calmar_ratio": "Calmar Ratio",
+    "calmar_tooltip": "Annual return divided by max drawdown. Higher is better.",
+    "contribution_title": "Contributions vs Growth",
+    "contribution_label": "Total Invested",
+    "growth_label": "Market Value"
   }
 }

@@ -9,6 +9,11 @@ from api.schemas.account import (  # noqa: F401
     AccountSummaryItem,
     AccountUpdateRequest,
 )
+from api.schemas.analytics import (  # noqa: F401
+    ContributionGrowthPoint,
+    DrawdownPointResponse,
+    RiskMetricsResponse,
+)
 from api.schemas.backtest import (  # noqa: F401
     BackfillStatusResponse,
     BacktestDetailResponse,

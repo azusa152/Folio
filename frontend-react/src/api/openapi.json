@@ -74,6 +74,263 @@
         }
       }
     },
+    "/analytics/drawdown": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Drawdown",
+        "operationId": "drawdown_analytics_drawdown_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DrawdownPointResponse"
+                  },
+                  "title": "Response Drawdown Analytics Drawdown Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/risk-metrics": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Risk Metrics",
+        "operationId": "risk_metrics_analytics_risk_metrics_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskMetricsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/contribution-growth": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Contribution Growth",
+        "operationId": "contribution_growth_analytics_contribution_growth_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContributionGrowthPoint"
+                  },
+                  "title": "Response Contribution Growth Analytics Contribution Growth Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/accounts": {
       "get": {
         "tags": [
@@ -7238,6 +7495,35 @@
         "title": "ConsensusStockItem",
         "description": "\u88ab\u591a\u4f4d\u5927\u5e2b\u540c\u6642\u6301\u6709\u7684\u5171\u8b58\u80a1\u7968\u3002"
       },
+      "ContributionGrowthPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "market_value": {
+            "type": "number",
+            "title": "Market Value"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "market_value"
+        ],
+        "title": "ContributionGrowthPoint"
+      },
       "CryptoPrice": {
         "properties": {
           "ticker": {
@@ -7514,6 +7800,34 @@
         ],
         "title": "DeactivateRequest",
         "description": "POST /ticker/{ticker}/deactivate \u8acb\u6c42 Body\u3002"
+      },
+      "DrawdownPointResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "drawdown_pct": {
+            "type": "number",
+            "title": "Drawdown Pct"
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value"
+          },
+          "peak_value": {
+            "type": "number",
+            "title": "Peak Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "drawdown_pct",
+          "total_value",
+          "peak_value"
+        ],
+        "title": "DrawdownPointResponse"
       },
       "FXAlertResponse": {
         "properties": {
@@ -10773,6 +11087,67 @@
         ],
         "title": "ResonanceTickerResponse",
         "description": "GET /resonance/{ticker} \u56de\u50b3\u7684\u5927\u5e2b\u5171\u9cf4\u8cc7\u6599\u3002"
+      },
+      "RiskMetricsResponse": {
+        "properties": {
+          "annualized_return": {
+            "type": "number",
+            "title": "Annualized Return"
+          },
+          "annualized_volatility": {
+            "type": "number",
+            "title": "Annualized Volatility"
+          },
+          "sharpe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Ratio"
+          },
+          "sortino_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortino Ratio"
+          },
+          "max_drawdown_pct": {
+            "type": "number",
+            "title": "Max Drawdown Pct"
+          },
+          "calmar_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar Ratio"
+          },
+          "trading_days": {
+            "type": "integer",
+            "title": "Trading Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "annualized_return",
+          "annualized_volatility",
+          "max_drawdown_pct",
+          "trading_days"
+        ],
+        "title": "RiskMetricsResponse"
       },
       "ScanSignal": {
         "type": "string",

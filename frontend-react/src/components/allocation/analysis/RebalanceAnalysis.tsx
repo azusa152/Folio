@@ -3,12 +3,15 @@ import { useTranslation } from "react-i18next"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useAllocRebalance } from "@/api/hooks/useAllocation"
+import { useDrawdown, useRiskMetrics } from "@/api/hooks/useAnalytics"
 import { CATEGORY_TO_ASSET_CLASS, CURRENCY_TO_REGION } from "@/lib/constants"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { HealthScore } from "./HealthScore"
 import { AllocationCharts } from "./AllocationCharts"
 import { GeographicAllocation } from "./GeographicAllocation"
 import { AssetClassDonut } from "./AssetClassDonut"
+import { DrawdownChart } from "./DrawdownChart"
+import { RiskMetricsCards } from "./RiskMetricsCards"
 import { DriftChart } from "./DriftChart"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
@@ -40,6 +43,8 @@ function filterHoldingsByDrill(
 export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
   const { data, isLoading } = useAllocRebalance(displayCurrency, enabled)
+  const { data: drawdownData, isLoading: drawdownLoading } = useDrawdown(undefined, undefined, enabled)
+  const { data: riskData, isLoading: riskLoading } = useRiskMetrics(undefined, undefined, enabled)
   const [drill, setDrill] = useState<{ source: DrillSource; value: string } | null>(null)
 
   const drillHandlers = useMemo(() => ({
@@ -176,6 +181,13 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
       {data.sector_exposure && (
         <SectorHeatmap data={data.sector_exposure} />
       )}
+
+      <hr className="border-border" />
+
+      {/* Risk metrics + Drawdown */}
+      <RiskMetricsCards data={riskData} isLoading={riskLoading} />
+      <hr className="border-border" />
+      <DrawdownChart data={drawdownData ?? []} isLoading={drawdownLoading} />
     </div>
   )
 }
