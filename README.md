@@ -68,6 +68,18 @@
 - **淨資產追蹤 (Net Worth)** — 在 Asset Allocation 新增 Net Worth 分頁，追蹤非投資資產（房產 / 儲蓄 / 車輛）與負債（房貸 / 貸款 / 信用卡）；提供 1M/3M/6M/1Y/Max 趨勢圖、負債類型快速預設（房貸 / 貸款 / 信用卡）與每月最低還款欄位，Dashboard 也會顯示「投資資產 + 其他資產 - 負債」淨資產摘要
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
+- **交易紀錄** — 記錄買入/賣出/股息/存入/提領，連結至個別持倉
+- **帳戶管理** — 依券商帳戶分組持倉，提供聚合視圖
+- **地理配置** — 依地區（US/TW/JP/HK）拆解市值分佈
+- **資產類別** — 標準 Equity/Fixed Income/Alternatives/Cash 分類
+- **回撤分析** — 峰值至谷底下跌追蹤，含反轉面積圖
+- **風險指標** — Sharpe ratio、Sortino ratio、Calmar ratio、年化波動率
+- **貢獻 vs 增長** — 堆疊面積圖：累計存入 vs 市場增值
+- **自然語言洞察** — 純文字投資組合摘要與建議
+- **新手引導精靈** — 三步驟引導式設定，適合首次使用者
+- **券商 CSV 範本** — 預設 IB、Firstrade、SBI、樂天、富邦欄位對應
+- **術語模式** — 專家模式 / 簡化模式切換金融術語顯示
+- **漸進式揭露** — 進階指標預設隱藏，需手動展開
 
 ### 大師足跡追蹤 (Smart Money)
 
@@ -701,6 +713,19 @@ docker compose up --build -d
 | `GET` | `/gurus/{guru_id}/backtest` | 大師複製回測（季度維度報酬 + 累積報酬曲線 + Alpha），支援 `?quarters=2..12&benchmark=SPY|VT` |
 | `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
 | `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
+| `GET` | `/transactions` | 交易紀錄列表（支援 `ticker`、`limit` 篩選） |
+| `POST` | `/transactions` | 新增交易紀錄 |
+| `GET` | `/transactions/{id}` | 取得單筆交易紀錄 |
+| `DELETE` | `/transactions/{id}` | 刪除交易紀錄 |
+| `GET` | `/accounts` | 帳戶列表 |
+| `POST` | `/accounts` | 新增帳戶 |
+| `PUT` | `/accounts/{id}` | 更新帳戶 |
+| `DELETE` | `/accounts/{id}` | 停用帳戶 |
+| `GET` | `/accounts/summary` | 帳戶摘要（含各帳戶持倉數量） |
+| `GET` | `/analytics/drawdown` | 回撤時間序列 |
+| `GET` | `/analytics/risk-metrics` | 風險指標（Sharpe、Sortino、最大回撤、年化波動率） |
+| `GET` | `/analytics/contribution-growth` | 累計貢獻 vs 市場增長 |
+| `GET` | `/analytics/insights` | 自然語言投資組合洞察 |
 
 </details>
 
@@ -904,6 +929,11 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | `moat` | 護城河分析 | 是 |
 | `alerts` | 查看價格警報 | 是 |
 | `add_stock` | 新增股票 | 是（在 params 中） |
+| `transactions` | 查看近期交易紀錄（可選 `ticker`、`limit`） | 否 |
+| `add_transaction` | 記錄買賣/股息/存入/提領 | 是 |
+| `accounts` | 列出帳戶及持倉數量 | 否 |
+| `analytics` | 風險指標：Sharpe、Sortino、最大回撤 | 否 |
+| `insights` | 自然語言投資組合洞察 | 否 |
 
 Webhook 回應統一格式：`{"success": bool, "message": str, "interpretation": str, "data": dict}`。
 `format="concise"` 時多數 action 會省略 `data` 以降低 token 使用量；`help` 仍會回傳 `data` 供動態探索。

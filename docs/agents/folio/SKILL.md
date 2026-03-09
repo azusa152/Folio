@@ -73,12 +73,19 @@ Verbosity (top-level `format` field in request body):
 - `scan` - trigger background scan
 - `guru_sync` - sync all tracked gurus (13F)
 - `guru_summary` - send latest guru digest
+- `transactions` - list recent transactions (optional `ticker`, `limit`)
+- `add_transaction {ticker}` - record buy/sell/dividend/deposit/withdrawal (`type`, `quantity`, `total_amount`, `date`)
+- `accounts` - list accounts with holdings count
+- `analytics` - risk metrics: Sharpe, Sortino, max drawdown (`start`, `end`)
+- `insights` - natural language portfolio insights (`display_currency`)
 
 ## Recommended Workflows
 
 - Quick check: `dashboard` -> `analyze {ticker}`
 - Buy decision: `analyze {ticker}` -> `fear_greed`
 - Need cash: `withdraw {amount, currency}`
+- Asset review: `dashboard` -> `analytics` -> `insights` -> `transactions` with `ticker`
+- Record trade: `add_transaction {ticker}` -> `transactions` with `ticker` to confirm
 
 ## Signal Cheatsheet
 

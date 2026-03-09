@@ -36,6 +36,11 @@
     "guru_sync_failed": "❌ 13F 同步失敗：{error}",
     "guru_summary_complete": "✅ 13F 摘要通知已處理（{status}），共 {count} 位大師。",
     "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}",
+    "transactions_summary": "找到 {count} 筆近期交易",
+    "accounts_summary": "已設定 {count} 個帳戶",
+    "analytics_summary": "投資組合風險指標已計算",
+    "insights_summary": "已產生 {count} 條投資組合洞察",
+    "missing_required_params": "缺少必要參數",
     "interpretation": {
       "signal_ready": "訊號摘要已準備完成。",
       "action_failed": "動作執行失敗，請依訊息修正參數後重試。",
@@ -51,7 +56,12 @@
       "withdraw_ready": "提款規劃已準備完成。",
       "fx_watch_ready": "外匯監控分析已準備完成。",
       "guru_sync_ready": "13F 同步摘要已準備完成。",
-      "guru_summary_ready": "大師摘要已準備完成。"
+      "guru_summary_ready": "大師摘要已準備完成。",
+      "transactions_ready": "正在顯示最近 {count} 筆交易。",
+      "transaction_recorded": "交易已記錄。",
+      "accounts_ready": "帳戶摘要已準備完成。",
+      "analytics_ready": "夏普比率：{sharpe}，最大回撤：{max_dd}。",
+      "insights_ready": "投資組合洞察已準備完成。"
     }
   },
   "stock": {

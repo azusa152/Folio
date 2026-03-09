@@ -11,6 +11,8 @@ Self-hosted investment tracking. Backend: `http://localhost:8000`.
 - If `is_rogue_wave=true`, warn about late-stage surge and avoid leveraged chasing.
 - For market timing, use `fear_greed` and include JP/TW thresholds when relevant.
 - For cash needs / what to sell, use `withdraw` with `amount` and `currency`.
+- For asset review, use `analytics` then `insights`.
+- For trade recording, use `add_transaction` with `ticker`, `type`, `quantity`, `total_amount`, `date`.
 
 ## Auth
 

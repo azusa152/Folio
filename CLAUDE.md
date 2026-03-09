@@ -101,6 +101,10 @@ Folio exposes an agent-friendly webhook entrypoint at `POST /webhook`.
 
 Layer dependency direction: `domain/` (core, analysis, portfolio) → `application/` (stock, scan, portfolio, guru, messaging, settings) → `infrastructure/` (market_data, persistence, external) → `api/` (routes, schemas)
 
+New services: `transaction_service`, `account_service`, `analytics_service`, `insight_service` in `application/portfolio/`.
+New domain modules: `domain/portfolio/allocation.py`, `domain/portfolio/insights.py`, `domain/analysis/drawdown.py`, `domain/analysis/risk_metrics.py`.
+New webhook actions: `transactions`, `add_transaction`, `accounts`, `analytics`, `insights`.
+
 - **`api/routes/`** MUST delegate to `application/<domain>/` services. Only `infrastructure.database` (`get_session`, `engine`) is allowed in `api/`.
 - **`domain/`** must not import from any outer layer.
 - Run `make ci` after any backend change to verify boundaries. `make ci` mirrors all GitHub CI pipeline jobs — if it passes locally, the pipeline will pass too. The `CI Gate` job aggregates all pipeline results and is the sole required status check for merging to `main`.

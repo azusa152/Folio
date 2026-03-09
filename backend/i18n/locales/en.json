@@ -36,6 +36,11 @@
     "guru_sync_failed": "❌ 13F sync failed: {error}",
     "guru_summary_complete": "✅ 13F digest notification processed ({status}), {count} gurus.",
     "guru_summary_failed": "❌ 13F digest notification failed: {error}",
+    "transactions_summary": "Found {count} recent transactions",
+    "accounts_summary": "{count} accounts configured",
+    "analytics_summary": "Portfolio risk metrics computed",
+    "insights_summary": "Generated {count} portfolio insights",
+    "missing_required_params": "Missing required parameters",
     "interpretation": {
       "signal_ready": "Signal snapshot is ready.",
       "action_failed": "Action failed. Check message and retry with corrected parameters.",
@@ -51,7 +56,12 @@
       "withdraw_ready": "Withdrawal plan is ready.",
       "fx_watch_ready": "FX watch analysis is ready.",
       "guru_sync_ready": "13F sync summary is ready.",
-      "guru_summary_ready": "Guru digest summary is ready."
+      "guru_summary_ready": "Guru digest summary is ready.",
+      "transactions_ready": "Showing {count} most recent transactions.",
+      "transaction_recorded": "Transaction has been recorded.",
+      "accounts_ready": "Account summary is ready.",
+      "analytics_ready": "Sharpe ratio: {sharpe}, max drawdown: {max_dd}.",
+      "insights_ready": "Portfolio insights are ready."
     }
   },
   "stock": {

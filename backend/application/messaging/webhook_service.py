@@ -3,7 +3,9 @@ Application — Webhook Service：OpenClaw / AI agent webhook 處理。
 """
 
 from collections.abc import Mapping
+from datetime import date as date_type
 
+from fastapi import HTTPException
 from sqlmodel import Session
 
 from application.formatters import format_fear_greed_label
@@ -11,8 +13,17 @@ from application.messaging.notification_service import (
     get_portfolio_summary,
     send_filing_season_digest,
 )
+from application.portfolio.account_service import get_account_summary
+from application.portfolio.analytics_service import (
+    get_risk_metrics as get_risk_metrics_svc,
+)
 from application.portfolio.fx_watch_service import send_fx_watch_alerts
+from application.portfolio.insight_service import get_portfolio_insights
 from application.portfolio.rebalance_service import calculate_withdrawal
+from application.portfolio.transaction_service import (
+    create_transaction,
+    list_transactions,
+)
 from application.scan.scan_service import list_price_alerts, run_scan
 from application.stock.filing_service import sync_all_gurus
 from application.stock.stock_service import (
@@ -505,6 +516,112 @@ def handle_webhook(
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
             )
+
+    if action == "transactions":
+        ticker_filter = params.get("ticker")
+        limit = min(int(params.get("limit", 10)), 50)
+        txns = list_transactions(session, ticker=ticker_filter, limit=limit)
+        count = len(txns)
+        return _wrap_response(
+            success=True,
+            message=t("webhook.transactions_summary", lang=lang, count=count),
+            interpretation=t(
+                "webhook.interpretation.transactions_ready",
+                lang=lang,
+                count=count,
+            ),
+            params=params,
+            data={"transactions": txns, "count": count},
+        )
+
+    if action == "add_transaction":
+        if not ticker:
+            return _wrap_response(
+                success=False,
+                message=t("webhook.missing_ticker", lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+            )
+        txn_type = str(params.get("type", "BUY")).upper()
+        quantity = params.get("quantity")
+        total_amount = params.get("total_amount")
+        txn_date = params.get("date")
+        if not quantity or not total_amount or not txn_date:
+            return _wrap_response(
+                success=False,
+                message=t("webhook.missing_required_params", lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+            )
+        price = params.get("price")
+        data = {
+            "ticker": ticker,
+            "transaction_type": txn_type,
+            "quantity": float(quantity),
+            "price": float(price) if price else None,
+            "total_amount": float(total_amount),
+            "transaction_date": str(txn_date),
+        }
+        try:
+            result = create_transaction(session, data, lang)
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            return _wrap_response(
+                success=False,
+                message=detail.get("detail", str(exc.detail)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+            )
+        return _wrap_response(
+            success=True,
+            message=t("transaction.created", lang=lang),
+            interpretation=t("webhook.interpretation.transaction_recorded", lang=lang),
+            params=params,
+            data=result,
+        )
+
+    if action == "accounts":
+        summary = get_account_summary(session)
+        return _wrap_response(
+            success=True,
+            message=t("webhook.accounts_summary", lang=lang, count=len(summary)),
+            interpretation=t("webhook.interpretation.accounts_ready", lang=lang),
+            params=params,
+            data={"accounts": summary, "count": len(summary)},
+        )
+
+    if action == "analytics":
+        start = params.get("start")
+        end = params.get("end")
+        start_d = date_type.fromisoformat(start) if start else None
+        end_d = date_type.fromisoformat(end) if end else None
+        metrics = get_risk_metrics_svc(session, start=start_d, end=end_d)
+        sharpe = metrics.get("sharpe_ratio", "N/A")
+        max_dd_raw = metrics.get("max_drawdown_pct", 0)
+        max_dd = f"{abs(max_dd_raw) * 100:.1f}%" if max_dd_raw else "N/A"
+        return _wrap_response(
+            success=True,
+            message=t("webhook.analytics_summary", lang=lang),
+            interpretation=t(
+                "webhook.interpretation.analytics_ready",
+                lang=lang,
+                sharpe=sharpe,
+                max_dd=max_dd,
+            ),
+            params=params,
+            data=metrics,
+        )
+
+    if action == "insights":
+        display_currency = str(params.get("display_currency", "USD"))
+        insights = get_portfolio_insights(session, display_currency)
+        return _wrap_response(
+            success=True,
+            message=t("webhook.insights_summary", lang=lang, count=len(insights)),
+            interpretation=t("webhook.interpretation.insights_ready", lang=lang),
+            params=params,
+            data={"insights": insights, "count": len(insights)},
+        )
 
     # Fallback — should not reach here if registry is in sync
     supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))

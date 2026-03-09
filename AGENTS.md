@@ -25,6 +25,11 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Application services: `backend/application/`
 - Frontend API contract: `frontend-react/src/api/openapi.json`
 - AI/webhook docs: `docs/agents/`
+- Transaction service: `backend/application/portfolio/transaction_service.py`
+- Account service: `backend/application/portfolio/account_service.py`
+- Analytics service: `backend/application/portfolio/analytics_service.py`
+- Insight service: `backend/application/portfolio/insight_service.py`
+- Domain analytics: `backend/domain/analysis/drawdown.py`, `backend/domain/analysis/risk_metrics.py`
 
 ## AI Agent Workflow
 

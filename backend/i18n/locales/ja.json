@@ -36,6 +36,11 @@
     "guru_sync_failed": "❌ 13F 同期失敗：{error}",
     "guru_summary_complete": "✅ 13F ダイジェスト通知処理済み（{status}）、{count} 人のグル。",
     "guru_summary_failed": "❌ 13F ダイジェスト通知失敗：{error}",
+    "transactions_summary": "直近の取引 {count} 件を取得しました",
+    "accounts_summary": "{count} 件のアカウントが設定されています",
+    "analytics_summary": "ポートフォリオのリスク指標を算出しました",
+    "insights_summary": "{count} 件のポートフォリオインサイトを生成しました",
+    "missing_required_params": "必須パラメータが不足しています",
     "interpretation": {
       "signal_ready": "シグナル概要の準備ができました。",
       "action_failed": "アクションに失敗しました。メッセージを確認して再試行してください。",
@@ -51,7 +56,12 @@
       "withdraw_ready": "引き出し計画の準備ができました。",
       "fx_watch_ready": "FXウォッチ分析の準備ができました。",
       "guru_sync_ready": "13F同期サマリーの準備ができました。",
-      "guru_summary_ready": "グルダイジェストの準備ができました。"
+      "guru_summary_ready": "グルダイジェストの準備ができました。",
+      "transactions_ready": "直近 {count} 件の取引を表示しています。",
+      "transaction_recorded": "取引を記録しました。",
+      "accounts_ready": "アカウント概要の準備ができました。",
+      "analytics_ready": "シャープレシオ: {sharpe}、最大ドローダウン: {max_dd}。",
+      "insights_ready": "ポートフォリオインサイトの準備ができました。"
     }
   },
   "stock": {

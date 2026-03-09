@@ -276,6 +276,61 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 
 ---
 
+## Transaction Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ticker` | string | Yes (via params or ticker) | Asset symbol |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL |
+| `quantity` | float | Yes | Number of shares/units |
+| `price` | float | No | Per-unit price |
+| `total_amount` | float | Yes | Total transaction value |
+| `date` | string | Yes | YYYY-MM-DD format |
+
+## Analytics Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `annualized_return` | float | Portfolio return annualized |
+| `annualized_volatility` | float | Standard deviation annualized |
+| `sharpe_ratio` | float | Risk-adjusted return (null if < 30 days) |
+| `sortino_ratio` | float | Downside risk-adjusted (null if < 30 days) |
+| `max_drawdown_pct` | float | Largest peak-to-trough decline (negative) |
+| `calmar_ratio` | float | Return / abs(max drawdown) |
+
+## Insights Response
+
+Array of insight objects:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | i18n key for the insight message |
+| `severity` | string | info / positive / warning / action |
+| `vars` | object | Interpolation variables for the message |
+| `category` | string | general / allocation / performance / risk |
+
+---
+
+## Asset Management API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/transactions` | List transactions (optional `ticker`, `limit`) |
+| `POST` | `/transactions` | Create transaction |
+| `GET` | `/transactions/{id}` | Get transaction by ID |
+| `DELETE` | `/transactions/{id}` | Delete transaction |
+| `GET` | `/accounts` | List accounts |
+| `POST` | `/accounts` | Create account |
+| `PUT` | `/accounts/{id}` | Update account |
+| `DELETE` | `/accounts/{id}` | Delete (deactivate) account |
+| `GET` | `/accounts/summary` | Account summary with holdings count |
+| `GET` | `/analytics/drawdown` | Drawdown time series |
+| `GET` | `/analytics/risk-metrics` | Sharpe, Sortino, max drawdown, volatility |
+| `GET` | `/analytics/contribution-growth` | Cumulative contributions vs market growth |
+| `GET` | `/analytics/insights` | Natural language portfolio insights |
+
+---
+
 ## Service Operations
 
 Run all `make` commands from the Folio project root using the `exec` tool.
