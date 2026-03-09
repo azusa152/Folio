@@ -39,6 +39,23 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         cat: info.get("market_value", 0.0) for cat, info in categories.items()
     }
 
+    # Per-holding market values (cap to top 50 by value)
+    holdings_detail: list[dict] = rebalance.get("holdings_detail", [])
+    holding_values_raw = {
+        h["ticker"]: h.get("market_value", 0.0) for h in holdings_detail
+    }
+    top_50 = dict(
+        sorted(holding_values_raw.items(), key=lambda x: x[1], reverse=True)[:50]
+    )
+    holding_values_json = _json.dumps(top_50)
+
+    # Total cost basis
+    cost_basis_total = sum(h.get("cost_total", 0.0) or 0.0 for h in holdings_detail)
+
+    # Geographic values from rebalance computation
+    geographic_values = rebalance.get("geographic_allocation", {})
+    geographic_json = _json.dumps(geographic_values)
+
     # Fetch multiple benchmark index prices
     from infrastructure.market_data import get_technical_signals
 
@@ -76,6 +93,9 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         existing.display_currency = display_currency
         existing.benchmark_value = benchmark_value
         existing.benchmark_values = _json.dumps(benchmark_prices)
+        existing.holding_values = holding_values_json
+        existing.cost_basis_total = cost_basis_total if cost_basis_total > 0 else None
+        existing.geographic_values = geographic_json
         existing.created_at = datetime.now(UTC)
         session.add(existing)
         session.commit()
@@ -95,6 +115,9 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
         display_currency=display_currency,
         benchmark_value=benchmark_value,
         benchmark_values=_json.dumps(benchmark_prices),
+        holding_values=holding_values_json,
+        cost_basis_total=cost_basis_total if cost_basis_total > 0 else None,
+        geographic_values=geographic_json,
     )
     session.add(snapshot)
     session.commit()

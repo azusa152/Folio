@@ -366,6 +366,18 @@ class PortfolioSnapshot(SQLModel, table=True):
         default="{}",
         description='多基準指數收盤價 JSON，如 {"^GSPC": 5000, "VT": 120, "^N225": 38000, "^TWII": 18000}',
     )
+    holding_values: str = Field(
+        default="{}",
+        description='個股市值 JSON（前 50 大），如 {"AAPL": 15000, "2330.TW": 8000}',
+    )
+    cost_basis_total: float | None = Field(
+        default=None,
+        description="所有持倉總成本基礎（供貢獻度圖表使用）",
+    )
+    geographic_values: str = Field(
+        default="{}",
+        description='依地理區域市值 JSON，如 {"US": 50000, "TW": 20000, "JP": 10000}',
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="建立時間",

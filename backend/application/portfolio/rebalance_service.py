@@ -26,6 +26,10 @@ from domain.fx_analysis import (
     analyze_fx_rate_changes,
     determine_fx_risk_level,
 )
+from domain.portfolio.allocation import (
+    compute_asset_class_allocation,
+    compute_geographic_allocation,
+)
 from domain.rebalance import (
     calculate_rebalance as _pure_rebalance,
 )
@@ -639,6 +643,22 @@ def _do_calculate_rebalance(
         for s, v in sorted(sector_values.items(), key=lambda x: x[1], reverse=True)
         if v > 0
     ]
+
+    # 11) 地理區域配置（基於 ticker 後綴判別市場）
+    holding_market_data = [
+        {"ticker": ticker, "market_value": agg["mv"]}
+        for ticker, agg in ticker_agg.items()
+        if agg["mv"] > 0
+    ]
+    result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
+
+    # 12) 資產類別配置（Folio 分類 → 標準資產類別）
+    result["asset_class_allocation"] = compute_asset_class_allocation(
+        {
+            cat: info.get("market_value", 0.0)
+            for cat, info in result["categories"].items()
+        }
+    )
 
     result["calculated_at"] = datetime.now(UTC).isoformat()
 

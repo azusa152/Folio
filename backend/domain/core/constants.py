@@ -842,3 +842,14 @@ TWII_VOL_GREED = 10  # annualized vol 10–15% → 貪婪
 TW_VOL_BASE: float = 90.0
 TW_VOL_OFFSET: float = 8.0
 TW_VOL_SLOPE: float = 3.5
+
+# ---------------------------------------------------------------------------
+# Geographic Market Detection (ticker suffix → market code)
+# ---------------------------------------------------------------------------
+TICKER_MARKET_MAP: dict[str, str] = {
+    ".TW": "TW",
+    ".TWO": "TW",
+    ".T": "JP",
+    ".HK": "HK",
+}
+DEFAULT_MARKET = "US"

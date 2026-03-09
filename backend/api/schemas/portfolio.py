@@ -189,6 +189,12 @@ class RebalanceResponse(BaseModel):
     health_score: int = 100
     health_level: str = "healthy"  # "healthy" | "caution" | "alert"
     sector_exposure: list[SectorExposureItem] = []
+    geographic_allocation: dict[str, float] = Field(
+        default_factory=dict, description="Market value by geographic region"
+    )
+    asset_class_allocation: dict[str, float] = Field(
+        default_factory=dict, description="Market value by asset class"
+    )
     calculated_at: str = ""
 
 

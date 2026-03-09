@@ -10591,6 +10591,22 @@
             "title": "Sector Exposure",
             "default": []
           },
+          "geographic_allocation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Geographic Allocation",
+            "description": "Market value by geographic region"
+          },
+          "asset_class_allocation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Asset Class Allocation",
+            "description": "Market value by asset class"
+          },
           "calculated_at": {
             "type": "string",
             "title": "Calculated At",
