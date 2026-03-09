@@ -1497,7 +1497,7 @@
     "/webhook": {
       "post": {
         "summary": "Unified webhook for AI agent actions",
-        "description": "\u7d71\u4e00\u5165\u53e3 \u2014 \u4f9b OpenClaw \u7b49 AI agent \u4f7f\u7528\u3002\n\u652f\u63f4\u7684 action: help, summary, signals, scan, moat, alerts, add_stock\n\nRate limited: 5/minute per IP (prevents webhook abuse).",
+        "description": "\u7d71\u4e00\u5165\u53e3 \u2014 \u4f9b OpenClaw \u7b49 AI agent \u4f7f\u7528\u3002\n\u652f\u63f4\u7684 action: help, summary, dashboard, signals, analyze, scan, moat, alerts, add_stock\n\nRate limited: 5/minute per IP (prevents webhook abuse).",
         "operationId": "webhook_route_webhook_post",
         "parameters": [
           {
@@ -11137,6 +11137,21 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Params"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "concise",
+                  "detailed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
           }
         },
         "type": "object",
@@ -11155,6 +11170,11 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "interpretation": {
+            "type": "string",
+            "title": "Interpretation",
+            "default": ""
           },
           "data": {
             "additionalProperties": true,

@@ -408,8 +408,16 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Portfolio health overview (plain text)",
         "requires_ticker": False,
     },
+    "dashboard": {
+        "description": "Portfolio + market overview in one call",
+        "requires_ticker": False,
+    },
     "signals": {
         "description": "Technical indicators for a ticker (RSI, MA, Bias)",
+        "requires_ticker": True,
+    },
+    "analyze": {
+        "description": "Full stock analysis (signals + moat + fundamentals)",
         "requires_ticker": True,
     },
     "scan": {

@@ -888,7 +888,7 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | Endpoint | 用途 |
 |----------|------|
 | `GET /summary` | 純文字投資組合摘要，適合 chat 回覆 |
-| `POST /webhook` | 統一入口，接受 `{"action": "...", "ticker": "...", "params": {}}` |
+| `POST /webhook` | 統一入口，接受 `{"action":"...","ticker":"...","params":{},"format":"detailed\|concise"}` |
 | `GET /openapi.json` | 自動生成的 OpenAPI 規範 |
 | `GET /docs` | Swagger UI 互動式文件 |
 
@@ -896,19 +896,24 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 
 | Action | 說明 | 需要 ticker |
 |--------|------|:-----------:|
+| `dashboard` | 投資組合摘要 + 市場情緒（Fear & Greed） | 否 |
 | `summary` | 投資組合健康摘要 | 否 |
+| `analyze` | 單一股票整合分析（signals + moat + fundamentals） | 是 |
 | `signals` | 單一股票技術指標 | 是 |
 | `scan` | 觸發全域掃描 | 否 |
 | `moat` | 護城河分析 | 是 |
 | `alerts` | 查看價格警報 | 是 |
 | `add_stock` | 新增股票 | 是（在 params 中） |
 
+Webhook 回應統一格式：`{"success": bool, "message": str, "interpretation": str, "data": dict}`。
+`format="concise"` 時多數 action 會省略 `data` 以降低 token 使用量；`help` 仍會回傳 `data` 供動態探索。
+
 ### 範例對話（透過 WhatsApp/Telegram/Discord）
 
 | 你說... | Agent 執行... |
 |---------|---------------|
-| 「目前投資組合狀況如何」 | `curl http://localhost:8000/summary` |
-| 「幫我查 NVDA 的技術指標」 | `POST /webhook {"action":"signals","ticker":"NVDA"}` |
+| 「目前投資組合狀況如何」 | `POST /webhook {"action":"dashboard"}` |
+| 「幫我快速看 NVDA（省 token）」 | `POST /webhook {"action":"analyze","ticker":"NVDA","format":"concise"}` |
 | 「執行一次全域掃描」 | `POST /webhook {"action":"scan"}` |
 | 「新增 AMD 到護城河分類」 | `POST /webhook {"action":"add_stock","params":{"ticker":"AMD","category":"Moat","thesis":"..."}}` |
 
@@ -918,6 +923,7 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 - [Skills 設定](https://docs.openclaw.ai/tools/skills)
 - [Tools 設定](https://docs.openclaw.ai/tools)
 - [Cron Jobs](https://docs.openclaw.ai/automation/cron-jobs)
+- [Folio Skill 快速指南](docs/agents/folio/SKILL.md)
 
 </details>
 
@@ -933,7 +939,8 @@ azusa-stock/
 ├── frontend-react/ # React + Vite SPA（總覽 + 雷達 + 資產配置 + 外匯監控 + 大師足跡）
 ├── docs/
 │   └── agents/
-│       ├── AGENTS.md            # OpenClaw workspace 指令範本
+│       ├── AGENTS.md            # OpenClaw workspace 行為規則
+│       ├── TOOLS.md             # OpenClaw 環境設定與常用指令
 │       └── folio/
 │           ├── SKILL.md         # OpenClaw Skill 定義檔（AgentSkills 相容格式）
 │           └── reference.md     # 完整 API 參考、訊號分類、市場情緒閾值、維運操作

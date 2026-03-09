@@ -12,17 +12,47 @@
   },
   "webhook": {
     "missing_ticker": "tickerパラメータを指定してください。",
+    "missing_amount": "amountパラメータを指定してください。",
+    "invalid_amount": "無効な金額です: {amount}",
+    "invalid_category": "無効なカテゴリです: {category}",
+    "unsupported_action": "未対応のアクション: {action}。対応一覧: {supported}",
+    "help_message": "Webhookアクション一覧を準備しました。",
+    "help_model_hint": "簡易クエリ（summary、alerts、help）は低コストモデルで十分です。analyze と withdraw は高品質モデル推奨。",
     "alert_status": {
       "active": "有効",
       "inactive": "無効"
     },
     "fear_greed_prefix": "恐怖・強欲指数",
     "price_alerts_header": "{ticker} 価格アラート：",
+    "no_alerts": "{ticker} にアラートはありません。",
     "signals_line": "{ticker} — 現在値 ${price}, RSI={rsi}, Bias={bias}%",
+    "analyze_line": "{ticker} — 現在値 ${price}, RSI={rsi}, Bias={bias}%, モート={moat}, PER={pe}",
+    "signals_unavailable": "現在シグナルを取得できません。",
+    "scan_started": "スキャンを開始しました。結果はTelegramで通知されます。",
+    "moat_result": "{ticker} モート: {moat}。{details}",
+    "fx_watch_complete": "FXウォッチ完了: 合計 {total}、発火 {triggered}、送信 {sent}。",
+    "fx_watch_failed": "FXウォッチ失敗: {error}",
     "guru_sync_complete": "✅ 13F 同期完了：グル {total} 人、同期済み {synced}、スキップ {skipped}、エラー {errors}。",
     "guru_sync_failed": "❌ 13F 同期失敗：{error}",
     "guru_summary_complete": "✅ 13F ダイジェスト通知処理済み（{status}）、{count} 人のグル。",
-    "guru_summary_failed": "❌ 13F ダイジェスト通知失敗：{error}"
+    "guru_summary_failed": "❌ 13F ダイジェスト通知失敗：{error}",
+    "interpretation": {
+      "signal_ready": "シグナル概要の準備ができました。",
+      "action_failed": "アクションに失敗しました。メッセージを確認して再試行してください。",
+      "help_ready": "アクション一覧の準備ができました。workflowsに従うと呼び出し回数を減らせます。",
+      "summary_ready": "ポートフォリオ要約の準備ができました。",
+      "dashboard_ready": "ポートフォリオと市場文脈を含むダッシュボード要約の準備ができました。",
+      "scan_started": "スキャンはバックグラウンド実行中です。結果はTelegramで確認してください。",
+      "moat_ready": "モート分析の準備ができました。",
+      "no_alerts": "この銘柄に有効なアラートはありません。",
+      "alerts_ready": "アラート一覧の準備ができました。",
+      "fear_greed_ready": "市場センチメントのスナップショットを取得しました。",
+      "add_stock_ready": "銘柄をウォッチリストに追加しました。",
+      "withdraw_ready": "引き出し計画の準備ができました。",
+      "fx_watch_ready": "FXウォッチ分析の準備ができました。",
+      "guru_sync_ready": "13F同期サマリーの準備ができました。",
+      "guru_summary_ready": "グルダイジェストの準備ができました。"
+    }
   },
   "stock": {
     "not_found": "銘柄 {ticker} が見つかりません。",

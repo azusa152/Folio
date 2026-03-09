@@ -12,17 +12,47 @@
   },
   "webhook": {
     "missing_ticker": "請提供 ticker 參數。",
+    "missing_amount": "請提供 amount 參數。",
+    "invalid_amount": "金額無效：{amount}。",
+    "invalid_category": "分類無效：{category}。",
+    "unsupported_action": "不支援的動作：{action}。可用動作：{supported}",
+    "help_message": "Webhook 動作清單已準備完成。",
+    "help_model_hint": "簡單查詢（summary、alerts、help）可用低成本模型；analyze 與 withdraw 建議使用高品質模型。",
     "alert_status": {
       "active": "啟用",
       "inactive": "停用"
     },
     "fear_greed_prefix": "恐懼貪婪指數",
     "price_alerts_header": "{ticker} 價格警報：",
+    "no_alerts": "{ticker} 目前沒有警報。",
     "signals_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%",
+    "analyze_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%, 護城河={moat}, 本益比={pe}",
+    "signals_unavailable": "目前無法取得技術訊號。",
+    "scan_started": "掃描已啟動，結果將透過 Telegram 通知。",
+    "moat_result": "{ticker} 護城河：{moat}。{details}",
+    "fx_watch_complete": "外匯監控完成：總計 {total}、觸發 {triggered}、已發送 {sent}。",
+    "fx_watch_failed": "外匯監控失敗：{error}",
     "guru_sync_complete": "✅ 13F 同步完成：共 {total} 位大師，已同步 {synced}，跳過 {skipped}，失敗 {errors}。",
     "guru_sync_failed": "❌ 13F 同步失敗：{error}",
     "guru_summary_complete": "✅ 13F 摘要通知已處理（{status}），共 {count} 位大師。",
-    "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}"
+    "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}",
+    "interpretation": {
+      "signal_ready": "訊號摘要已準備完成。",
+      "action_failed": "動作執行失敗，請依訊息修正參數後重試。",
+      "help_ready": "動作清單已準備，可依 workflows 減少往返呼叫。",
+      "summary_ready": "投資組合摘要已準備完成。",
+      "dashboard_ready": "儀表板摘要已準備完成（含投資組合與市場脈絡）。",
+      "scan_started": "掃描已在背景執行，請至 Telegram 查看結果。",
+      "moat_ready": "護城河分析已準備完成。",
+      "no_alerts": "此股票目前沒有啟用中的警報。",
+      "alerts_ready": "警報清單已準備完成。",
+      "fear_greed_ready": "市場情緒快照已準備完成。",
+      "add_stock_ready": "股票已加入追蹤清單。",
+      "withdraw_ready": "提款規劃已準備完成。",
+      "fx_watch_ready": "外匯監控分析已準備完成。",
+      "guru_sync_ready": "13F 同步摘要已準備完成。",
+      "guru_summary_ready": "大師摘要已準備完成。"
+    }
   },
   "stock": {
     "not_found": "找不到股票 {ticker}。",

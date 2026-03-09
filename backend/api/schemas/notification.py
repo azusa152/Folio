@@ -2,6 +2,8 @@
 API — Notification / Telegram / Preferences / Persona / Snapshot / Webhook Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
@@ -130,9 +132,10 @@ class TwrResponse(BaseModel):
 class WebhookRequest(BaseModel):
     """POST /webhook 請求 Body — 統一入口供 AI agent 使用。"""
 
-    action: str  # "help", "summary", "signals", "scan", "moat", "alerts", "add_stock"
+    action: str  # "help", "summary", "dashboard", "signals", "analyze", ...
     ticker: str | None = None
     params: dict = Field(default_factory=dict)
+    format: Literal["concise", "detailed"] | None = None
 
 
 class WebhookResponse(BaseModel):
@@ -140,4 +143,5 @@ class WebhookResponse(BaseModel):
 
     success: bool
     message: str
+    interpretation: str = ""
     data: dict = Field(default_factory=dict)

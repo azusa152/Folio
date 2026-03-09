@@ -4,6 +4,35 @@ Detailed reference for signal taxonomy, market sentiment thresholds, endpoint fi
 
 ---
 
+## Webhook Contract
+
+Endpoint: `POST /webhook`
+
+Request body fields:
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `action` | string | Yes | Use `help` to discover available actions and workflows |
+| `ticker` | string | No | Required by ticker-based actions such as `signals`, `moat`, `alerts`, `analyze` |
+| `params` | object | No | Action-specific parameters |
+| `format` | `"detailed"` or `"concise"` | No | Default `detailed`; `concise` omits most `data` payloads to reduce tokens |
+
+Response envelope:
+
+| Field | Type | Always Present | Notes |
+|-------|------|----------------|-------|
+| `success` | bool | Yes | Execution result flag |
+| `message` | string | Yes | Human-readable action output |
+| `interpretation` | string | Yes | One-line pre-interpreted summary for agent decisioning |
+| `data` | object | Conditional | Included by default (`format=detailed`), omitted for most actions when `format=concise` |
+
+Composite actions (token-efficient):
+
+- `dashboard` — portfolio summary + market fear/greed context in one call
+- `analyze` — technical signals + moat trend + fundamentals in one call
+
+---
+
 ## Signal Taxonomy
 
 Folio uses two signal fields per stock:

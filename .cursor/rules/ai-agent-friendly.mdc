@@ -1,23 +1,50 @@
 ---
-description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing endpoints. Covers structured responses, OpenAPI completeness, error codes, and webhook discoverability.
-globs: ["backend/api/**"]
+description: Apply when designing or implementing FastAPI backend APIs, webhooks, or agent-facing docs. Covers token-efficient responses, verbosity control, composite actions, and OpenClaw doc distribution.
+globs: ["backend/api/**", "backend/application/messaging/**", "docs/agents/**"]
 ---
 
 # AI Agent-Friendly API Design
 
-APIs must be discoverable and parseable by AI agents (LLM tool-use, MCP clients) without human help. See `backend/api/stock_routes.py` for the canonical pattern.
+APIs must be discoverable and parseable by AI agents (LLM tool-use, OpenClaw exec+curl) without human help.
 
 ## Response Standards
-- Every endpoint: JSON with typed Pydantic `response_model`. Exception: `GET /summary` returns plain text.
-- Webhook responses: `{"success": bool, "message": str, "data": dict}`.
-- Errors: JSON with `error_code` (machine-readable slug) + `detail` (i18n localized). Agents branch on `error_code`.
+
+- Webhook responses: `{"success": bool, "message": str, "interpretation": str, "data": dict}`.
+- `interpretation` should be a one-line pre-computed summary so agents do not spend extra tokens re-deriving conclusions.
+- Request verbosity via top-level `format` field (`detailed` default for backward compat, `concise` opt-in). In concise mode, omit `data` to save tokens.
+- Errors: JSON with `error_code` (machine-readable) + localized `detail`. Agents branch on `error_code`.
+- Non-webhook endpoints should still use typed Pydantic `response_model`.
+
+## Composite Actions
+
+- Prefer outcome-oriented actions when one user intent would otherwise require 2-3 API calls.
+- Composite examples:
+  - `dashboard` -> summary + market context
+  - `analyze` -> signals + moat + fundamentals
+- New action = one `WEBHOOK_ACTION_REGISTRY` entry + one `handle_webhook()` handler path.
 
 ## OpenAPI Completeness
-Every FastAPI route MUST have: `summary` param, typed `response_model`, Pydantic request body schemas for POST/PUT/PATCH.
+
+Every FastAPI route should define `summary`, typed `response_model` (when JSON), and Pydantic schemas for POST/PUT/PATCH bodies.
 
 ## Webhook Discoverability
-- `POST /webhook {"action": "help"}` returns all supported actions, params, and descriptions.
-- Action registry: single source of truth in `backend/domain/constants.py`. New action = one dict entry + one handler.
+
+- `POST /webhook {"action":"help"}` should return:
+  - compact `actions` descriptions
+  - `workflows` for common multi-step flows
+  - `model_hint` for cost-aware model routing
+- `backend/domain/core/constants.py` is the source of truth for action metadata.
+
+## OpenClaw Doc Token Budgets
+
+- `docs/agents/AGENTS.md`: under 500 tokens, behavioral rules only (always loaded).
+- `docs/agents/TOOLS.md`: under 500 tokens, environment notes only.
+- `docs/agents/folio/SKILL.md`: compact action guide (target around 1200 tokens).
+- `docs/agents/folio/reference.md`: detailed endpoint fields and thresholds (on-demand).
+- Do not duplicate the same content across AGENTS/SKILL/TOOLS.
+- Prefer concise bullet lists; avoid verbose table-heavy docs unless strictly necessary.
 
 ## Defaults
-- List endpoints: `limit=50, offset=0` for pagination.
+
+- List endpoints: `limit=50`, `offset=0`.
+- Webhook default format: `detailed` (backward compatible; agents opt in to `concise`).

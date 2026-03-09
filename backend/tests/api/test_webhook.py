@@ -26,15 +26,30 @@ class TestWebhookHelp:
         assert "alerts" in actions
         assert "add_stock" in actions
 
-    def test_help_should_include_descriptions(self, client):
+    def test_help_should_include_structured_descriptions(self, client):
         # Act
         resp = client.post("/webhook", json={"action": "help"})
 
         # Assert
         actions = resp.json()["data"]["actions"]
         for action_info in actions.values():
+            assert isinstance(action_info, dict)
             assert "description" in action_info
             assert "requires_ticker" in action_info
+
+    def test_help_should_always_include_data_even_in_concise_mode(self, client):
+        """Discoverability must never be gated behind format."""
+        # Act
+        resp = client.post("/webhook", json={"action": "help", "format": "concise"})
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert "data" in body
+        assert "actions" in body["data"]
+        assert "workflows" in body["data"]
+        assert "model_hint" in body["data"]
 
 
 class TestWebhookSummary:
@@ -49,6 +64,51 @@ class TestWebhookSummary:
         body = resp.json()
         assert body["success"] is True
         assert isinstance(body["message"], str)
+
+
+class TestWebhookDashboard:
+    """Tests for the 'dashboard' composite action."""
+
+    def test_dashboard_should_return_summary_and_fear_greed(self, client):
+        # Act
+        resp = client.post("/webhook", json={"action": "dashboard"})
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert isinstance(body["message"], str)
+        assert body["interpretation"] == t(
+            "webhook.interpretation.dashboard_ready", lang="zh-TW"
+        )
+        assert "fear_greed" in body["data"]
+
+
+class TestWebhookAnalyze:
+    """Tests for the 'analyze' composite action."""
+
+    def test_analyze_should_return_combined_data_with_ticker(self, client):
+        # Act
+        resp = client.post("/webhook", json={"action": "analyze", "ticker": "NVDA"})
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert "NVDA" in body["message"]
+        assert "signals" in body["data"]
+        assert "moat" in body["data"]
+        assert "fundamentals" in body["data"]
+
+    def test_analyze_should_fail_without_ticker(self, client):
+        # Act
+        resp = client.post("/webhook", json={"action": "analyze"})
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert "ticker" in body["message"]
 
 
 class TestWebhookSignals:
@@ -108,8 +168,8 @@ class TestWebhookMoat:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
-        expected_key = t("webhook.moat_result", lang="zh-TW")
-        assert expected_key in body["message"]
+        assert "NVDA" in body["message"]
+        assert "護城河" in body["message"]
 
     def test_moat_should_fail_without_ticker(self, client):
         # Act
@@ -136,8 +196,8 @@ class TestWebhookAlerts:
         # Assert
         body = resp.json()
         assert body["success"] is True
-        expected_msg = t("webhook.no_alerts", lang="zh-TW")
-        assert expected_msg in body["message"]
+        expected_msg = t("webhook.no_alerts", lang="zh-TW", ticker="AAPL")
+        assert body["message"] == expected_msg
 
     def test_alerts_should_fail_without_ticker(self, client):
         # Act
@@ -250,7 +310,6 @@ class TestWebhookFXWatch:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
-        # Check that the expected translated message parts are present
         expected_complete = t(
             "webhook.fx_watch_complete", total=1, triggered=1, sent=1, lang="zh-TW"
         )
@@ -285,8 +344,10 @@ class TestWebhookFXWatch:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is False
-        expected_msg = t("webhook.fx_watch_failed", lang="zh-TW")
-        assert expected_msg in body["message"]
+        expected_msg = t(
+            "webhook.fx_watch_failed", lang="zh-TW", error="DB connection lost"
+        )
+        assert body["message"] == expected_msg
 
 
 class TestWebhookDiscoverability:
@@ -302,7 +363,6 @@ class TestWebhookDiscoverability:
         actions = resp.json()["data"]["actions"]
         for action_name in WEBHOOK_ACTION_REGISTRY:
             assert action_name in actions, f"Missing action in help: {action_name}"
-        # Also verify no extra actions beyond registry
         assert set(actions.keys()) == set(WEBHOOK_ACTION_REGISTRY.keys())
 
     @patch("application.portfolio.fx_watch_service.log_notification_sent")
@@ -350,7 +410,80 @@ class TestWebhookUnknownAction:
         # Assert
         body = resp.json()
         assert body["success"] is False
+        supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
         expected_msg = t(
-            "webhook.unsupported_action", action="nonexistent", lang="zh-TW"
+            "webhook.unsupported_action",
+            action="nonexistent",
+            supported=supported,
+            lang="zh-TW",
         )
         assert body["message"] == expected_msg
+
+
+class TestWebhookResponseContract:
+    """Contract tests for webhook response structure and backward compatibility."""
+
+    def test_default_response_includes_data(self, client):
+        """Default format (detailed) must include data for backward compat."""
+        # Act — no format specified
+        resp = client.post("/webhook", json={"action": "help"})
+
+        # Assert
+        body = resp.json()
+        assert "data" in body, (
+            "Default response must include 'data' for backward compat"
+        )
+
+    def test_concise_omits_data_for_regular_actions(self, client):
+        """Concise mode should omit data to save tokens."""
+        # Act
+        resp = client.post("/webhook", json={"action": "summary", "format": "concise"})
+
+        # Assert
+        body = resp.json()
+        assert "data" not in body or body["data"] == {}
+
+    def test_all_responses_include_interpretation(self, client):
+        """Every webhook response should include the interpretation field."""
+        # Act
+        resp = client.post("/webhook", json={"action": "summary"})
+
+        # Assert
+        body = resp.json()
+        assert "interpretation" in body
+        assert isinstance(body["interpretation"], str)
+
+    def test_help_structured_actions_have_required_keys(self, client):
+        """Help action metadata must be machine-readable dicts."""
+        # Act
+        resp = client.post("/webhook", json={"action": "help"})
+
+        # Assert
+        actions = resp.json()["data"]["actions"]
+        for name, meta in actions.items():
+            assert isinstance(meta, dict), f"Action '{name}' should be a dict"
+            assert "description" in meta, f"Action '{name}' missing 'description'"
+            assert "requires_ticker" in meta, (
+                f"Action '{name}' missing 'requires_ticker'"
+            )
+            assert isinstance(meta["requires_ticker"], bool)
+
+    def test_help_workflows_present(self, client):
+        """Help must include workflow suggestions."""
+        # Act
+        resp = client.post("/webhook", json={"action": "help"})
+
+        # Assert
+        data = resp.json()["data"]
+        assert "workflows" in data
+        assert len(data["workflows"]) > 0
+
+    def test_help_model_hint_present(self, client):
+        """Help must include a model hint for cost-aware routing."""
+        # Act
+        resp = client.post("/webhook", json={"action": "help"})
+
+        # Assert
+        data = resp.json()["data"]
+        assert "model_hint" in data
+        assert isinstance(data["model_hint"], str)
