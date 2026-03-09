@@ -15,4 +15,5 @@ from domain.core.enums import (  # noqa: F401
     MoatStatus,
     ScanSignal,
     StockCategory,
+    TransactionType,
 )

@@ -19,6 +19,7 @@ from domain.core.entities import (  # noqa: F401
     Stock,
     SystemTemplate,
     ThesisLog,
+    Transaction,
     UserInvestmentProfile,
     UserPreferences,
     UserTelegramSettings,

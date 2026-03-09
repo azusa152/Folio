@@ -339,5 +339,10 @@
     "alert_type_daily_spike": "单日剧烈波动",
     "alert_type_short_term_swing": "短期波段变动",
     "alert_type_long_term_trend": "长期趋势变动"
+  },
+  "transaction": {
+    "not_found": "交易记录未找到",
+    "created": "交易已记录",
+    "deleted": "交易已删除"
   }
 }

@@ -5,7 +5,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlmodel import Session, func, select
 
@@ -27,6 +27,7 @@ from domain.entities import (
     Stock,
     SystemTemplate,
     ThesisLog,
+    Transaction,
     UserInvestmentProfile,
     UserPreferences,
     UserTelegramSettings,
@@ -1344,3 +1345,49 @@ def save_profile(
     session.commit()
     session.refresh(profile)
     return profile
+
+
+# ===========================================================================
+# Transaction Repository
+# ===========================================================================
+
+
+def find_all_transactions(
+    session: Session,
+    ticker: str | None = None,
+    holding_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = 500,
+) -> list[Transaction]:
+    """查詢交易紀錄（支援篩選）。"""
+    stmt = select(Transaction).order_by(Transaction.transaction_date.desc())
+    if ticker:
+        stmt = stmt.where(Transaction.ticker == ticker)
+    if holding_id is not None:
+        stmt = stmt.where(Transaction.holding_id == holding_id)
+    if start_date is not None:
+        stmt = stmt.where(Transaction.transaction_date >= start_date)
+    if end_date is not None:
+        stmt = stmt.where(Transaction.transaction_date <= end_date)
+    stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_transaction_by_id(session: Session, txn_id: int) -> Transaction | None:
+    """根據 ID 查詢單一交易紀錄。"""
+    return session.get(Transaction, txn_id)
+
+
+def save_transaction(session: Session, txn: Transaction) -> Transaction:
+    """新增或更新交易紀錄（含 refresh）。"""
+    session.add(txn)
+    session.commit()
+    session.refresh(txn)
+    return txn
+
+
+def delete_transaction(session: Session, txn: Transaction) -> None:
+    """刪除交易紀錄。"""
+    session.delete(txn)
+    session.commit()

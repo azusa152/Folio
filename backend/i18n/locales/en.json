@@ -339,5 +339,10 @@
     "alert_type_daily_spike": "Daily Spike",
     "alert_type_short_term_swing": "Short-term Swing",
     "alert_type_long_term_trend": "Long-term Trend"
+  },
+  "transaction": {
+    "not_found": "Transaction not found",
+    "created": "Transaction recorded",
+    "deleted": "Transaction deleted"
   }
 }

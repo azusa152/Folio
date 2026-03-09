@@ -339,5 +339,10 @@
     "alert_type_daily_spike": "日次急騰・急落",
     "alert_type_short_term_swing": "短期スイング",
     "alert_type_long_term_trend": "長期トレンド"
+  },
+  "transaction": {
+    "not_found": "取引が見つかりません",
+    "created": "取引を記録しました",
+    "deleted": "取引を削除しました"
   }
 }

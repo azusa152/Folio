@@ -35,6 +35,7 @@ from api.routes.snapshot_routes import router as snapshot_router
 from api.routes.stock_routes import router as stock_router
 from api.routes.telegram_routes import router as telegram_router
 from api.routes.thesis_routes import router as thesis_router
+from api.routes.transaction_routes import router as transaction_router
 from api.schemas import HealthResponse
 from config.settings import init_settings
 from infrastructure.database import create_db_and_tables
@@ -170,3 +171,4 @@ app.include_router(fx_watch_router, dependencies=auth_deps)
 app.include_router(guru_router, dependencies=auth_deps)
 app.include_router(resonance_router, dependencies=auth_deps)
 app.include_router(snapshot_router, dependencies=auth_deps)
+app.include_router(transaction_router, dependencies=auth_deps)

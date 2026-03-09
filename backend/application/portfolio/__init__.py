@@ -50,6 +50,12 @@ from application.portfolio.snapshot_service import (  # noqa: F401
 from application.portfolio.stress_test_service import (  # noqa: F401
     calculate_stress_test,
 )
+from application.portfolio.transaction_service import (  # noqa: F401
+    create_transaction,
+    get_transaction,
+    list_transactions,
+    remove_transaction,
+)
 
 # Backward-compatible aliases for external imports.
 create_net_worth_item = create_item

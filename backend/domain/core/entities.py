@@ -6,6 +6,7 @@ Domain — 資料庫實體 (SQLModel Tables)。
 import json as _json
 from datetime import UTC, date, datetime
 
+from sqlalchemy import Index
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
@@ -14,7 +15,7 @@ from domain.constants import (
     DEFAULT_NOTIFICATION_RATE_LIMITS,
     DEFAULT_USER_ID,
 )
-from domain.enums import HoldingAction, ScanSignal, StockCategory
+from domain.enums import HoldingAction, ScanSignal, StockCategory, TransactionType
 
 
 class Stock(SQLModel, table=True):
@@ -155,6 +156,39 @@ class Holding(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="更新時間",
+    )
+
+
+class Transaction(SQLModel, table=True):
+    """持倉交易紀錄（買入 / 賣出 / 股息 / 存入 / 提取）。"""
+
+    __table_args__ = (
+        Index("ix_transaction_user_date", "user_id", "transaction_date"),
+        Index("ix_transaction_holding_date", "holding_id", "transaction_date"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    holding_id: int | None = Field(
+        default=None, foreign_key="holding.id", description="關聯持倉 ID（可選）"
+    )
+    ticker: str = Field(description="資產代號")
+    transaction_type: TransactionType = Field(
+        description="交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)"
+    )
+    quantity: float = Field(description="交易數量")
+    price: float | None = Field(default=None, description="每單位成交價格")
+    total_amount: float = Field(description="交易總金額")
+    currency: str = Field(default="USD", description="交易幣別")
+    fx_rate: float | None = Field(
+        default=None, description="交易時匯率（1 單位交易幣別 = ? USD）"
+    )
+    fee: float = Field(default=0.0, description="手續費")
+    note: str = Field(default="", description="備註")
+    transaction_date: date = Field(description="交易日期")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="建立時間",
     )
 
 

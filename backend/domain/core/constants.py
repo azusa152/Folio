@@ -466,6 +466,25 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Send latest guru holding changes digest via Telegram",
         "requires_ticker": False,
     },
+    "transactions": {
+        "description": "List recent transactions (buy/sell/dividend/deposit/withdrawal)",
+        "requires_ticker": False,
+        "params": {
+            "ticker": "str (optional — filter by ticker)",
+            "limit": "int (optional — default 10, max 50)",
+        },
+    },
+    "add_transaction": {
+        "description": "Record a new transaction",
+        "requires_ticker": True,
+        "params": {
+            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)",
+            "quantity": "float (required)",
+            "price": "float (optional — per-unit price)",
+            "total_amount": "float (required — total transaction value)",
+            "date": "str (required — YYYY-MM-DD)",
+        },
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -501,6 +520,7 @@ ERROR_STOCK_ALREADY_INACTIVE = "STOCK_ALREADY_INACTIVE"
 ERROR_STOCK_ALREADY_ACTIVE = "STOCK_ALREADY_ACTIVE"
 ERROR_CATEGORY_UNCHANGED = "CATEGORY_UNCHANGED"
 ERROR_HOLDING_NOT_FOUND = "HOLDING_NOT_FOUND"
+ERROR_TRANSACTION_NOT_FOUND = "TRANSACTION_NOT_FOUND"
 ERROR_NET_WORTH_ITEM_NOT_FOUND = "NET_WORTH_ITEM_NOT_FOUND"
 ERROR_PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
 ERROR_GURU_NOT_FOUND = "GURU_NOT_FOUND"
