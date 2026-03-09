@@ -36,6 +36,10 @@ from application.portfolio.holding_service import (  # noqa: F401
     list_holdings,
     update_holding,
 )
+from application.portfolio.insight_service import (  # noqa: F401
+    get_portfolio_insights,
+    invalidate_insight_cache,
+)
 from application.portfolio.net_worth_service import (  # noqa: F401
     calculate_net_worth,
     create_item,

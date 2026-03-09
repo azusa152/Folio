@@ -44,6 +44,8 @@ import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
+import { InsightCard } from "@/components/dashboard/InsightCard"
+import { useInsights } from "@/api/hooks/useAnalytics"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -88,6 +90,7 @@ export default function Dashboard() {
   // requests above can claim FastAPI threadpool workers first. Note: LazySection
   // below defers *rendering* of below-fold components, but these hooks are still
   // registered here; data fetching starts as soon as stocksLoading resolves.
+  const { data: insights, isLoading: insightsLoading } = useInsights(displayCurrency, !stocksLoading)
   const { data: enrichedStocks, isLoading: enrichedLoading } = useEnrichedStocks({
     enabled: !stocksLoading,
   })
@@ -225,6 +228,10 @@ export default function Dashboard() {
         holdings={holdings ?? []}
         isLoading={heroLoading}
       />
+
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
+        <InsightCard insights={insights ?? []} maxVisible={3} isLoading={insightsLoading} />
+      </LazySection>
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <SignalAlerts

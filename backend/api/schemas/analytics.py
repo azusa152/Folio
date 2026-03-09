@@ -20,6 +20,13 @@ class RiskMetricsResponse(BaseModel):
     trading_days: int
 
 
+class InsightResponse(BaseModel):
+    key: str
+    severity: str
+    vars: dict = {}
+    category: str
+
+
 class ContributionGrowthPoint(BaseModel):
     date: str
     market_value: float

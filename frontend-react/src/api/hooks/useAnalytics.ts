@@ -4,6 +4,7 @@ import type { components } from "@/api/types/generated"
 
 export type DrawdownPoint = components["schemas"]["DrawdownPointResponse"]
 export type RiskMetrics = components["schemas"]["RiskMetricsResponse"]
+export type InsightItem = components["schemas"]["InsightResponse"]
 
 export function useDrawdown(start?: string, end?: string, enabled = true) {
   return useQuery<DrawdownPoint[]>({
@@ -29,6 +30,21 @@ export function useRiskMetrics(start?: string, end?: string, enabled = true) {
       })
       if (error) throw error
       return data as RiskMetrics
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled,
+  })
+}
+
+export function useInsights(displayCurrency = "USD", enabled = true) {
+  return useQuery<InsightItem[]>({
+    queryKey: ["insights", displayCurrency],
+    queryFn: async () => {
+      const { data, error } = await client.GET("/analytics/insights", {
+        params: { query: { display_currency: displayCurrency } },
+      })
+      if (error) throw error
+      return (data ?? []) as InsightItem[]
     },
     staleTime: 5 * 60 * 1000,
     enabled,

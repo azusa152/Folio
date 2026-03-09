@@ -8,6 +8,7 @@ from sqlmodel import Session
 from api.schemas.analytics import (
     ContributionGrowthPoint,
     DrawdownPointResponse,
+    InsightResponse,
     RiskMetricsResponse,
 )
 from application.portfolio.analytics_service import (
@@ -15,6 +16,7 @@ from application.portfolio.analytics_service import (
     get_drawdown_series,
     get_risk_metrics,
 )
+from application.portfolio.insight_service import get_portfolio_insights
 from infrastructure.database import get_session
 
 router = APIRouter(tags=["analytics"])
@@ -73,3 +75,15 @@ def contribution_growth(
         "private, max-age=300, stale-while-revalidate=3600"
     )
     return get_contribution_vs_growth(session, start=start, end=end)
+
+
+@router.get("/analytics/insights", response_model=list[InsightResponse])
+def portfolio_insights(
+    response: Response,
+    display_currency: str = Query("USD"),
+    session: Session = Depends(get_session),
+):
+    response.headers["Cache-Control"] = (
+        "private, max-age=300, stale-while-revalidate=3600"
+    )
+    return get_portfolio_insights(session, display_currency)

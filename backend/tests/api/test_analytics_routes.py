@@ -145,3 +145,32 @@ class TestContributionGrowthEndpoint:
             params={"start": "2025-12-31", "end": "2025-01-01"},
         )
         assert resp.status_code == 422
+
+
+class TestInsightsEndpoint:
+    """Tests for GET /analytics/insights."""
+
+    def test_insights_should_return_200_with_empty_list(self, client):
+        resp = client.get("/analytics/insights")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_insights_should_return_list_with_data(self, client, db_session):
+        _seed_snapshots(db_session, count=30)
+        resp = client.get("/analytics/insights")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        for item in data:
+            assert "key" in item
+            assert "severity" in item
+            assert "vars" in item
+            assert "category" in item
+
+    def test_insights_should_accept_display_currency_param(self, client):
+        resp = client.get("/analytics/insights", params={"display_currency": "JPY"})
+        assert resp.status_code == 200
+
+    def test_insights_should_include_cache_control_header(self, client):
+        resp = client.get("/analytics/insights")
+        assert "Cache-Control" in resp.headers

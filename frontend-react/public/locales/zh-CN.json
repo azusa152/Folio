@@ -1749,5 +1749,20 @@
     "contribution_title": "投入 vs 增长",
     "contribution_label": "总投入",
     "growth_label": "市值"
+  },
+  "insight": {
+    "title": "投资组合洞察",
+    "show_more": "显示更多洞察",
+    "show_less": "收起",
+    "high_concentration": "{{category}}占投资组合的{{weight_pct}}%。建议考虑分散投资。",
+    "drift_exceeds_threshold": "{{category}}偏离目标配置{{drift_pct}}%。建议考虑再平衡。",
+    "health_excellent": "投资组合健康评分为{{score}}分 — 非常优秀！",
+    "health_needs_attention": "投资组合健康评分为{{score}}分，请检查您的配置。",
+    "outperforming_benchmark": "投资组合上涨{{return_pct}}%，跑赢基准{{alpha_pct}}%。",
+    "underperforming_benchmark": "投资组合上涨{{return_pct}}%，落后基准{{lag_pct}}%。",
+    "severe_drawdown": "投资组合从峰值下跌了{{drawdown_pct}}% — 这是一次显著回调。",
+    "moderate_drawdown": "投资组合从峰值下跌了{{drawdown_pct}}% — 在正常范围内。",
+    "strong_risk_adjusted": "夏普比率{{sharpe}}表明风险调整后收益优异。",
+    "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能补偿所承担的风险。"
   }
 }

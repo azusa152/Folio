@@ -1749,5 +1749,20 @@
     "contribution_title": "Contributions vs Growth",
     "contribution_label": "Total Invested",
     "growth_label": "Market Value"
+  },
+  "insight": {
+    "title": "Portfolio Insights",
+    "show_more": "Show more insights",
+    "show_less": "Show fewer",
+    "high_concentration": "{{category}} makes up {{weight_pct}}% of your portfolio. Consider diversifying.",
+    "drift_exceeds_threshold": "{{category}} is {{drift_pct}}% off your target allocation. Consider rebalancing.",
+    "health_excellent": "Your portfolio health score is {{score}} — excellent!",
+    "health_needs_attention": "Your portfolio health score is {{score}}. Review your allocation.",
+    "outperforming_benchmark": "Your portfolio is up {{return_pct}}%, beating the benchmark by {{alpha_pct}}%.",
+    "underperforming_benchmark": "Your portfolio is up {{return_pct}}%, trailing the benchmark by {{lag_pct}}%.",
+    "severe_drawdown": "Your portfolio has declined {{drawdown_pct}}% from its peak — a significant pullback.",
+    "moderate_drawdown": "Your portfolio has declined {{drawdown_pct}}% from its peak — within normal range.",
+    "strong_risk_adjusted": "Your Sharpe ratio of {{sharpe}} indicates strong risk-adjusted returns.",
+    "negative_risk_adjusted": "Your Sharpe ratio of {{sharpe}} suggests returns haven't compensated for risk."
   }
 }

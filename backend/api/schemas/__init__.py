@@ -12,6 +12,7 @@ from api.schemas.account import (  # noqa: F401
 from api.schemas.analytics import (  # noqa: F401
     ContributionGrowthPoint,
     DrawdownPointResponse,
+    InsightResponse,
     RiskMetricsResponse,
 )
 from api.schemas.backtest import (  # noqa: F401

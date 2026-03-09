@@ -331,6 +331,69 @@
         }
       }
     },
+    "/analytics/insights": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Portfolio Insights",
+        "operationId": "portfolio_insights_analytics_insights_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InsightResponse"
+                  },
+                  "title": "Response Portfolio Insights Analytics Insights Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/accounts": {
       "get": {
         "tags": [
@@ -9840,6 +9903,35 @@
         ],
         "title": "ImportResponse",
         "description": "\u532f\u5165\u64cd\u4f5c\u56de\u61c9\u3002"
+      },
+      "InsightResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "vars": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Vars",
+            "default": {}
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "severity",
+          "category"
+        ],
+        "title": "InsightResponse"
       },
       "LastScanResponse": {
         "properties": {

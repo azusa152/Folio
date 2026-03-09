@@ -502,12 +502,31 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
             "end": "str (optional — YYYY-MM-DD end date)",
         },
     },
+    "insights": {
+        "description": "Natural language portfolio insights and suggestions",
+        "requires_ticker": False,
+        "params": {
+            "display_currency": "str (optional — default USD)",
+        },
+    },
 }
 
 # ---------------------------------------------------------------------------
 # Analytics — Drawdown & Risk Metrics
 # ---------------------------------------------------------------------------
 ANALYTICS_DEFAULT_LOOKBACK_DAYS = 365 * 10  # ~10 years — effectively "all data"
+
+# ---------------------------------------------------------------------------
+# Insight Thresholds
+# ---------------------------------------------------------------------------
+INSIGHT_CONCENTRATION_THRESHOLD = 0.40
+INSIGHT_OUTPERFORMANCE_THRESHOLD = 0.01
+INSIGHT_UNDERPERFORMANCE_THRESHOLD = -0.05
+INSIGHT_SEVERE_DRAWDOWN_THRESHOLD = -0.20
+INSIGHT_MODERATE_DRAWDOWN_THRESHOLD = -0.10
+INSIGHT_EXCELLENT_HEALTH_SCORE = 80
+INSIGHT_POOR_HEALTH_SCORE = 50
+INSIGHT_STRONG_SHARPE = 1.0
 
 # ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types

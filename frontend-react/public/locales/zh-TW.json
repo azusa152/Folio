@@ -1749,5 +1749,20 @@
     "contribution_title": "投入 vs 成長",
     "contribution_label": "總投入",
     "growth_label": "市值"
+  },
+  "insight": {
+    "title": "投資組合洞察",
+    "show_more": "顯示更多洞察",
+    "show_less": "收起",
+    "high_concentration": "{{category}}佔投資組合的{{weight_pct}}%。建議考慮分散投資。",
+    "drift_exceeds_threshold": "{{category}}偏離目標配置{{drift_pct}}%。建議考慮再平衡。",
+    "health_excellent": "投資組合健康評分為{{score}}分 — 非常優秀！",
+    "health_needs_attention": "投資組合健康評分為{{score}}分，請檢查您的配置。",
+    "outperforming_benchmark": "投資組合上漲{{return_pct}}%，跑贏基準{{alpha_pct}}%。",
+    "underperforming_benchmark": "投資組合上漲{{return_pct}}%，落後基準{{lag_pct}}%。",
+    "severe_drawdown": "投資組合從峰值下跌了{{drawdown_pct}}% — 這是一次顯著回調。",
+    "moderate_drawdown": "投資組合從峰值下跌了{{drawdown_pct}}% — 在正常範圍內。",
+    "strong_risk_adjusted": "夏普比率{{sharpe}}表明風險調整後收益優異。",
+    "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能補償所承擔的風險。"
   }
 }

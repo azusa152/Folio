@@ -12,7 +12,7 @@ from api.schemas import (
     ProfileResponse,
     ProfileUpdateRequest,
 )
-from application.services import invalidate_rebalance_cache
+from application.services import invalidate_insight_cache, invalidate_rebalance_cache
 from application.settings import persona_service
 from i18n import get_user_language
 from infrastructure.database import get_session
@@ -94,6 +94,7 @@ def update_profile(
         )
     )
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -110,4 +111,5 @@ def delete_profile(
     lang = get_user_language(session)
     result = persona_service.deactivate_profile(session, profile_id, lang)
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result

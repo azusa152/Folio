@@ -1749,5 +1749,20 @@
     "contribution_title": "投入額 vs 成長",
     "contribution_label": "投入総額",
     "growth_label": "時価総額"
+  },
+  "insight": {
+    "title": "ポートフォリオインサイト",
+    "show_more": "もっと見る",
+    "show_less": "折りたたむ",
+    "high_concentration": "{{category}}がポートフォリオの{{weight_pct}}%を占めています。分散投資をご検討ください。",
+    "drift_exceeds_threshold": "{{category}}が目標配分から{{drift_pct}}%乖離しています。リバランスをご検討ください。",
+    "health_excellent": "ポートフォリオ健全性スコアは{{score}}点 — 優秀です！",
+    "health_needs_attention": "ポートフォリオ健全性スコアは{{score}}点です。配分を見直してください。",
+    "outperforming_benchmark": "ポートフォリオは{{return_pct}}%上昇し、ベンチマークを{{alpha_pct}}%上回っています。",
+    "underperforming_benchmark": "ポートフォリオは{{return_pct}}%上昇していますが、ベンチマークを{{lag_pct}}%下回っています。",
+    "severe_drawdown": "ポートフォリオはピークから{{drawdown_pct}}%下落しています — 大幅な調整です。",
+    "moderate_drawdown": "ポートフォリオはピークから{{drawdown_pct}}%下落しています — 通常の範囲内です。",
+    "strong_risk_adjusted": "シャープレシオ{{sharpe}}は、優れたリスク調整後リターンを示しています。",
+    "negative_risk_adjusted": "シャープレシオ{{sharpe}}は、リスクに見合ったリターンが得られていないことを示しています。"
   }
 }
