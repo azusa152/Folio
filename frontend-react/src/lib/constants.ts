@@ -86,6 +86,43 @@ export const NET_WORTH_LIABILITY_CATEGORIES = [
 ] as const
 export const NET_WORTH_STALE_DAYS = 90
 
+export const CURRENCY_TO_REGION: Record<string, string> = {
+  USD: "US",
+  TWD: "TW",
+  JPY: "JP",
+  HKD: "HK",
+}
+
+export const GEOGRAPHIC_COLOR_MAP: Record<string, string> = {
+  US: "#3B82F6",
+  TW: "#22C55E",
+  JP: "#EF4444",
+  HK: "#F59E0B",
+  Other: "#9CA3AF",
+}
+
+export const GEOGRAPHIC_LABELS: Record<string, string> = {
+  US: "allocation.geo.us",
+  TW: "allocation.geo.tw",
+  JP: "allocation.geo.jp",
+  HK: "allocation.geo.hk",
+  Other: "allocation.geo.other",
+}
+
+export const CATEGORY_TO_ASSET_CLASS: Record<string, string> = {
+  Bond: "Fixed Income",
+  Cash: "Cash",
+  Crypto: "Alternatives",
+}
+
+export const ASSET_CLASS_COLOR_MAP: Record<string, string> = {
+  Equity: "#0EA5E9",
+  "Fixed Income": "#8B5CF6",
+  Cash: "#9CA3AF",
+  Alternatives: "#F7931A",
+  Other: "#6B7280",
+}
+
 /** Shared chart color palette for pie/bar/treemap charts without category semantics. */
 export const CHART_COLOR_PALETTE = [
   "#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308",

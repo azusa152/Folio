@@ -855,6 +855,27 @@
       "title": "セクター配分",
       "empty": "セクターデータなし。"
     },
+    "geo": {
+      "title": "地域別配分",
+      "us": "米国",
+      "tw": "台湾",
+      "jp": "日本",
+      "hk": "香港",
+      "other": "その他"
+    },
+    "asset_class": {
+      "title": "資産クラス別内訳",
+      "equity": "株式",
+      "fixed_income": "債券",
+      "cash": "現金",
+      "alternatives": "オルタナティブ",
+      "other": "その他"
+    },
+    "sector_standalone": {
+      "title": "セクター配分",
+      "other": "その他"
+    },
+    "clear_filter": "フィルター解除",
     "fx": {
       "title": "💱 外貨エクスポージャー",
       "home_currency": "基準通貨",

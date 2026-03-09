@@ -855,6 +855,27 @@
       "title": "Sector Exposure",
       "empty": "No sector data."
     },
+    "geo": {
+      "title": "Geographic Allocation",
+      "us": "United States",
+      "tw": "Taiwan",
+      "jp": "Japan",
+      "hk": "Hong Kong",
+      "other": "Other"
+    },
+    "asset_class": {
+      "title": "Asset Class Breakdown",
+      "equity": "Equity",
+      "fixed_income": "Fixed Income",
+      "cash": "Cash",
+      "alternatives": "Alternatives",
+      "other": "Other"
+    },
+    "sector_standalone": {
+      "title": "Sector Allocation",
+      "other": "Other"
+    },
+    "clear_filter": "Clear filter",
     "fx": {
       "title": "💱 Currency Exposure",
       "home_currency": "Home Currency",

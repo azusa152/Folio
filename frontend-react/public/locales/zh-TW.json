@@ -855,6 +855,27 @@
       "title": "產業曝險",
       "empty": "無產業資料。"
     },
+    "geo": {
+      "title": "地區配置",
+      "us": "美國",
+      "tw": "台灣",
+      "jp": "日本",
+      "hk": "香港",
+      "other": "其他"
+    },
+    "asset_class": {
+      "title": "資產類別分佈",
+      "equity": "股票",
+      "fixed_income": "固定收益",
+      "cash": "現金",
+      "alternatives": "另類投資",
+      "other": "其他"
+    },
+    "sector_standalone": {
+      "title": "產業配置",
+      "other": "其他"
+    },
+    "clear_filter": "清除篩選",
     "fx": {
       "title": "💱 外幣曝險",
       "home_currency": "主要貨幣",

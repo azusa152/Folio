@@ -43,6 +43,7 @@ import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
+import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -245,6 +246,10 @@ export default function Dashboard() {
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
         <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
+      </LazySection>
+
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+        <SectorAllocationCard sectorExposure={rebalance?.sector_exposure ?? []} />
       </LazySection>
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>

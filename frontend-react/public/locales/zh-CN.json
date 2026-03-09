@@ -855,6 +855,27 @@
       "title": "行业敞口",
       "empty": "无行业数据。"
     },
+    "geo": {
+      "title": "地区配置",
+      "us": "美国",
+      "tw": "台湾",
+      "jp": "日本",
+      "hk": "香港",
+      "other": "其他"
+    },
+    "asset_class": {
+      "title": "资产类别分布",
+      "equity": "股票",
+      "fixed_income": "固定收益",
+      "cash": "现金",
+      "alternatives": "另类投资",
+      "other": "其他"
+    },
+    "sector_standalone": {
+      "title": "行业配置",
+      "other": "其他"
+    },
+    "clear_filter": "清除筛选",
     "fx": {
       "title": "💱 外币敞口",
       "home_currency": "主要货币",
