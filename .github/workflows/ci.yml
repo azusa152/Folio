@@ -27,6 +27,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       shared: ${{ steps.filter.outputs.shared }}
+      docs_agents: ${{ steps.filter.outputs.docs_agents }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -46,6 +47,9 @@ jobs:
               - 'backend/pyproject.toml'
               - 'backend/uv.lock'
               - '.pre-commit-config.yaml'
+            docs_agents:
+              - 'AGENTS.md'
+              - 'docs/agents/**'
 
   test:
     name: Backend Tests
@@ -329,6 +333,24 @@ jobs:
       - name: Check locale key parity
         run: uv run --no-project python scripts/check_locale_parity.py
 
+  agent-doc-tokens:
+    name: Agent Doc Token Budget Check
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docs_agents == 'true' || needs.changes.outputs.shared == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check agent doc token budgets
+        run: uv run --no-project python scripts/check_agent_doc_tokens.py
+
   ci-completeness:
     name: CI Completeness Check
     runs-on: ubuntu-latest
@@ -387,6 +409,7 @@ jobs:
       - frontend-security
       - constant-sync
       - locale-parity
+      - agent-doc-tokens
       - ci-completeness
       - security
     runs-on: ubuntu-latest

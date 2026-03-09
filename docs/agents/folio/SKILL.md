@@ -23,6 +23,12 @@ curl -s -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $FOLIO_API_KEY" \
   -d '{"action":"dashboard"}'
+
+# Token-efficient response (omit most data payloads)
+curl -s -X POST http://localhost:8000/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $FOLIO_API_KEY" \
+  -d '{"action":"dashboard","format":"concise"}'
 ```
 
 ## Auth + i18n

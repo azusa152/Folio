@@ -232,6 +232,50 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 
 ---
 
+## Error Codes
+
+Branch on `error_code` (machine-readable), not localized `detail`.
+
+### Stock
+
+- `STOCK_NOT_FOUND`
+- `STOCK_ALREADY_EXISTS`
+- `STOCK_ALREADY_INACTIVE`
+- `STOCK_ALREADY_ACTIVE`
+- `CATEGORY_UNCHANGED`
+
+### Portfolio
+
+- `HOLDING_NOT_FOUND`
+- `NET_WORTH_ITEM_NOT_FOUND`
+- `PROFILE_NOT_FOUND`
+- `NET_WORTH_SEED_NO_CASH_HOLDINGS`
+- `INVALID_SCENARIO_DROP`
+
+### Guru
+
+- `GURU_NOT_FOUND`
+- `GURU_FILING_NOT_FOUND`
+- `SYNC_IN_PROGRESS`
+
+### Backtest
+
+- `BACKTEST_SIGNAL_UNKNOWN`
+- `BACKTEST_DATA_NOT_FOUND`
+
+### System / Operations
+
+- `FX_WATCH_NOT_FOUND`
+- `SCAN_IN_PROGRESS`
+- `DIGEST_IN_PROGRESS`
+- `TELEGRAM_NOT_CONFIGURED`
+- `TELEGRAM_SEND_FAILED`
+- `PREFERENCES_UPDATE_FAILED`
+- `INVALID_INPUT`
+- `INTERNAL_ERROR`
+
+---
+
 ## Service Operations
 
 Run all `make` commands from the Folio project root using the `exec` tool.

@@ -71,6 +71,32 @@ Frontend TypeScript types in `frontend-react/src/api/types/` are derived from th
 
 See `.cursor/rules/` for project conventions and coding standards.
 
+## Claude Code Permissions
+
+If using Claude Code, add these portable patterns to `.claude/settings.local.json` (this file is local-only and not tracked by git):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(make:*)", "Bash(uv:*)", "Bash(python:*)", "Bash(python3:*)",
+      "Bash(npm:*)", "Bash(npx:*)", "Bash(git:*)", "Bash(curl:*)",
+      "Bash(docker:*)", "Bash(docker compose:*)", "Bash(rg:*)"
+    ]
+  }
+}
+```
+
+## Agent API
+
+Folio exposes an agent-friendly webhook entrypoint at `POST /webhook`.
+
+- Start discovery with `{"action":"help"}` to list actions, workflows, and model hints
+- Use `docs/agents/folio/SKILL.md` for compact action usage
+- Use `docs/agents/folio/reference.md` for detailed fields and thresholds
+- Branch on `error_code` (machine-readable), not localized `detail`
+- When webhook actions change, update agent docs under `docs/agents/`
+
 ## Architecture Boundaries (enforced by `backend/tests/test_architecture.py`)
 
 Layer dependency direction: `domain/` (core, analysis, portfolio) → `application/` (stock, scan, portfolio, guru, messaging, settings) → `infrastructure/` (market_data, persistence, external) → `api/` (routes, schemas)
