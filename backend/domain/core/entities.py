@@ -132,6 +132,31 @@ class UserInvestmentProfile(SQLModel, table=True):
     )
 
 
+class Account(SQLModel, table=True):
+    """證券 / 銀行帳戶（用於持倉分組）。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    name: str = Field(description="帳戶顯示名稱（如：IB 美股帳戶）")
+    broker: str = Field(description="券商或銀行名稱")
+    account_type: str = Field(
+        default="brokerage",
+        description="帳戶類型（brokerage / retirement / savings / crypto）",
+    )
+    currency: str = Field(default="USD", description="帳戶基準幣別")
+    institution: str = Field(default="", description="金融機構全名（選填）")
+    note: str = Field(default="", description="備註")
+    is_active: bool = Field(default=True, description="是否啟用")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="建立時間",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新時間",
+    )
+
+
 class Holding(SQLModel, table=True):
     """使用者的實際持倉（用於資產配置計算）。"""
 
@@ -145,6 +170,9 @@ class Holding(SQLModel, table=True):
     quantity: float = Field(description="持有數量（股數或金額）")
     cost_basis: float | None = Field(default=None, description="成本基礎（每單位）")
     broker: str | None = Field(default=None, description="券商名稱")
+    account_id: int | None = Field(
+        default=None, foreign_key="account.id", description="所屬帳戶 ID（選填）"
+    )
     currency: str = Field(default="USD", description="持倉幣別（如 USD, TWD, JPY）")
     account_type: str | None = Field(
         default=None, description="帳戶類型（活存/定存/貨幣市場基金）"

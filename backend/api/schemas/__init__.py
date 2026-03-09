@@ -3,6 +3,12 @@
 Consumers using `from api.schemas import X` continue to work unchanged.
 """
 
+from api.schemas.account import (  # noqa: F401
+    AccountRequest,
+    AccountResponse,
+    AccountSummaryItem,
+    AccountUpdateRequest,
+)
 from api.schemas.backtest import (  # noqa: F401
     BackfillStatusResponse,
     BacktestDetailResponse,

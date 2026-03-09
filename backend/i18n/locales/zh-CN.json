@@ -344,5 +344,10 @@
     "not_found": "交易记录未找到",
     "created": "交易已记录",
     "deleted": "交易已删除"
+  },
+  "account": {
+    "not_found": "找不到账户",
+    "created": "账户已创建",
+    "deactivated": "账户已停用"
   }
 }

@@ -4,6 +4,7 @@ Consumers using ``from domain.entities import X`` continue to work unchanged.
 """
 
 from domain.core.entities import (  # noqa: F401
+    Account,
     FXWatchConfig,
     Guru,
     GuruFiling,

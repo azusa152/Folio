@@ -175,6 +175,11 @@ CATEGORY_ICON: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
+# Account Types
+# ---------------------------------------------------------------------------
+ACCOUNT_TYPE_OPTIONS = ["brokerage", "retirement", "savings", "crypto", "other"]
+
+# ---------------------------------------------------------------------------
 # User & Profile
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
@@ -485,6 +490,10 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
             "date": "str (required — YYYY-MM-DD)",
         },
     },
+    "accounts": {
+        "description": "List accounts with holdings count per account",
+        "requires_ticker": False,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -530,6 +539,7 @@ ERROR_NET_WORTH_SEED_NO_CASH_HOLDINGS = "NET_WORTH_SEED_NO_CASH_HOLDINGS"
 ERROR_INVALID_SCENARIO_DROP = "INVALID_SCENARIO_DROP"
 ERROR_SYNC_IN_PROGRESS = "SYNC_IN_PROGRESS"
 ERROR_GURU_FILING_NOT_FOUND = "GURU_FILING_NOT_FOUND"
+ERROR_ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND"
 ERROR_FX_WATCH_NOT_FOUND = "FX_WATCH_NOT_FOUND"
 ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS"
 ERROR_DIGEST_IN_PROGRESS = "DIGEST_IN_PROGRESS"

@@ -1,0 +1,41 @@
+"""Account API schemas."""
+
+from pydantic import BaseModel, Field
+
+
+class AccountRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    broker: str = Field(..., min_length=1, max_length=100)
+    account_type: str = Field(default="brokerage", max_length=50)
+    currency: str = Field(default="USD", max_length=10)
+    institution: str = Field(default="", max_length=200)
+    note: str = Field(default="", max_length=500)
+
+
+class AccountUpdateRequest(BaseModel):
+    name: str | None = None
+    broker: str | None = None
+    account_type: str | None = None
+    currency: str | None = None
+    institution: str | None = None
+    note: str | None = None
+
+
+class AccountResponse(BaseModel):
+    id: int
+    user_id: str
+    name: str
+    broker: str
+    account_type: str
+    currency: str
+    institution: str
+    note: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+class AccountSummaryItem(BaseModel):
+    account: AccountResponse | None = None
+    holdings_count: int
+    tickers: list[str]

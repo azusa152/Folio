@@ -20,6 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.dependencies import require_api_key
 from api.rate_limit import limiter
+from api.routes.account_routes import router as account_router
 from api.routes.backtest_routes import router as backtest_router
 from api.routes.crypto_routes import router as crypto_router
 from api.routes.forex_routes import router as forex_router
@@ -156,6 +157,7 @@ def clear_cache(request: Request) -> dict:
 # Apply auth to all routers (health endpoint is exempt as it's not in a router)
 auth_deps = [Depends(require_api_key)]
 
+app.include_router(account_router, dependencies=auth_deps)
 app.include_router(stock_router, dependencies=auth_deps)
 app.include_router(thesis_router, dependencies=auth_deps)
 app.include_router(scan_router, dependencies=auth_deps)

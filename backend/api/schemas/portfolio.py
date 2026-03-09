@@ -20,6 +20,7 @@ class HoldingRequest(BaseModel):
     quantity: float
     cost_basis: float | None = None
     broker: str | None = None
+    account_id: int | None = None
     currency: str = "USD"
     account_type: str | None = None
     is_cash: bool = False
@@ -31,6 +32,7 @@ class UpdateHoldingRequest(BaseModel):
     quantity: float | None = Field(default=None, gt=0)
     cost_basis: float | None = Field(default=None, ge=0)
     broker: str | None = None
+    account_id: int | None = None
     category: StockCategory | None = None
     coingecko_id: str | None = None
 
@@ -41,6 +43,7 @@ class CashHoldingRequest(BaseModel):
     currency: str  # e.g. "USD", "TWD"
     amount: float
     broker: str | None = None
+    account_id: int | None = None
     account_type: str | None = None
 
 
@@ -67,6 +70,7 @@ class HoldingResponse(BaseModel):
     quantity: float
     cost_basis: float | None = None
     broker: str | None = None
+    account_id: int | None = None
     currency: str = "USD"
     account_type: str | None = None
     is_cash: bool
@@ -83,6 +87,7 @@ class HoldingImportItem(BaseModel):
     quantity: float = Field(..., gt=0)
     cost_basis: float | None = Field(default=None, ge=0)
     broker: str | None = Field(default=None, max_length=100)
+    account_id: int | None = None
     currency: str = Field(default="USD", min_length=3, max_length=3)
     account_type: str | None = Field(default=None, max_length=100)
     is_cash: bool = False
@@ -109,6 +114,7 @@ class HoldingExportItem(BaseModel):
     quantity: float
     cost_basis: float | None = None
     broker: str | None = None
+    account_id: int | None = None
     currency: str = "USD"
     account_type: str | None = None
     is_cash: bool = False

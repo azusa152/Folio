@@ -43,6 +43,7 @@ def _holding_to_dict(h: Holding) -> dict:
         "quantity": h.quantity,
         "cost_basis": h.cost_basis,
         "broker": h.broker,
+        "account_id": h.account_id,
         "currency": h.currency,
         "account_type": h.account_type,
         "is_cash": h.is_cash,
@@ -129,6 +130,7 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
         quantity=payload["quantity"],
         cost_basis=payload.get("cost_basis"),
         broker=payload.get("broker"),
+        account_id=payload.get("account_id"),
         currency=currency,
         account_type=payload.get("account_type"),
         is_cash=payload.get("is_cash", False),
@@ -152,6 +154,7 @@ def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
         quantity=payload["amount"],
         cost_basis=1.0,
         broker=payload.get("broker"),
+        account_id=payload.get("account_id"),
         currency=currency_upper,
         account_type=payload.get("account_type"),
         is_cash=True,
@@ -183,6 +186,8 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
         holding.cost_basis = payload["cost_basis"]
     if "broker" in payload:
         holding.broker = payload["broker"]
+    if "account_id" in payload:
+        holding.account_id = payload["account_id"]
     if "currency" in payload:
         holding.currency = payload["currency"].strip().upper()
     if "account_type" in payload:
@@ -230,6 +235,7 @@ def export_holdings(session: Session) -> list[dict]:
             "quantity": h.quantity,
             "cost_basis": h.cost_basis,
             "broker": h.broker,
+            "account_id": h.account_id,
             "currency": h.currency,
             "account_type": h.account_type,
             "is_cash": h.is_cash,
@@ -267,6 +273,7 @@ def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
                 quantity=item["quantity"],
                 cost_basis=item.get("cost_basis"),
                 broker=item.get("broker"),
+                account_id=item.get("account_id"),
                 currency=item["currency"].strip().upper(),
                 account_type=item.get("account_type"),
                 is_cash=item.get("is_cash", False),

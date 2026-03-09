@@ -1,5 +1,12 @@
 """application.portfolio sub-package — re-exports public API for backward compatibility."""
 
+from application.portfolio.account_service import (  # noqa: F401
+    create_account,
+    get_account_summary,
+    list_accounts,
+    remove_account,
+    update_account,
+)
 from application.portfolio.crypto_service import (  # noqa: F401
     get_crypto_details,
     get_crypto_holding_prices,

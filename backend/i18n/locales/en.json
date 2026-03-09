@@ -344,5 +344,10 @@
     "not_found": "Transaction not found",
     "created": "Transaction recorded",
     "deleted": "Transaction deleted"
+  },
+  "account": {
+    "not_found": "Account not found",
+    "created": "Account created",
+    "deactivated": "Account deactivated"
   }
 }
