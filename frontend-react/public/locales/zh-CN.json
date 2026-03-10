@@ -1765,6 +1765,13 @@
   },
   "analytics": {
     "drawdown_title": "回撤分析",
+    "timeframe": {
+      "1m": "1个月",
+      "3m": "3个月",
+      "6m": "6个月",
+      "1y": "1年",
+      "max": "全部"
+    },
     "risk_metrics_title": "风险指标",
     "annualized_return": "年化收益",
     "annualized_return_tooltip": "投资组合的年化复合增长率。",
@@ -1779,6 +1786,9 @@
     "calmar_ratio": "卡尔马比率",
     "calmar_tooltip": "年化收益除以最大回撤，越高越好。",
     "metric_unavailable_hint": "交易历史不足，或数值过于极端无法有意义地显示。",
+    "risk_section_title": "风险与回撤",
+    "risk_section_subtitle": "指标和图表反映所选时间范围。",
+    "drawdown_empty_for_range": "所选时间范围内没有投资组合历史记录。",
     "contribution_title": "投入 vs 增长",
     "contribution_label": "总投入",
     "growth_label": "市值"

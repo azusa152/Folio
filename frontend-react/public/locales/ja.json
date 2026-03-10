@@ -1765,6 +1765,13 @@
   },
   "analytics": {
     "drawdown_title": "ドローダウン分析",
+    "timeframe": {
+      "1m": "1か月",
+      "3m": "3か月",
+      "6m": "6か月",
+      "1y": "1年",
+      "max": "最大"
+    },
     "risk_metrics_title": "リスク指標",
     "annualized_return": "年率リターン",
     "annualized_return_tooltip": "ポートフォリオの年率複利成長率。",
@@ -1779,6 +1786,9 @@
     "calmar_ratio": "カルマーレシオ",
     "calmar_tooltip": "年率リターンを最大ドローダウンで割った値。高いほど良い。",
     "metric_unavailable_hint": "取引履歴が不足しているか、数値が極端すぎて表示できません。",
+    "risk_section_title": "リスク＆ドローダウン",
+    "risk_section_subtitle": "指標とチャートは選択した期間を反映します。",
+    "drawdown_empty_for_range": "選択した期間のポートフォリオ履歴がありません。",
     "contribution_title": "投入額 vs 成長",
     "contribution_label": "投入総額",
     "growth_label": "時価総額"

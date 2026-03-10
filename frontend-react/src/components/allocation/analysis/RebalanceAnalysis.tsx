@@ -13,6 +13,7 @@ import { GeographicAllocation } from "./GeographicAllocation"
 import { AssetClassDonut } from "./AssetClassDonut"
 import { DrawdownChart } from "./DrawdownChart"
 import { RiskMetricsCards } from "./RiskMetricsCards"
+import { ANALYTICS_TIMEFRAMES, type AnalyticsTimeframe } from "./timeframe"
 import { DriftChart } from "./DriftChart"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
@@ -25,6 +26,13 @@ interface Props {
 }
 
 type DrillSource = "category" | "geo" | "asset_class"
+
+function formatDateYYYYMMDD(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 
 function filterHoldingsByDrill(
   holdings: HoldingDetail[],
@@ -45,8 +53,7 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
   const { t } = useTranslation()
   const { term } = useTerminology()
   const { data, isLoading } = useAllocRebalance(displayCurrency, enabled)
-  const { data: drawdownData, isLoading: drawdownLoading } = useDrawdown(undefined, undefined, enabled)
-  const { data: riskData, isLoading: riskLoading } = useRiskMetrics(undefined, undefined, enabled)
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>(365)
   const [drill, setDrill] = useState<{ source: DrillSource; value: string } | null>(null)
 
   const drillHandlers = useMemo(() => ({
@@ -54,6 +61,27 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
     geo: (v: string | null) => setDrill(v ? { source: "geo" as const, value: v } : null),
     asset_class: (v: string | null) => setDrill(v ? { source: "asset_class" as const, value: v } : null),
   }), [])
+  const analyticsRange = useMemo(() => {
+    if (analyticsTimeframe === 0) return { start: undefined, end: undefined }
+
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - analyticsTimeframe)
+    return {
+      start: formatDateYYYYMMDD(startDate),
+      end: formatDateYYYYMMDD(endDate),
+    }
+  }, [analyticsTimeframe])
+  const { data: drawdownData, isLoading: drawdownLoading } = useDrawdown(
+    analyticsRange.start,
+    analyticsRange.end,
+    enabled,
+  )
+  const { data: riskData, isLoading: riskLoading } = useRiskMetrics(
+    analyticsRange.start,
+    analyticsRange.end,
+    enabled,
+  )
 
   if (isLoading) {
     return (
@@ -186,10 +214,32 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
 
       <hr className="border-border" />
 
-      {/* Risk metrics + Drawdown */}
-      <RiskMetricsCards data={riskData} isLoading={riskLoading} />
-      <hr className="border-border" />
-      <DrawdownChart data={drawdownData ?? []} isLoading={drawdownLoading} />
+      {/* Risk metrics + Drawdown — shared timeframe selector */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold">{t("analytics.risk_section_title")}</p>
+            <p className="text-xs text-muted-foreground">{t("analytics.risk_section_subtitle")}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {ANALYTICS_TIMEFRAMES.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={analyticsTimeframe === option.value ? "default" : "outline"}
+                aria-pressed={analyticsTimeframe === option.value}
+                onClick={() => setAnalyticsTimeframe(option.value)}
+                className="min-h-[32px] px-2 text-[11px]"
+              >
+                {t(`analytics.timeframe.${option.key}`)}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <RiskMetricsCards data={riskData} isLoading={riskLoading} />
+        <DrawdownChart data={drawdownData ?? []} isLoading={drawdownLoading} />
+      </section>
     </div>
   )
 }

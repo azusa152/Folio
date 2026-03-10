@@ -1765,6 +1765,13 @@
   },
   "analytics": {
     "drawdown_title": "Drawdown Analysis",
+    "timeframe": {
+      "1m": "1M",
+      "3m": "3M",
+      "6m": "6M",
+      "1y": "1Y",
+      "max": "Max"
+    },
     "risk_metrics_title": "Risk Metrics",
     "annualized_return": "Annual Return",
     "annualized_return_tooltip": "Compound annual growth rate of the portfolio.",
@@ -1779,6 +1786,9 @@
     "calmar_ratio": "Calmar Ratio",
     "calmar_tooltip": "Annual return divided by max drawdown. Higher is better.",
     "metric_unavailable_hint": "Not enough trading history, or the value is too extreme to display meaningfully.",
+    "risk_section_title": "Risk & Drawdown",
+    "risk_section_subtitle": "Metrics and chart reflect the selected time range.",
+    "drawdown_empty_for_range": "No portfolio history available for the selected time range.",
     "contribution_title": "Contributions vs Growth",
     "contribution_label": "Total Invested",
     "growth_label": "Market Value"

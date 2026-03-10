@@ -26,11 +26,16 @@ export function DrawdownChart({ data, isLoading }: Props) {
     return <Skeleton className="h-[220px] w-full" />
   }
 
-  if (!data.length) return null
+  if (!data.length) {
+    return (
+      <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+        {t("analytics.drawdown_empty_for_range")}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-2" role="img" aria-label={t("accessibility.chart_drawdown")}>
-      <p className="text-sm font-semibold">{t("analytics.drawdown_title")}</p>
+    <div role="img" aria-label={t("accessibility.chart_drawdown")}>
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
