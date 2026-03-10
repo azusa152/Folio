@@ -5,7 +5,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from api.schemas.common import MessageResponse
+from api.schemas import MessageResponse
 from api.schemas.transaction import TransactionRequest, TransactionResponse
 from application.portfolio.transaction_service import (
     create_transaction,

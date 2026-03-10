@@ -64,7 +64,7 @@ export function DrawdownChart({ data, isLoading }: Props) {
             labelStyle={{ color: theme.tooltipText }}
             cursor={{ fill: "rgba(128,128,128,0.08)" }}
             formatter={(v: number | undefined) => [
-              v != null ? `${(v * 100).toFixed(2)}%` : "—",
+              v != null ? `${(v * 100).toFixed(2)}%` : t("common.unavailable"),
               t("analytics.max_drawdown"),
             ]}
           />

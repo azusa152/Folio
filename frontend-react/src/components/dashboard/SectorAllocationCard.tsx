@@ -48,7 +48,7 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
       </CardHeader>
       <CardContent className="pb-4">
         <ResponsiveContainer width="100%" height={200}>
-          <PieChart>
+          <PieChart role="img" aria-label={t("allocation.sector_standalone.title")}>
             <Pie
               data={chartData}
               dataKey="value"
@@ -59,8 +59,8 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
               outerRadius={75}
               paddingAngle={1}
             >
-              {chartData.map((_entry, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              {chartData.map((entry, i) => (
+                <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip

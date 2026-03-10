@@ -12,8 +12,10 @@ from domain.constants import (
     FX_LONG_TERM_TREND_PCT,
     FX_SHORT_TERM_SWING_PCT,
     FX_WATCH_HIGH_RECENCY_THRESHOLD,
+    FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
     FX_WATCH_TREND_LONG_WINDOW,
     FX_WATCH_TREND_SHORT_WINDOW,
+    FX_WATCH_TREND_SIDEWAYS_THRESHOLD,
 )
 from domain.enums import FXAlertType, I18nKey
 
@@ -183,8 +185,8 @@ def compute_sma(history: list[dict], window: int) -> float | None:
     if window <= 0 or len(history) < window:
         return None
     recent = history[-window:]
-    closes = [row.get("close", 0.0) for row in recent]
-    if any(close <= 0 for close in closes):
+    closes = [row.get("close") for row in recent]
+    if any(close is None or close <= 0 for close in closes):
         return None
     return sum(closes) / len(closes)
 
@@ -201,7 +203,7 @@ def detect_trend_direction(
         return "sideways", 0.0
 
     diff_ratio = (short_sma - long_sma) / long_sma
-    if abs(diff_ratio) <= 0.001:
+    if abs(diff_ratio) <= FX_WATCH_TREND_SIDEWAYS_THRESHOLD:
         direction = "sideways"
     elif diff_ratio > 0:
         direction = "rising"
@@ -212,9 +214,9 @@ def detect_trend_direction(
     if len(history) >= short_window:
         # Use the first point inside the short window as baseline,
         # so "5-day strength" is computed from the recent 5 points.
-        prior = history[-short_window]["close"]
-        current = history[-1]["close"]
-        if prior > 0:
+        prior = history[-short_window].get("close")
+        current = history[-1].get("close")
+        if prior is not None and current is not None and prior > 0:
             strength = round(((current - prior) / prior) * 100, 2)
     return direction, strength
 
@@ -224,8 +226,14 @@ def find_high_recency(history: list[dict], lookback_days: int) -> int:
     if not history:
         return 0
     recent = history[-lookback_days:] if len(history) >= lookback_days else history
-    high = max(d["close"] for d in recent)
-    high_idx = max(i for i, row in enumerate(recent) if row["close"] == high)
+    closes = [row.get("close") for row in recent]
+    valid_closes = [close for close in closes if close is not None]
+    if not valid_closes:
+        return 0
+    high = max(valid_closes)
+    high_idx = max(
+        i for i, close in enumerate(closes) if close is not None and close == high
+    )
     return len(recent) - 1 - high_idx
 
 
@@ -233,7 +241,7 @@ def analyze_recent_high(
     current_rate: float,
     history: list[dict],
     lookback_days: int,
-    tolerance_pct: float = 2.0,
+    tolerance_pct: float = FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
 ) -> FXRecentHighSignal:
     """
     判斷當前匯率是否接近近期高點。
@@ -257,7 +265,15 @@ def analyze_recent_high(
 
     # 取最近 N 天資料（若資料不足則取所有可用資料）
     recent = history[-lookback_days:] if len(history) >= lookback_days else history
-    high = max(d["close"] for d in recent)
+    valid_closes = [row.get("close") for row in recent if row.get("close") is not None]
+    if not valid_closes:
+        return FXRecentHighSignal(
+            is_recent_high=False,
+            lookback_high=0.0,
+            high_days_ago=0,
+            distance_from_high_pct=0.0,
+        )
+    high = max(valid_closes)
 
     if high <= 0:
         return FXRecentHighSignal(
@@ -282,7 +298,7 @@ def is_recent_high(
     current_rate: float,
     history: list[dict],
     lookback_days: int,
-    tolerance_pct: float = 2.0,
+    tolerance_pct: float = FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
 ) -> tuple[bool, float]:
     """
     保留既有介面：(是否接近高點, 回溯期間最高價)。
@@ -366,7 +382,7 @@ def assess_exchange_timing(
             scenario_vars={"base": base_currency, "quote": quote_currency},
         )
 
-    current_rate = history[-1]["close"]
+    current_rate = history[-1].get("close") or 0.0
     recent_high = analyze_recent_high(current_rate, history, recent_high_days)
     near_high = recent_high.is_recent_high
     high = recent_high.lookback_high

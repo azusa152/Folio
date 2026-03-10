@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === "undefined") return initialValue
     try {
       const item = window.localStorage.getItem(key)
       return item ? (JSON.parse(item) as T) : initialValue
@@ -24,6 +25,19 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     },
     [key],
   )
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== key || event.newValue == null) return
+      try {
+        setStoredValue(JSON.parse(event.newValue) as T)
+      } catch {
+        // ignore parse errors from other tabs
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [key])
 
   return [storedValue, setValue] as const
 }

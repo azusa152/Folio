@@ -1,6 +1,6 @@
 """Analytics API schemas."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DrawdownPointResponse(BaseModel):
@@ -23,7 +23,7 @@ class RiskMetricsResponse(BaseModel):
 class InsightResponse(BaseModel):
     key: str
     severity: str
-    vars: dict = {}
+    vars: dict = Field(default_factory=dict)
     category: str
 
 

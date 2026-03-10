@@ -5,7 +5,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { RiskMetrics } from "@/api/hooks/useAnalytics"
@@ -42,35 +41,32 @@ function MetricCard({
   colorClass?: string
   unavailableHint?: string
 }) {
-  const isUnavailable = value === "—"
+  const { t } = useTranslation()
+  const isUnavailable = value === t("common.unavailable")
   return (
     <div className="rounded-lg border bg-card p-3 space-y-1">
       <div className="flex items-center gap-1">
         <span className="text-xs text-muted-foreground">{label}</span>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3 w-3 text-muted-foreground cursor-help" aria-label={tooltip} />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-[200px]">{tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3 w-3 text-muted-foreground cursor-help" aria-label={tooltip} />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="max-w-[200px]">{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
       {isUnavailable && unavailableHint ? (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="text-lg font-semibold tabular-nums text-muted-foreground cursor-help">
-                {value}
-              </p>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-[220px]">{unavailableHint}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <p className="text-lg font-semibold tabular-nums text-muted-foreground cursor-help">
+              {value}
+            </p>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="max-w-[220px]">{unavailableHint}</p>
+          </TooltipContent>
+        </Tooltip>
       ) : (
         <p className={`text-lg font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</p>
       )}
@@ -81,6 +77,7 @@ function MetricCard({
 export function RiskMetricsCards({ data, isLoading }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
+  const unavailableValue = t("common.unavailable")
 
   if (isLoading) {
     return (
@@ -98,11 +95,13 @@ export function RiskMetricsCards({ data, isLoading }: Props) {
   if (!data) return null
 
   const fmtPct = (v: number) => {
-    if (!Number.isFinite(v) || Math.abs(v) > 100) return "—"
+    if (!Number.isFinite(v) || Math.abs(v) > 100) return unavailableValue
     return `${(v * 100).toFixed(2)}%`
   }
   const fmtRatio = (v: number | null | undefined) => {
-    if (v == null || !Number.isFinite(v) || Math.abs(v) > 1000) return "—"
+    if (v == null || !Number.isFinite(v) || Math.abs(v) > 1000) {
+      return unavailableValue
+    }
     return v.toFixed(2)
   }
 

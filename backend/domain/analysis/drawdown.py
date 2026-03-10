@@ -10,6 +10,8 @@ import math
 from dataclasses import dataclass
 from datetime import date
 
+from domain.constants import DRAWDOWN_EPSILON, DRAWDOWN_PERIOD_THRESHOLD_DEFAULT
+
 
 @dataclass(frozen=True)
 class DrawdownPoint:
@@ -87,7 +89,7 @@ def compute_max_drawdown(snapshots: list[dict]) -> float:
 
 def find_drawdown_periods(
     snapshots: list[dict],
-    threshold: float = -0.05,
+    threshold: float = DRAWDOWN_PERIOD_THRESHOLD_DEFAULT,
 ) -> list[DrawdownPeriod]:
     """
     Identify distinct drawdown periods that reach or exceed *threshold*.
@@ -103,7 +105,6 @@ def find_drawdown_periods(
     if not series:
         return []
 
-    _EPS = 1e-9
     periods: list[DrawdownPeriod] = []
     peak_date = series[0].snapshot_date
     peak_value = series[0].total_value
@@ -112,7 +113,7 @@ def find_drawdown_periods(
     in_drawdown = False
 
     for point in series:
-        if abs(point.drawdown_pct) < _EPS:
+        if abs(point.drawdown_pct) < DRAWDOWN_EPSILON:
             if in_drawdown and peak_value > 0:
                 dd_pct = (trough_value - peak_value) / peak_value
                 if dd_pct <= threshold:

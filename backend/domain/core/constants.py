@@ -272,6 +272,8 @@ FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE = (
 FX_WATCH_TREND_SHORT_WINDOW = 5  # 5-day SMA window for trend direction
 FX_WATCH_TREND_LONG_WINDOW = 10  # 10-day SMA window for trend direction
 FX_WATCH_HIGH_RECENCY_THRESHOLD = 3  # alert if high was within N days
+FX_WATCH_TREND_SIDEWAYS_THRESHOLD = 0.001  # abs(short_sma-long_sma)/long_sma
+FX_WATCH_RECENT_HIGH_TOLERANCE_PCT = 2.0  # near-high tolerance percentage
 FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS = 30  # cooldown between force_refresh calls
 
 # ---------------------------------------------------------------------------
@@ -539,6 +541,8 @@ ANALYTICS_TRADING_DAYS_PER_YEAR = 252
 ANALYTICS_RISK_FREE_RATE = 0.04  # approximate US T-bill rate
 ANALYTICS_MIN_DAYS_FOR_RATIOS = 30
 ANALYTICS_MIN_DOWNSIDE_SAMPLES = 10
+DRAWDOWN_PERIOD_THRESHOLD_DEFAULT = -0.05
+DRAWDOWN_EPSILON = 1e-9
 
 # ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types

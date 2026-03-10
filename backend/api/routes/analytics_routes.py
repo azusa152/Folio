@@ -17,10 +17,12 @@ from application.portfolio.analytics_service import (
     get_risk_metrics,
 )
 from application.portfolio.insight_service import get_portfolio_insights
+from domain.constants import ERROR_INVALID_INPUT
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 
 router = APIRouter(tags=["analytics"])
+CACHE_CONTROL_ANALYTICS = "private, max-age=300, stale-while-revalidate=3600"
 
 
 def _validate_date_range(
@@ -29,13 +31,23 @@ def _validate_date_range(
     if (start is None) != (end is None):
         raise HTTPException(
             status_code=422,
-            detail=t("analytics.date_range_both_required", lang=lang),
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("analytics.date_range_both_required", lang=lang),
+            },
         )
     if start is not None and end is not None and start > end:
         raise HTTPException(
             status_code=422,
-            detail=t("analytics.date_range_invalid_order", lang=lang),
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("analytics.date_range_invalid_order", lang=lang),
+            },
         )
+
+
+def _set_cache_control(response: Response) -> None:
+    response.headers["Cache-Control"] = CACHE_CONTROL_ANALYTICS
 
 
 @router.get("/analytics/drawdown", response_model=list[DrawdownPointResponse])
@@ -47,9 +59,7 @@ def drawdown(
 ):
     lang = get_user_language(session)
     _validate_date_range(start, end, lang)
-    response.headers["Cache-Control"] = (
-        "private, max-age=300, stale-while-revalidate=3600"
-    )
+    _set_cache_control(response)
     return get_drawdown_series(session, start=start, end=end)
 
 
@@ -62,9 +72,7 @@ def risk_metrics(
 ):
     lang = get_user_language(session)
     _validate_date_range(start, end, lang)
-    response.headers["Cache-Control"] = (
-        "private, max-age=300, stale-while-revalidate=3600"
-    )
+    _set_cache_control(response)
     return get_risk_metrics(session, start=start, end=end)
 
 
@@ -80,9 +88,7 @@ def contribution_growth(
 ):
     lang = get_user_language(session)
     _validate_date_range(start, end, lang)
-    response.headers["Cache-Control"] = (
-        "private, max-age=300, stale-while-revalidate=3600"
-    )
+    _set_cache_control(response)
     return get_contribution_vs_growth(session, start=start, end=end)
 
 
@@ -92,7 +98,5 @@ def portfolio_insights(
     display_currency: str = Query("USD"),
     session: Session = Depends(get_session),
 ):
-    response.headers["Cache-Control"] = (
-        "private, max-age=300, stale-while-revalidate=3600"
-    )
+    _set_cache_control(response)
     return get_portfolio_insights(session, display_currency)

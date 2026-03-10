@@ -51,10 +51,10 @@ def generate_allocation_insights(
     """
     insights: list[Insight] = []
 
-    total = sum(info.get("market_value", 0) for info in categories.values())
+    total = sum((info.get("market_value") or 0) for info in categories.values())
     if total > 0:
         for cat, info in categories.items():
-            weight = info.get("market_value", 0) / total
+            weight = (info.get("market_value") or 0) / total
             if weight > INSIGHT_CONCENTRATION_THRESHOLD:
                 insights.append(
                     Insight(
@@ -66,7 +66,7 @@ def generate_allocation_insights(
                 )
 
     for cat, info in categories.items():
-        drift = abs(info.get("drift_pct", info.get("drift", 0)))
+        drift = abs(info.get("drift_pct") or info.get("drift") or 0)
         if drift > drift_threshold:
             insights.append(
                 Insight(

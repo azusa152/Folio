@@ -72,12 +72,20 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
       end: formatDateYYYYMMDD(endDate),
     }
   }, [analyticsTimeframe])
-  const { data: drawdownData, isLoading: drawdownLoading } = useDrawdown(
+  const {
+    data: drawdownData,
+    isLoading: drawdownLoading,
+    isError: drawdownError,
+  } = useDrawdown(
     analyticsRange.start,
     analyticsRange.end,
     enabled,
   )
-  const { data: riskData, isLoading: riskLoading } = useRiskMetrics(
+  const {
+    data: riskData,
+    isLoading: riskLoading,
+    isError: riskError,
+  } = useRiskMetrics(
     analyticsRange.start,
     analyticsRange.end,
     enabled,
@@ -240,6 +248,9 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
         </div>
         <RiskMetricsCards data={riskData} isLoading={riskLoading} />
         <DrawdownChart data={drawdownData ?? []} isLoading={drawdownLoading} />
+        {(drawdownError || riskError) && (
+          <p className="text-xs text-destructive">{t("common.error")}</p>
+        )}
       </section>
     </div>
   )

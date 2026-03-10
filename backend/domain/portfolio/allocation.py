@@ -32,7 +32,7 @@ def compute_geographic_allocation(
     geo: dict[str, float] = {}
     for h in holdings:
         market = classify_market(h.get("ticker", ""))
-        value = h.get("market_value", 0.0)
+        value = h.get("market_value") or 0.0
         geo[market] = geo.get(market, 0.0) + value
     return geo
 

@@ -94,7 +94,8 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
 
   const pair = `${watch.base_currency}/${watch.quote_currency}`
   const currentRate = analysis?.current_rate
-  const rateStr = currentRate != null ? currentRate.toFixed(4) : "—"
+  const rateStr =
+    currentRate != null ? currentRate.toFixed(4) : t("common.unavailable")
 
   const dailyChangePct = useMemo(
     () => computeDailyChangePct(sparklineData ?? historyData ?? []),
@@ -137,7 +138,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
         ? t("fx_watch.badge.alert")
         : analysis
           ? t("fx_watch.badge.normal")
-          : "—"
+          : t("common.unavailable")
 
   const borderAccent = analysis?.should_alert
     ? "border-l-4 border-l-destructive"
@@ -255,7 +256,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                 disabled={toggle.isPending}
               >
                 {toggle.isPending
-                  ? "…"
+                  ? t("common.loading")
                   : watch.is_active
                     ? t("fx_watch.card.disable")
                     : t("fx_watch.card.enable")}
@@ -318,7 +319,9 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                             </GlossaryTerm>
                           </span>
                           <span className={`font-medium ${analysis.is_recent_high ? FINANCE_TEXT.warning : "text-muted-foreground"}`}>
-                            {analysis.is_recent_high ? "✓" : "—"}
+                            {analysis.is_recent_high
+                              ? t("common.yes")
+                              : t("common.unavailable")}
                             {analysis.lookback_high > 0 && ` ${analysis.lookback_high.toFixed(4)}`}
                           </span>
                         </div>

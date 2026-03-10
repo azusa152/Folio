@@ -34,6 +34,8 @@
     "error": "❌ Error",
     "warning": "⚠️ Warning",
     "info": "ℹ️ Info",
+    "unavailable": "N/A",
+    "yes": "Yes",
     "privacy_on": "🔒 Privacy on",
     "privacy_off": "👁 Privacy off",
     "dark_mode": "🌙 Dark mode",

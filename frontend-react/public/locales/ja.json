@@ -34,6 +34,8 @@
     "error": "❌ エラー",
     "warning": "⚠️ 警告",
     "info": "ℹ️ 情報",
+    "unavailable": "N/A",
+    "yes": "はい",
     "privacy_on": "🔒 プライバシーオン",
     "privacy_off": "👁 プライバシーオフ",
     "dark_mode": "🌙 ダークモード",

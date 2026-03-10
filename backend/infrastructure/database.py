@@ -6,6 +6,8 @@ Infrastructure — 資料庫連線與 Session 管理。
 import os
 from collections.abc import Generator
 
+from sqlalchemy import event
+from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from logging_config import get_logger
@@ -13,10 +15,36 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/radar.db")
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+IS_IN_MEMORY_SQLITE = DATABASE_URL in {
+    "sqlite://",
+    "sqlite:///:memory:",
+} or DATABASE_URL.endswith(":memory:")
 
-# SQLite 需要 check_same_thread=False 以支援多執行緒存取
-connect_args = {"check_same_thread": False}
-engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+engine_kwargs: dict[str, object] = {"echo": False}
+if IS_SQLITE:
+    # SQLite 需要 check_same_thread=False 以支援多執行緒存取
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    # File-based SQLite: use NullPool to avoid QueuePool exhaustion under threaded workloads.
+    # In-memory SQLite tests rely on a shared single connection.
+    engine_kwargs["poolclass"] = StaticPool if IS_IN_MEMORY_SQLITE else NullPool
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
+
+
+if IS_SQLITE and not IS_IN_MEMORY_SQLITE:
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_conn, connection_record) -> None:
+        """Tune SQLite for concurrent access in multi-thread workloads."""
+        del connection_record
+        cursor = dbapi_conn.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+        finally:
+            cursor.close()
+
 
 logger.info("資料庫連線位置：%s", DATABASE_URL)
 

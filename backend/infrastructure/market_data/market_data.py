@@ -165,6 +165,15 @@ T = TypeVar("T")
 
 logger = get_logger(__name__)
 
+
+class _FastShutdownExecutor(ThreadPoolExecutor):
+    """ThreadPoolExecutor that shuts down without blocking on context exit."""
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.shutdown(wait=False, cancel_futures=True)
+        return False
+
+
 _BEARISH_TIERS: frozenset = frozenset(
     {MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH}
 )
@@ -950,12 +959,12 @@ def prime_signals_cache_batch(
         return "primed"
 
     primed = already_cached = 0
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {
-        executor.submit(_prime_one, ticker, hist): ticker
-        for ticker, hist in ticker_hist_map.items()
-    }
-    completed, _ = _run_batch_with_timeout(futures, executor, label="訊號快取預熱")
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_prime_one, ticker, hist): ticker
+            for ticker, hist in ticker_hist_map.items()
+        }
+        completed, _ = _run_batch_with_timeout(futures, executor, label="訊號快取預熱")
     for future in completed:
         try:
             outcome = future.result()
@@ -984,9 +993,11 @@ def prewarm_signals_batch(
     """
 
     results: dict[str, dict | None] = {}
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {executor.submit(get_technical_signals, t): t for t in tickers}
-    completed, timed_out = _run_batch_with_timeout(futures, executor, label="訊號預熱")
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_technical_signals, t): t for t in tickers}
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="訊號預熱"
+        )
     for future in completed:
         ticker = completed[future]
         try:
@@ -1312,11 +1323,11 @@ def prewarm_moat_batch(
     """
 
     results: dict[str, dict | None] = {}
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {executor.submit(analyze_moat_trend, t): t for t in tickers}
-    completed, timed_out = _run_batch_with_timeout(
-        futures, executor, label="護城河預熱"
-    )
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(analyze_moat_trend, t): t for t in tickers}
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="護城河預熱"
+        )
     for future in completed:
         ticker = completed[future]
         try:
@@ -1656,12 +1667,14 @@ def get_exchange_rates(
     if not foreign:
         return rates
 
-    executor = ThreadPoolExecutor(max_workers=len(foreign))
-    futures = {
-        executor.submit(get_exchange_rate, display_currency, cur): cur
-        for cur in foreign
-    }
-    completed, timed_out = _run_batch_with_timeout(futures, executor, label="匯率取得")
+    with _FastShutdownExecutor(max_workers=len(foreign)) as executor:
+        futures = {
+            executor.submit(get_exchange_rate, display_currency, cur): cur
+            for cur in foreign
+        }
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="匯率取得"
+        )
     for future in completed:
         cur = completed[future]
         try:
@@ -1926,11 +1939,11 @@ def prewarm_etf_holdings_batch(
     """
 
     results: dict[str, list[dict] | None] = {}
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {executor.submit(get_etf_top_holdings, t): t for t in tickers}
-    completed, timed_out = _run_batch_with_timeout(
-        futures, executor, label="ETF 成分股預熱"
-    )
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_etf_top_holdings, t): t for t in tickers}
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="ETF 成分股預熱"
+        )
     for future in completed:
         ticker = completed[future]
         try:
@@ -2061,11 +2074,11 @@ def prewarm_etf_sector_weights_batch(
     """
 
     results: dict[str, dict[str, float] | None] = {}
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
-    completed, timed_out = _run_batch_with_timeout(
-        futures, executor, label="ETF 板塊權重預熱"
-    )
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="ETF 板塊權重預熱"
+        )
     for future in completed:
         ticker = completed[future]
         try:
@@ -2553,26 +2566,28 @@ def prewarm_beta_batch(
                 logger.warning("下載 SPY 歷史資料失敗，將回退至 yfinance info：%s", exc)
 
     results: dict[str, float | None] = {}
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures: dict = {}
-    for ticker in tickers:
-        if (
-            hist_batch is not None
-            and market_hist is not None
-            and ticker in hist_batch
-            and ticker != FG_SPY_TICKER
-        ):
-            futures[
-                executor.submit(
-                    _compute_and_cache_beta_from_history,
-                    ticker,
-                    hist_batch[ticker],
-                    market_hist,
-                )
-            ] = ticker
-        else:
-            futures[executor.submit(get_stock_beta, ticker)] = ticker
-    completed, timed_out = _run_batch_with_timeout(futures, executor, label="Beta 預熱")
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures: dict = {}
+        for ticker in tickers:
+            if (
+                hist_batch is not None
+                and market_hist is not None
+                and ticker in hist_batch
+                and ticker != FG_SPY_TICKER
+            ):
+                futures[
+                    executor.submit(
+                        _compute_and_cache_beta_from_history,
+                        ticker,
+                        hist_batch[ticker],
+                        market_hist,
+                    )
+                ] = ticker
+            else:
+                futures[executor.submit(get_stock_beta, ticker)] = ticker
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="Beta 預熱"
+        )
     for future in completed:
         ticker = completed[future]
         try:
@@ -2753,9 +2768,9 @@ def prewarm_ticker_sector_batch(
     if not uncached:
         return
 
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
-    completed, _ = _run_batch_with_timeout(futures, executor, label="sector 預熱")
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
+        completed, _ = _run_batch_with_timeout(futures, executor, label="sector 預熱")
     for future in completed:
         ticker = completed[future]
         try:

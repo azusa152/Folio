@@ -34,6 +34,8 @@
     "error": "❌ 錯誤",
     "warning": "⚠️ 警告",
     "info": "ℹ️ 資訊",
+    "unavailable": "無資料",
+    "yes": "是",
     "privacy_on": "🔒 隱私模式開啟",
     "privacy_off": "👁 隱私模式關閉",
     "dark_mode": "🌙 深色模式",
