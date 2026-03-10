@@ -8026,6 +8026,11 @@
           },
           "trend_direction": {
             "type": "string",
+            "enum": [
+              "rising",
+              "falling",
+              "sideways"
+            ],
             "title": "Trend Direction"
           },
           "trend_strength_pct": {
@@ -8034,6 +8039,12 @@
           },
           "signal_strength": {
             "type": "string",
+            "enum": [
+              "strong",
+              "moderate",
+              "weak",
+              "none"
+            ],
             "title": "Signal Strength"
           },
           "alert_on_recent_high": {

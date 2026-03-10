@@ -152,9 +152,9 @@ async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
       distance_from_high_pct: r.result.distance_from_high_pct,
       consecutive_increases: r.result.consecutive_increases,
       consecutive_threshold: r.result.consecutive_threshold,
-      trend_direction: r.result.trend_direction as FxAnalysis["trend_direction"],
+      trend_direction: r.result.trend_direction,
       trend_strength_pct: r.result.trend_strength_pct,
-      signal_strength: r.result.signal_strength as FxAnalysis["signal_strength"],
+      signal_strength: r.result.signal_strength,
     }
     map[r.watch_id] = entry
   }

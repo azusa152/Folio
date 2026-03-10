@@ -274,6 +274,26 @@ class TestFXWatchCRUD:
 class TestFXWatchActions:
     """Tests for FX Watch action endpoints (check & alert)."""
 
+    def test_openapi_should_expose_fx_timing_enums(self, client: TestClient):
+        """Contract guard: keep FX timing enum fields constrained in OpenAPI."""
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+
+        schemas = response.json()["components"]["schemas"]
+        properties = schemas["FXTimingResultResponse"]["properties"]
+
+        assert properties["trend_direction"]["enum"] == [
+            "rising",
+            "falling",
+            "sideways",
+        ]
+        assert properties["signal_strength"]["enum"] == [
+            "strong",
+            "moderate",
+            "weak",
+            "none",
+        ]
+
     def test_check_fx_watches_with_no_configs(self, client: TestClient):
         # Act
         response = client.post("/fx-watch/check")

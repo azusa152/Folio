@@ -2,6 +2,8 @@
 API — FX Watch / Forex Monitoring Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 from domain.constants import (
@@ -63,6 +65,10 @@ class FXWatchResponse(BaseModel):
     updated_at: str
 
 
+TrendDirectionLiteral = Literal["rising", "falling", "sideways"]
+SignalStrengthLiteral = Literal["strong", "moderate", "weak", "none"]
+
+
 class FXTimingResultResponse(BaseModel):
     """換匯時機分析結果。"""
 
@@ -76,9 +82,9 @@ class FXTimingResultResponse(BaseModel):
     distance_from_high_pct: float
     consecutive_increases: int
     consecutive_threshold: int
-    trend_direction: str
+    trend_direction: TrendDirectionLiteral
     trend_strength_pct: float
-    signal_strength: str
+    signal_strength: SignalStrengthLiteral
     alert_on_recent_high: bool
     alert_on_consecutive_increase: bool
     should_alert: bool
