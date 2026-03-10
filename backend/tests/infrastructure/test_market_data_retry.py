@@ -34,10 +34,15 @@ from infrastructure.market_data.market_data import (  # noqa: E402
     _ETF_NOT_FOUND_SENTINEL,
     _ETF_SECTOR_WEIGHTS_NOT_FOUND,
     _cached_fetch,
+    _clear_fg_component_failure,
     _etf_holdings_cache,
     _fetch_etf_top_holdings,
+    _fetch_fg_component_history_safe,
     _is_error_dict,
+    _is_fg_component_in_cooldown,
     _is_moat_error,
+    _is_transient_yf_error,
+    _mark_fg_component_failure,
     _yf_retry,
     get_etf_sector_weights,
     get_etf_top_holdings,
@@ -425,6 +430,83 @@ class TestYfRetry:
             retried_fn("NVDA")
 
         assert mock_fn.call_count == 1
+
+
+class TestTransientYfErrorClassifier:
+    """Verify transient Yahoo transport error classification."""
+
+    def test_should_treat_curl_error_as_transient(self):
+        assert _is_transient_yf_error(CurlError("curl: (35) SSL_ERROR_SYSCALL")) is True
+
+    def test_should_treat_connection_error_as_transient(self):
+        assert (
+            _is_transient_yf_error(ConnectionError("connection reset by peer")) is True
+        )
+
+    def test_should_treat_timeout_like_message_as_transient(self):
+        assert _is_transient_yf_error(ValueError("request timed out")) is True
+
+    def test_should_treat_os_error_as_transient(self):
+        assert _is_transient_yf_error(OSError("Network unreachable")) is True
+
+    def test_should_not_treat_data_quality_error_as_transient(self):
+        assert (
+            _is_transient_yf_error(ValueError("missing earnings_date field")) is False
+        )
+
+
+class TestFgComponentFailureCooldown:
+    """Verify short cooldown prevents repeated immediate FG component refetches."""
+
+    @pytest.fixture(autouse=True)
+    def _cleanup_fg_failures(self):
+        # Ensure global cooldown state never leaks across tests.
+        for ticker in ("QQQ", "XLP", "HYG"):
+            _clear_fg_component_failure(ticker)
+        yield
+        for ticker in ("QQQ", "XLP", "HYG"):
+            _clear_fg_component_failure(ticker)
+
+    def test_should_mark_and_detect_cooldown_window(self):
+        ticker = "QQQ"
+        _mark_fg_component_failure(ticker, now=100.0)
+
+        assert _is_fg_component_in_cooldown(ticker, now=100.0) is True
+        assert _is_fg_component_in_cooldown(ticker, now=100.0 + 30.0) is True
+        assert (
+            _is_fg_component_in_cooldown(
+                ticker,
+                now=100.0
+                + domain.constants.FG_COMPONENT_FAILURE_COOLDOWN_SECONDS
+                + 1.0,
+            )
+            is False
+        )
+
+    @patch("infrastructure.market_data.market_data._fetch_fg_component_history")
+    def test_fetch_fg_component_safe_should_skip_when_in_cooldown(self, mock_fetch):
+        ticker = "XLP"
+        _mark_fg_component_failure(ticker)
+        result = _fetch_fg_component_history_safe(ticker)
+
+        assert result is None
+        mock_fetch.assert_not_called()
+
+    @patch("infrastructure.market_data.market_data._fetch_fg_component_history")
+    def test_fetch_fg_component_safe_should_clear_failure_marker_on_success(
+        self, mock_fetch
+    ):
+        ticker = "HYG"
+        _mark_fg_component_failure(ticker, now=100.0)
+        mock_fetch.return_value = [100.0, 101.0]
+
+        with patch(
+            "infrastructure.market_data.market_data.time.monotonic", return_value=300.0
+        ):
+            result = _fetch_fg_component_history_safe(ticker)
+
+        assert result == [100.0, 101.0]
+        assert _is_fg_component_in_cooldown(ticker, now=300.0) is False
 
 
 class TestEtfCacheErrorHandling:

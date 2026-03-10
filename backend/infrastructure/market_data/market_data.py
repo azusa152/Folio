@@ -104,6 +104,7 @@ from domain.constants import (
     ETF_TOP_N,
     FEAR_GREED_CACHE_MAXSIZE,
     FEAR_GREED_CACHE_TTL,
+    FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
     FG_HYG_TICKER,
     FG_LOOKBACK_DAYS,
     FG_MA_WINDOW,
@@ -170,6 +171,17 @@ _BEARISH_TIERS: frozenset = frozenset(
 # Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
 # ---------------------------------------------------------------------------
 _RETRYABLE_EXCEPTIONS = (CurlError, ConnectionError, OSError)
+_TRANSIENT_YF_ERROR_MARKERS: tuple[str, ...] = (
+    "ssl_error_syscall",
+    "failed to perform",
+    "curl: (35)",
+    "timed out",
+    "connection reset",
+    "connection aborted",
+    "temporarily unavailable",
+    "could not resolve host",
+    "max retries exceeded",
+)
 
 _yf_retry = retry(
     stop=stop_after_attempt(YFINANCE_RETRY_ATTEMPTS),
@@ -221,6 +233,40 @@ _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 # ---------------------------------------------------------------------------
 _inflight_lock = threading.Lock()
 _inflight_events: dict[str, threading.Event] = {}
+_fg_component_failures: dict[str, float] = {}
+_fg_component_failures_lock = threading.Lock()
+
+
+def _is_transient_yf_error(exc: Exception) -> bool:
+    """Classify transient Yahoo/yfinance transport errors by exception type/message."""
+    if isinstance(exc, (CurlError, ConnectionError, TimeoutError, OSError)):
+        return True
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _TRANSIENT_YF_ERROR_MARKERS)
+
+
+def _is_fg_component_in_cooldown(ticker: str, *, now: float | None = None) -> bool:
+    """Return True when ticker is inside short failure cooldown window."""
+    current = time.monotonic() if now is None else now
+    with _fg_component_failures_lock:
+        last_failed = _fg_component_failures.get(ticker)
+    return (
+        last_failed is not None
+        and current - last_failed < FG_COMPONENT_FAILURE_COOLDOWN_SECONDS
+    )
+
+
+def _mark_fg_component_failure(ticker: str, *, now: float | None = None) -> None:
+    """Record latest component fetch failure timestamp."""
+    current = time.monotonic() if now is None else now
+    with _fg_component_failures_lock:
+        _fg_component_failures[ticker] = current
+
+
+def _clear_fg_component_failure(ticker: str) -> None:
+    """Clear failure marker after successful fetch."""
+    with _fg_component_failures_lock:
+        _fg_component_failures.pop(ticker, None)
 
 
 def _deduped_fetch(
@@ -349,6 +395,11 @@ def clear_all_caches() -> dict:
     ]
     for cache in l1_caches:
         cache.clear()
+    with _fg_component_failures_lock:
+        _fg_component_failures.clear()
+    # Also reset sticky failure counters so cache clear fully resets runtime state.
+    with _moat_failure_lock:
+        _moat_failure_counts.clear()
     _disk_cache.clear()
     logger.info("已清除所有快取（L1×%d + L2 磁碟）。", len(l1_caches))
     return {"l1_cleared": len(l1_caches), "l2_cleared": True}
@@ -2017,7 +2068,10 @@ def get_vix_data() -> dict:
         }
 
     except Exception as e:
-        logger.error("取得 VIX 資料失敗：%s", e, exc_info=True)
+        if _is_transient_yf_error(e):
+            logger.info("取得 VIX 資料暫時失敗（非致命）：%s", e)
+        else:
+            logger.warning("取得 VIX 資料失敗（非致命）：%s", e, exc_info=True)
         return {
             "value": None,
             "change_1d": None,
@@ -2086,10 +2140,23 @@ def _fetch_fg_component_history(ticker: str) -> list[float] | None:
 
 def _fetch_fg_component_history_safe(ticker: str) -> list[float] | None:
     """Wrapper that catches all errors from _fetch_fg_component_history."""
+    if _is_fg_component_in_cooldown(ticker):
+        logger.debug(
+            "FG 組件 %s 於失敗冷卻期內，略過本次抓取（%ds）。",
+            ticker,
+            FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
+        )
+        return None
     try:
-        return _fetch_fg_component_history(ticker)
+        prices = _fetch_fg_component_history(ticker)
+        _clear_fg_component_failure(ticker)
+        return prices
     except Exception as e:
-        logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
+        _mark_fg_component_failure(ticker)
+        if _is_transient_yf_error(e):
+            logger.info("FG 組件 %s 暫時性網路錯誤，將短暫降級：%s", ticker, e)
+        else:
+            logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
         return None
 
 

@@ -29,6 +29,11 @@ request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
 os.makedirs(LOG_DIR, exist_ok=True)
 
 _root_configured = False
+_YF_NOISE_MARKERS = (
+    "failed to perform, curl:",
+    "ssl_error_syscall",
+    "possibly delisted; no price data found",
+)
 
 
 class _RequestIdFilter(logging.Filter):
@@ -37,6 +42,16 @@ class _RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = request_id_var.get()  # type: ignore[attr-defined]
         return True
+
+
+class _YfinanceNoiseFilter(logging.Filter):
+    """Drop known noisy transient yfinance transport/delisted lines."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not record.name.startswith("yfinance"):
+            return True
+        message = record.getMessage().lower()
+        return not any(marker in message for marker in _YF_NOISE_MARKERS)
 
 
 class _JsonFormatter(logging.Formatter):
@@ -103,7 +118,9 @@ def _configure_root_logger() -> None:
 
     # 降低第三方套件的 log 等級以減少雜訊
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("yfinance").setLevel(logging.WARNING)
+    yfinance_logger = logging.getLogger("yfinance")
+    yfinance_logger.setLevel(logging.WARNING)
+    yfinance_logger.addFilter(_YfinanceNoiseFilter())
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("curl_cffi").setLevel(logging.WARNING)
 
