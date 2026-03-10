@@ -11054,6 +11054,18 @@
             "title": "Xray",
             "default": []
           },
+          "xray_coverage_pct": {
+            "type": "number",
+            "title": "Xray Coverage Pct",
+            "default": 0.0
+          },
+          "xray_skipped_etfs": {
+            "items": {
+              "$ref": "#/components/schemas/XRaySkippedETF"
+            },
+            "type": "array",
+            "title": "Xray Skipped Etfs"
+          },
           "health_score": {
             "type": "integer",
             "title": "Health Score",
@@ -12937,6 +12949,25 @@
         ],
         "title": "XRayEntry",
         "description": "X-Ray: \u55ae\u4e00\u6a19\u7684\u771f\u5be6\u66dd\u96aa\uff08\u76f4\u63a5\u6301\u5009 + ETF \u9593\u63a5\u66dd\u96aa\uff09\u3002"
+      },
+      "XRaySkippedETF": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker"
+        ],
+        "title": "XRaySkippedETF",
+        "description": "X-Ray \u7121\u6cd5\u7a7f\u900f\u7684 ETF \u6458\u8981\u3002"
       }
     }
   }

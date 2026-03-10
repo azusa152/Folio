@@ -861,12 +861,21 @@
     "xray": {
       "title": "🔬 X-Ray 重疊分析",
       "empty": "無 ETF 重疊資料。",
+      "subtitle": "顯示你的真實個股曝險，包含 ETF 內隱藏的重疊持股。",
+      "coverage_label": "資料覆蓋率",
+      "coverage": "目前覆蓋投資組合 {{pct}}%",
+      "low_coverage": "目前 X-Ray 覆蓋率偏低，結果可能遺漏重要曝險。",
+      "show_table": "仍然顯示表格",
+      "hide_table": "隱藏表格",
+      "skipped_etf": "以下 ETF 暫時無法穿透：{{etfs}}。",
       "warning": "⚠️ 部分持倉超過 {{threshold}}% 集中度",
       "alert_button": "📨 發送 X-Ray 警報",
       "col_name": "名稱",
       "col_direct": "直接",
       "col_indirect": "間接",
-      "col_total": "合計"
+      "col_total": "合計",
+      "help_direct": "你直接持有這檔股票。",
+      "help_indirect": "透過 ETF 成分股形成的間接曝險。"
     },
     "sector": {
       "title": "產業曝險",
@@ -1826,7 +1835,7 @@
     "drift": "偏離目標",
     "rebalance": "調整配置",
     "stress_test": "假設情境",
-    "xray": "持倉明細",
+    "xray": "曝險穿透",
     "cost_basis": "購入成本",
     "unrealized_pl": "帳面損益",
     "sharpe": "風險調整評分",

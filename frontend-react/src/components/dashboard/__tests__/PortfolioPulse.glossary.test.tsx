@@ -59,6 +59,8 @@ const mockRebalance: RebalanceResponse = {
   advice: [],
   holdings_detail: [],
   xray: [],
+  xray_coverage_pct: 0,
+  xray_skipped_etfs: [],
   health_score: 100,
   health_level: "healthy",
   sector_exposure: [],

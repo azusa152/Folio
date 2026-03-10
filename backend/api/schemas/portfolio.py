@@ -165,6 +165,13 @@ class XRayEntry(BaseModel):
     indirect_sources: list[str] = []  # e.g. ["VTI (5.2%)", "QQQ (8.1%)"]
 
 
+class XRaySkippedETF(BaseModel):
+    """X-Ray 無法穿透的 ETF 摘要。"""
+
+    ticker: str
+    weight_pct: float = 0.0
+
+
 class SectorExposureItem(BaseModel):
     """行業板塊曝險單筆資料（股票持倉用）。"""
 
@@ -186,6 +193,8 @@ class RebalanceResponse(BaseModel):
     advice: list[str]
     holdings_detail: list[HoldingDetail] = []
     xray: list[XRayEntry] = []
+    xray_coverage_pct: float = 0.0
+    xray_skipped_etfs: list[XRaySkippedETF] = Field(default_factory=list)
     health_score: int = 100
     health_level: str = "healthy"  # "healthy" | "caution" | "alert"
     sector_exposure: list[SectorExposureItem] = []

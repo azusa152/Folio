@@ -861,12 +861,21 @@
     "xray": {
       "title": "🔬 X-Ray 重叠分析",
       "empty": "无 ETF 重叠数据。",
+      "subtitle": "显示你的真实个股敞口，包含 ETF 内隐藏的重叠持股。",
+      "coverage_label": "数据覆盖率",
+      "coverage": "当前覆盖投资组合 {{pct}}%",
+      "low_coverage": "当前 X-Ray 覆盖率偏低，结果可能遗漏重要敞口。",
+      "show_table": "仍然显示表格",
+      "hide_table": "隐藏表格",
+      "skipped_etf": "以下 ETF 暂时无法穿透：{{etfs}}。",
       "warning": "⚠️ 部分持仓超过 {{threshold}}% 集中度",
       "alert_button": "📨 发送 X-Ray 警报",
       "col_name": "名称",
       "col_direct": "直接",
       "col_indirect": "间接",
-      "col_total": "合计"
+      "col_total": "合计",
+      "help_direct": "你直接持有这只股票。",
+      "help_indirect": "通过 ETF 成分股形成的间接敞口。"
     },
     "sector": {
       "title": "行业敞口",
@@ -1826,7 +1835,7 @@
     "drift": "偏离目标",
     "rebalance": "调整配置",
     "stress_test": "假设情境",
-    "xray": "持仓明细",
+    "xray": "敞口穿透",
     "cost_basis": "购入成本",
     "unrealized_pl": "账面盈亏",
     "sharpe": "风险调整评分",

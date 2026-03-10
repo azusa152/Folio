@@ -446,6 +446,8 @@ def _do_calculate_rebalance(
     }
 
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
+    xray_analyzed_value = 0.0
+    xray_skipped_etfs: list[dict[str, object]] = []
 
     for ticker, agg in ticker_agg.items():
         cat = agg["category"]
@@ -456,7 +458,8 @@ def _do_calculate_rebalance(
         # 嘗試取得 ETF 成分股
         constituents = get_etf_top_holdings(ticker)
         if constituents:
-            # 此 ticker 是 ETF — 計算間接曝險
+            constituent_weight_sum = sum(c["weight"] for c in constituents)
+            xray_analyzed_value += mv * min(constituent_weight_sum, 1.0)
             for c in constituents:
                 sym = c["symbol"]
                 weight = c["weight"]
@@ -474,11 +477,18 @@ def _do_calculate_rebalance(
         elif ticker in known_etf_tickers:
             # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
             # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
+            skipped_weight_pct = (
+                round((mv / total_value) * 100, 2) if total_value > 0 else 0.0
+            )
+            xray_skipped_etfs.append(
+                {"ticker": ticker, "weight_pct": skipped_weight_pct}
+            )
             logger.warning(
                 "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
                 ticker,
             )
         else:
+            xray_analyzed_value += mv
             # 非 ETF — 記錄為直接持倉
             if ticker not in xray_map:
                 xray_map[ticker] = {
@@ -520,6 +530,14 @@ def _do_calculate_rebalance(
 
     xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
     result["xray"] = xray_entries
+    result["xray_coverage_pct"] = (
+        round((xray_analyzed_value / total_value) * 100, 2) if total_value > 0 else 0.0
+    )
+    result["xray_skipped_etfs"] = sorted(
+        xray_skipped_etfs,
+        key=lambda x: float(x["weight_pct"]),
+        reverse=True,
+    )
 
     # 9) 投資組合健康分數
     health_score, health_level = compute_portfolio_health_score(

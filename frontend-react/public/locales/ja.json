@@ -861,12 +861,21 @@
     "xray": {
       "title": "🔬 X-Ray 重複分析",
       "empty": "ETF重複データなし。",
+      "subtitle": "ETF内の重複も含めた、実質的な個別株エクスポージャーを表示します。",
+      "coverage_label": "データカバレッジ",
+      "coverage": "ポートフォリオの {{pct}}% をカバー",
+      "low_coverage": "現在の X-Ray カバレッジは低く、重要なエクスポージャーが欠けている可能性があります。",
+      "show_table": "テーブルを表示",
+      "hide_table": "テーブルを非表示",
+      "skipped_etf": "次の ETF は現在透過できません：{{etfs}}。",
       "warning": "⚠️ 一部のポジションが{{threshold}}%を超えています",
       "alert_button": "📨 X-Rayアラート送信",
       "col_name": "名称",
       "col_direct": "直接",
       "col_indirect": "間接",
-      "col_total": "合計"
+      "col_total": "合計",
+      "help_direct": "この銘柄を直接保有しています。",
+      "help_indirect": "ETFの構成銘柄としての間接エクスポージャーです。"
     },
     "sector": {
       "title": "セクター配分",
@@ -1826,7 +1835,7 @@
     "drift": "目標とのずれ",
     "rebalance": "配分調整",
     "stress_test": "シミュレーション",
-    "xray": "保有内訳",
+    "xray": "エクスポージャー透視",
     "cost_basis": "取得コスト",
     "unrealized_pl": "含み損益",
     "sharpe": "リスク調整スコア",

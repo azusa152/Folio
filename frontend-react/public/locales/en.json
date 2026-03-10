@@ -861,12 +861,21 @@
     "xray": {
       "title": "🔬 X-Ray Overlap Analysis",
       "empty": "No ETF overlap data.",
+      "subtitle": "Shows your true stock exposure, including overlap hidden inside ETFs.",
+      "coverage_label": "Data coverage",
+      "coverage": "Covers {{pct}}% of portfolio",
+      "low_coverage": "X-Ray coverage is currently low, so this view may miss meaningful exposures.",
+      "show_table": "Show table anyway",
+      "hide_table": "Hide table",
+      "skipped_etf": "Some ETF holdings could not be expanded right now: {{etfs}}.",
       "warning": "⚠️ Some positions exceed {{threshold}}% concentration",
       "alert_button": "📨 Send X-Ray Alert",
       "col_name": "Name",
       "col_direct": "Direct",
       "col_indirect": "Indirect",
-      "col_total": "Total"
+      "col_total": "Total",
+      "help_direct": "You own this stock directly.",
+      "help_indirect": "Exposure through ETF holdings."
     },
     "sector": {
       "title": "Sector Exposure",
@@ -1826,7 +1835,7 @@
     "drift": "Off-Target",
     "rebalance": "Adjust Allocation",
     "stress_test": "What-If Scenario",
-    "xray": "Holdings Breakdown",
+    "xray": "Exposure Breakdown",
     "cost_basis": "Purchase Cost",
     "unrealized_pl": "Paper Gain/Loss",
     "sharpe": "Risk-Adjusted Score",

@@ -3,15 +3,16 @@
 FROM python:3.12-slim@sha256:9e01bf1ae5db7649a236da7be1e94ffbbbdd7a93f867dd0d8d5720d9e1f89fab
 
 # Install uv — pin version to match CI (UV_VERSION in ci.yml); update both together.
-COPY --from=ghcr.io/astral-sh/uv:0.10.6 /uv /usr/local/bin/uv
-
+# Uses the official installer (astral.sh CDN) as a fallback-friendly alternative
+# to COPY --from=ghcr.io/astral-sh/uv:<ver> which can fail when ghcr.io is unreachable.
 WORKDIR /app
 
 # Keep uv cache inside /app so the non-root `folio` user (no home dir) can write to it.
 ENV UV_CACHE_DIR=/app/.uv-cache
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl gosu && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    curl -LsSf https://astral.sh/uv/0.10.6/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Copy only dependency definition files first for layer caching.
 # uv.lock ensures reproducible builds — run `make lock` after editing pyproject.toml.

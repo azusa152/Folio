@@ -200,12 +200,13 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
       <hr className="border-border" />
 
       {/* X-Ray overlap */}
-      {data.xray && data.xray.length > 0 && (
-        <>
-          <XRayOverlap xray={data.xray} />
-          <hr className="border-border" />
-        </>
-      )}
+      <XRayOverlap
+        xray={data.xray ?? []}
+        coveragePct={data.xray_coverage_pct ?? 0}
+        skippedEtfs={data.xray_skipped_etfs ?? []}
+      />
+
+      <hr className="border-border" />
 
       {/* Sector heatmap */}
       {data.sector_exposure && (
