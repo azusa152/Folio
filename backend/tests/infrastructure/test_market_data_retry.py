@@ -218,6 +218,73 @@ class TestCachedFetchErrorSkip:
             assert l1.get("NVDA") == disk_result
             fetcher.assert_not_called()
 
+    def test_cached_fetch_should_purge_stale_l2_error_and_call_fetcher(self):
+        """When L2 disk has a stale error entry (written before is_error was
+        added), _cached_fetch should delete it from disk and fall through to
+        the fetcher for fresh data."""
+        l1 = _fresh_l1()
+        stale_error = {"error": "⚠️ old stale entry"}
+        fresh_result = {"ticker": "VTI", "price": 250.0}
+        fetcher = MagicMock(return_value=fresh_result)
+
+        with (
+            patch(
+                "infrastructure.market_data.market_data._disk_get",
+                return_value=stale_error,
+            ),
+            patch(
+                "infrastructure.market_data.market_data._disk_cache"
+            ) as mock_disk_cache,
+            patch("infrastructure.market_data.market_data._disk_set"),
+        ):
+            result = _cached_fetch(
+                l1,
+                "VTI",
+                DISK_PREFIX,
+                DISK_TTL,
+                fetcher,
+                is_error=_is_error_dict,
+            )
+
+        assert result == fresh_result
+        fetcher.assert_called_once_with("VTI")
+        mock_disk_cache.delete.assert_called_once_with(f"{DISK_PREFIX}:VTI")
+
+    def test_cached_fetch_should_purge_deserialized_etf_sentinel_from_l2(self):
+        """A deserialized empty list from disk is a *different object* than
+        _ETF_NOT_FOUND_SENTINEL, but equality (==) should still recognise it
+        as an error and purge + re-fetch."""
+        l1 = _fresh_l1()
+        deserialized_sentinel = []  # different object than _ETF_NOT_FOUND_SENTINEL
+        assert deserialized_sentinel is not _ETF_NOT_FOUND_SENTINEL
+        assert deserialized_sentinel == _ETF_NOT_FOUND_SENTINEL
+
+        fresh_holdings = [{"symbol": "AAPL", "weight": 0.07, "name": "Apple Inc."}]
+        fetcher = MagicMock(return_value=fresh_holdings)
+
+        with (
+            patch(
+                "infrastructure.market_data.market_data._disk_get",
+                return_value=deserialized_sentinel,
+            ),
+            patch(
+                "infrastructure.market_data.market_data._disk_cache"
+            ) as mock_disk_cache,
+            patch("infrastructure.market_data.market_data._disk_set"),
+        ):
+            result = _cached_fetch(
+                l1,
+                "VTI",
+                DISK_PREFIX,
+                DISK_TTL,
+                fetcher,
+                is_error=lambda d: d == _ETF_NOT_FOUND_SENTINEL,
+            )
+
+        assert result == fresh_holdings
+        fetcher.assert_called_once_with("VTI")
+        mock_disk_cache.delete.assert_called_once_with(f"{DISK_PREFIX}:VTI")
+
 
 # ---------------------------------------------------------------------------
 # _is_error_dict — predicate tests
@@ -373,6 +440,7 @@ class TestEtfCacheErrorHandling:
         is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
         assert callable(is_error_cb)
         assert is_error_cb(_ETF_NOT_FOUND_SENTINEL) is True
+        assert is_error_cb([]) is True  # deserialized copy also matches (==)
         assert is_error_cb([{"symbol": "AAPL", "weight": 0.1}]) is False
 
     def test_get_etf_sector_weights_should_pass_is_error_callback(self):
@@ -385,6 +453,7 @@ class TestEtfCacheErrorHandling:
         is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
         assert callable(is_error_cb)
         assert is_error_cb(_ETF_SECTOR_WEIGHTS_NOT_FOUND) is True
+        assert is_error_cb({}) is True  # deserialized copy also matches (==)
         assert is_error_cb({"Technology": 0.3}) is False
 
     def test_get_etf_top_holdings_should_purge_stale_negative_cache_for_known_etf(self):

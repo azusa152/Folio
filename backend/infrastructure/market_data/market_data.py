@@ -422,9 +422,20 @@ def _cached_fetch(
     disk_key = f"{disk_prefix}:{ticker}"
     disk_cached = _disk_get(disk_key)
     if disk_cached is not None:
-        logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
-        l1_cache[ticker] = disk_cached
-        return disk_cached
+        if is_error is not None and is_error(disk_cached):
+            # Stale error entry on disk (written before is_error was added).
+            # Purge it so the fetcher gets a chance to retrieve fresh data.
+            with contextlib.suppress(Exception):
+                _disk_cache.delete(disk_key)
+            logger.debug(
+                "%s L2 磁碟快取為舊錯誤結果，已清除（prefix=%s）。",
+                ticker,
+                disk_prefix,
+            )
+        else:
+            logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
+            l1_cache[ticker] = disk_cached
+            return disk_cached
     if l1_error_cached is not None:
         # Keep L1 error result for short-term dedup and avoid repeated immediate fetches.
         return l1_error_cached
@@ -1777,7 +1788,7 @@ def get_etf_top_holdings(
             DISK_KEY_ETF_HOLDINGS,
             DISK_ETF_HOLDINGS_TTL,
             _fetch_with_sentinel,
-            is_error=lambda d: d is _ETF_NOT_FOUND_SENTINEL,
+            is_error=lambda d: d == _ETF_NOT_FOUND_SENTINEL,
         )
     except _RETRYABLE_EXCEPTIONS as e:
         # Graceful degradation: external API failures should never crash callers.
@@ -1785,7 +1796,7 @@ def get_etf_top_holdings(
         return None
     # One-time cleanup for stale negative cache entries:
     # if this ticker is known ETF, do not keep an empty-sentinel cached.
-    if data is _ETF_NOT_FOUND_SENTINEL and is_known_etf:
+    if data == _ETF_NOT_FOUND_SENTINEL and is_known_etf:
         disk_key = f"{DISK_KEY_ETF_HOLDINGS}:{ticker}"
         with contextlib.suppress(Exception):
             _disk_cache.delete(disk_key)
@@ -1910,12 +1921,12 @@ def get_etf_sector_weights(
             DISK_KEY_ETF_SECTOR_WEIGHTS,
             DISK_ETF_SECTOR_WEIGHTS_TTL,
             _fetch_with_sentinel,
-            is_error=lambda d: d is _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+            is_error=lambda d: d == _ETF_SECTOR_WEIGHTS_NOT_FOUND,
         )
     except _RETRYABLE_EXCEPTIONS as e:
         logger.warning("%s ETF 板塊權重抓取重試後仍失敗，回傳空結果：%s", ticker, e)
         return None
-    if data is _ETF_SECTOR_WEIGHTS_NOT_FOUND and is_known_etf:
+    if data == _ETF_SECTOR_WEIGHTS_NOT_FOUND and is_known_etf:
         disk_key = f"{DISK_KEY_ETF_SECTOR_WEIGHTS}:{ticker}"
         with contextlib.suppress(Exception):
             _disk_cache.delete(disk_key)
