@@ -627,6 +627,9 @@ DISK_ROGUE_WAVE_TTL = 172800  # L2: 48 hours
 YFINANCE_RETRY_ATTEMPTS = 3
 YFINANCE_RETRY_WAIT_MIN = 2  # seconds (exponential backoff minimum)
 YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)
+YF_CONNECT_TIMEOUT = 10  # seconds (curl_cffi connect timeout)
+YF_READ_TIMEOUT = 30  # seconds (curl_cffi total/read timeout)
+PREWARM_BATCH_TIMEOUT = 120  # seconds (upper bound for prewarm batches)
 FG_COMPONENT_FAILURE_COOLDOWN_SECONDS = (
     120  # short cooldown after transient FG failures
 )

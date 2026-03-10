@@ -11,6 +11,7 @@ Covers:
 
 import os
 import tempfile
+import time
 
 # Set environment variables BEFORE any app imports
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
@@ -38,6 +39,7 @@ from infrastructure.market_data.market_data import (  # noqa: E402
     _etf_holdings_cache,
     _fetch_etf_top_holdings,
     _fetch_fg_component_history_safe,
+    _get_session,
     _is_error_dict,
     _is_fg_component_in_cooldown,
     _is_moat_error,
@@ -46,6 +48,8 @@ from infrastructure.market_data.market_data import (  # noqa: E402
     _yf_retry,
     get_etf_sector_weights,
     get_etf_top_holdings,
+    get_exchange_rates,
+    prewarm_signals_batch,
 )
 
 # ---------------------------------------------------------------------------
@@ -430,6 +434,94 @@ class TestYfRetry:
             retried_fn("NVDA")
 
         assert mock_fn.call_count == 1
+
+    def test_should_retry_on_timeout_error_and_succeed(self):
+        # Arrange — fails once with timeout, succeeds on 2nd
+        mock_fn = MagicMock(
+            side_effect=[
+                TimeoutError("request timed out"),
+                {"ticker": "MSFT", "price": 420.0},
+            ]
+        )
+        retried_fn = _yf_retry(mock_fn)
+
+        # Act
+        result = retried_fn("MSFT")
+
+        # Assert
+        assert result == {"ticker": "MSFT", "price": 420.0}
+        assert mock_fn.call_count == 2
+
+
+class TestSessionTimeoutConfig:
+    """Verify curl_cffi session includes explicit timeout settings."""
+
+    def test_get_session_should_set_connect_and_read_timeouts(self):
+        with patch(
+            "infrastructure.market_data.market_data.cffi_requests.Session"
+        ) as mock_session:
+            _get_session()
+
+        mock_session.assert_called_once_with(
+            impersonate=domain.constants.CURL_CFFI_IMPERSONATE,
+            timeout=(
+                domain.constants.YF_CONNECT_TIMEOUT,
+                domain.constants.YF_READ_TIMEOUT,
+            ),
+        )
+
+
+class TestBatchTimeoutGuard:
+    """Verify prewarm batch returns quickly when worker hangs.
+
+    Uses short patched timeouts to validate both correctness (degraded
+    results) and promptness (wall-time stays well under the worker sleep).
+    """
+
+    def test_prewarm_signals_batch_should_timeout_and_fill_none_for_pending(self):
+        def _slow_fetch(_ticker: str):
+            time.sleep(0.5)
+            return {"price": 100.0}
+
+        with (
+            patch("infrastructure.market_data.market_data.PREWARM_BATCH_TIMEOUT", 0.01),
+            patch(
+                "infrastructure.market_data.market_data.get_technical_signals",
+                side_effect=_slow_fetch,
+            ),
+        ):
+            start = time.monotonic()
+            result = prewarm_signals_batch(["AAA", "BBB"], max_workers=1)
+            elapsed = time.monotonic() - start
+
+        assert result["AAA"] is None
+        assert result["BBB"] is None
+        assert elapsed < 0.2, (
+            f"batch should return promptly on timeout, took {elapsed:.2f}s"
+        )
+
+    def test_get_exchange_rates_should_timeout_and_fallback_to_1(self):
+        def _slow_rate(_display: str, _hold: str):
+            time.sleep(0.5)
+            return 0.5
+
+        with (
+            patch("infrastructure.market_data.market_data.PREWARM_BATCH_TIMEOUT", 0.01),
+            patch(
+                "infrastructure.market_data.market_data.get_exchange_rate",
+                side_effect=_slow_rate,
+            ),
+        ):
+            start = time.monotonic()
+            rates = get_exchange_rates("USD", ["JPY", "TWD"])
+            elapsed = time.monotonic() - start
+
+        assert rates["USD"] == 1.0
+        assert rates["JPY"] == 1.0
+        assert rates["TWD"] == 1.0
+        assert elapsed < 0.2, (
+            f"exchange rates should return promptly, took {elapsed:.2f}s"
+        )
 
 
 class TestTransientYfErrorClassifier:

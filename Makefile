@@ -42,9 +42,12 @@
 #    make upgrade          Re-lock all deps to latest compatible versions
 #
 #  Docker:
-#    make up               Start all services (background)
+#    make up               Start all services (background, no rebuild)
 #    make down             Stop and remove all containers
-#    make restart          Rebuild and restart all services (down + up)
+#    make restart          Restart backend only (no rebuild)
+#    make restart-all      Restart all services (down + up, no rebuild)
+#    make rebuild          Rebuild images and restart all services
+#    make logs             Tail backend logs
 #
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
@@ -213,15 +216,24 @@ generate-api: .venv-check .python-version-check ## Export OpenAPI spec and regen
 # ---------------------------------------------------------------------------
 #  Docker
 # ---------------------------------------------------------------------------
-.PHONY: up down restart
+.PHONY: up down restart restart-all rebuild logs
 
-up: ## Start all services (background, rebuild images)
-	docker compose up -d --build
+up: ## Start all services (background, no image rebuild)
+	docker compose up -d
 
 down: ## Stop and remove all containers
 	docker compose down
 
-restart: down up ## Rebuild and restart all services (preserves data volumes)
+restart: ## Restart backend only (force reload, no rebuild)
+	docker compose restart backend
+
+restart-all: down up ## Restart all services (preserves data volumes, no rebuild)
+
+rebuild: ## Rebuild images + restart all services
+	docker compose up -d --build
+
+logs: ## Tail backend logs
+	docker compose logs -f backend
 
 # ---------------------------------------------------------------------------
 #  Database
