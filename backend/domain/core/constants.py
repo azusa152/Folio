@@ -272,6 +272,7 @@ FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE = (
 FX_WATCH_TREND_SHORT_WINDOW = 5  # 5-day SMA window for trend direction
 FX_WATCH_TREND_LONG_WINDOW = 10  # 10-day SMA window for trend direction
 FX_WATCH_HIGH_RECENCY_THRESHOLD = 3  # alert if high was within N days
+FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS = 30  # cooldown between force_refresh calls
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)

@@ -977,7 +977,8 @@
       "refresh": "レート更新",
       "refreshing": "更新中...",
       "add": "➕ 追加",
-      "add_help": "為替監視設定を追加"
+      "add_help": "為替監視設定を追加",
+      "refresh_cooldown": "レート更新 ({{seconds}}秒)"
     },
     "empty": {
       "message": "📭 監視設定がありません。上の「➕ 追加」ボタンから開始してください",
@@ -1098,7 +1099,9 @@
     },
     "chart_title": "📈 {{base}}/{{quote}} 為替推移",
     "insufficient_data": "📉 為替履歴データ不足（最低5営業日必要）。",
-    "privacy_enabled": "🔒 プライバシーモード有効、チャートと分析を非表示にしました。"
+    "privacy_enabled": "🔒 プライバシーモード有効、チャートと分析を非表示にしました。",
+    "rate_limit_exceeded": "リクエストが多すぎます。少し待ってからもう一度お試しください。",
+    "rate_limit_exceeded_retry_after": "リクエストが多すぎます。{{seconds}}秒後にもう一度お試しください。"
   },
   "utils": {
     "api_error": "❌ APIリクエスト失敗：{{error}}",

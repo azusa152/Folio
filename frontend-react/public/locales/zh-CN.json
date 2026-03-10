@@ -977,7 +977,8 @@
       "refresh": "更新汇率",
       "refreshing": "更新中...",
       "add": "➕ 新增",
-      "add_help": "新增外汇监控配置"
+      "add_help": "新增外汇监控配置",
+      "refresh_cooldown": "更新汇率 ({{seconds}}秒)"
     },
     "empty": {
       "message": "📭 尚未设定任何监控配置，请点击上方「➕ 新增」按钮开始",
@@ -1098,7 +1099,9 @@
     },
     "chart_title": "📈 {{base}}/{{quote}} 汇率走势",
     "insufficient_data": "📉 汇率历史资料不足（需至少 5 个交易日）。",
-    "privacy_enabled": "🔒 隐私模式已启用，图表与分析已隐藏。"
+    "privacy_enabled": "🔒 隐私模式已启用，图表与分析已隐藏。",
+    "rate_limit_exceeded": "请求次数过多，请稍后再试。",
+    "rate_limit_exceeded_retry_after": "请求次数过多，请在 {{seconds}} 秒后重试。"
   },
   "utils": {
     "api_error": "❌ API 请求失败：{{error}}",

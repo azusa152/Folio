@@ -977,7 +977,8 @@
       "refresh": "Refresh rates",
       "refreshing": "Refreshing...",
       "add": "➕ Add",
-      "add_help": "Add new FX monitor"
+      "add_help": "Add new FX monitor",
+      "refresh_cooldown": "Refresh rates ({{seconds}}s)"
     },
     "empty": {
       "message": "📭 No monitors configured. Click \"➕ Add\" above to start.",
@@ -1098,7 +1099,9 @@
     },
     "chart_title": "📈 {{base}}/{{quote}} Rate Chart",
     "insufficient_data": "📉 Insufficient FX history (need at least 5 trading days).",
-    "privacy_enabled": "🔒 Privacy mode enabled, chart and analysis hidden."
+    "privacy_enabled": "🔒 Privacy mode enabled, chart and analysis hidden.",
+    "rate_limit_exceeded": "Too many requests. Please wait a moment and try again.",
+    "rate_limit_exceeded_retry_after": "Too many requests. Please try again in {{seconds}}s."
   },
   "utils": {
     "api_error": "❌ API request failed: {{error}}",

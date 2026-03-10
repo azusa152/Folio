@@ -977,7 +977,8 @@
       "refresh": "更新匯率",
       "refreshing": "更新中...",
       "add": "➕ 新增",
-      "add_help": "新增外匯監控配置"
+      "add_help": "新增外匯監控配置",
+      "refresh_cooldown": "更新匯率 ({{seconds}}秒)"
     },
     "empty": {
       "message": "📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始",
@@ -1098,7 +1099,9 @@
     },
     "chart_title": "📈 {{base}}/{{quote}} 匯率走勢",
     "insufficient_data": "📉 匯率歷史資料不足（需至少 5 個交易日）。",
-    "privacy_enabled": "🔒 隱私模式已啟用，圖表與分析已隱藏。"
+    "privacy_enabled": "🔒 隱私模式已啟用，圖表與分析已隱藏。",
+    "rate_limit_exceeded": "請求次數過多，請稍候再試。",
+    "rate_limit_exceeded_retry_after": "請求次數過多，請於 {{seconds}} 秒後再試。"
   },
   "utils": {
     "api_error": "❌ API 請求失敗：{{error}}",

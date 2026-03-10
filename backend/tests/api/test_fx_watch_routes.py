@@ -304,6 +304,38 @@ class TestFXWatchActions:
         assert data["total_watches"] == 0
         assert data["results"] == []
 
+    @patch.dict("api.routes.fx_watch_routes._force_refresh_tracker", {}, clear=True)
+    @patch("api.routes.fx_watch_routes.refresh_fx_data")
+    def test_force_refresh_should_return_429_during_cooldown(
+        self, mock_refresh_fx_data, client: TestClient
+    ):
+        # Act: first force refresh should pass
+        first = client.post("/fx-watch/check?force_refresh=true")
+        second = client.post("/fx-watch/check?force_refresh=true")
+
+        # Assert
+        assert first.status_code == 200
+        assert second.status_code == 429
+        detail = second.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_REFRESH_COOLDOWN"
+        assert detail["retry_after_seconds"] >= 1
+        assert second.headers["Retry-After"] == str(detail["retry_after_seconds"])
+        assert mock_refresh_fx_data.call_count == 1
+
+    @patch.dict("api.routes.fx_watch_routes._force_refresh_tracker", {}, clear=True)
+    @patch("api.routes.fx_watch_routes.refresh_fx_data")
+    def test_non_force_refresh_should_not_be_blocked_by_force_refresh_cooldown(
+        self, mock_refresh_fx_data, client: TestClient
+    ):
+        # Act: trigger force refresh once, then normal check
+        force_refresh_response = client.post("/fx-watch/check?force_refresh=true")
+        normal_check_response = client.post("/fx-watch/check")
+
+        # Assert: normal check remains available
+        assert force_refresh_response.status_code == 200
+        assert normal_check_response.status_code == 200
+        assert mock_refresh_fx_data.call_count == 1
+
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_check_fx_watches_with_active_config(
         self, mock_get_history, client: TestClient

@@ -75,6 +75,7 @@ export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
 
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30
 
 export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
 export const NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"] as const
