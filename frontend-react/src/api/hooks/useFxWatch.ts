@@ -142,13 +142,19 @@ async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
     const entry: FxAnalysis = {
       current_rate: r.result.current_rate,
       should_alert: r.result.should_alert,
+      scenario: r.result.scenario,
       recommendation: r.result.recommendation,
       reasoning: r.result.reasoning,
       is_recent_high: r.result.is_recent_high,
       lookback_high: r.result.lookback_high,
       lookback_days: r.result.lookback_days,
+      high_days_ago: r.result.high_days_ago,
+      distance_from_high_pct: r.result.distance_from_high_pct,
       consecutive_increases: r.result.consecutive_increases,
       consecutive_threshold: r.result.consecutive_threshold,
+      trend_direction: r.result.trend_direction,
+      trend_strength_pct: r.result.trend_strength_pct,
+      signal_strength: r.result.signal_strength,
     }
     map[r.watch_id] = entry
   }

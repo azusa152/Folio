@@ -8008,6 +8008,14 @@
             "type": "integer",
             "title": "Lookback Days"
           },
+          "high_days_ago": {
+            "type": "integer",
+            "title": "High Days Ago"
+          },
+          "distance_from_high_pct": {
+            "type": "number",
+            "title": "Distance From High Pct"
+          },
           "consecutive_increases": {
             "type": "integer",
             "title": "Consecutive Increases"
@@ -8015,6 +8023,18 @@
           "consecutive_threshold": {
             "type": "integer",
             "title": "Consecutive Threshold"
+          },
+          "trend_direction": {
+            "type": "string",
+            "title": "Trend Direction"
+          },
+          "trend_strength_pct": {
+            "type": "number",
+            "title": "Trend Strength Pct"
+          },
+          "signal_strength": {
+            "type": "string",
+            "title": "Signal Strength"
           },
           "alert_on_recent_high": {
             "type": "boolean",
@@ -8054,8 +8074,13 @@
           "is_recent_high",
           "lookback_high",
           "lookback_days",
+          "high_days_ago",
+          "distance_from_high_pct",
           "consecutive_increases",
           "consecutive_threshold",
+          "trend_direction",
+          "trend_strength_pct",
+          "signal_strength",
           "alert_on_recent_high",
           "alert_on_consecutive_increase",
           "should_alert",

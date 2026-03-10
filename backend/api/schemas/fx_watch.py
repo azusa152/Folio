@@ -72,8 +72,13 @@ class FXTimingResultResponse(BaseModel):
     is_recent_high: bool
     lookback_high: float
     lookback_days: int
+    high_days_ago: int
+    distance_from_high_pct: float
     consecutive_increases: int
     consecutive_threshold: int
+    trend_direction: str
+    trend_strength_pct: float
+    signal_strength: str
     alert_on_recent_high: bool
     alert_on_consecutive_increase: bool
     should_alert: bool

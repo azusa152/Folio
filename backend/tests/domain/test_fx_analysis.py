@@ -4,7 +4,11 @@ from domain.enums import FXAlertType, I18nKey
 from domain.fx_analysis import (
     FXRateAlert,
     analyze_fx_rate_changes,
+    assess_exchange_timing,
+    compute_sma,
+    detect_trend_direction,
     determine_fx_risk_level,
+    find_high_recency,
 )
 
 # ---------------------------------------------------------------------------
@@ -259,3 +263,156 @@ class TestDetermineFxRiskLevel:
             ),
         ]
         assert determine_fx_risk_level(alerts) == "medium"
+
+
+class TestFxWatchTrendAwareSignals:
+    def test_compute_sma_should_return_none_when_insufficient_points(self):
+        history = [{"date": "2026-01-01", "close": 1.0}]
+        assert compute_sma(history, 5) is None
+
+    def test_compute_sma_should_compute_average_for_window(self):
+        history = [
+            {"date": "2026-01-01", "close": 1.0},
+            {"date": "2026-01-02", "close": 2.0},
+            {"date": "2026-01-03", "close": 3.0},
+            {"date": "2026-01-04", "close": 4.0},
+            {"date": "2026-01-05", "close": 5.0},
+        ]
+        assert compute_sma(history, 5) == 3.0
+
+    def test_detect_trend_strength_should_use_short_window_baseline(self):
+        history = [
+            {"date": "2026-01-01", "close": 10.0},
+            {"date": "2026-01-02", "close": 11.0},
+            {"date": "2026-01-03", "close": 12.0},
+            {"date": "2026-01-04", "close": 13.0},
+            {"date": "2026-01-05", "close": 14.0},
+        ]
+        # baseline is first point of the 5-point window: 10 -> 14 = +40.00%
+        _, strength = detect_trend_direction(history, short_window=5, long_window=5)
+        assert strength == 40.0
+
+    def test_detect_trend_direction_should_detect_rising(self):
+        history = [
+            {"date": f"2026-01-{d:02d}", "close": 1.0 + d * 0.1} for d in range(1, 16)
+        ]
+        direction, strength = detect_trend_direction(history)
+        assert direction == "rising"
+        assert strength > 0
+
+    def test_detect_trend_direction_should_detect_falling(self):
+        history = [
+            {"date": f"2026-01-{d:02d}", "close": 3.0 - d * 0.1} for d in range(1, 16)
+        ]
+        direction, strength = detect_trend_direction(history)
+        assert direction == "falling"
+        assert strength < 0
+
+    def test_find_high_recency_should_return_days_since_latest_peak(self):
+        history = [
+            {"date": "2026-01-01", "close": 4.8},
+            {"date": "2026-01-02", "close": 5.0},
+            {"date": "2026-01-03", "close": 4.9},
+            {"date": "2026-01-04", "close": 4.85},
+        ]
+        assert find_high_recency(history, lookback_days=30) == 2
+
+
+class TestAssessExchangeTimingTrendAware:
+    def test_should_suppress_near_high_alert_when_falling_from_stale_high(self):
+        history = [
+            {"date": "2026-02-24", "close": 4.90},
+            {"date": "2026-02-25", "close": 4.95},
+            {"date": "2026-02-26", "close": 5.00},
+            {"date": "2026-02-27", "close": 5.02},
+            {"date": "2026-02-28", "close": 5.0295},
+            {"date": "2026-03-01", "close": 5.00},
+            {"date": "2026-03-02", "close": 4.99},
+            {"date": "2026-03-03", "close": 4.98},
+            {"date": "2026-03-04", "close": 4.97},
+            {"date": "2026-03-05", "close": 4.96},
+            {"date": "2026-03-06", "close": 4.95},
+            {"date": "2026-03-07", "close": 4.94},
+            {"date": "2026-03-08", "close": 4.9393},
+        ]
+
+        result = assess_exchange_timing(
+            base_currency="THB",
+            quote_currency="JPY",
+            history=history,
+            recent_high_days=30,
+            consecutive_threshold=3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=True,
+        )
+
+        assert result.is_recent_high is True
+        assert result.trend_direction == "falling"
+        assert result.should_alert is False
+        assert result.scenario == "declining_from_high"
+
+    def test_should_alert_when_approaching_high_with_rising_trend(self):
+        history = [
+            {"date": "2026-03-01", "close": 4.80},
+            {"date": "2026-03-02", "close": 4.82},
+            {"date": "2026-03-03", "close": 4.84},
+            {"date": "2026-03-04", "close": 4.86},
+            {"date": "2026-03-05", "close": 4.88},
+            {"date": "2026-03-06", "close": 4.90},
+            {"date": "2026-03-07", "close": 4.93},
+            {"date": "2026-03-08", "close": 4.95},
+            {"date": "2026-03-09", "close": 4.98},
+        ]
+        result = assess_exchange_timing(
+            base_currency="THB",
+            quote_currency="JPY",
+            history=history,
+            recent_high_days=30,
+            consecutive_threshold=3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=True,
+        )
+        assert result.should_alert is True
+        assert result.scenario in {"approaching_high", "should_alert_both"}
+
+    def test_should_alert_when_new_high_breakout(self):
+        history = [
+            {"date": "2026-03-01", "close": 4.80},
+            {"date": "2026-03-02", "close": 4.84},
+            {"date": "2026-03-03", "close": 4.90},
+            {"date": "2026-03-04", "close": 4.97},
+            {"date": "2026-03-05", "close": 5.01},
+            {"date": "2026-03-06", "close": 5.05},
+        ]
+        result = assess_exchange_timing(
+            base_currency="THB",
+            quote_currency="JPY",
+            history=history,
+            recent_high_days=30,
+            consecutive_threshold=3,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=False,
+        )
+        assert result.should_alert is True
+        assert result.scenario == "at_high"
+        assert result.signal_strength == "strong"
+
+    def test_should_use_approaching_high_when_not_exact_high(self):
+        history = [
+            {"date": "2026-03-01", "close": 4.90},
+            {"date": "2026-03-02", "close": 5.00},
+            {"date": "2026-03-03", "close": 5.05},
+            {"date": "2026-03-04", "close": 5.048},
+        ]
+        result = assess_exchange_timing(
+            base_currency="THB",
+            quote_currency="JPY",
+            history=history,
+            recent_high_days=30,
+            consecutive_threshold=1,
+            alert_on_recent_high=True,
+            alert_on_consecutive_increase=False,
+        )
+        assert result.is_recent_high is True
+        assert result.distance_from_high_pct > 0
+        assert result.scenario == "approaching_high"

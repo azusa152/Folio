@@ -41,10 +41,14 @@ def _run_migrations() -> None:
         "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
         "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
         "UPDATE holding SET currency = 'HKD' WHERE ticker LIKE '%.HK' AND currency = 'USD';",
+        # Holding: 新增現金標記欄位
+        "ALTER TABLE holding ADD COLUMN is_cash BOOLEAN DEFAULT 0;",
         # Holding: 現金持倉以 ticker 作為幣別
         "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
         # Holding: 新增帳戶類型欄位
         "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
+        # Holding: 新增帳戶 ID 欄位
+        "ALTER TABLE holding ADD COLUMN account_id INTEGER;",
         # ScanLog: 新增市場情緒原因說明欄位
         "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
         # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
@@ -75,6 +79,12 @@ def _run_migrations() -> None:
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
         # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
         "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
+        # PortfolioSnapshot: 新增個股市值 JSON 欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN holding_values TEXT DEFAULT '{}';",
+        # PortfolioSnapshot: 新增總成本基礎欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN cost_basis_total REAL;",
+        # PortfolioSnapshot: 新增地理區域市值 JSON 欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN geographic_values TEXT DEFAULT '{}';",
         # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
         # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）

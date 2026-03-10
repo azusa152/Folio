@@ -323,6 +323,51 @@ class TestFXWatchActions:
         assert result["result"]["consecutive_increases"] == 3
         assert result["result"]["alert_on_recent_high"] is True
         assert result["result"]["alert_on_consecutive_increase"] is True
+        assert result["result"]["high_days_ago"] >= 0
+        assert result["result"]["distance_from_high_pct"] >= 0
+        assert result["result"]["trend_direction"] in {"rising", "falling", "sideways"}
+        assert isinstance(result["result"]["trend_strength_pct"], float)
+        assert result["result"]["signal_strength"] in {
+            "strong",
+            "moderate",
+            "weak",
+            "none",
+        }
+
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    def test_check_fx_watch_response_should_include_trend_fields(
+        self, mock_get_history, client: TestClient
+    ):
+        client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "recent_high_days": 5,
+                "consecutive_increase_days": 2,
+            },
+        )
+        mock_get_history.return_value = [
+            {"date": "2026-02-07", "close": 150.0},
+            {"date": "2026-02-08", "close": 150.2},
+            {"date": "2026-02-09", "close": 150.4},
+            {"date": "2026-02-10", "close": 150.8},
+            {"date": "2026-02-11", "close": 151.0},
+            {"date": "2026-02-12", "close": 151.1},
+            {"date": "2026-02-13", "close": 151.2},
+            {"date": "2026-02-14", "close": 151.4},
+            {"date": "2026-02-15", "close": 151.5},
+            {"date": "2026-02-16", "close": 151.6},
+        ]
+
+        response = client.post("/fx-watch/check")
+        assert response.status_code == 200
+        item = response.json()["results"][0]["result"]
+        assert "high_days_ago" in item
+        assert "distance_from_high_pct" in item
+        assert "trend_direction" in item
+        assert "trend_strength_pct" in item
+        assert "signal_strength" in item
 
     @patch("application.portfolio.fx_watch_service.log_notification_sent")
     @patch("application.portfolio.fx_watch_service.is_within_rate_limit")

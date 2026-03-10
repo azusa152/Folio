@@ -1012,7 +1012,19 @@
     "analysis": {
       "title": "📊 分析原因",
       "waiting": "⏳ 等待分析...",
-      "loading": "⏳ 分析中..."
+      "loading": "⏳ 分析中...",
+      "trend_direction": "趨勢方向",
+      "trend_rising": "上升",
+      "trend_falling": "下降",
+      "trend_sideways": "盤整",
+      "high_recency": "高點新鮮度",
+      "days_ago": "{{count}} 天前",
+      "distance_from_high": "距離高點",
+      "signal_strength": "訊號強度",
+      "signal_strong": "強",
+      "signal_moderate": "中",
+      "signal_weak": "弱",
+      "signal_none": "無"
     },
     "period": {
       "1w": "1週",
@@ -1028,7 +1040,9 @@
     },
     "indicator": {
       "near_high": "接近 {{days}} 日高點",
-      "consecutive": "連漲 {{current}}/{{threshold}} 日"
+      "consecutive": "連漲 {{current}}/{{threshold}} 日",
+      "high_days_ago": "{{days}} 日高點（{{ago}} 天前）",
+      "below_high": "低於高點 {{pct}}%"
     },
     "sort": {
       "label": "排序",

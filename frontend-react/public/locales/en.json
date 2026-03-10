@@ -1012,7 +1012,19 @@
     "analysis": {
       "title": "📊 Analysis Reason",
       "waiting": "⏳ Waiting for analysis...",
-      "loading": "⏳ Analyzing..."
+      "loading": "⏳ Analyzing...",
+      "trend_direction": "Trend direction",
+      "trend_rising": "Rising",
+      "trend_falling": "Falling",
+      "trend_sideways": "Sideways",
+      "high_recency": "High recency",
+      "days_ago": "{{count}} days ago",
+      "distance_from_high": "Distance from high",
+      "signal_strength": "Signal strength",
+      "signal_strong": "Strong",
+      "signal_moderate": "Moderate",
+      "signal_weak": "Weak",
+      "signal_none": "None"
     },
     "period": {
       "1w": "1W",
@@ -1028,7 +1040,9 @@
     },
     "indicator": {
       "near_high": "Near {{days}}d high",
-      "consecutive": "{{current}}/{{threshold}} days up"
+      "consecutive": "{{current}}/{{threshold}} days up",
+      "high_days_ago": "{{days}}d high ({{ago}} days ago)",
+      "below_high": "{{pct}}% below high"
     },
     "sort": {
       "label": "Sort",

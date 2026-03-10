@@ -694,6 +694,7 @@ def batch_download_history(
             threads=True,
             progress=False,
             auto_adjust=True,
+            session=_get_session(),
         )
         result: dict = {}
         for ticker in tickers:
@@ -739,6 +740,7 @@ def batch_download_history_extended(
             threads=True,
             progress=False,
             auto_adjust=True,
+            session=_get_session(),
         )
         result: dict[str, list[dict]] = {}
         for ticker in tickers:
@@ -2584,6 +2586,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 auto_adjust=True,
                 progress=False,
                 threads=True,
+                session=_get_session(),
             )
             for ticker in uncached_tickers:
                 rp: float | None = None
@@ -2616,6 +2619,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
             auto_adjust=True,
             progress=False,
             threads=True,
+            session=_get_session(),
         )
         for ticker in tickers:
             cp: float | None = None

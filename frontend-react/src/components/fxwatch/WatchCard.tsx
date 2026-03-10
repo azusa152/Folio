@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Minus, TrendingDown, TrendingUp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { cn, formatLocalTime } from "@/lib/utils"
@@ -48,6 +48,35 @@ function formatChangePct(pct: number | null): string | null {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`
 }
 
+function trendIcon(direction: FxAnalysis["trend_direction"]) {
+  if (direction === "rising") return <TrendingUp className="h-3.5 w-3.5" />
+  if (direction === "falling") return <TrendingDown className="h-3.5 w-3.5" />
+  return <Minus className="h-3.5 w-3.5" />
+}
+
+function safeTrendDirection(
+  direction: string | undefined,
+): FxAnalysis["trend_direction"] {
+  if (direction === "rising" || direction === "falling" || direction === "sideways") {
+    return direction
+  }
+  return "sideways"
+}
+
+function safeSignalStrength(
+  strength: string | undefined,
+): FxAnalysis["signal_strength"] {
+  if (
+    strength === "strong" ||
+    strength === "moderate" ||
+    strength === "weak" ||
+    strength === "none"
+  ) {
+    return strength
+  }
+  return "none"
+}
+
 export function WatchCard({ watch, analysis, analysisLoading = false, sparklineData }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
@@ -88,13 +117,17 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
       onError: () => toast.error(t("fx_watch.card.delete_error")),
     })
   }
+  const trendDirection = safeTrendDirection(analysis?.trend_direction)
+  const signalStrength = safeSignalStrength(analysis?.signal_strength)
 
   // Badge variant
   const badgeVariant = !watch.is_active
     ? "secondary"
-    : analysis?.should_alert
+    : signalStrength === "strong"
       ? "destructive"
-      : "outline"
+      : signalStrength === "moderate"
+        ? "default"
+        : "outline"
 
   const badgeLabel = !watch.is_active
     ? t("fx_watch.badge.inactive")
@@ -155,8 +188,28 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
               {analysis && !isPrivate && (
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {analysis.is_recent_high && (
-                    <span className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full px-2 py-0.5">
-                      ▲ {t("fx_watch.indicator.near_high", { days: analysis.lookback_days })}
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5",
+                        analysis.scenario === "declining_from_high"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+                      )}
+                    >
+                      {trendIcon(trendDirection)}
+                      {analysis.scenario === "declining_from_high"
+                        ? t("fx_watch.indicator.high_days_ago", {
+                            days: analysis.lookback_days,
+                            ago: analysis.high_days_ago,
+                          })
+                        : t("fx_watch.indicator.near_high", { days: analysis.lookback_days })}
+                    </span>
+                  )}
+                  {analysis.is_recent_high && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("fx_watch.indicator.below_high", {
+                        pct: analysis.distance_from_high_pct.toFixed(2),
+                      })}
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -267,6 +320,49 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                           <span className={`font-medium ${analysis.is_recent_high ? FINANCE_TEXT.warning : "text-muted-foreground"}`}>
                             {analysis.is_recent_high ? "✓" : "—"}
                             {analysis.lookback_high > 0 && ` ${analysis.lookback_high.toFixed(4)}`}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                          <span className="text-muted-foreground">
+                            {t("fx_watch.analysis.trend_direction")}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            {trendIcon(trendDirection)}
+                            {t(`fx_watch.analysis.trend_${trendDirection}`)}
+                            <span className="text-muted-foreground">
+                              ({analysis.trend_strength_pct >= 0 ? "+" : ""}
+                              {analysis.trend_strength_pct.toFixed(2)}%)
+                            </span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                          <span className="text-muted-foreground">
+                            {t("fx_watch.analysis.high_recency")}
+                          </span>
+                          <span>{t("fx_watch.analysis.days_ago", { count: analysis.high_days_ago })}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                          <span className="text-muted-foreground">
+                            {t("fx_watch.analysis.distance_from_high")}
+                          </span>
+                          <span>{analysis.distance_from_high_pct.toFixed(2)}%</span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
+                          <span className="text-muted-foreground">{t("fx_watch.analysis.signal_strength")}</span>
+                          <span
+                            className={cn(
+                              "font-medium",
+                              signalStrength === "strong" && FINANCE_TEXT.loss,
+                              signalStrength === "moderate" && FINANCE_TEXT.warning,
+                              (signalStrength === "weak" || signalStrength === "none") &&
+                                "text-muted-foreground",
+                            )}
+                          >
+                            {t(`fx_watch.analysis.signal_${signalStrength}`)}
                           </span>
                         </div>
 

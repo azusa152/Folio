@@ -33,7 +33,9 @@ from cachetools import TTLCache  # noqa: E402
 from infrastructure.market_data import (  # noqa: E402
     are_all_signals_in_l1,
     batch_download_history,
+    batch_download_history_extended,
     count_signals_in_l1,
+    fetch_price_pair,
     prime_signals_cache_batch,
 )
 
@@ -322,3 +324,54 @@ class TestAreAllSignalsInL1:
 
         with patch("infrastructure.market_data.market_data._signals_cache", l1):
             assert are_all_signals_in_l1(["AAPL", "MSFT"]) is False
+
+
+# ===========================================================================
+# yf.download session= kwarg regression tests
+# ===========================================================================
+
+_YF_DL = "infrastructure.market_data.market_data.yf.download"
+_RATE_LIMITER = "infrastructure.market_data.market_data._rate_limiter"
+_GET_SESSION = "infrastructure.market_data.market_data._get_session"
+
+
+class TestYfDownloadSessionKwarg:
+    """All yf.download() call sites must pass session=_get_session()
+    to use the curl_cffi Chrome-impersonating session and avoid Yahoo 401s.
+    """
+
+    @patch(_GET_SESSION, return_value="<mock_session>")
+    @patch(_RATE_LIMITER)
+    @patch(_YF_DL, return_value=_make_hist())
+    def test_batch_download_history_should_pass_session(
+        self, mock_dl, _mock_rl, _mock_sess
+    ):
+        batch_download_history(["AAPL"])
+        _, kwargs = mock_dl.call_args
+        assert "session" in kwargs, "batch_download_history must pass session="
+        assert kwargs["session"] == "<mock_session>"
+
+    @patch(_GET_SESSION, return_value="<mock_session>")
+    @patch(_RATE_LIMITER)
+    @patch(_YF_DL, return_value=_make_hist())
+    def test_batch_download_history_extended_should_pass_session(
+        self, mock_dl, _mock_rl, _mock_sess
+    ):
+        batch_download_history_extended(["AAPL"], period="5y")
+        _, kwargs = mock_dl.call_args
+        assert "session" in kwargs, "batch_download_history_extended must pass session="
+        assert kwargs["session"] == "<mock_session>"
+
+    @patch(_GET_SESSION, return_value="<mock_session>")
+    @patch(_RATE_LIMITER)
+    @patch(_YF_DL, return_value=_make_hist())
+    @patch("infrastructure.market_data.market_data._disk_get", return_value=None)
+    @patch("infrastructure.market_data.market_data._disk_set")
+    def test_fetch_price_pair_should_pass_session(
+        self, _mock_ds, _mock_dg, mock_dl, _mock_rl, _mock_sess
+    ):
+        fetch_price_pair(["AAPL"], "2025-01-01")
+        for call_obj in mock_dl.call_args_list:
+            _, kwargs = call_obj
+            assert "session" in kwargs, "fetch_price_pair must pass session="
+            assert kwargs["session"] == "<mock_session>"
