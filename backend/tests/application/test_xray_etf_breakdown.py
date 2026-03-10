@@ -252,7 +252,7 @@ class TestXRayEtfBreakdown:
         mock_signals.side_effect = _signals_side_effect
         mock_fx.return_value = {"USD": 1.0}
 
-        def _holdings_side_effect(ticker: str):
+        def _holdings_side_effect(ticker: str, **_kwargs):
             if ticker == "SOXX":
                 return [{"symbol": "NVDA", "name": "NVIDIA", "weight": 0.08}]
             return None

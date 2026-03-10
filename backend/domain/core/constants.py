@@ -239,7 +239,7 @@ DISK_PRICE_HISTORY_TTL = 1800  # L2: 30 minutes
 ETF_HOLDINGS_CACHE_MAXSIZE = 100
 ETF_HOLDINGS_CACHE_TTL = 86400  # 24 hours (ETF holdings change slowly)
 DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
-ETF_TOP_N = 10  # only resolve top N constituents per ETF
+ETF_TOP_N = 25  # only resolve top N constituents per ETF
 DISK_ETF_SECTOR_WEIGHTS_TTL = 604800  # 7 days (same cadence as ETF holdings)
 
 # ---------------------------------------------------------------------------

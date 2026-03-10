@@ -407,12 +407,14 @@ def _cached_fetch(
     若為錯誤，仍寫入 L1（短暫快取避免瞬間重複呼叫），但略過 L2/磁碟寫入，
     讓下次 L1 過期後可重新嘗試取得正確結果。
     """
+    l1_error_cached = None
     cached = l1_cache.get(ticker)
     if cached is not None:
         # If L1 has an error entry but L2 may have recovered valid data, fall through.
         if is_error is None or not is_error(cached):
             logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
             return cached
+        l1_error_cached = cached
         logger.debug(
             "%s L1 為錯誤結果，繼續嘗試 L2（prefix=%s）。", ticker, disk_prefix
         )
@@ -423,6 +425,9 @@ def _cached_fetch(
         logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
         l1_cache[ticker] = disk_cached
         return disk_cached
+    if l1_error_cached is not None:
+        # Keep L1 error result for short-term dedup and avoid repeated immediate fetches.
+        return l1_error_cached
 
     logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
 
@@ -1700,13 +1705,13 @@ def _is_nan(val) -> bool:
 # ---------------------------------------------------------------------------
 
 
+@_yf_retry
 def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
     """
     從 yfinance 取得 ETF 前 N 大成分股。
     回傳 [{"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.072}, ...] 或 None。
     非 ETF 標的會回傳 None。
     """
-    _rate_limiter.wait()
     try:
         t = _yf_ticker_obj(ticker)
         fd = t.funds_data
@@ -1714,7 +1719,10 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
             return None
         top = fd.top_holdings
         if top is None or top.empty:
-            return None
+            # yfinance occasionally returns empty top_holdings on transient failures.
+            # Raise to trigger tenacity retry and avoid false negative caching.
+            logger.debug("%s ETF top_holdings 為空，將重試抓取。", ticker)
+            raise OSError(f"{ticker}: yfinance returned empty ETF top_holdings")
 
         cols = list(top.columns)
         logger.debug(
@@ -1738,6 +1746,9 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
             )
         logger.info("%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N)
         return result if result else None
+    except _RETRYABLE_EXCEPTIONS as e:
+        logger.debug("%s 取得 ETF 成分股遇到暫時性錯誤，將重試：%s", ticker, e)
+        raise
     except Exception as e:
         logger.debug("%s 非 ETF 或取得成分股失敗：%s", ticker, e)
         return None
@@ -1747,7 +1758,9 @@ _ETF_NOT_FOUND_SENTINEL: list[dict] = []  # 空 list 作為「非 ETF」的快�
 _BETA_NOT_AVAILABLE: float = -999.0  # 哨兵值：yfinance 無提供 Beta 時的快取標記
 
 
-def get_etf_top_holdings(ticker: str) -> list[dict] | None:
+def get_etf_top_holdings(
+    ticker: str, *, is_known_etf: bool | None = None
+) -> list[dict] | None:
     """
     取得 ETF 前 N 大成分股（含 L1 + L2 快取）。
     非 ETF 標的回傳 None。使用空 list 哨兵避免反覆呼叫 yfinance。
@@ -1757,13 +1770,30 @@ def get_etf_top_holdings(ticker: str) -> list[dict] | None:
         result = _fetch_etf_top_holdings(t)
         return result if result else _ETF_NOT_FOUND_SENTINEL
 
-    data = _cached_fetch(
-        _etf_holdings_cache,
-        ticker,
-        DISK_KEY_ETF_HOLDINGS,
-        DISK_ETF_HOLDINGS_TTL,
-        _fetch_with_sentinel,
-    )
+    try:
+        data = _cached_fetch(
+            _etf_holdings_cache,
+            ticker,
+            DISK_KEY_ETF_HOLDINGS,
+            DISK_ETF_HOLDINGS_TTL,
+            _fetch_with_sentinel,
+            is_error=lambda d: d is _ETF_NOT_FOUND_SENTINEL,
+        )
+    except _RETRYABLE_EXCEPTIONS as e:
+        # Graceful degradation: external API failures should never crash callers.
+        logger.warning("%s ETF 成分股抓取重試後仍失敗，回傳空結果：%s", ticker, e)
+        return None
+    # One-time cleanup for stale negative cache entries:
+    # if this ticker is known ETF, do not keep an empty-sentinel cached.
+    if data is _ETF_NOT_FOUND_SENTINEL and is_known_etf:
+        disk_key = f"{DISK_KEY_ETF_HOLDINGS}:{ticker}"
+        with contextlib.suppress(Exception):
+            _disk_cache.delete(disk_key)
+        _etf_holdings_cache.pop(ticker, None)
+        logger.warning(
+            "%s 為 ETF 但成分股快取為空，已清除負向快取以便下次重新抓取。",
+            ticker,
+        )
     return data if data else None
 
 
@@ -1860,7 +1890,9 @@ def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
         return None
 
 
-def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+def get_etf_sector_weights(
+    ticker: str, *, is_known_etf: bool | None = None
+) -> dict[str, float] | None:
     """
     取得 ETF 行業板塊權重分佈（含 L1 + L2 快取）。
     回傳 {"Technology": 0.32, ...} 或 None（非 ETF 或無資料）。
@@ -1871,13 +1903,27 @@ def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
         result = _fetch_etf_sector_weights(t)
         return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
 
-    data = _cached_fetch(
-        _etf_sector_weights_cache,
-        ticker,
-        DISK_KEY_ETF_SECTOR_WEIGHTS,
-        DISK_ETF_SECTOR_WEIGHTS_TTL,
-        _fetch_with_sentinel,
-    )
+    try:
+        data = _cached_fetch(
+            _etf_sector_weights_cache,
+            ticker,
+            DISK_KEY_ETF_SECTOR_WEIGHTS,
+            DISK_ETF_SECTOR_WEIGHTS_TTL,
+            _fetch_with_sentinel,
+            is_error=lambda d: d is _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+        )
+    except _RETRYABLE_EXCEPTIONS as e:
+        logger.warning("%s ETF 板塊權重抓取重試後仍失敗，回傳空結果：%s", ticker, e)
+        return None
+    if data is _ETF_SECTOR_WEIGHTS_NOT_FOUND and is_known_etf:
+        disk_key = f"{DISK_KEY_ETF_SECTOR_WEIGHTS}:{ticker}"
+        with contextlib.suppress(Exception):
+            _disk_cache.delete(disk_key)
+        _etf_sector_weights_cache.pop(ticker, None)
+        logger.warning(
+            "%s 為 ETF 但板塊權重快取為空，已清除負向快取以便下次重新抓取。",
+            ticker,
+        )
     return data if data else None
 
 

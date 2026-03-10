@@ -24,15 +24,23 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
 
 from unittest.mock import MagicMock, patch  # noqa: E402
 
+import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 from cachetools import TTLCache  # noqa: E402
 from curl_cffi.curl import CurlError  # noqa: E402
+from tenacity import stop_after_attempt, wait_none  # noqa: E402
 
 from infrastructure.market_data.market_data import (  # noqa: E402
+    _ETF_NOT_FOUND_SENTINEL,
+    _ETF_SECTOR_WEIGHTS_NOT_FOUND,
     _cached_fetch,
+    _etf_holdings_cache,
+    _fetch_etf_top_holdings,
     _is_error_dict,
     _is_moat_error,
     _yf_retry,
+    get_etf_sector_weights,
+    get_etf_top_holdings,
 )
 
 # ---------------------------------------------------------------------------
@@ -350,3 +358,89 @@ class TestYfRetry:
             retried_fn("NVDA")
 
         assert mock_fn.call_count == 1
+
+
+class TestEtfCacheErrorHandling:
+    """Verify ETF cache helpers use error-aware disk caching."""
+
+    def test_get_etf_top_holdings_should_pass_is_error_callback(self):
+        with patch(
+            "infrastructure.market_data.market_data._cached_fetch",
+            return_value=_ETF_NOT_FOUND_SENTINEL,
+        ) as mock_cached_fetch:
+            get_etf_top_holdings("VTI")
+
+        is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
+        assert callable(is_error_cb)
+        assert is_error_cb(_ETF_NOT_FOUND_SENTINEL) is True
+        assert is_error_cb([{"symbol": "AAPL", "weight": 0.1}]) is False
+
+    def test_get_etf_sector_weights_should_pass_is_error_callback(self):
+        with patch(
+            "infrastructure.market_data.market_data._cached_fetch",
+            return_value=_ETF_SECTOR_WEIGHTS_NOT_FOUND,
+        ) as mock_cached_fetch:
+            get_etf_sector_weights("VTI")
+
+        is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
+        assert callable(is_error_cb)
+        assert is_error_cb(_ETF_SECTOR_WEIGHTS_NOT_FOUND) is True
+        assert is_error_cb({"Technology": 0.3}) is False
+
+    def test_get_etf_top_holdings_should_purge_stale_negative_cache_for_known_etf(self):
+        _etf_holdings_cache["VTI"] = _ETF_NOT_FOUND_SENTINEL
+        with (
+            patch(
+                "infrastructure.market_data.market_data._cached_fetch",
+                return_value=_ETF_NOT_FOUND_SENTINEL,
+            ),
+            patch(
+                "infrastructure.market_data.market_data._disk_cache"
+            ) as mock_disk_cache,
+        ):
+            get_etf_top_holdings("VTI", is_known_etf=True)
+
+        mock_disk_cache.delete.assert_called_once_with("etf_holdings:VTI")
+        assert "VTI" not in _etf_holdings_cache
+
+
+class TestEtfHoldingsRetry:
+    """Verify ETF holdings fetch retries transient failures."""
+
+    def test_fetch_etf_top_holdings_should_retry_on_empty_top_holdings(self):
+        class _FundsEmpty:
+            top_holdings = pd.DataFrame()
+
+        class _FundsOk:
+            top_holdings = pd.DataFrame(
+                [{"Holding Percent": 0.1, "Name": "Apple Inc."}],
+                index=["AAPL"],
+            )
+
+        class _TickerEmpty:
+            funds_data = _FundsEmpty()
+
+        class _TickerOk:
+            funds_data = _FundsOk()
+
+        retried_fn = _fetch_etf_top_holdings.retry_with(
+            stop=stop_after_attempt(2), wait=wait_none()
+        )
+        with patch(
+            "infrastructure.market_data.market_data._yf_ticker_obj",
+            side_effect=[_TickerEmpty(), _TickerOk()],
+        ) as mock_ticker_obj:
+            result = retried_fn("VTI")
+
+        assert result is not None
+        assert result[0]["symbol"] == "AAPL"
+        assert mock_ticker_obj.call_count == 2
+
+    def test_get_etf_top_holdings_should_return_none_when_retry_exhausted(self):
+        with patch(
+            "infrastructure.market_data.market_data._yf_ticker_obj",
+            side_effect=OSError("temporary network error"),
+        ):
+            result = get_etf_top_holdings("VTI")
+
+        assert result is None

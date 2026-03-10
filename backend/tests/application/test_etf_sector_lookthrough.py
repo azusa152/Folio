@@ -519,14 +519,14 @@ class TestEtfSectorLookthrough:
         mock_signals.side_effect = _signals_side_effect
         mock_fx.return_value = {"USD": 1.0}
 
-        def _etf_holdings_side_effect(ticker: str):
+        def _etf_holdings_side_effect(ticker: str, **_kwargs):
             if ticker == "VTI":
                 return [{"symbol": "AAPL", "name": "Apple", "weight": 0.05}]
             return None
 
         mock_etf_holdings.side_effect = _etf_holdings_side_effect
 
-        def _etf_weights_side_effect(ticker: str):
+        def _etf_weights_side_effect(ticker: str, **_kwargs):
             if ticker == "VTI":
                 return {"Technology": 0.30, "Financial Services": 0.15}
             return None

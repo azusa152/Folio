@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -33,10 +33,7 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
   const hasWarning = top15.some((e) => e.total_weight_pct > XRAY_WARNING_THRESHOLD)
   const isLowCoverage = coveragePct < XRAY_LOW_COVERAGE_THRESHOLD
   const skippedEtfList = skippedEtfs.map((item) => `${item.ticker} (${item.weight_pct.toFixed(1)}%)`).join(", ")
-  const [tableExpanded, setTableExpanded] = useState(!isLowCoverage)
-  useEffect(() => {
-    setTableExpanded(!isLowCoverage)
-  }, [isLowCoverage])
+  const [tableExpanded, setTableExpanded] = useState(false)
   const showTable = !isLowCoverage || tableExpanded
 
   return (

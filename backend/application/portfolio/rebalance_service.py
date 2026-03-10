@@ -456,7 +456,9 @@ def _do_calculate_rebalance(
             continue
 
         # 嘗試取得 ETF 成分股
-        constituents = get_etf_top_holdings(ticker)
+        constituents = get_etf_top_holdings(
+            ticker, is_known_etf=ticker in known_etf_tickers
+        )
         if constituents:
             constituent_weight_sum = sum(c["weight"] for c in constituents)
             xray_analyzed_value += mv * min(constituent_weight_sum, 1.0)
@@ -568,7 +570,9 @@ def _do_calculate_rebalance(
     etf_constituents_cache: dict[str, list[dict]] = {}
     constituent_symbols_for_sector: list[str] = []
     for ticker in equity_tickers_for_sector:
-        constituents = get_etf_top_holdings(ticker)
+        constituents = get_etf_top_holdings(
+            ticker, is_known_etf=ticker in known_etf_tickers
+        )
         if constituents:
             etf_constituents_cache[ticker] = constituents
             constituent_symbols_for_sector.extend(c["symbol"] for c in constituents)
@@ -588,7 +592,9 @@ def _do_calculate_rebalance(
         # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
         constituents = etf_constituents_cache.get(ticker)
         # Approach B：先嘗試 ETF 官方板塊權重分佈（與成分股資料來源獨立）
-        etf_sector_weights = get_etf_sector_weights(ticker)
+        etf_sector_weights = get_etf_sector_weights(
+            ticker, is_known_etf=ticker in known_etf_tickers
+        )
         if etf_sector_weights:
             for sector_name, weight in etf_sector_weights.items():
                 sector_values[sector_name] = (
