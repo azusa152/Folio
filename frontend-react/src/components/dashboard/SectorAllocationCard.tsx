@@ -11,6 +11,12 @@ interface Props {
 const MAX_SECTORS = 8
 const COLORS = [...CHART_COLOR_PALETTE, "#14b8a6", "#f43f5e", "#6366f1"]
 
+function localizeSector(sector: string, t: (key: string) => string): string {
+  if (sector === "ETF") return t("allocation.sector.etf_unresolved")
+  if (sector === "Unknown") return t("allocation.sector.unknown")
+  return sector
+}
+
 export function SectorAllocationCard({ sectorExposure }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
@@ -22,7 +28,7 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
   const rest = sorted.slice(MAX_SECTORS)
 
   const chartData = top.map((s) => ({
-    name: s.sector,
+    name: localizeSector(s.sector, t),
     value: s.value,
     pct: s.weight_pct,
   }))

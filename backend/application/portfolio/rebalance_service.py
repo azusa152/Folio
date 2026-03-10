@@ -39,6 +39,7 @@ from domain.rebalance import (
 from i18n import get_user_language, t
 from infrastructure.market_data import (
     are_all_signals_in_l1,
+    detect_is_etf,
     get_crypto_price,
     get_etf_sector_weights,
     get_etf_top_holdings,
@@ -534,6 +535,7 @@ def _do_calculate_rebalance(
     #   Approach B（主要）：使用 yfinance funds_data.sector_weightings，涵蓋 ETF 全部資產。
     #   Approach A（後備）：若 B 無資料，分解 top-N 成分股並查詢各自板塊，
     #                       未覆蓋的剩餘比例按已辨識板塊比例分配（避免膨脹 Unknown）。
+    #   ETF 兜底：若為已知 ETF 且 A/B 都無資料，歸類到 ETF（資料不足）而非 Unknown。
     #   直接持股：使用 get_ticker_sector() 磁碟快取（30 天 TTL）。
 
     # 並行預熱所有 equity 持倉及已知 ETF 成分股的 sector 快取，
@@ -567,70 +569,74 @@ def _do_calculate_rebalance(
 
         # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
         constituents = etf_constituents_cache.get(ticker)
+        # Approach B：先嘗試 ETF 官方板塊權重分佈（與成分股資料來源獨立）
+        etf_sector_weights = get_etf_sector_weights(ticker)
+        if etf_sector_weights:
+            for sector_name, weight in etf_sector_weights.items():
+                sector_values[sector_name] = (
+                    sector_values.get(sector_name, 0.0) + mv * weight
+                )
+            logger.debug(
+                "%s 使用 ETF 板塊權重分佈（%d 板塊）",
+                ticker,
+                len(etf_sector_weights),
+            )
+            continue
+
         if constituents:
-            # Approach B：使用 ETF 官方板塊權重分佈（涵蓋 100% 資產）
-            etf_sector_weights = get_etf_sector_weights(ticker)
-            if etf_sector_weights:
-                for sector_name, weight in etf_sector_weights.items():
-                    sector_values[sector_name] = (
-                        sector_values.get(sector_name, 0.0) + mv * weight
-                    )
-                logger.debug(
-                    "%s 使用 ETF 板塊權重分佈（%d 板塊）",
-                    ticker,
-                    len(etf_sector_weights),
+            # Approach A：分解成分股，逐一查詢板塊
+            constituent_sector_map: dict[str, float] = {}
+            covered_weight = 0.0
+            for c in constituents:
+                c_sector = get_ticker_sector(c["symbol"]) or "Unknown"
+                c_mv = mv * c["weight"]
+                constituent_sector_map[c_sector] = (
+                    constituent_sector_map.get(c_sector, 0.0) + c_mv
                 )
-            else:
-                # Approach A：分解成分股，逐一查詢板塊
-                constituent_sector_map: dict[str, float] = {}
-                covered_weight = 0.0
-                for c in constituents:
-                    c_sector = get_ticker_sector(c["symbol"]) or "Unknown"
-                    c_mv = mv * c["weight"]
-                    constituent_sector_map[c_sector] = (
-                        constituent_sector_map.get(c_sector, 0.0) + c_mv
-                    )
-                    covered_weight += c["weight"]
+                covered_weight += c["weight"]
 
-                # 將已辨識板塊的 MV 加入總計
-                for sector_name, s_mv in constituent_sector_map.items():
-                    sector_values[sector_name] = (
-                        sector_values.get(sector_name, 0.0) + s_mv
-                    )
+            # 將已辨識板塊的 MV 加入總計
+            for sector_name, s_mv in constituent_sector_map.items():
+                sector_values[sector_name] = sector_values.get(sector_name, 0.0) + s_mv
 
-                # 未覆蓋的剩餘比例（top-N 不足 100%）按已辨識板塊比例分配
-                uncovered_weight = max(0.0, 1.0 - covered_weight)
-                if uncovered_weight > 0 and constituent_sector_map:
-                    known_sectors_excl_unknown = {
-                        s: v
-                        for s, v in constituent_sector_map.items()
-                        if s != "Unknown"
-                    }
-                    distribute_base = (
-                        known_sectors_excl_unknown or constituent_sector_map
-                    )
-                    base_total = sum(distribute_base.values())
-                    residual_mv = mv * uncovered_weight
-                    if base_total > 0:
-                        for sector_name, s_mv in distribute_base.items():
-                            allocated = residual_mv * (s_mv / base_total)
-                            sector_values[sector_name] = (
-                                sector_values.get(sector_name, 0.0) + allocated
-                            )
-                    else:
-                        sector_values["Unknown"] = (
-                            sector_values.get("Unknown", 0.0) + residual_mv
+            # 未覆蓋的剩餘比例（top-N 不足 100%）按已辨識板塊比例分配
+            uncovered_weight = max(0.0, 1.0 - covered_weight)
+            if uncovered_weight > 0 and constituent_sector_map:
+                known_sectors_excl_unknown = {
+                    s: v for s, v in constituent_sector_map.items() if s != "Unknown"
+                }
+                distribute_base = known_sectors_excl_unknown or constituent_sector_map
+                base_total = sum(distribute_base.values())
+                residual_mv = mv * uncovered_weight
+                if base_total > 0:
+                    for sector_name, s_mv in distribute_base.items():
+                        allocated = residual_mv * (s_mv / base_total)
+                        sector_values[sector_name] = (
+                            sector_values.get(sector_name, 0.0) + allocated
                         )
-                logger.debug(
-                    "%s 使用成分股板塊查詢（%d 檔，覆蓋率 %.1f%%）",
-                    ticker,
-                    len(constituents),
-                    covered_weight * 100,
-                )
-        else:
-            # 直接持股：查詢該股票的板塊
-            sector = get_ticker_sector(ticker) or "Unknown"
-            sector_values[sector] = sector_values.get(sector, 0.0) + mv
+                else:
+                    sector_values["Unknown"] = (
+                        sector_values.get("Unknown", 0.0) + residual_mv
+                    )
+            logger.debug(
+                "%s 使用成分股板塊查詢（%d 檔，覆蓋率 %.1f%%）",
+                ticker,
+                len(constituents),
+                covered_weight * 100,
+            )
+            continue
+
+        if ticker in known_etf_tickers or detect_is_etf(ticker):
+            sector_values["ETF"] = sector_values.get("ETF", 0.0) + mv
+            logger.warning(
+                "行業板塊：%s 為 ETF 但板塊權重與成分股皆無法取得，歸類為 ETF。",
+                ticker,
+            )
+            continue
+
+        # 直接持股：查詢該股票的板塊
+        sector = get_ticker_sector(ticker) or "Unknown"
+        sector_values[sector] = sector_values.get(sector, 0.0) + mv
 
     equity_total = sum(sector_values.values())
     result["sector_exposure"] = [

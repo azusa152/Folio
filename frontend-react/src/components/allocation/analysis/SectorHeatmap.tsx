@@ -1,6 +1,13 @@
 import { useTranslation } from "react-i18next"
+import { Info } from "lucide-react"
 import { Treemap, Tooltip, ResponsiveContainer } from "recharts"
 import type { SectorExposureItem } from "@/api/types/allocation"
+import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { CHART_COLOR_PALETTE } from "@/lib/constants"
 
@@ -9,6 +16,8 @@ interface Props {
 }
 
 const SECTOR_COLORS = [...CHART_COLOR_PALETTE, "#14b8a6", "#f43f5e", "#6366f1"]
+const ETF_UNRESOLVED_SECTOR = "ETF"
+const UNKNOWN_SECTOR = "Unknown"
 
 interface ContentProps {
   x?: number; y?: number; width?: number; height?: number
@@ -49,15 +58,37 @@ export function SectorHeatmap({ data }: Props) {
   }
 
   const chartData = data.map((d, i) => ({
-    name: d.sector,
+    name: d.sector === ETF_UNRESOLVED_SECTOR
+      ? t("allocation.sector.etf_unresolved")
+      : d.sector === UNKNOWN_SECTOR
+        ? t("allocation.sector.unknown")
+        : d.sector,
     size: d.value,
     weight_pct: d.weight_pct,
     colorIdx: i,
   }))
+  const hasUnresolvedEtf = data.some((d) => d.sector === ETF_UNRESOLVED_SECTOR)
 
   return (
     <div className="space-y-1">
-      <p className="text-sm font-semibold">{t("allocation.sector.title")}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-sm font-semibold">{t("allocation.sector.title")}</p>
+        {hasUnresolvedEtf && (
+          <TooltipProvider>
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <Info
+                  className="h-3.5 w-3.5 text-muted-foreground cursor-help"
+                  aria-label={t("allocation.sector.etf_unresolved_hint")}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-[220px]">{t("allocation.sector.etf_unresolved_hint")}</p>
+              </TooltipContent>
+            </UiTooltip>
+          </TooltipProvider>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={250}>
         <Treemap
           data={chartData}

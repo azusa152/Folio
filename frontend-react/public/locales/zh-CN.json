@@ -870,7 +870,10 @@
     },
     "sector": {
       "title": "行业敞口",
-      "empty": "无行业数据。"
+      "empty": "无行业数据。",
+      "unknown": "未知",
+      "etf_unresolved": "ETF（分类数据不足）",
+      "etf_unresolved_hint": "该 ETF 当前无法穿透为行业分布，通常是数据源的临时限制。"
     },
     "geo": {
       "title": "地区配置",

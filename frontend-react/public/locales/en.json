@@ -870,7 +870,10 @@
     },
     "sector": {
       "title": "Sector Exposure",
-      "empty": "No sector data."
+      "empty": "No sector data.",
+      "unknown": "Unknown",
+      "etf_unresolved": "ETF (Unclassified)",
+      "etf_unresolved_hint": "This ETF could not be decomposed into sector holdings at the moment due to temporary data limitations."
     },
     "geo": {
       "title": "Geographic Allocation",

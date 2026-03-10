@@ -870,7 +870,10 @@
     },
     "sector": {
       "title": "產業曝險",
-      "empty": "無產業資料。"
+      "empty": "無產業資料。",
+      "unknown": "不明",
+      "etf_unresolved": "ETF（分類資料不足）",
+      "etf_unresolved_hint": "此 ETF 目前無法穿透成產業分布，通常是暫時性的資料來源限制。"
     },
     "geo": {
       "title": "地區配置",

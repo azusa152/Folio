@@ -870,7 +870,10 @@
     },
     "sector": {
       "title": "セクター配分",
-      "empty": "セクターデータなし。"
+      "empty": "セクターデータなし。",
+      "unknown": "不明",
+      "etf_unresolved": "ETF（分類不可）",
+      "etf_unresolved_hint": "この ETF は現在セクター内訳へ分解できません（データ提供側の一時的な制限の可能性があります）。"
     },
     "geo": {
       "title": "地域別配分",
