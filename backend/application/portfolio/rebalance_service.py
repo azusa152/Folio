@@ -455,13 +455,20 @@ def _do_calculate_rebalance(
         if cat in XRAY_SKIP_CATEGORIES or mv <= 0:
             continue
 
-        # 嘗試取得 ETF 成分股
+        # 嘗試取得 ETF 成分股與板塊權重（板塊可反映 ETF 全部資產覆蓋）
         constituents = get_etf_top_holdings(
+            ticker, is_known_etf=ticker in known_etf_tickers
+        )
+        etf_sector_weights = get_etf_sector_weights(
             ticker, is_known_etf=ticker in known_etf_tickers
         )
         if constituents:
             constituent_weight_sum = sum(c["weight"] for c in constituents)
-            xray_analyzed_value += mv * min(constituent_weight_sum, 1.0)
+            if etf_sector_weights:
+                coverage_weight_sum = sum(etf_sector_weights.values())
+            else:
+                coverage_weight_sum = constituent_weight_sum
+            xray_analyzed_value += mv * min(coverage_weight_sum, 1.0)
             for c in constituents:
                 sym = c["symbol"]
                 weight = c["weight"]
@@ -476,7 +483,7 @@ def _do_calculate_rebalance(
                 xray_map[sym]["indirect"] += indirect_mv
                 src_pct = round(weight * 100, 2)
                 xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
-        elif ticker in known_etf_tickers:
+        elif ticker in known_etf_tickers and not etf_sector_weights:
             # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
             # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
             skipped_weight_pct = (
@@ -489,6 +496,10 @@ def _do_calculate_rebalance(
                 "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
                 ticker,
             )
+        elif ticker in known_etf_tickers and etf_sector_weights:
+            # 已知 ETF 雖無成分股明細，但有板塊權重可分析曝險覆蓋率。
+            coverage_weight_sum = sum(etf_sector_weights.values())
+            xray_analyzed_value += mv * min(coverage_weight_sum, 1.0)
         else:
             xray_analyzed_value += mv
             # 非 ETF — 記錄為直接持倉

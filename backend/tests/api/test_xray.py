@@ -52,10 +52,12 @@ def _mark_etf(client: TestClient, ticker: str):
 
 
 class TestXRayCoverageMath:
-    """Verify xray_coverage_pct uses constituent weight sum, not full market value."""
+    """Verify xray_coverage_pct reflects available ETF decomposition data."""
 
-    def test_partial_constituents_should_produce_partial_coverage(self, client):
-        """ETF with 60% constituent weight sum → coverage reflects 60% of ETF value."""
+    def test_sector_weights_should_enable_full_coverage_even_if_top_holdings_partial(
+        self, client
+    ):
+        """If ETF sector weights are available, coverage counts full ETF value."""
         _setup_portfolio(client, [_ETF_HOLDING])
         _mark_etf(client, "VTI")
 
@@ -65,9 +67,44 @@ class TestXRayCoverageMath:
             {"symbol": "GOOGL", "name": "Alphabet Inc.", "weight": 0.10},
         ]
 
-        with patch(
-            "application.portfolio.rebalance_service.get_etf_top_holdings",
-            return_value=partial_constituents,
+        with (
+            patch(
+                "application.portfolio.rebalance_service.get_etf_top_holdings",
+                return_value=partial_constituents,
+            ),
+            patch(
+                "application.portfolio.rebalance_service.get_etf_sector_weights",
+                return_value={"technology": 0.4, "financial_services": 0.6},
+            ),
+        ):
+            resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["xray_coverage_pct"] >= 99.0
+
+    def test_partial_constituents_without_sector_weights_should_remain_partial(
+        self, client
+    ):
+        """Without sector weights, coverage falls back to constituent weight sum."""
+        _setup_portfolio(client, [_ETF_HOLDING])
+        _mark_etf(client, "VTI")
+
+        partial_constituents = [
+            {"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.30},
+            {"symbol": "MSFT", "name": "Microsoft Corp.", "weight": 0.20},
+            {"symbol": "GOOGL", "name": "Alphabet Inc.", "weight": 0.10},
+        ]
+
+        with (
+            patch(
+                "application.portfolio.rebalance_service.get_etf_top_holdings",
+                return_value=partial_constituents,
+            ),
+            patch(
+                "application.portfolio.rebalance_service.get_etf_sector_weights",
+                return_value=None,
+            ),
         ):
             resp = client.get("/rebalance")
 
@@ -126,6 +163,29 @@ class TestXRaySkippedEtfs:
         assert "VTI" in skipped_tickers
         vti_entry = next(e for e in skipped if e["ticker"] == "VTI")
         assert vti_entry["weight_pct"] > 0
+
+    def test_known_etf_without_constituents_but_with_sector_weights_not_skipped(
+        self, client
+    ):
+        _setup_portfolio(client, [_ETF_HOLDING, _STOCK_HOLDING])
+        _mark_etf(client, "VTI")
+
+        with (
+            patch(
+                "application.portfolio.rebalance_service.get_etf_top_holdings",
+                return_value=None,
+            ),
+            patch(
+                "application.portfolio.rebalance_service.get_etf_sector_weights",
+                return_value={"technology": 1.0},
+            ),
+        ):
+            resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        skipped_tickers = [e["ticker"] for e in data["xray_skipped_etfs"]]
+        assert "VTI" not in skipped_tickers
 
     def test_non_etf_stock_should_not_appear_in_skipped(self, client):
         _setup_portfolio(client, [_STOCK_HOLDING])
