@@ -1673,6 +1673,12 @@
       "most_bought": "Most Bought",
       "most_sold": "Most Sold",
       "guru_count_label": "gurus",
+      "view_buyers": "See who bought it",
+      "view_buyers_aria": "See which gurus bought {{ticker}}",
+      "buyers_title": "Gurus who bought {{ticker}}",
+      "view_sellers": "See who sold it",
+      "view_sellers_aria": "See which gurus sold {{ticker}}",
+      "sellers_title": "Gurus who sold {{ticker}}",
       "empty_bought": "No buy activity this season",
       "empty_sold": "No sell activity this season"
     }

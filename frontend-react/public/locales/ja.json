@@ -1673,6 +1673,12 @@
       "most_bought": "最多買入",
       "most_sold": "最多売却",
       "guru_count_label": "グル",
+      "view_buyers": "誰が買い増したか見る",
+      "view_buyers_aria": "{{ticker}} を買い増したグル一覧を表示",
+      "buyers_title": "{{ticker}} を買い増したグル",
+      "view_sellers": "誰が売却したか見る",
+      "view_sellers_aria": "{{ticker}} を売却したグル一覧を表示",
+      "sellers_title": "{{ticker}} を売却したグル",
       "empty_bought": "今季の買い活動はありません",
       "empty_sold": "今季の売り活動はありません"
     }

@@ -1673,6 +1673,12 @@
       "most_bought": "最多买入",
       "most_sold": "最多卖出",
       "guru_count_label": "位大师",
+      "view_buyers": "看谁买入",
+      "view_buyers_aria": "查看哪些大师买入 {{ticker}}",
+      "buyers_title": "买入 {{ticker}} 的大师",
+      "view_sellers": "看谁卖出",
+      "view_sellers_aria": "查看哪些大师卖出 {{ticker}}",
+      "sellers_title": "卖出 {{ticker}} 的大师",
       "empty_bought": "本季无买入活动",
       "empty_sold": "本季无卖出活动"
     }
