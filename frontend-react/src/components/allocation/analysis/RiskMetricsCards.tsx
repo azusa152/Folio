@@ -34,12 +34,15 @@ function MetricCard({
   value,
   tooltip,
   colorClass,
+  unavailableHint,
 }: {
   label: string
   value: string
   tooltip: string
   colorClass?: string
+  unavailableHint?: string
 }) {
+  const isUnavailable = value === "—"
   return (
     <div className="rounded-lg border bg-card p-3 space-y-1">
       <div className="flex items-center gap-1">
@@ -55,7 +58,22 @@ function MetricCard({
           </Tooltip>
         </TooltipProvider>
       </div>
-      <p className={`text-lg font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</p>
+      {isUnavailable && unavailableHint ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-lg font-semibold tabular-nums text-muted-foreground cursor-help">
+                {value}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-[220px]">{unavailableHint}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <p className={`text-lg font-semibold tabular-nums ${colorClass ?? ""}`}>{value}</p>
+      )}
     </div>
   )
 }
@@ -79,8 +97,16 @@ export function RiskMetricsCards({ data, isLoading }: Props) {
 
   if (!data) return null
 
-  const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`
-  const fmtRatio = (v: number | null | undefined) => (v != null ? v.toFixed(2) : "—")
+  const fmtPct = (v: number) => {
+    if (!Number.isFinite(v) || Math.abs(v) > 100) return "—"
+    return `${(v * 100).toFixed(2)}%`
+  }
+  const fmtRatio = (v: number | null | undefined) => {
+    if (v == null || !Number.isFinite(v) || Math.abs(v) > 1000) return "—"
+    return v.toFixed(2)
+  }
+
+  const unavailableHint = t("analytics.metric_unavailable_hint")
 
   return (
     <div className="space-y-2" role="img" aria-label={t("accessibility.chart_risk_metrics")}>
@@ -91,35 +117,41 @@ export function RiskMetricsCards({ data, isLoading }: Props) {
           value={fmtPct(data.annualized_return)}
           tooltip={t("analytics.annualized_return_tooltip")}
           colorClass={data.annualized_return >= 0 ? "text-green-500" : "text-red-500"}
+          unavailableHint={unavailableHint}
         />
         <MetricCard
           label={term("volatility", t("analytics.volatility"))}
           value={fmtPct(data.annualized_volatility)}
           tooltip={t("analytics.volatility_tooltip")}
+          unavailableHint={unavailableHint}
         />
         <MetricCard
           label={term("sharpe", t("analytics.sharpe_ratio"))}
           value={fmtRatio(data.sharpe_ratio)}
           tooltip={t("analytics.sharpe_tooltip")}
           colorClass={ratingColor(data.sharpe_ratio, { good: 1, moderate: 0.5 })}
+          unavailableHint={unavailableHint}
         />
         <MetricCard
           label={term("sortino", t("analytics.sortino_ratio"))}
           value={fmtRatio(data.sortino_ratio)}
           tooltip={t("analytics.sortino_tooltip")}
           colorClass={ratingColor(data.sortino_ratio, { good: 1.5, moderate: 0.5 })}
+          unavailableHint={unavailableHint}
         />
         <MetricCard
           label={term("max_drawdown", t("analytics.max_drawdown"))}
           value={fmtPct(data.max_drawdown_pct)}
           tooltip={t("analytics.max_drawdown_tooltip")}
           colorClass={drawdownColor(data.max_drawdown_pct)}
+          unavailableHint={unavailableHint}
         />
         <MetricCard
           label={term("calmar", t("analytics.calmar_ratio"))}
           value={fmtRatio(data.calmar_ratio)}
           tooltip={t("analytics.calmar_tooltip")}
           colorClass={ratingColor(data.calmar_ratio, { good: 2, moderate: 1 })}
+          unavailableHint={unavailableHint}
         />
       </div>
     </div>

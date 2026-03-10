@@ -1778,6 +1778,7 @@
     "max_drawdown_tooltip": "Largest peak-to-trough decline.",
     "calmar_ratio": "Calmar Ratio",
     "calmar_tooltip": "Annual return divided by max drawdown. Higher is better.",
+    "metric_unavailable_hint": "Not enough trading history, or the value is too extreme to display meaningfully.",
     "contribution_title": "Contributions vs Growth",
     "contribution_label": "Total Invested",
     "growth_label": "Market Value"

@@ -1778,6 +1778,7 @@
     "max_drawdown_tooltip": "從峰值到谷底的最大跌幅。",
     "calmar_ratio": "卡爾瑪比率",
     "calmar_tooltip": "年化報酬除以最大回撤，越高越好。",
+    "metric_unavailable_hint": "交易歷史不足，或數值過於極端無法有意義地顯示。",
     "contribution_title": "投入 vs 成長",
     "contribution_label": "總投入",
     "growth_label": "市值"

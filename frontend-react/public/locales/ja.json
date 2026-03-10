@@ -1778,6 +1778,7 @@
     "max_drawdown_tooltip": "ピークからトラフまでの最大下落幅。",
     "calmar_ratio": "カルマーレシオ",
     "calmar_tooltip": "年率リターンを最大ドローダウンで割った値。高いほど良い。",
+    "metric_unavailable_hint": "取引履歴が不足しているか、数値が極端すぎて表示できません。",
     "contribution_title": "投入額 vs 成長",
     "contribution_label": "投入総額",
     "growth_label": "時価総額"
