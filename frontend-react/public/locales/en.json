@@ -345,8 +345,8 @@
       "show_less": "Show fewer",
       "stacked_bar_aria": "Portfolio holding percentage breakdown"
     },
-    "show_advanced": "Show advanced metrics",
-    "hide_advanced": "Hide advanced metrics"
+    "show_advanced": "Show deep dive",
+    "hide_advanced": "Hide deep dive"
   },
   "radar": {
     "title": "📡 Folio",

@@ -242,16 +242,14 @@ export default function Dashboard() {
         <HoldingBreakdown rebalance={rebalance} isLoading={heroLoading} />
       </LazySection>
 
-      {showAdvanced && (
-        <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
-          <SignalAlerts
-            stocks={stocks ?? []}
-            enrichedStocks={enrichedStocks ?? []}
-            rebalance={rebalance}
-            signalActivity={signalActivity ?? []}
-          />
-        </LazySection>
-      )}
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+        <SignalAlerts
+          stocks={stocks ?? []}
+          enrichedStocks={enrichedStocks ?? []}
+          rebalance={rebalance}
+          signalActivity={signalActivity ?? []}
+        />
+      </LazySection>
 
       {/* ── Portfolio Overview ── */}
       <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_portfolio_overview")}</h2>

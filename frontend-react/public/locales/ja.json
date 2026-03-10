@@ -345,8 +345,8 @@
       "show_less": "折りたたむ",
       "stacked_bar_aria": "ポートフォリオ保有比率の内訳"
     },
-    "show_advanced": "詳細指標を表示",
-    "hide_advanced": "詳細指標を非表示"
+    "show_advanced": "詳細分析を表示",
+    "hide_advanced": "詳細分析を非表示"
   },
   "radar": {
     "title": "📡 Folio",

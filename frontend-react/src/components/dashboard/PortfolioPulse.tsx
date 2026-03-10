@@ -21,11 +21,11 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear" },
-  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear" },
-  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral" },
-  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed" },
-  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed" },
+  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear", emoji: "😱" },
+  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear", emoji: "😨" },
+  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral", emoji: "😐" },
+  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed", emoji: "🤑" },
+  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed", emoji: "🤯" },
 ]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
@@ -58,6 +58,10 @@ function healthScoreColor(pct: number): string {
   if (pct >= 80) return FINANCE_TEXT.gain
   if (pct >= 50) return FINANCE_TEXT.warning
   return FINANCE_TEXT.loss
+}
+
+function stripLeadingEmoji(label: string): string {
+  return label.replace(/^(?:\p{Extended_Pictographic}|\uFE0F|\u200D)+\s*/u, "").trim()
 }
 
 /** Semi-circle SVG gauge for Fear & Greed (0-100). */
@@ -100,10 +104,11 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
   const currentBand = FEAR_GREED_BANDS.find(
     (band) => clampedScore >= band.range[0] && clampedScore <= band.range[1],
   )
-  const gaugeTitle = currentBand ? t(currentBand.labelKey) : level
+  const gaugeTitle = stripLeadingEmoji(currentBand ? t(currentBand.labelKey) : level)
+  const gaugeEmoji = currentBand?.emoji
 
   return (
-    <svg viewBox="0 0 200 110" className="w-full" style={{ maxHeight: 160 }}>
+    <svg viewBox="0 0 200 128" className="w-full" style={{ maxHeight: 170 }}>
       {/* Background arc */}
       <path
         d={arcPath(0, 100)}
@@ -142,8 +147,14 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
         /100
       </text>
 
+      {gaugeEmoji && (
+        <foreignObject x={cx - 14} y={cy + 1} width={28} height={24}>
+          <div className="text-center text-base leading-none">{gaugeEmoji}</div>
+        </foreignObject>
+      )}
+
       {/* Level label */}
-      <text x={cx} y={cy + 16} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.75}>
+      <text x={cx} y={cy + 22} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.75}>
         {gaugeTitle}
       </text>
     </svg>
@@ -435,11 +446,12 @@ export function PortfolioPulse({
                 {t("dashboard.fear_greed_title")}: {fgScore}/100, {fgLevel}
               </p>
               <FearGreedGauge score={fgScore} level={fgLevel} />
-              <div className="mt-1 flex flex-wrap justify-center gap-2">
+              <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
                 {FEAR_GREED_BANDS.map((band) => (
-                  <span key={band.labelKey} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: band.color }} />
-                    {t(band.labelKey)}
+                  <span key={band.labelKey} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="text-sm leading-none">{band.emoji}</span>
+                    <span>{stripLeadingEmoji(t(band.labelKey))}</span>
+                    <span className="h-1 w-4 rounded-full" style={{ backgroundColor: band.color }} />
                   </span>
                 ))}
               </div>

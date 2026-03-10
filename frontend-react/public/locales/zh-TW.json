@@ -345,8 +345,8 @@
       "show_less": "收起",
       "stacked_bar_aria": "投資組合持倉比例分佈"
     },
-    "show_advanced": "顯示進階指標",
-    "hide_advanced": "隱藏進階指標"
+    "show_advanced": "顯示深入分析",
+    "hide_advanced": "隱藏深入分析"
   },
   "radar": {
     "title": "📡 Folio",

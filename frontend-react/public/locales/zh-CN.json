@@ -345,8 +345,8 @@
       "show_less": "收起",
       "stacked_bar_aria": "投资组合持仓比例分布"
     },
-    "show_advanced": "显示进阶指标",
-    "hide_advanced": "隐藏进阶指标"
+    "show_advanced": "显示深入分析",
+    "hide_advanced": "隐藏深入分析"
   },
   "radar": {
     "title": "📡 Folio",
