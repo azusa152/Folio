@@ -50,3 +50,9 @@ export interface FxHistoryPoint {
 
 // Inverted map used by FX watch components: watch_id → analysis
 export type FxAnalysisMap = Record<number, FxAnalysis>
+
+// Frontend query state for FX analysis response.
+export interface FxAnalysisState {
+  checked_at: string | null
+  by_watch_id: FxAnalysisMap
+}

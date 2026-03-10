@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
+import { RefreshCw } from "lucide-react"
 import { formatLocalTime, formatRelativeTime, parseUtc, getErrorMessage } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -13,6 +14,7 @@ import {
   useCheckFxWatches,
   useAlertFxWatches,
   useFxHistoryMap,
+  useRefreshFxRates,
 } from "@/api/hooks/useFxWatch"
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
@@ -43,7 +45,7 @@ export default function FxWatch() {
       : "alert_first"
   const filterMode: FilterMode = rawFilter === "active_only" ? "active_only" : "all"
 
-  const { data: watches, isLoading, isError, dataUpdatedAt } = useFxWatches()
+  const { data: watches, isLoading, isError } = useFxWatches()
   const setSortMode = (nextSortMode: SortMode) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -62,11 +64,6 @@ export default function FxWatch() {
     })
   }
 
-  const updatedAgo =
-    dataUpdatedAt > 0
-      ? formatRelativeTime(nowEpochSeconds - Math.floor(dataUpdatedAt / 1000), i18n.language)
-      : ""
-
   useEffect(() => {
     const timer = window.setInterval(
       () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
@@ -76,8 +73,10 @@ export default function FxWatch() {
   }, [])
 
   const hasWatches = (watches?.length ?? 0) > 0
-  const { data: analysisMap = {}, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
+  const { data: analysisState, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
+  const analysisMap = useMemo(() => analysisState?.by_watch_id ?? {}, [analysisState])
   const checkMutation = useCheckFxWatches()
+  const refreshMutation = useRefreshFxRates()
   const alertMutation = useAlertFxWatches()
 
   // Eagerly fetch history for all pairs (sparklines)
@@ -98,9 +97,34 @@ export default function FxWatch() {
       ? formatLocalTime(lastAlertTimes.reduce((a, b) => (parseUtc(a) > parseUtc(b) ? a : b)))
       : null
 
+  const checkedAtEpoch = analysisState?.checked_at ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000) : 0
+  const ratesUpdatedAgo =
+    checkedAtEpoch > 0
+      ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language)
+      : ""
+
+  const freshnessAgeSeconds = checkedAtEpoch > 0 ? nowEpochSeconds - checkedAtEpoch : null
+  const freshnessDotClass =
+    freshnessAgeSeconds === null
+      ? "bg-muted-foreground/40"
+      : freshnessAgeSeconds < 10 * 60
+        ? "bg-emerald-500"
+        : freshnessAgeSeconds < 2 * 60 * 60
+          ? "bg-amber-500"
+          : "bg-muted-foreground/40"
+
+  const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
+
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+    })
+  }
+
+  const handleRefreshRates = () => {
+    refreshMutation.mutate(undefined, {
+      onSuccess: () => toast.success(t("fx_watch.refresh_success")),
       onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
     })
   }
@@ -202,9 +226,24 @@ export default function FxWatch() {
             </Popover>
           </div>
           <p className="text-sm text-muted-foreground">{t("fx_watch.caption")}</p>
-          {updatedAgo ? (
-            <p className="text-xs text-muted-foreground">{t("common.last_updated_relative", { time: updatedAgo })}</p>
-          ) : null}
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            {ratesUpdatedAgo ? (
+              <p className="text-xs text-muted-foreground" title={checkedAtLabel ?? undefined}>
+                <span className={`mr-1 inline-block h-2 w-2 rounded-full ${freshnessDotClass}`} />
+                {t("fx_watch.rates_updated", { time: ratesUpdatedAgo })}
+              </p>
+            ) : null}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={handleRefreshRates}
+              disabled={refreshMutation.isPending || watches.length === 0}
+            >
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+              {refreshMutation.isPending ? t("fx_watch.action.refreshing") : t("fx_watch.action.refresh")}
+            </Button>
+          </div>
         </div>
 
         {/* Action buttons */}

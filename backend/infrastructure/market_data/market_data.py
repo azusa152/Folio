@@ -354,6 +354,43 @@ def clear_all_caches() -> dict:
     return {"l1_cleared": len(l1_caches), "l2_cleared": True}
 
 
+def clear_forex_caches() -> dict:
+    """清除 FX 相關 L1 記憶體快取與對應 L2 磁碟快取。"""
+    l1_caches = [
+        _forex_cache,
+        _forex_history_cache,
+        _forex_history_long_cache,
+    ]
+    for cache in l1_caches:
+        cache.clear()
+
+    deleted_disk_entries = 0
+    for disk_prefix in [
+        DISK_KEY_FOREX,
+        DISK_KEY_FOREX_HISTORY,
+        DISK_KEY_FOREX_HISTORY_LONG,
+    ]:
+        try:
+            to_delete = [
+                key
+                for key in _disk_cache.iterkeys()
+                if isinstance(key, str) and key.startswith(f"{disk_prefix}:")
+            ]
+            for key in to_delete:
+                del _disk_cache[key]
+            deleted_disk_entries += len(to_delete)
+        except Exception:
+            # 非致命：若某一類 key 清除失敗，仍繼續清除其他 key。
+            logger.warning("清除 FX 磁碟快取失敗：prefix=%s", disk_prefix)
+
+    logger.info(
+        "已清除 FX 快取（L1×%d + L2 entries=%d）。",
+        len(l1_caches),
+        deleted_disk_entries,
+    )
+    return {"l1_cleared": len(l1_caches), "l2_entries_cleared": deleted_disk_entries}
+
+
 def _cached_fetch(
     l1_cache: TTLCache,
     ticker: str,

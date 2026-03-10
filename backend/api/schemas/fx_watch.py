@@ -106,6 +106,7 @@ class FXWatchCheckResultItem(BaseModel):
 class FXWatchCheckResponse(BaseModel):
     """POST /fx-watch/check 回傳結構：分析結果（不發送通知）。"""
 
+    checked_at: str
     total_watches: int
     results: list[FXWatchCheckResultItem]
 

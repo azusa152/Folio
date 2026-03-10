@@ -11,7 +11,7 @@ from domain.constants import DEFAULT_USER_ID
 from domain.entities import FXWatchConfig
 from domain.fx_analysis import FXTimingResult, assess_exchange_timing
 from i18n import get_user_language, t
-from infrastructure.market_data import get_forex_history_long
+from infrastructure.market_data import clear_forex_caches, get_forex_history_long
 from infrastructure.notification import (
     is_notification_enabled,
     is_within_rate_limit,
@@ -211,6 +211,11 @@ def get_forex_history(base: str, quote: str) -> list[dict]:
     except Exception as e:
         logger.warning("外匯歷史資料取得失敗：%s/%s - %s", base, quote, e)
         return []
+
+
+def refresh_fx_data() -> dict:
+    """清除 FX 相關快取，讓下一次分析重新抓取最新資料。"""
+    return clear_forex_caches()
 
 
 # ===========================================================================
