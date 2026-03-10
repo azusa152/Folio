@@ -110,22 +110,16 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
 
         <div className="space-y-2">
           {displayRows.map((row) => (
-            <div key={`${row.label}-${row.category}`} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate text-muted-foreground">
-                  {CATEGORY_ICON_SHORT[row.category] ?? ""} {row.label}
-                </span>
-                <span className="font-medium tabular-nums">{row.weightPct.toFixed(1)}%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${totalWeight > 0 ? (row.weightPct / totalWeight) * 100 : 0}%`,
-                    backgroundColor: row.color,
-                  }}
-                />
-              </div>
+            <div key={`${row.label}-${row.category}`} className="flex items-center gap-2 text-sm">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: row.color }}
+                aria-hidden="true"
+              />
+              <span className="truncate text-muted-foreground">
+                {CATEGORY_ICON_SHORT[row.category] ?? ""} {row.label}
+              </span>
+              <span className="ml-auto font-medium tabular-nums">{row.weightPct.toFixed(1)}%</span>
             </div>
           ))}
         </div>
