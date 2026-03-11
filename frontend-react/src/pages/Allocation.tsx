@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { useAccounts } from "@/api/hooks/useAccounts"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
@@ -36,6 +37,8 @@ import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { TransactionsTab } from "@/components/allocation/transactions/TransactionsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 
+type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
+
 export default function Allocation() {
   const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -62,10 +65,14 @@ export default function Allocation() {
   const [seedFeedback, setSeedFeedback] = useState("")
   const [transactionSheetOpen, setTransactionSheetOpen] = useState(false)
   const [transactionDefaultTicker, setTransactionDefaultTicker] = useState<string | undefined>(undefined)
+  const [transactionDefaultAccountId, setTransactionDefaultAccountId] = useState<number | undefined>(undefined)
+  const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionSheetType | undefined>(undefined)
+  const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(undefined)
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
+  const { data: accounts, isLoading: accountsLoading } = useAccounts()
   const { data: netWorthSummary } = useNetWorthSummary(displayCurrency, activeTab === "net-worth")
   const { data: netWorthItems } = useNetWorthItems(displayCurrency, activeTab === "net-worth")
   const { data: netWorthHistory, isLoading: netWorthHistoryLoading } = useNetWorthHistory(
@@ -125,12 +132,21 @@ export default function Allocation() {
   }
 
   const hasSetup = holdings.length > 0
+  const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
   const hasSeedableCash = (netWorthSeedPreview?.cash_positions?.length ?? 0) > 0
 
   const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
 
-  const openTransactionSheet = (ticker?: string) => {
-    setTransactionDefaultTicker(ticker)
+  const openTransactionSheet = (options?: {
+    ticker?: string
+    accountId?: number
+    transactionType?: TransactionSheetType
+    currency?: string
+  }) => {
+    setTransactionDefaultTicker(options?.ticker)
+    setTransactionDefaultAccountId(options?.accountId)
+    setTransactionDefaultType(options?.transactionType)
+    setTransactionDefaultCurrency(options?.currency)
     setTransactionSheetOpen(true)
   }
 
@@ -178,6 +194,16 @@ export default function Allocation() {
           </div>
         )}
       </div>
+      {showQuickStart ? (
+        <div className="rounded-md border border-border bg-muted/20 p-3">
+          <p className="text-xs font-semibold">{t("allocation.quick_start.title")}</p>
+          <ol className="mt-2 list-decimal pl-4 space-y-1 text-xs text-muted-foreground">
+            <li>{t("allocation.quick_start.step1")}</li>
+            <li>{t("allocation.quick_start.step2")}</li>
+            <li>{t("allocation.quick_start.step3")}</li>
+          </ol>
+        </div>
+      ) : null}
 
       {/* Setup guard — show hint when no holdings but still show Settings tab */}
       {!hasSetup && (
@@ -218,7 +244,7 @@ export default function Allocation() {
             displayCurrency={displayCurrency}
             privacyMode={privacyMode}
             enabled={activeTab === "portfolio"}
-            onRecordTransaction={(ticker) => openTransactionSheet(ticker)}
+            onRecordTransaction={(ticker) => openTransactionSheet({ ticker })}
           />
         </TabsContent>
 
@@ -277,7 +303,15 @@ export default function Allocation() {
 
         {/* Accounts tab */}
         <TabsContent value="accounts" className="mt-4 space-y-4">
-          <AccountsTab enabled={activeTab === "accounts"} />
+          <AccountsTab
+            enabled={activeTab === "accounts"}
+            onDepositToAccount={(accountId, currency) =>
+              openTransactionSheet({
+                accountId,
+                transactionType: "DEPOSIT",
+                currency,
+              })}
+          />
         </TabsContent>
 
         {/* Net Worth tab */}
@@ -469,10 +503,19 @@ export default function Allocation() {
       />
       {transactionSheetOpen ? (
         <AddTransactionSheet
-          key={`${transactionSheetOpen ? "open" : "closed"}-${transactionDefaultTicker ?? "all"}`}
+          key={`${transactionSheetOpen ? "open" : "closed"}-${transactionDefaultTicker ?? "all"}-${transactionDefaultAccountId ?? "na"}-${transactionDefaultType ?? "BUY"}-${transactionDefaultCurrency ?? "USD"}`}
           open={transactionSheetOpen}
           onClose={() => setTransactionSheetOpen(false)}
           defaultTicker={transactionDefaultTicker}
+          defaultAccountId={transactionDefaultAccountId}
+          defaultTransactionType={transactionDefaultType}
+          defaultCurrency={transactionDefaultCurrency}
+          onOpenBuyForAccount={(accountId, currency) =>
+            openTransactionSheet({
+              accountId,
+              transactionType: "BUY",
+              currency,
+            })}
           onOpenAccounts={() => {
             setTransactionSheetOpen(false)
             setActiveTab("accounts")

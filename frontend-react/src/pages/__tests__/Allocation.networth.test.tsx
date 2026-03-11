@@ -10,6 +10,7 @@ const mockUseSeedNetWorth = vi.fn()
 const mockSeedMutate = vi.fn()
 const mockUseProfile = vi.fn()
 const mockUseHoldings = vi.fn()
+const mockUseAccounts = vi.fn()
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -25,6 +26,7 @@ vi.mock("react-i18next", () => ({
       }
       return key
     },
+    i18n: { language: "en" },
   }),
 }))
 
@@ -40,6 +42,10 @@ vi.mock("@/hooks/usePrivacyMode", () => ({
 vi.mock("@/api/hooks/useDashboard", () => ({
   useProfile: () => mockUseProfile(),
   useHoldings: () => mockUseHoldings(),
+}))
+
+vi.mock("@/api/hooks/useAccounts", () => ({
+  useAccounts: () => mockUseAccounts(),
 }))
 
 vi.mock("@/api/hooks/useNetWorth", () => ({
@@ -90,6 +96,11 @@ describe("Allocation net worth cold start", () => {
     })
     mockUseHoldings.mockReturnValue({
       data: [{ id: 1, ticker: "AAPL" }],
+      isLoading: false,
+      dataUpdatedAt: Date.now(),
+    })
+    mockUseAccounts.mockReturnValue({
+      data: [],
       isLoading: false,
     })
     mockUseNetWorthSummary.mockReturnValue({ data: undefined })

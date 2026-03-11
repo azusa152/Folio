@@ -10,8 +10,9 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
-from domain.constants import ERROR_ACCOUNT_NOT_FOUND
-from domain.entities import Account
+from domain.constants import DEFAULT_USER_ID, ERROR_ACCOUNT_NOT_FOUND
+from domain.entities import Account, Holding
+from domain.enums import StockCategory
 from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
@@ -69,9 +70,29 @@ def list_accounts(session: Session, include_inactive: bool = False) -> list[dict
 def create_account(session: Session, data: dict, lang: str) -> dict:
     """Create a new account. Returns the created account dict."""
     account = Account(**data)
-    saved = repo.save_account(session, account)
-    logger.info("新增帳戶：%s（%s）", saved.name, saved.broker)
-    return _acct_to_dict(saved)
+    session.add(account)
+    session.flush()
+
+    normalized_currency = (account.currency or "USD").upper().strip() or "USD"
+    account.currency = normalized_currency
+    cash_holding = Holding(
+        user_id=account.user_id or DEFAULT_USER_ID,
+        ticker=normalized_currency,
+        category=StockCategory.CASH,
+        quantity=0.0,
+        cost_basis=1.0,
+        broker=account.broker,
+        account_id=account.id,
+        currency=normalized_currency,
+        account_type=account.account_type,
+        is_cash=True,
+        purchase_fx_rate=1.0,
+    )
+    session.add(cash_holding)
+    session.commit()
+    session.refresh(account)
+    logger.info("新增帳戶：%s（%s）", account.name, account.broker)
+    return _acct_to_dict(account)
 
 
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:
@@ -107,6 +128,9 @@ def get_account_summary(session: Session) -> list[dict]:
     result = []
     for acct in accounts:
         acct_holdings = account_map.get(acct.id, [])
+        non_cash_holdings = [
+            holding for holding in acct_holdings if not holding.is_cash
+        ]
         cash_balances: dict[str, float] = {}
         for holding in acct_holdings:
             if not holding.is_cash:
@@ -118,8 +142,8 @@ def get_account_summary(session: Session) -> list[dict]:
         result.append(
             {
                 "account": _acct_to_dict(acct),
-                "holdings_count": len(acct_holdings),
-                "tickers": [h.ticker for h in acct_holdings],
+                "holdings_count": len(non_cash_holdings),
+                "tickers": [h.ticker for h in non_cash_holdings],
                 "cash_balances": [
                     {"currency": currency, "balance": round(balance, 8)}
                     for currency, balance in sorted(cash_balances.items())

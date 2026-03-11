@@ -59,7 +59,35 @@ def test_account_summary_with_holdings(client: TestClient):
     assert len(data) >= 1
     assert data[0]["account"]["name"] == "SBI Japan"
     assert data[0]["holdings_count"] == 0
-    assert data[0]["cash_balances"] == []
+    assert data[0]["tickers"] == []
+    assert data[0]["cash_balances"] == [{"currency": "USD", "balance": 0.0}]
+
+
+def test_account_create_should_initialize_zero_cash_balance(client: TestClient):
+    acct_resp = client.post(
+        "/accounts",
+        json={"name": "Zero Cash", "broker": "Demo Broker", "currency": "USD"},
+    )
+    assert acct_resp.status_code == 201
+    account_id = acct_resp.json()["id"]
+
+    balances_resp = client.get(f"/accounts/{account_id}/cash-balances")
+    assert balances_resp.status_code == 200
+    assert balances_resp.json() == [{"currency": "USD", "balance": 0.0}]
+
+    summary_resp = client.get("/accounts/summary")
+    assert summary_resp.status_code == 200
+    account_row = next(
+        (
+            item
+            for item in summary_resp.json()
+            if item.get("account", {}).get("id") == account_id
+        ),
+        None,
+    )
+    assert account_row is not None
+    assert account_row["holdings_count"] == 0
+    assert account_row["tickers"] == []
 
 
 def test_account_create_validation(client: TestClient):

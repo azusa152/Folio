@@ -47,6 +47,7 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
+    fireEvent.change(screen.getByLabelText("transactions.form.account"), { target: { value: "7" } })
     fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "2" } })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
     fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "20" } })
@@ -107,6 +108,17 @@ describe("AddTransactionSheet", () => {
     expect(screen.getByText("transactions.form.available_cash")).toBeInTheDocument()
   })
 
+  it("shows required account placeholder for buy", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole("option", { name: "transactions.form.account_required" })).toBeInTheDocument()
+  })
+
   it("shows insufficient balance helper and can switch to deposit", () => {
     mockMutate.mockImplementationOnce((_payload, opts) => {
       opts?.onError?.({
@@ -133,5 +145,76 @@ describe("AddTransactionSheet", () => {
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.deposit_cash" }))
     expect(screen.getByDisplayValue("10")).toBeInTheDocument()
+  })
+
+  it("simplifies fields for deposit transactions", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.deposit" }))
+
+    expect(screen.queryByLabelText("transactions.form.ticker")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("transactions.form.quantity")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("transactions.form.price")).not.toBeInTheDocument()
+    expect(screen.getByText("transactions.form.deposit_amount")).toBeInTheDocument()
+    expect(screen.getByLabelText("transactions.form.currency")).toBeInTheDocument()
+  })
+
+  it("prevents submit and shows warning when buy balance is insufficient", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "600" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "600" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
+
+  it("clears insufficient warning when switching to deposit", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "600" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "600" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.deposit" }))
+    expect(screen.queryByText("transactions.form.insufficient_balance")).not.toBeInTheDocument()
+  })
+
+  it("treats missing currency cash balance as zero in buy precheck", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.show_more" }))
+    fireEvent.change(screen.getByLabelText("transactions.form.currency"), { target: { value: "EUR" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
+    expect(mockMutate).not.toHaveBeenCalled()
   })
 })

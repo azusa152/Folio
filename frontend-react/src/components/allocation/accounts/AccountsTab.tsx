@@ -16,9 +16,10 @@ const ACCOUNT_TYPES = ["brokerage", "retirement", "savings", "crypto", "other"] 
 
 interface Props {
   enabled: boolean
+  onDepositToAccount?: (accountId: number, currency: string) => void
 }
 
-export function AccountsTab({ enabled }: Props) {
+export function AccountsTab({ enabled, onDepositToAccount }: Props) {
   const { t } = useTranslation()
   const { data: accounts, isLoading } = useAccounts(enabled)
   const { data: accountSummary } = useAccountSummary(enabled)
@@ -106,8 +107,16 @@ export function AccountsTab({ enabled }: Props) {
 
     if (editingId == null) {
       createAccount.mutate(payload, {
-        onSuccess: () => {
-          toast.success(t("accounts.toast.created"))
+        onSuccess: (createdAccount) => {
+          toast.success(t("accounts.toast.created"), {
+            description: t("accounts.toast.created_deposit"),
+            action: onDepositToAccount
+              ? {
+                  label: t("accounts.quick_deposit"),
+                  onClick: () => onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
+                }
+              : undefined,
+          })
           setFormOpen(false)
           resetForm()
         },
@@ -254,6 +263,16 @@ export function AccountsTab({ enabled }: Props) {
                 </p>
               </div>
               <div className="flex gap-2">
+                {onDepositToAccount ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => onDepositToAccount(account.id, account.currency || "USD")}
+                  >
+                    {t("accounts.quick_deposit")}
+                  </Button>
+                ) : null}
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(account)}>
                   {t("common.edit")}
                 </Button>
