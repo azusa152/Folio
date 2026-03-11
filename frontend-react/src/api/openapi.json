@@ -9968,8 +9968,7 @@
           "vars": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Vars",
-            "default": {}
+            "title": "Vars"
           },
           "category": {
             "type": "string",

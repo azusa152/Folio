@@ -273,9 +273,18 @@ check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no ven
 	python3 scripts/check_agent_doc_tokens.py
 
 check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
-	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) scripts/export_openapi.py
-	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json
+	@set -e; \
+		before=$$(mktemp); \
+		cp $(FRONTEND_DIR)/src/api/openapi.json $$before; \
+		LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
+			$(PYTHON) scripts/export_openapi.py; \
+		if ! cmp -s $$before $(FRONTEND_DIR)/src/api/openapi.json; then \
+			echo "OpenAPI spec changed after export. Run 'make generate-api' and commit the updated spec."; \
+			git --no-pager diff -- $(FRONTEND_DIR)/src/api/openapi.json; \
+			rm -f $$before; \
+			exit 1; \
+		fi; \
+		rm -f $$before
 
 backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors CI security job)
 	@set -e; \

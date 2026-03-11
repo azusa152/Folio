@@ -757,6 +757,7 @@
       "portfolio": "📊 Portfolio",
       "risk": "🛡️ Risk",
       "actions": "💡 Actions",
+      "transactions": "🧾 Transactions",
       "settings": "⚙️ Settings",
       "net_worth": "💎 Net Worth"
     },
@@ -1706,6 +1707,71 @@
     "tier_1": "Legendary",
     "tier_2": "Elite",
     "tier_3": "Notable"
+  },
+  "transactions": {
+    "title": "Transaction Records",
+    "caption": "Log buys, sells, dividends, and cash movements in one place.",
+    "record_button": "Record Transaction",
+    "record_from_holding": "Record",
+    "filter": {
+      "ticker": "Ticker Filter",
+      "all_tickers": "All tickers"
+    },
+    "table": {
+      "date": "Date",
+      "ticker": "Ticker",
+      "type": "Type",
+      "quantity": "Qty",
+      "price": "Price",
+      "total_amount": "Total",
+      "actions": "Actions",
+      "delete": "Delete"
+    },
+    "type": {
+      "buy": "Buy",
+      "sell": "Sell",
+      "dividend": "Dividend",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    },
+    "empty": {
+      "title": "No transactions yet",
+      "description": "Record your first transaction to build a clear portfolio history."
+    },
+    "form": {
+      "title": "Record Transaction",
+      "type": "Transaction Type",
+      "ticker": "Ticker",
+      "quantity": "Quantity",
+      "price": "Price per unit",
+      "price_hint": "Leave blank if this transaction has no unit price.",
+      "total_amount": "Total amount",
+      "total_auto": "Auto-calculated from quantity and price. You can edit it.",
+      "total_manual": "Manual total is enabled.",
+      "use_auto_total": "Use auto total",
+      "date": "Transaction date",
+      "show_more": "Show more options",
+      "hide_more": "Hide more options",
+      "holding_link": "Link to holding",
+      "holding_optional": "Optional",
+      "currency": "Currency",
+      "fx_rate": "FX rate (optional)",
+      "fee": "Fee",
+      "note": "Note",
+      "note_placeholder": "Optional context (broker note, strategy memo, etc.)",
+      "submit": "Save transaction",
+      "error_ticker": "Please enter a ticker.",
+      "error_quantity": "Please enter a quantity greater than 0.",
+      "error_price": "Price must be 0 or greater.",
+      "error_total_amount": "Please enter a total amount greater than 0.",
+      "error_date": "Please select a transaction date.",
+      "error_fx_rate": "FX rate must be greater than 0.",
+      "error_fee": "Fee must be 0 or greater."
+    },
+    "toast": {
+      "created": "Transaction recorded.",
+      "deleted": "Transaction deleted."
+    }
   },
   "net_worth": {
     "title": "💎 Net Worth",

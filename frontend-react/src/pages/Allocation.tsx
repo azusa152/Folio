@@ -32,6 +32,8 @@ import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverv
 import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
 import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
 import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
+import { TransactionsTab } from "@/components/allocation/transactions/TransactionsTab"
+import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 
 export default function Allocation() {
   const { t, i18n } = useTranslation()
@@ -43,6 +45,7 @@ export default function Allocation() {
   const activeTab =
     tabParam === "risk" ||
     tabParam === "actions" ||
+    tabParam === "transactions" ||
     tabParam === "net-worth" ||
     tabParam === "settings"
       ? tabParam
@@ -55,6 +58,8 @@ export default function Allocation() {
   const [riskExpanded, setRiskExpanded] = useState(false)
   const [actionsExpanded, setActionsExpanded] = useState(false)
   const [seedFeedback, setSeedFeedback] = useState("")
+  const [transactionSheetOpen, setTransactionSheetOpen] = useState(false)
+  const [transactionDefaultTicker, setTransactionDefaultTicker] = useState<string | undefined>(undefined)
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
@@ -122,6 +127,11 @@ export default function Allocation() {
 
   const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
 
+  const openTransactionSheet = (ticker?: string) => {
+    setTransactionDefaultTicker(ticker)
+    setTransactionSheetOpen(true)
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
@@ -180,6 +190,7 @@ export default function Allocation() {
           <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
           <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
           <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
+          <TabsTrigger value="transactions" className="min-h-[44px]">{t("allocation.tab.transactions")}</TabsTrigger>
           <TabsTrigger value="net-worth" className="min-h-[44px]">{t("allocation.tab.net_worth")}</TabsTrigger>
           <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
         </TabsList>
@@ -200,7 +211,12 @@ export default function Allocation() {
               ))}
             </select>
           </div>
-          <RebalanceAnalysis displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "portfolio"} />
+          <RebalanceAnalysis
+            displayCurrency={displayCurrency}
+            privacyMode={privacyMode}
+            enabled={activeTab === "portfolio"}
+            onRecordTransaction={(ticker) => openTransactionSheet(ticker)}
+          />
         </TabsContent>
 
         {/* Risk tab */}
@@ -245,6 +261,14 @@ export default function Allocation() {
               </Button>
             </div>
           )}
+        </TabsContent>
+
+        {/* Transactions tab */}
+        <TabsContent value="transactions" className="mt-4 space-y-4">
+          <TransactionsTab
+            enabled={activeTab === "transactions"}
+            onRecordTransaction={() => openTransactionSheet()}
+          />
         </TabsContent>
 
         {/* Net Worth tab */}
@@ -434,6 +458,14 @@ export default function Allocation() {
         onClose={() => setNetWorthSheetOpen(false)}
         initialKind={netWorthSheetKind}
       />
+      {transactionSheetOpen ? (
+        <AddTransactionSheet
+          key={`${transactionSheetOpen ? "open" : "closed"}-${transactionDefaultTicker ?? "all"}`}
+          open={transactionSheetOpen}
+          onClose={() => setTransactionSheetOpen(false)}
+          defaultTicker={transactionDefaultTicker}
+        />
+      ) : null}
     </div>
   )
 }

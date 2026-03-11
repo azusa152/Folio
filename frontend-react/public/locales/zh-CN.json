@@ -757,6 +757,7 @@
       "portfolio": "📊 投资组合",
       "risk": "🛡️ 风险分析",
       "actions": "💡 操作建议",
+      "transactions": "🧾 交易记录",
       "settings": "⚙️ 设定",
       "net_worth": "💎 净资产"
     },
@@ -1706,6 +1707,71 @@
     "tier_1": "传奇",
     "tier_2": "精英",
     "tier_3": "值得关注"
+  },
+  "transactions": {
+    "title": "交易记录",
+    "caption": "集中记录买入、卖出、股息与资金流动。",
+    "record_button": "新增交易",
+    "record_from_holding": "记录交易",
+    "filter": {
+      "ticker": "Ticker 筛选",
+      "all_tickers": "全部 ticker"
+    },
+    "table": {
+      "date": "日期",
+      "ticker": "Ticker",
+      "type": "类型",
+      "quantity": "数量",
+      "price": "单价",
+      "total_amount": "总金额",
+      "actions": "操作",
+      "delete": "删除"
+    },
+    "type": {
+      "buy": "买入",
+      "sell": "卖出",
+      "dividend": "股息",
+      "deposit": "存入",
+      "withdrawal": "提领"
+    },
+    "empty": {
+      "title": "目前尚无交易记录",
+      "description": "先新增第一笔交易，建立清楚的投资历史。"
+    },
+    "form": {
+      "title": "新增交易记录",
+      "type": "交易类型",
+      "ticker": "Ticker",
+      "quantity": "数量",
+      "price": "每单位价格",
+      "price_hint": "若此交易没有单价可留空。",
+      "total_amount": "总金额",
+      "total_auto": "会依数量与单价自动计算，仍可手动调整。",
+      "total_manual": "目前使用手动总金额。",
+      "use_auto_total": "改回自动计算",
+      "date": "交易日期",
+      "show_more": "显示更多选项",
+      "hide_more": "收起更多选项",
+      "holding_link": "关联持仓",
+      "holding_optional": "选填",
+      "currency": "币别",
+      "fx_rate": "汇率（选填）",
+      "fee": "手续费",
+      "note": "备注",
+      "note_placeholder": "可填写券商备注、策略说明等内容。",
+      "submit": "保存交易",
+      "error_ticker": "请输入 ticker。",
+      "error_quantity": "请输入大于 0 的数量。",
+      "error_price": "单价不可小于 0。",
+      "error_total_amount": "请输入大于 0 的总金额。",
+      "error_date": "请选择交易日期。",
+      "error_fx_rate": "汇率必须大于 0。",
+      "error_fee": "手续费不可小于 0。"
+    },
+    "toast": {
+      "created": "已新增交易记录。",
+      "deleted": "已删除交易记录。"
+    }
   },
   "net_worth": {
     "title": "💎 净资产",

@@ -757,6 +757,7 @@
       "portfolio": "📊 ポートフォリオ",
       "risk": "🛡️ リスク分析",
       "actions": "💡 アクション",
+      "transactions": "🧾 取引履歴",
       "settings": "⚙️ 設定",
       "net_worth": "💎 純資産"
     },
@@ -1706,6 +1707,71 @@
     "tier_1": "レジェンド",
     "tier_2": "エリート",
     "tier_3": "注目"
+  },
+  "transactions": {
+    "title": "取引履歴",
+    "caption": "買付・売却・配当・入出金をまとめて記録します。",
+    "record_button": "取引を記録",
+    "record_from_holding": "記録",
+    "filter": {
+      "ticker": "Ticker フィルター",
+      "all_tickers": "すべての ticker"
+    },
+    "table": {
+      "date": "日付",
+      "ticker": "Ticker",
+      "type": "種別",
+      "quantity": "数量",
+      "price": "単価",
+      "total_amount": "合計金額",
+      "actions": "操作",
+      "delete": "削除"
+    },
+    "type": {
+      "buy": "買付",
+      "sell": "売却",
+      "dividend": "配当",
+      "deposit": "入金",
+      "withdrawal": "出金"
+    },
+    "empty": {
+      "title": "まだ取引履歴がありません",
+      "description": "最初の取引を記録して、ポートフォリオ履歴を作成しましょう。"
+    },
+    "form": {
+      "title": "取引を記録",
+      "type": "取引種別",
+      "ticker": "Ticker",
+      "quantity": "数量",
+      "price": "単価",
+      "price_hint": "単価がない取引は空欄でも構いません。",
+      "total_amount": "合計金額",
+      "total_auto": "数量と単価から自動計算されます。手動修正も可能です。",
+      "total_manual": "現在は手動合計が有効です。",
+      "use_auto_total": "自動計算に戻す",
+      "date": "取引日",
+      "show_more": "詳細オプションを表示",
+      "hide_more": "詳細オプションを隠す",
+      "holding_link": "保有銘柄に紐づけ",
+      "holding_optional": "任意",
+      "currency": "通貨",
+      "fx_rate": "為替レート（任意）",
+      "fee": "手数料",
+      "note": "メモ",
+      "note_placeholder": "証券会社メモや戦略メモなど（任意）",
+      "submit": "取引を保存",
+      "error_ticker": "ticker を入力してください。",
+      "error_quantity": "0 より大きい数量を入力してください。",
+      "error_price": "単価は 0 以上で入力してください。",
+      "error_total_amount": "0 より大きい合計金額を入力してください。",
+      "error_date": "取引日を選択してください。",
+      "error_fx_rate": "為替レートは 0 より大きい値を入力してください。",
+      "error_fee": "手数料は 0 以上で入力してください。"
+    },
+    "toast": {
+      "created": "取引を記録しました。",
+      "deleted": "取引を削除しました。"
+    }
   },
   "net_worth": {
     "title": "💎 純資産",

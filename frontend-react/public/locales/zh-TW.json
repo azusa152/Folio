@@ -757,6 +757,7 @@
       "portfolio": "📊 投資組合",
       "risk": "🛡️ 風險分析",
       "actions": "💡 操作建議",
+      "transactions": "🧾 交易紀錄",
       "settings": "⚙️ 設定",
       "net_worth": "💎 淨資產"
     },
@@ -1706,6 +1707,71 @@
     "tier_1": "傳奇",
     "tier_2": "菁英",
     "tier_3": "值得關注"
+  },
+  "transactions": {
+    "title": "交易紀錄",
+    "caption": "集中記錄買入、賣出、股息與資金移動。",
+    "record_button": "新增交易",
+    "record_from_holding": "記錄交易",
+    "filter": {
+      "ticker": "Ticker 篩選",
+      "all_tickers": "全部 ticker"
+    },
+    "table": {
+      "date": "日期",
+      "ticker": "Ticker",
+      "type": "類型",
+      "quantity": "數量",
+      "price": "單價",
+      "total_amount": "總金額",
+      "actions": "操作",
+      "delete": "刪除"
+    },
+    "type": {
+      "buy": "買入",
+      "sell": "賣出",
+      "dividend": "股息",
+      "deposit": "存入",
+      "withdrawal": "提領"
+    },
+    "empty": {
+      "title": "目前尚無交易紀錄",
+      "description": "先新增第一筆交易，建立清楚的投資歷程。"
+    },
+    "form": {
+      "title": "新增交易紀錄",
+      "type": "交易類型",
+      "ticker": "Ticker",
+      "quantity": "數量",
+      "price": "每單位價格",
+      "price_hint": "若此交易沒有單價可留空。",
+      "total_amount": "總金額",
+      "total_auto": "會依數量與單價自動計算，仍可手動調整。",
+      "total_manual": "目前使用手動總金額。",
+      "use_auto_total": "改回自動計算",
+      "date": "交易日期",
+      "show_more": "顯示更多選項",
+      "hide_more": "收起更多選項",
+      "holding_link": "關聯持倉",
+      "holding_optional": "選填",
+      "currency": "幣別",
+      "fx_rate": "匯率（選填）",
+      "fee": "手續費",
+      "note": "備註",
+      "note_placeholder": "可填寫券商備註、策略說明等內容。",
+      "submit": "儲存交易",
+      "error_ticker": "請輸入 ticker。",
+      "error_quantity": "請輸入大於 0 的數量。",
+      "error_price": "單價不可小於 0。",
+      "error_total_amount": "請輸入大於 0 的總金額。",
+      "error_date": "請選擇交易日期。",
+      "error_fx_rate": "匯率必須大於 0。",
+      "error_fee": "手續費不可小於 0。"
+    },
+    "toast": {
+      "created": "已新增交易紀錄。",
+      "deleted": "已刪除交易紀錄。"
+    }
   },
   "net_worth": {
     "title": "💎 淨資產",

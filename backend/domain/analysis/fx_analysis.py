@@ -186,9 +186,12 @@ def compute_sma(history: list[dict], window: int) -> float | None:
         return None
     recent = history[-window:]
     closes = [row.get("close") for row in recent]
-    if any(close is None or close <= 0 for close in closes):
+    if any(not isinstance(close, (int, float)) or close <= 0 for close in closes):
         return None
-    return sum(closes) / len(closes)
+    numeric_closes = [
+        float(close) for close in closes if isinstance(close, (int, float))
+    ]
+    return sum(numeric_closes) / len(numeric_closes)
 
 
 def detect_trend_direction(
