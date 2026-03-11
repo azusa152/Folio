@@ -35,6 +35,12 @@ MOCK_REBALANCE = {
         "Growth": {"market_value": 60_000.0, "drift_pct": 5.0},
         "Bond": {"market_value": 40_000.0, "drift_pct": -5.0},
     },
+    "holdings_detail": [
+        {"ticker": "NVDA", "market_value": 35_000.0, "cost_total": 20_000.0},
+        {"ticker": "2330.TW", "market_value": 25_000.0, "cost_total": 15_000.0},
+        {"ticker": "7203.T", "market_value": 40_000.0, "cost_total": 30_000.0},
+    ],
+    "geographic_allocation": {"US": 35_000.0, "TW": 25_000.0, "JP": 40_000.0},
 }
 
 MOCK_SP500 = {"ticker": "^GSPC", "price": 5_100.0, "change_pct": 0.5}
@@ -126,6 +132,58 @@ class TestTakeDailySnapshot:
         )
         assert len(all_today) == 1
         assert snap.total_value == 100_000.0  # updated, not the old 80k
+
+    def test_should_store_holding_values_as_json(self, db_session: Session):
+        """holding_values must contain per-holding market values from rebalance."""
+        with (
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+        ):
+            snap = take_daily_snapshot(db_session)
+
+        parsed = json.loads(snap.holding_values)
+        assert parsed["NVDA"] == 35_000.0
+        assert parsed["2330.TW"] == 25_000.0
+        assert parsed["7203.T"] == 40_000.0
+
+    def test_should_store_cost_basis_total(self, db_session: Session):
+        """cost_basis_total must sum cost_total across all holdings."""
+        with (
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+        ):
+            snap = take_daily_snapshot(db_session)
+
+        assert snap.cost_basis_total == 65_000.0
+
+    def test_should_store_geographic_values_as_json(self, db_session: Session):
+        """geographic_values must reflect geographic_allocation from rebalance."""
+        with (
+            patch(_REBALANCE_PATCH, return_value=MOCK_REBALANCE),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+        ):
+            snap = take_daily_snapshot(db_session)
+
+        parsed = json.loads(snap.geographic_values)
+        assert parsed["US"] == 35_000.0
+        assert parsed["TW"] == 25_000.0
+        assert parsed["JP"] == 40_000.0
+
+    def test_should_set_cost_basis_total_none_when_zero(self, db_session: Session):
+        """cost_basis_total should be None when total cost is zero."""
+        mock_no_cost = {
+            **MOCK_REBALANCE,
+            "holdings_detail": [
+                {"ticker": "NVDA", "market_value": 100_000.0, "cost_total": None},
+            ],
+        }
+        with (
+            patch(_REBALANCE_PATCH, return_value=mock_no_cost),
+            patch(_SP500_PATCH, return_value=MOCK_SP500),
+        ):
+            snap = take_daily_snapshot(db_session)
+
+        assert snap.cost_basis_total is None
 
     def test_should_tolerate_sp500_failure(self, db_session: Session):
         """benchmark_value should be None when S&P 500 fetch raises."""

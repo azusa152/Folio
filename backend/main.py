@@ -20,6 +20,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.dependencies import require_api_key
 from api.rate_limit import limiter
+from api.routes.account_routes import router as account_router
+from api.routes.analytics_routes import router as analytics_router
 from api.routes.backtest_routes import router as backtest_router
 from api.routes.crypto_routes import router as crypto_router
 from api.routes.forex_routes import router as forex_router
@@ -35,6 +37,7 @@ from api.routes.snapshot_routes import router as snapshot_router
 from api.routes.stock_routes import router as stock_router
 from api.routes.telegram_routes import router as telegram_router
 from api.routes.thesis_routes import router as thesis_router
+from api.routes.transaction_routes import router as transaction_router
 from api.schemas import HealthResponse
 from config.settings import init_settings
 from infrastructure.database import create_db_and_tables
@@ -155,6 +158,8 @@ def clear_cache(request: Request) -> dict:
 # Apply auth to all routers (health endpoint is exempt as it's not in a router)
 auth_deps = [Depends(require_api_key)]
 
+app.include_router(analytics_router, dependencies=auth_deps)
+app.include_router(account_router, dependencies=auth_deps)
 app.include_router(stock_router, dependencies=auth_deps)
 app.include_router(thesis_router, dependencies=auth_deps)
 app.include_router(scan_router, dependencies=auth_deps)
@@ -170,3 +175,4 @@ app.include_router(fx_watch_router, dependencies=auth_deps)
 app.include_router(guru_router, dependencies=auth_deps)
 app.include_router(resonance_router, dependencies=auth_deps)
 app.include_router(snapshot_router, dependencies=auth_deps)
+app.include_router(transaction_router, dependencies=auth_deps)

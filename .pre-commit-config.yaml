@@ -73,6 +73,14 @@ repos:
         files: ^frontend-react/.*\.(ts|tsx|js|jsx)$
         stages: [pre-push]
 
+      - id: tsc-typecheck
+        name: TypeScript type check (frontend)
+        entry: bash -c 'cd frontend-react && npm run typecheck'
+        language: system
+        pass_filenames: false
+        files: (^frontend-react/.*\.(ts|tsx)$|^frontend-react/tsconfig|^frontend-react/package\.json$|^frontend-react/vite\.config)
+        stages: [pre-push]
+
       - id: vitest
         name: vitest (frontend)
         entry: bash -c 'cd frontend-react && npm test'
@@ -97,4 +105,12 @@ repos:
         language: system
         pass_filenames: false
         files: (\.github/workflows/ci\.yml|Makefile)
+        stages: [pre-push]
+
+      - id: agent-doc-tokens
+        name: agent doc token budget check
+        entry: bash -c 'python3 scripts/check_agent_doc_tokens.py'
+        language: system
+        pass_filenames: false
+        files: (^AGENTS\.md$|^docs/agents/)
         stages: [pre-push]

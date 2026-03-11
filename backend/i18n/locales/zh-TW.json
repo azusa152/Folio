@@ -12,17 +12,57 @@
   },
   "webhook": {
     "missing_ticker": "請提供 ticker 參數。",
+    "missing_amount": "請提供 amount 參數。",
+    "invalid_amount": "金額無效：{amount}。",
+    "invalid_category": "分類無效：{category}。",
+    "unsupported_action": "不支援的動作：{action}。可用動作：{supported}",
+    "help_message": "Webhook 動作清單已準備完成。",
+    "help_model_hint": "簡單查詢（summary、alerts、help）可用低成本模型；analyze 與 withdraw 建議使用高品質模型。",
     "alert_status": {
       "active": "啟用",
       "inactive": "停用"
     },
     "fear_greed_prefix": "恐懼貪婪指數",
     "price_alerts_header": "{ticker} 價格警報：",
+    "no_alerts": "{ticker} 目前沒有警報。",
     "signals_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%",
+    "analyze_line": "{ticker} — 現價 ${price}, RSI={rsi}, Bias={bias}%, 護城河={moat}, 本益比={pe}",
+    "signals_unavailable": "目前無法取得技術訊號。",
+    "scan_started": "掃描已啟動，結果將透過 Telegram 通知。",
+    "moat_result": "{ticker} 護城河：{moat}。{details}",
+    "fx_watch_complete": "外匯監控完成：總計 {total}、觸發 {triggered}、已發送 {sent}。",
+    "fx_watch_failed": "外匯監控失敗：{error}",
     "guru_sync_complete": "✅ 13F 同步完成：共 {total} 位大師，已同步 {synced}，跳過 {skipped}，失敗 {errors}。",
     "guru_sync_failed": "❌ 13F 同步失敗：{error}",
     "guru_summary_complete": "✅ 13F 摘要通知已處理（{status}），共 {count} 位大師。",
-    "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}"
+    "guru_summary_failed": "❌ 13F 摘要通知失敗：{error}",
+    "transactions_summary": "找到 {count} 筆近期交易",
+    "accounts_summary": "已設定 {count} 個帳戶",
+    "analytics_summary": "投資組合風險指標已計算",
+    "insights_summary": "已產生 {count} 條投資組合洞察",
+    "missing_required_params": "缺少必要參數",
+    "interpretation": {
+      "signal_ready": "訊號摘要已準備完成。",
+      "action_failed": "動作執行失敗，請依訊息修正參數後重試。",
+      "help_ready": "動作清單已準備，可依 workflows 減少往返呼叫。",
+      "summary_ready": "投資組合摘要已準備完成。",
+      "dashboard_ready": "儀表板摘要已準備完成（含投資組合與市場脈絡）。",
+      "scan_started": "掃描已在背景執行，請至 Telegram 查看結果。",
+      "moat_ready": "護城河分析已準備完成。",
+      "no_alerts": "此股票目前沒有啟用中的警報。",
+      "alerts_ready": "警報清單已準備完成。",
+      "fear_greed_ready": "市場情緒快照已準備完成。",
+      "add_stock_ready": "股票已加入追蹤清單。",
+      "withdraw_ready": "提款規劃已準備完成。",
+      "fx_watch_ready": "外匯監控分析已準備完成。",
+      "guru_sync_ready": "13F 同步摘要已準備完成。",
+      "guru_summary_ready": "大師摘要已準備完成。",
+      "transactions_ready": "正在顯示最近 {count} 筆交易。",
+      "transaction_recorded": "交易已記錄。",
+      "accounts_ready": "帳戶摘要已準備完成。",
+      "analytics_ready": "夏普比率：{sharpe}，最大回撤：{max_dd}。",
+      "insights_ready": "投資組合洞察已準備完成。"
+    }
   },
   "stock": {
     "not_found": "找不到股票 {ticker}。",
@@ -160,16 +200,22 @@
     "pair_line": "📈 {pair}",
     "current_rate": "💱 現價：{rate:.4f}",
     "rec_should_alert_high": "💡 建議考慮換匯：{base} → {quote}（接近近期 {high_days} 日高點）",
+    "rec_approaching_high": "💡 建議考慮換匯：{base} → {quote}（接近近期 {high_days} 日高點）",
+    "rec_at_high": "💡 匯率創近期高點：{base} → {quote}，可優先執行換匯",
     "rec_should_alert_consec": "💡 建議考慮換匯：{base} → {quote}（連續上漲 {consec} 日）",
     "rec_should_alert_both": "💡 建議考慮換匯：{base} → {quote}（近期高點 + 連續上漲 {consec} 日）",
+    "rec_declining_from_high": "💡 接近高點但短線回落，暫不建議追價",
     "rec_near_high_disabled": "💡 接近高點但連續上漲動能不足，建議觀察",
     "rec_consec_disabled": "💡 持續上漲但未達近期高點，可再等待",
     "rec_no_signal": "💡 暫無換匯訊號",
     "rec_disabled": "💡 監控已停用，請啟用至少一項警報條件",
     "rec_no_data": "💡 歷史資料不足，無法分析",
     "rea_should_alert_high": "📊 {pair} 已接近 {high_days} 日高點（{high:.4f}），現在可能是換匯好時機",
+    "rea_approaching_high": "📊 {pair} 已接近 {high_days} 日高點（{high:.4f}），距高點 {distance_pct:.2f}%",
+    "rea_at_high": "📊 {pair} 觸及 {high_days} 日高點（{high:.4f}），短線訊號偏強",
     "rea_should_alert_consec": "📊 {pair} 連續上漲 {consec} 日（門檻：{consec_threshold} 日）",
     "rea_should_alert_both": "📊 {pair} 接近 {high_days} 日高點（{high:.4f}），且連續上漲 {consec} 日",
+    "rea_declining_from_high": "📊 {pair} 雖接近高點，但高點已是 {high_days_ago} 天前且短線偏弱，建議觀察",
     "rea_near_high_disabled": "📊 接近 {high_days} 日高點，但連續上漲僅 {consec} 日（門檻：{consec_threshold} 日）",
     "rea_consec_disabled": "📊 連續上漲 {consec} 日，但匯率尚未達 {high_days} 日高點附近",
     "rea_no_signal": "📊 匯率未達近期高點，且連續上漲僅 {consec} 日",
@@ -309,5 +355,21 @@
     "alert_type_daily_spike": "單日劇烈波動",
     "alert_type_short_term_swing": "短期波段變動",
     "alert_type_long_term_trend": "長期趨勢變動"
+  },
+  "transaction": {
+    "not_found": "找不到交易紀錄",
+    "created": "交易已記錄",
+    "deleted": "交易已刪除",
+    "insufficient_balance": "此交易的帳戶現金餘額不足",
+    "cash_holding_not_found": "找不到所選帳戶與幣別的現金餘額"
+  },
+  "account": {
+    "not_found": "找不到帳戶",
+    "created": "帳戶已建立",
+    "deactivated": "帳戶已停用"
+  },
+  "analytics": {
+    "date_range_both_required": "start 與 end 必須同時提供",
+    "date_range_invalid_order": "start 不得晚於 end"
   }
 }

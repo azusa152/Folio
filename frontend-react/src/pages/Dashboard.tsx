@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { SendHorizonal } from "lucide-react"
+import { ChevronDown, ChevronUp, SendHorizonal } from "lucide-react"
 import { isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
@@ -21,6 +21,7 @@ import {
 } from "@/api/hooks/useDashboard"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
+import { useLocalStorage } from "@/hooks/useLocalStorage"
 import { useNetWorthHistory, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import {
   Select,
@@ -43,6 +44,8 @@ import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
+import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
+import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
 
 const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
@@ -50,6 +53,7 @@ export default function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const [showAdvanced, setShowAdvanced] = useLocalStorage("dashboard_advanced", false)
   const digestMutation = useTriggerDigest()
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -187,6 +191,15 @@ export default function Dashboard() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs gap-1.5 min-h-[44px]"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {showAdvanced ? t("dashboard.hide_advanced") : t("dashboard.show_advanced")}
+        </Button>
       </div>
 
       {/* Timestamps */}
@@ -225,6 +238,10 @@ export default function Dashboard() {
         isLoading={heroLoading}
       />
 
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
+        <HoldingBreakdown rebalance={rebalance} isLoading={heroLoading} />
+      </LazySection>
+
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
         <SignalAlerts
           stocks={stocks ?? []}
@@ -247,22 +264,32 @@ export default function Dashboard() {
         <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
       </LazySection>
 
+      {showAdvanced && (
+        <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+          <SectorAllocationCard sectorExposure={rebalance?.sector_exposure ?? []} />
+        </LazySection>
+      )}
+
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
         <TopHoldings rebalance={rebalance} />
       </LazySection>
 
-      {/* ── Deep Dive ── */}
-      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_deep_dive")}</h2>
+      {showAdvanced && (
+        <>
+          {/* ── Deep Dive ── */}
+          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_deep_dive")}</h2>
 
-      <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
+          <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
 
-      <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
+          <PerformanceChart snapshots={snapshots ?? []} isLoading={snapshotsLoading} />
 
-      <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
+          <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
-        <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
-      </LazySection>
+          <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+            <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
+          </LazySection>
+        </>
+      )}
     </div>
   )
 }

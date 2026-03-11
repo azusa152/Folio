@@ -75,6 +75,7 @@ export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
 
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
+export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30
 
 export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
 export const NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"] as const
@@ -85,6 +86,43 @@ export const NET_WORTH_LIABILITY_CATEGORIES = [
   "other_liability",
 ] as const
 export const NET_WORTH_STALE_DAYS = 90
+
+export const CURRENCY_TO_REGION: Record<string, string> = {
+  USD: "US",
+  TWD: "TW",
+  JPY: "JP",
+  HKD: "HK",
+}
+
+export const GEOGRAPHIC_COLOR_MAP: Record<string, string> = {
+  US: "#3B82F6",
+  TW: "#22C55E",
+  JP: "#EF4444",
+  HK: "#F59E0B",
+  Other: "#9CA3AF",
+}
+
+export const GEOGRAPHIC_LABELS: Record<string, string> = {
+  US: "allocation.geo.us",
+  TW: "allocation.geo.tw",
+  JP: "allocation.geo.jp",
+  HK: "allocation.geo.hk",
+  Other: "allocation.geo.other",
+}
+
+export const CATEGORY_TO_ASSET_CLASS: Record<string, string> = {
+  Bond: "Fixed Income",
+  Cash: "Cash",
+  Crypto: "Alternatives",
+}
+
+export const ASSET_CLASS_COLOR_MAP: Record<string, string> = {
+  Equity: "#0EA5E9",
+  "Fixed Income": "#8B5CF6",
+  Cash: "#9CA3AF",
+  Alternatives: "#F7931A",
+  Other: "#6B7280",
+}
 
 /** Shared chart color palette for pie/bar/treemap charts without category semantics. */
 export const CHART_COLOR_PALETTE = [

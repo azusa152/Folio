@@ -28,11 +28,12 @@ from application.services import (
     calculate_rebalance,
     calculate_stress_test,
     calculate_withdrawal,
+    invalidate_insight_cache,
     invalidate_rebalance_cache,
     send_fx_alerts,
     send_xray_warnings,
 )
-from domain.constants import ERROR_HOLDING_NOT_FOUND
+from domain.constants import ERROR_HOLDING_NOT_FOUND, ERROR_INVALID_SCENARIO_DROP
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -66,6 +67,7 @@ def create_holding(
         **holding_service.create_holding(session, payload.model_dump(), lang)
     )
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -82,6 +84,7 @@ def create_cash_holding(
         **holding_service.create_cash_holding(session, payload.model_dump(), lang)
     )
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -101,6 +104,7 @@ def update_holding(
         )
     )
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -115,6 +119,7 @@ def delete_holding(
     lang = get_user_language(session)
     result = holding_service.delete_holding(session, holding_id, lang)
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -151,6 +156,7 @@ def import_holdings(
         session, [item.model_dump() for item in data], lang
     )
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     return result
 
 
@@ -322,7 +328,7 @@ def get_stress_test(
         raise HTTPException(
             status_code=422,
             detail={
-                "error_code": "INVALID_SCENARIO_DROP",
+                "error_code": ERROR_INVALID_SCENARIO_DROP,
                 "detail": t(
                     "api.scenario_range_error", lang=get_user_language(session)
                 ),

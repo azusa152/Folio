@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
+import { RefreshCw } from "lucide-react"
 import { formatLocalTime, formatRelativeTime, parseUtc, getErrorMessage } from "@/lib/utils"
+import { FX_WATCH_REFRESH_COOLDOWN_SECONDS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,6 +15,7 @@ import {
   useCheckFxWatches,
   useAlertFxWatches,
   useFxHistoryMap,
+  useRefreshFxRates,
 } from "@/api/hooks/useFxWatch"
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
@@ -20,6 +23,54 @@ import type { FxWatch } from "@/api/types/fxWatch"
 
 type SortMode = "alert_first" | "alphabetical" | "volatility"
 type FilterMode = "all" | "active_only"
+
+function isRateLimitError(err: unknown): boolean {
+  if (err == null || typeof err !== "object") return false
+  const obj = err as Record<string, unknown>
+  if (obj.status === 429) return true
+  if (obj.statusCode === 429) return true
+  if (typeof obj.response === "object" && obj.response !== null) {
+    const response = obj.response as Record<string, unknown>
+    if (response.status === 429) return true
+  }
+  return false
+}
+
+function getRetryAfterSeconds(err: unknown): number | null {
+  if (err == null || typeof err !== "object") return null
+  const obj = err as Record<string, unknown>
+
+  const asPositiveInt = (value: unknown): number | null => {
+    const n = typeof value === "string" ? Number.parseInt(value, 10) : Number(value)
+    if (!Number.isFinite(n) || n <= 0) return null
+    return Math.ceil(n)
+  }
+
+  const directRetry = asPositiveInt(obj.retry_after_seconds)
+  if (directRetry !== null) return directRetry
+
+  if (typeof obj.detail === "object" && obj.detail !== null) {
+    const detail = obj.detail as Record<string, unknown>
+    const detailRetry = asPositiveInt(detail.retry_after_seconds)
+    if (detailRetry !== null) return detailRetry
+  }
+
+  if (typeof obj.response === "object" && obj.response !== null) {
+    const response = obj.response as Record<string, unknown>
+    const responseRetry = asPositiveInt(response.retry_after_seconds)
+    if (responseRetry !== null) return responseRetry
+
+    if (typeof response.headers === "object" && response.headers !== null) {
+      const headers = response.headers as Record<string, unknown>
+      const retryAfter =
+        asPositiveInt(headers["retry-after"]) ??
+        asPositiveInt(headers["Retry-After"])
+      if (retryAfter !== null) return retryAfter
+    }
+  }
+
+  return null
+}
 
 /** Returns absolute (unsigned) % change — used for volatility sort. */
 function computeAbsChangePct(history: { close: number }[]): number | null {
@@ -35,6 +86,8 @@ export default function FxWatch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
+  const [refreshCooldownUntilEpochSeconds, setRefreshCooldownUntilEpochSeconds] = useState(0)
+  const [refreshCooldownRemainingSeconds, setRefreshCooldownRemainingSeconds] = useState(0)
   const rawSort = searchParams.get("sort")
   const rawFilter = searchParams.get("filter")
   const sortMode: SortMode =
@@ -43,7 +96,7 @@ export default function FxWatch() {
       : "alert_first"
   const filterMode: FilterMode = rawFilter === "active_only" ? "active_only" : "all"
 
-  const { data: watches, isLoading, isError, dataUpdatedAt } = useFxWatches()
+  const { data: watches, isLoading, isError } = useFxWatches()
   const setSortMode = (nextSortMode: SortMode) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -62,22 +115,31 @@ export default function FxWatch() {
     })
   }
 
-  const updatedAgo =
-    dataUpdatedAt > 0
-      ? formatRelativeTime(nowEpochSeconds - Math.floor(dataUpdatedAt / 1000), i18n.language)
-      : ""
-
   useEffect(() => {
-    const timer = window.setInterval(
-      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
-      60_000,
-    )
+    const timer = window.setInterval(() => setNowEpochSeconds(Math.floor(Date.now() / 1000)), 60_000)
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    if (refreshCooldownUntilEpochSeconds <= 0) return
+
+    const timer = window.setInterval(() => {
+      const now = Math.floor(Date.now() / 1000)
+      const remaining = Math.max(0, refreshCooldownUntilEpochSeconds - now)
+      setRefreshCooldownRemainingSeconds(remaining)
+      if (remaining === 0) {
+        setRefreshCooldownUntilEpochSeconds(0)
+        window.clearInterval(timer)
+      }
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [refreshCooldownUntilEpochSeconds])
+
   const hasWatches = (watches?.length ?? 0) > 0
-  const { data: analysisMap = {}, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
+  const { data: analysisState, isLoading: analysisLoading } = useFxAnalysis(hasWatches)
+  const analysisMap = useMemo(() => analysisState?.by_watch_id ?? {}, [analysisState])
   const checkMutation = useCheckFxWatches()
+  const refreshMutation = useRefreshFxRates()
   const alertMutation = useAlertFxWatches()
 
   // Eagerly fetch history for all pairs (sparklines)
@@ -98,10 +160,63 @@ export default function FxWatch() {
       ? formatLocalTime(lastAlertTimes.reduce((a, b) => (parseUtc(a) > parseUtc(b) ? a : b)))
       : null
 
+  const checkedAtEpoch = analysisState?.checked_at ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000) : 0
+  const ratesUpdatedAgo =
+    checkedAtEpoch > 0
+      ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language)
+      : ""
+
+  const freshnessAgeSeconds = checkedAtEpoch > 0 ? nowEpochSeconds - checkedAtEpoch : null
+  const freshnessDotClass =
+    freshnessAgeSeconds === null
+      ? "bg-muted-foreground/40"
+      : freshnessAgeSeconds < 10 * 60
+        ? "bg-emerald-500"
+        : freshnessAgeSeconds < 2 * 60 * 60
+          ? "bg-amber-500"
+          : "bg-muted-foreground/40"
+
+  const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
+
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
-      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+      onError: (err: unknown) => {
+        if (isRateLimitError(err)) {
+          const retryAfter = getRetryAfterSeconds(err)
+          toast.error(
+            retryAfter
+              ? t("fx_watch.rate_limit_exceeded_retry_after", { seconds: retryAfter })
+              : t("fx_watch.rate_limit_exceeded"),
+          )
+          return
+        }
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
+    })
+  }
+
+  const handleRefreshRates = () => {
+    refreshMutation.mutate(undefined, {
+      onSuccess: () => {
+        setRefreshCooldownRemainingSeconds(FX_WATCH_REFRESH_COOLDOWN_SECONDS)
+        setRefreshCooldownUntilEpochSeconds(
+          Math.floor(Date.now() / 1000) + FX_WATCH_REFRESH_COOLDOWN_SECONDS,
+        )
+        toast.success(t("fx_watch.refresh_success"))
+      },
+      onError: (err: unknown) => {
+        if (isRateLimitError(err)) {
+          const retryAfter = getRetryAfterSeconds(err)
+          toast.error(
+            retryAfter
+              ? t("fx_watch.rate_limit_exceeded_retry_after", { seconds: retryAfter })
+              : t("fx_watch.rate_limit_exceeded"),
+          )
+          return
+        }
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
     })
   }
 
@@ -202,9 +317,28 @@ export default function FxWatch() {
             </Popover>
           </div>
           <p className="text-sm text-muted-foreground">{t("fx_watch.caption")}</p>
-          {updatedAgo ? (
-            <p className="text-xs text-muted-foreground">{t("common.last_updated_relative", { time: updatedAgo })}</p>
-          ) : null}
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            {ratesUpdatedAgo ? (
+              <p className="text-xs text-muted-foreground" title={checkedAtLabel ?? undefined}>
+                <span className={`mr-1 inline-block h-2 w-2 rounded-full ${freshnessDotClass}`} />
+                {t("fx_watch.rates_updated", { time: ratesUpdatedAgo })}
+              </p>
+            ) : null}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={handleRefreshRates}
+              disabled={refreshMutation.isPending || refreshCooldownRemainingSeconds > 0 || watches.length === 0}
+            >
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+              {refreshMutation.isPending
+                ? t("fx_watch.action.refreshing")
+                : refreshCooldownRemainingSeconds > 0
+                  ? t("fx_watch.action.refresh_cooldown", { seconds: refreshCooldownRemainingSeconds })
+                  : t("fx_watch.action.refresh")}
+            </Button>
+          </div>
         </div>
 
         {/* Action buttons */}

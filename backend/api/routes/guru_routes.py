@@ -80,6 +80,9 @@ from application.stock.filing_service import (
     get_top_holdings as filing_get_top_holdings,
 )
 from domain.constants import (
+    ERROR_GURU_FILING_NOT_FOUND,
+    ERROR_GURU_NOT_FOUND,
+    ERROR_SYNC_IN_PROGRESS,
     GURU_BACKTEST_MAX_QUARTERS,
     GURU_HOLDING_CHANGES_DISPLAY_LIMIT,
     GURU_TOP_HOLDINGS_COUNT,
@@ -168,7 +171,13 @@ def delete_guru(
     """停用大師（軟刪除，保留歷史申報資料）。"""
     success = remove_guru(session, guru_id)
     if not success:
-        raise HTTPException(status_code=404, detail=f"Guru {guru_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_GURU_NOT_FOUND,
+                "detail": f"Guru {guru_id} not found",
+            },
+        )
     return {"message": f"Guru {guru_id} deactivated"}
 
 
@@ -189,7 +198,13 @@ def sync_all(
 ) -> SyncAllResponse:
     """觸發所有啟用中大師的 13F 同步（同步執行，適合排程呼叫）。"""
     if not _sync_lock.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="Sync already in progress")
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error_code": ERROR_SYNC_IN_PROGRESS,
+                "detail": "Sync already in progress",
+            },
+        )
     try:
         raw_results = sync_all_gurus(session)
     finally:
@@ -244,7 +259,13 @@ def sync_one(
     result = sync_guru_filing(session, guru_id)
     status = result.get("status", "error")
     if status == "error" and result.get("error") == "guru not found":
-        raise HTTPException(status_code=404, detail=f"Guru {guru_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_GURU_NOT_FOUND,
+                "detail": f"Guru {guru_id} not found",
+            },
+        )
     if status == "synced":
         invalidate_resonance_cache()
         invalidate_heatmap_cache()
@@ -336,7 +357,13 @@ def get_guru_backtest_endpoint(
         raise HTTPException(status_code=400, detail=detail_key) from exc
 
     if data is None:
-        raise HTTPException(status_code=404, detail=f"Guru {guru_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_GURU_NOT_FOUND,
+                "detail": f"Guru {guru_id} not found",
+            },
+        )
     return GuruBacktestResponse(**data)
 
 
@@ -359,7 +386,10 @@ def get_filing(
     if summary is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No filing data found for guru {guru_id}",
+            detail={
+                "error_code": ERROR_GURU_FILING_NOT_FOUND,
+                "detail": f"No filing data found for guru {guru_id}",
+            },
         )
     return GuruFilingResponse(
         guru_id=guru_id,
@@ -440,7 +470,10 @@ def get_top_holdings(
     if not top:
         raise HTTPException(
             status_code=404,
-            detail=f"No filing data found for guru {guru_id}",
+            detail={
+                "error_code": ERROR_GURU_FILING_NOT_FOUND,
+                "detail": f"No filing data found for guru {guru_id}",
+            },
         )
     return [
         GuruHoldingResponse(

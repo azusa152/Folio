@@ -12,17 +12,57 @@
   },
   "webhook": {
     "missing_ticker": "Please provide ticker parameter.",
+    "missing_amount": "Please provide amount parameter.",
+    "invalid_amount": "Invalid amount: {amount}.",
+    "invalid_category": "Invalid category: {category}.",
+    "unsupported_action": "Unsupported action: {action}. Supported actions: {supported}",
+    "help_message": "Webhook action registry is ready.",
+    "help_model_hint": "Simple queries (summary, alerts, help) fit budget models. Use quality models for analyze and withdraw.",
     "alert_status": {
       "active": "active",
       "inactive": "inactive"
     },
     "fear_greed_prefix": "Fear & Greed Index",
     "price_alerts_header": "{ticker} price alerts:",
+    "no_alerts": "No alerts for {ticker}.",
     "signals_line": "{ticker} — Price ${price}, RSI={rsi}, Bias={bias}%",
+    "analyze_line": "{ticker} — Price ${price}, RSI={rsi}, Bias={bias}%, Moat={moat}, P/E={pe}",
+    "signals_unavailable": "Signals are unavailable at the moment.",
+    "scan_started": "Scan started. Results will be sent via Telegram.",
+    "moat_result": "{ticker} moat: {moat}. {details}",
+    "fx_watch_complete": "FX watch check complete: total {total}, triggered {triggered}, sent {sent}.",
+    "fx_watch_failed": "FX watch failed: {error}",
     "guru_sync_complete": "✅ 13F sync complete: {total} gurus, synced {synced}, skipped {skipped}, errors {errors}.",
     "guru_sync_failed": "❌ 13F sync failed: {error}",
     "guru_summary_complete": "✅ 13F digest notification processed ({status}), {count} gurus.",
-    "guru_summary_failed": "❌ 13F digest notification failed: {error}"
+    "guru_summary_failed": "❌ 13F digest notification failed: {error}",
+    "transactions_summary": "Found {count} recent transactions",
+    "accounts_summary": "{count} accounts configured",
+    "analytics_summary": "Portfolio risk metrics computed",
+    "insights_summary": "Generated {count} portfolio insights",
+    "missing_required_params": "Missing required parameters",
+    "interpretation": {
+      "signal_ready": "Signal snapshot is ready.",
+      "action_failed": "Action failed. Check message and retry with corrected parameters.",
+      "help_ready": "Action catalog ready. Follow workflows to reduce round-trips.",
+      "summary_ready": "Portfolio summary is ready.",
+      "dashboard_ready": "Dashboard is ready with portfolio and market context.",
+      "scan_started": "Scan runs in background. Check Telegram for result delivery.",
+      "moat_ready": "Moat analysis is ready.",
+      "no_alerts": "No active alerts for this ticker.",
+      "alerts_ready": "Alert list is ready.",
+      "fear_greed_ready": "Market sentiment snapshot is ready.",
+      "add_stock_ready": "Stock has been added to watchlist.",
+      "withdraw_ready": "Withdrawal plan is ready.",
+      "fx_watch_ready": "FX watch analysis is ready.",
+      "guru_sync_ready": "13F sync summary is ready.",
+      "guru_summary_ready": "Guru digest summary is ready.",
+      "transactions_ready": "Showing {count} most recent transactions.",
+      "transaction_recorded": "Transaction has been recorded.",
+      "accounts_ready": "Account summary is ready.",
+      "analytics_ready": "Sharpe ratio: {sharpe}, max drawdown: {max_dd}.",
+      "insights_ready": "Portfolio insights are ready."
+    }
   },
   "stock": {
     "not_found": "Stock {ticker} not found.",
@@ -160,16 +200,22 @@
     "pair_line": "📈 {pair}",
     "current_rate": "💱 Rate: {rate:.4f}",
     "rec_should_alert_high": "💡 Consider exchanging {base} → {quote} — near recent {high_days}d high",
+    "rec_approaching_high": "💡 Consider exchanging {base} → {quote} — approaching recent {high_days}d high",
+    "rec_at_high": "💡 Rate hit recent high for {base}/{quote} — exchange is actionable now",
     "rec_should_alert_consec": "💡 Consider exchanging {base} → {quote} — {consec} consecutive rises",
     "rec_should_alert_both": "💡 Consider exchanging {base} → {quote} — near high + {consec} consecutive rises",
+    "rec_declining_from_high": "💡 Near high but pulling back — avoid chasing for now",
     "rec_near_high_disabled": "💡 Near recent high but consecutive momentum insufficient — observe",
     "rec_consec_disabled": "💡 Rising consistently but not near high — wait",
     "rec_no_signal": "💡 No exchange signal at this time",
     "rec_disabled": "💡 Monitoring disabled — enable at least one alert condition",
     "rec_no_data": "💡 Insufficient history — cannot analyze",
     "rea_should_alert_high": "📊 {pair} near {high_days}-day high ({high:.4f}) — good time to exchange",
+    "rea_approaching_high": "📊 {pair} is near the {high_days}-day high ({high:.4f}), {distance_pct:.2f}% below the peak",
+    "rea_at_high": "📊 {pair} touched the {high_days}-day high ({high:.4f}) — strong short-term signal",
     "rea_should_alert_consec": "📊 {pair} rising {consec} consecutive days (threshold: {consec_threshold}d)",
     "rea_should_alert_both": "📊 {pair} near {high_days}-day high ({high:.4f}), {consec} consecutive days",
+    "rea_declining_from_high": "📊 {pair} is near high, but peak was {high_days_ago} days ago and short-term trend is weak",
     "rea_near_high_disabled": "📊 Near {high_days}-day high but only {consec} consecutive days (threshold: {consec_threshold}d)",
     "rea_consec_disabled": "📊 {consec} consecutive days but not near {high_days}-day high — may still rise",
     "rea_no_signal": "📊 Not near recent high, only {consec} consecutive rising days",
@@ -309,5 +355,21 @@
     "alert_type_daily_spike": "Daily Spike",
     "alert_type_short_term_swing": "Short-term Swing",
     "alert_type_long_term_trend": "Long-term Trend"
+  },
+  "transaction": {
+    "not_found": "Transaction not found",
+    "created": "Transaction recorded",
+    "deleted": "Transaction deleted",
+    "insufficient_balance": "Insufficient cash balance for this transaction",
+    "cash_holding_not_found": "No cash balance found for the selected account and currency"
+  },
+  "account": {
+    "not_found": "Account not found",
+    "created": "Account created",
+    "deactivated": "Account deactivated"
+  },
+  "analytics": {
+    "date_range_both_required": "start and end must both be provided",
+    "date_range_invalid_order": "start must not be later than end"
   }
 }

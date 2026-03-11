@@ -3,9 +3,15 @@ API — FX Watch 外匯監控路由。
 提供 CRUD 操作與定期監控觸發端點。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import UTC, datetime
+from math import ceil
+from threading import Lock
+from time import monotonic
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
 
+from api.rate_limit import limiter
 from api.schemas import (
     FXTimingResultResponse,
     FXWatchAlertResponse,
@@ -20,11 +26,16 @@ from application.portfolio.fx_watch_service import (
     check_fx_watches,
     create_watch,
     get_all_watches,
+    refresh_fx_data,
     remove_watch,
     send_fx_watch_alerts,
     update_watch,
 )
-from domain.constants import DEFAULT_USER_ID
+from domain.constants import (
+    DEFAULT_USER_ID,
+    ERROR_FX_WATCH_NOT_FOUND,
+    FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS,
+)
 from domain.entities import FXWatchConfig
 from i18n import get_user_language, t
 from infrastructure.database import get_session
@@ -33,11 +44,50 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter()
+_force_refresh_tracker_lock = Lock()
+_force_refresh_tracker: dict[str, float] = {}
 
 
 # ---------------------------------------------------------------------------
 # Mapping Helpers
 # ---------------------------------------------------------------------------
+
+
+def _enforce_force_refresh_cooldown(request: Request) -> None:
+    """Throttle expensive force-refresh calls per client IP."""
+    client_ip = request.client.host if request.client else "unknown"
+    now = monotonic()
+    with _force_refresh_tracker_lock:
+        last_seen = _force_refresh_tracker.get(client_ip)
+        if last_seen is not None:
+            elapsed = now - last_seen
+            if elapsed < FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS:
+                retry_after = max(
+                    1,
+                    ceil(FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS - elapsed),
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "error_code": "FX_WATCH_REFRESH_COOLDOWN",
+                        "detail": (
+                            "Force refresh is cooling down. "
+                            "Please retry after the retry_after_seconds window."
+                        ),
+                        "retry_after_seconds": retry_after,
+                    },
+                    headers={"Retry-After": str(retry_after)},
+                )
+        _force_refresh_tracker[client_ip] = now
+
+        # Defensive pruning to avoid unbounded growth in long-running processes.
+        if len(_force_refresh_tracker) > 1000:
+            cutoff = now - FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS
+            stale_keys = [
+                ip for ip, ts in _force_refresh_tracker.items() if ts < cutoff
+            ]
+            for ip in stale_keys:
+                _force_refresh_tracker.pop(ip, None)
 
 
 def _to_watch_response(w: FXWatchConfig) -> FXWatchResponse:
@@ -83,8 +133,13 @@ def _to_result_item(r: dict, lang: str) -> FXWatchCheckResultItem:
             is_recent_high=timing.is_recent_high,
             lookback_high=timing.lookback_high,
             lookback_days=timing.lookback_days,
+            high_days_ago=timing.high_days_ago,
+            distance_from_high_pct=timing.distance_from_high_pct,
             consecutive_increases=timing.consecutive_increases,
             consecutive_threshold=timing.consecutive_threshold,
+            trend_direction=timing.trend_direction,
+            trend_strength_pct=timing.trend_strength_pct,
+            signal_strength=timing.signal_strength,
             alert_on_recent_high=timing.alert_on_recent_high,
             alert_on_consecutive_increase=timing.alert_on_consecutive_increase,
             should_alert=timing.should_alert,
@@ -195,7 +250,11 @@ def update_fx_watch_config(
     )
     if not watch:
         raise HTTPException(
-            status_code=404, detail=f"FX watch config with ID {watch_id} not found"
+            status_code=404,
+            detail={
+                "error_code": ERROR_FX_WATCH_NOT_FOUND,
+                "detail": f"FX watch config with ID {watch_id} not found",
+            },
         )
 
     return _to_watch_response(watch)
@@ -219,7 +278,11 @@ def delete_fx_watch_config(
     success = remove_watch(session, watch_id)
     if not success:
         raise HTTPException(
-            status_code=404, detail=f"FX watch config with ID {watch_id} not found"
+            status_code=404,
+            detail={
+                "error_code": ERROR_FX_WATCH_NOT_FOUND,
+                "detail": f"FX watch config with ID {watch_id} not found",
+            },
         )
 
     return MessageResponse(message=f"FX watch config {watch_id} deleted successfully")
@@ -235,7 +298,10 @@ def delete_fx_watch_config(
     response_model=FXWatchCheckResponse,
     summary="Check FX watches (no alert)",
 )
+@limiter.limit("10/minute")
 def check_fx_watch_alerts(
+    request: Request,
+    force_refresh: bool = False,
     user_id: str = DEFAULT_USER_ID,
     session: Session = Depends(get_session),
 ) -> FXWatchCheckResponse:
@@ -243,15 +309,21 @@ def check_fx_watch_alerts(
     檢查所有啟用中的外匯監控配置，產出分析結果（不發送通知）。
 
     Query Parameters:
+    - force_refresh: 若為 True，先清除 FX 快取再重新抓取最新資料（預設 False）
     - user_id: 使用者 ID（預設 DEFAULT_USER_ID）
 
     Returns:
+    - checked_at: 伺服器端分析完成的 UTC ISO 時間戳
     - total_watches: 啟用中的配置數量
     - results: 分析結果列表（含配置 ID、貨幣對、分析結果）
     """
+    if force_refresh:
+        _enforce_force_refresh_cooldown(request)
+        refresh_fx_data()
     results = check_fx_watches(session, user_id=user_id)
     lang = get_user_language(session)
     return FXWatchCheckResponse(
+        checked_at=datetime.now(UTC).isoformat(),
         total_watches=len(results),
         results=[_to_result_item(r, lang) for r in results],
     )

@@ -3,12 +3,6 @@ import type { ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { NetWorthHistoryChart } from "../NetWorthHistoryChart"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AreaChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,

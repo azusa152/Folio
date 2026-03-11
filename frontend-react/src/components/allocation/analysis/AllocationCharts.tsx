@@ -8,12 +8,19 @@ import {
   Treemap,
   ResponsiveContainer,
 } from "recharts"
-import type { CategoryAllocation } from "@/api/types/allocation"
+import type { CategoryAllocation, HoldingDetail } from "@/api/types/allocation"
 import { CATEGORY_COLOR_MAP, CATEGORY_COLOR_FALLBACK } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
+import { Button } from "@/components/ui/button"
+import { HoldingsTable } from "../holdings/HoldingsTable"
 
 interface Props {
   categories: Record<string, CategoryAllocation>
+  holdings?: HoldingDetail[]
+  privacyMode?: boolean
+  displayCurrency?: string
+  drillValue?: string | null
+  onDrillChange?: (value: string | null) => void
 }
 
 function getCategoryColor(name: string): string {
@@ -24,21 +31,27 @@ interface TreemapContentProps {
   x?: number; y?: number; width?: number; height?: number
   name?: string; value?: number; fill?: string
   payload?: { fill?: string }
+  onCellClick?: (name: string) => void
+  drillCategory?: string | null
 }
 
-function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill, payload }: TreemapContentProps) {
+function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill, payload, onCellClick, drillCategory }: TreemapContentProps) {
   const cellFill = fill || payload?.fill || "#6b7280"
   if (width < 30 || height < 20) return null
+  const dimmed = drillCategory != null && name !== drillCategory
   return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} fill={cellFill} rx={3} />
+    <g
+      style={onCellClick ? { cursor: "pointer" } : undefined}
+      onClick={onCellClick && name ? () => onCellClick(name) : undefined}
+    >
+      <rect x={x} y={y} width={width} height={height} fill={cellFill} rx={3} opacity={dimmed ? 0.4 : 1} />
       {width > 50 && height > 28 && (
-        <text x={x + width / 2} y={y + height / 2 - 6} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={500}>
+        <text x={x + width / 2} y={y + height / 2 - 6} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={500} opacity={dimmed ? 0.4 : 1}>
           {name}
         </text>
       )}
       {width > 50 && height > 28 && (
-        <text x={x + width / 2} y={y + height / 2 + 8} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={9}>
+        <text x={x + width / 2} y={y + height / 2 + 8} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={9} opacity={dimmed ? 0.4 : 1}>
           {typeof value === "number" ? `${value.toFixed(1)}%` : ""}
         </text>
       )}
@@ -46,10 +59,13 @@ function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill
   )
 }
 
-export function AllocationCharts({ categories }: Props) {
+export function AllocationCharts({ categories, holdings, privacyMode = false, displayCurrency, drillValue, onDrillChange }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [chartType, setChartType] = useState<"pie" | "treemap">("pie")
+  const [localDrill, setLocalDrill] = useState<string | null>(null)
+  const drillCategory = onDrillChange ? (drillValue ?? null) : localDrill
+  const setDrillCategory = onDrillChange ?? setLocalDrill
 
   const entries = Object.entries(categories)
   const pieData = entries.map(([name, v]) => ({
@@ -158,9 +174,18 @@ export function AllocationCharts({ categories }: Props) {
                   paddingAngle={1}
                   label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`}
                   labelLine={false}
+                  cursor="pointer"
+                  onClick={(_data: unknown, index: number) => {
+                    const entry = pieData[index]
+                    if (entry) setDrillCategory(entry.name === drillCategory ? null : entry.name)
+                  }}
                 >
                   {pieData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
+                    <Cell
+                      key={entry.name}
+                      fill={entry.color}
+                      opacity={drillCategory && drillCategory !== entry.name ? 0.4 : 1}
+                    />
                   ))}
                 </Pie>
                 <Tooltip
@@ -174,7 +199,12 @@ export function AllocationCharts({ categories }: Props) {
               <Treemap
                 data={treemapActualData}
                 dataKey="size"
-                content={<TreemapContent />}
+                content={
+                  <TreemapContent
+                    onCellClick={(name) => setDrillCategory(name === drillCategory ? null : name)}
+                    drillCategory={drillCategory}
+                  />
+                }
               >
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -185,6 +215,24 @@ export function AllocationCharts({ categories }: Props) {
           )}
         </div>
       </div>
+
+      {drillCategory && holdings && !onDrillChange && (
+        <div className="space-y-2 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs"
+            onClick={() => setDrillCategory(null)}
+          >
+            {t("allocation.clear_filter")}
+          </Button>
+          <HoldingsTable
+            holdings={holdings.filter((h) => h.category === drillCategory)}
+            privacyMode={privacyMode}
+            displayCurrency={displayCurrency}
+          />
+        </div>
+      )}
     </div>
   )
 }

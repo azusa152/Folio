@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, Clock3 } from "lucide-react"
+import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useSearchParams } from "react-router-dom"
@@ -18,6 +18,7 @@ import { TargetAllocation } from "@/components/allocation/tools/TargetAllocation
 import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManager"
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
+import { TerminologySettings } from "@/components/allocation/settings/TerminologySettings"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
@@ -31,6 +32,9 @@ import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverv
 import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
 import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
 import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
+import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
+import { TransactionsTab } from "@/components/allocation/transactions/TransactionsTab"
+import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 
 export default function Allocation() {
   const { t, i18n } = useTranslation()
@@ -42,6 +46,8 @@ export default function Allocation() {
   const activeTab =
     tabParam === "risk" ||
     tabParam === "actions" ||
+    tabParam === "transactions" ||
+    tabParam === "accounts" ||
     tabParam === "net-worth" ||
     tabParam === "settings"
       ? tabParam
@@ -51,7 +57,11 @@ export default function Allocation() {
   const [netWorthSopOpen, setNetWorthSopOpen] = useState(false)
   const [netWorthHistoryDays, setNetWorthHistoryDays] = useState<30 | 90 | 180 | 365 | 730>(30)
   const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const [riskExpanded, setRiskExpanded] = useState(false)
+  const [actionsExpanded, setActionsExpanded] = useState(false)
   const [seedFeedback, setSeedFeedback] = useState("")
+  const [transactionSheetOpen, setTransactionSheetOpen] = useState(false)
+  const [transactionDefaultTicker, setTransactionDefaultTicker] = useState<string | undefined>(undefined)
   const netWorthTableRef = useRef<HTMLDivElement>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
@@ -119,6 +129,11 @@ export default function Allocation() {
 
   const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
 
+  const openTransactionSheet = (ticker?: string) => {
+    setTransactionDefaultTicker(ticker)
+    setTransactionSheetOpen(true)
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
@@ -177,6 +192,8 @@ export default function Allocation() {
           <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
           <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
           <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
+          <TabsTrigger value="transactions" className="min-h-[44px]">{t("allocation.tab.transactions")}</TabsTrigger>
+          <TabsTrigger value="accounts" className="min-h-[44px]">{t("allocation.tab.accounts")}</TabsTrigger>
           <TabsTrigger value="net-worth" className="min-h-[44px]">{t("allocation.tab.net_worth")}</TabsTrigger>
           <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
         </TabsList>
@@ -197,19 +214,70 @@ export default function Allocation() {
               ))}
             </select>
           </div>
-          <RebalanceAnalysis displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "portfolio"} />
+          <RebalanceAnalysis
+            displayCurrency={displayCurrency}
+            privacyMode={privacyMode}
+            enabled={activeTab === "portfolio"}
+            onRecordTransaction={(ticker) => openTransactionSheet(ticker)}
+          />
         </TabsContent>
 
         {/* Risk tab */}
         <TabsContent value="risk" className="mt-4 space-y-6">
-          <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "risk"} />
-          <hr className="border-border" />
-          <StressTest displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "risk"} />
+          {riskExpanded ? (
+            <>
+              <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "risk"} />
+              <hr className="border-border" />
+              <StressTest displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "risk"} />
+              <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setRiskExpanded(false)}>
+                <ChevronDown className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.hide_details")}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("allocation.tab_teaser.risk_desc")}</p>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setRiskExpanded(true)}>
+                <ChevronRight className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.show_details")}
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         {/* Actions tab */}
-        <TabsContent value="actions" className="mt-4">
-          <SmartWithdrawal privacyMode={privacyMode} />
+        <TabsContent value="actions" className="mt-4 space-y-6">
+          {actionsExpanded ? (
+            <>
+              <SmartWithdrawal privacyMode={privacyMode} />
+              <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setActionsExpanded(false)}>
+                <ChevronDown className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.hide_details")}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("allocation.tab_teaser.actions_desc")}</p>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setActionsExpanded(true)}>
+                <ChevronRight className="h-3.5 w-3.5" />
+                {t("allocation.tab_teaser.show_details")}
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Transactions tab */}
+        <TabsContent value="transactions" className="mt-4 space-y-4">
+          <TransactionsTab
+            enabled={activeTab === "transactions"}
+            onRecordTransaction={() => openTransactionSheet()}
+            onOpenAccounts={() => setActiveTab("accounts")}
+          />
+        </TabsContent>
+
+        {/* Accounts tab */}
+        <TabsContent value="accounts" className="mt-4 space-y-4">
+          <AccountsTab enabled={activeTab === "accounts"} />
         </TabsContent>
 
         {/* Net Worth tab */}
@@ -370,6 +438,15 @@ export default function Allocation() {
 
           <section className="space-y-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t("terminology_settings.terminology_mode")}
+            </p>
+            <div className="rounded-md border border-border p-4">
+              <TerminologySettings />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               {t("allocation.telegram.title")}
             </p>
             <div className="rounded-md border border-border p-4">
@@ -390,6 +467,18 @@ export default function Allocation() {
         onClose={() => setNetWorthSheetOpen(false)}
         initialKind={netWorthSheetKind}
       />
+      {transactionSheetOpen ? (
+        <AddTransactionSheet
+          key={`${transactionSheetOpen ? "open" : "closed"}-${transactionDefaultTicker ?? "all"}`}
+          open={transactionSheetOpen}
+          onClose={() => setTransactionSheetOpen(false)}
+          defaultTicker={transactionDefaultTicker}
+          onOpenAccounts={() => {
+            setTransactionSheetOpen(false)
+            setActiveTab("accounts")
+          }}
+        />
+      ) : null}
     </div>
   )
 }

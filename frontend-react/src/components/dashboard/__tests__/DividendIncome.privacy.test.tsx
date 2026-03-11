@@ -4,12 +4,6 @@ import { DividendIncome } from "../DividendIncome"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import type { RebalanceResponse, EnrichedStock } from "@/api/types/dashboard"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("../InfoPopover", () => ({
   InfoPopover: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="info-popover">{children}</div>

@@ -3,6 +3,19 @@
 Consumers using `from api.schemas import X` continue to work unchanged.
 """
 
+from api.schemas.account import (  # noqa: F401
+    AccountCashBalanceItem,
+    AccountRequest,
+    AccountResponse,
+    AccountSummaryItem,
+    AccountUpdateRequest,
+)
+from api.schemas.analytics import (  # noqa: F401
+    ContributionGrowthPoint,
+    DrawdownPointResponse,
+    InsightResponse,
+    RiskMetricsResponse,
+)
 from api.schemas.backtest import (  # noqa: F401
     BackfillStatusResponse,
     BacktestDetailResponse,
@@ -148,4 +161,8 @@ from api.schemas.stock import (  # noqa: F401
     ThesisCreateRequest,
     ThesisLogResponse,
     TickerCreateRequest,
+)
+from api.schemas.transaction import (  # noqa: F401
+    TransactionRequest,
+    TransactionResponse,
 )

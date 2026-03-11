@@ -1,13 +1,7 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { ConsensusStocks } from "../ConsensusStocks"
 import type { ConsensusStockItem } from "@/api/types/smartMoney"
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
-  }),
-}))
 
 function makeItem(overrides: Partial<ConsensusStockItem> = {}): ConsensusStockItem {
   return {

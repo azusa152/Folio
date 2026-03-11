@@ -129,3 +129,13 @@ class GuruTier(StrEnum):
     TIER_1 = "TIER_1"  # 傳奇 / 必追蹤
     TIER_2 = "TIER_2"  # 菁英 / 高關注度
     TIER_3 = "TIER_3"  # 值得關注 / 利基 / 使用者自訂
+
+
+class TransactionType(StrEnum):
+    """持倉交易類型。"""
+
+    BUY = "BUY"
+    SELL = "SELL"
+    DIVIDEND = "DIVIDEND"
+    DEPOSIT = "DEPOSIT"
+    WITHDRAWAL = "WITHDRAWAL"

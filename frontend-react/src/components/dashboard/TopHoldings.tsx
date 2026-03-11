@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
+import { useTerminology } from "@/hooks/useTerminology"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
@@ -55,6 +56,7 @@ export function TopHoldings({ rebalance }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isPrivate = useIsPrivate()
+  const { term } = useTerminology()
   const displayCurrency = rebalance?.display_currency ?? "USD"
 
   if (!rebalance?.holdings_detail?.length) {
@@ -91,7 +93,7 @@ export function TopHoldings({ rebalance }: Props) {
                 <th className="text-right px-3 py-2">{t("dashboard.holdings_table.market_value")}</th>
                 <th className="text-right px-3 py-2">{t("dashboard.holdings_table.daily_change")}</th>
                 <th className="text-right px-3 py-2">{t("dashboard.holdings_table.total_return")}</th>
-                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.gain_loss")}</th>
+                <th className="text-right px-3 py-2">{term("unrealized_pl", t("dashboard.holdings_table.gain_loss"))}</th>
               </tr>
             </thead>
             <tbody>

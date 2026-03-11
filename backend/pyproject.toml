@@ -12,7 +12,7 @@ dependencies = [
     # Market Data
     "jquants-api-client>=2.0.0",
     "yfinance[nospam]>=0.2.58,<1.0",
-    "curl_cffi>=0.7.4,<1.0",
+    "curl_cffi>=0.7.4,<0.8",  # Pinned: 0.8+ has BoringSSL TLS bug on Linux (gh:lexiforest/curl_cffi#601)
     "requests>=2.32.4",  # CVE-2024-47081: Minimum safe version
     # Configuration & Utilities
     "python-dotenv>=1.0.1,<2.0",

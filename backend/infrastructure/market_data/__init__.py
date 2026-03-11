@@ -20,6 +20,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     batch_download_history,
     batch_download_history_extended,
     clear_all_caches,
+    clear_forex_caches,
     count_signals_in_l1,
     detect_is_etf,
     fetch_price_pair,

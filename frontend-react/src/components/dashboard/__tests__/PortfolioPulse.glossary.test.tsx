@@ -35,6 +35,13 @@ vi.mock("@/lib/format", () => ({
   formatCurrency: (v: number) => `$${v.toFixed(2)}`,
 }))
 
+vi.mock("@/hooks/useTerminology", () => ({
+  useTerminology: () => ({
+    term: (key: string, fallback?: string) => fallback ?? key,
+    isSimplified: false,
+  }),
+}))
+
 vi.mock("@/components/LightweightChartWrapper", () => ({
   LightweightChartWrapper: () => <div data-testid="chart" />,
 }))
@@ -52,6 +59,8 @@ const mockRebalance: RebalanceResponse = {
   advice: [],
   holdings_detail: [],
   xray: [],
+  xray_coverage_pct: 0,
+  xray_skipped_etfs: [],
   health_score: 100,
   health_level: "healthy",
   sector_exposure: [],

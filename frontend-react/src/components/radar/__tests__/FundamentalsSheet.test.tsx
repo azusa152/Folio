@@ -5,12 +5,6 @@ import { FundamentalsSheet } from "../FundamentalsSheet"
 
 const mockUseFundamentals = vi.fn()
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock("@/api/hooks/useRadar", () => ({
   useFundamentals: (...args: unknown[]) => mockUseFundamentals(...args),
 }))

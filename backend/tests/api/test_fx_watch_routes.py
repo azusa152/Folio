@@ -133,7 +133,9 @@ class TestFXWatchCRUD:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        detail = response.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_NOT_FOUND"
+        assert "not found" in detail["detail"].lower()
 
     def test_delete_fx_watch_config(self, client: TestClient):
         # Arrange
@@ -163,7 +165,9 @@ class TestFXWatchCRUD:
 
         # Assert
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        detail = response.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_NOT_FOUND"
+        assert "not found" in detail["detail"].lower()
 
     def test_create_with_only_recent_high_enabled(self, client: TestClient):
         """Create config with only recent high toggle enabled."""
@@ -270,6 +274,26 @@ class TestFXWatchCRUD:
 class TestFXWatchActions:
     """Tests for FX Watch action endpoints (check & alert)."""
 
+    def test_openapi_should_expose_fx_timing_enums(self, client: TestClient):
+        """Contract guard: keep FX timing enum fields constrained in OpenAPI."""
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+
+        schemas = response.json()["components"]["schemas"]
+        properties = schemas["FXTimingResultResponse"]["properties"]
+
+        assert properties["trend_direction"]["enum"] == [
+            "rising",
+            "falling",
+            "sideways",
+        ]
+        assert properties["signal_strength"]["enum"] == [
+            "strong",
+            "moderate",
+            "weak",
+            "none",
+        ]
+
     def test_check_fx_watches_with_no_configs(self, client: TestClient):
         # Act
         response = client.post("/fx-watch/check")
@@ -279,6 +303,38 @@ class TestFXWatchActions:
         data = response.json()
         assert data["total_watches"] == 0
         assert data["results"] == []
+
+    @patch.dict("api.routes.fx_watch_routes._force_refresh_tracker", {}, clear=True)
+    @patch("api.routes.fx_watch_routes.refresh_fx_data")
+    def test_force_refresh_should_return_429_during_cooldown(
+        self, mock_refresh_fx_data, client: TestClient
+    ):
+        # Act: first force refresh should pass
+        first = client.post("/fx-watch/check?force_refresh=true")
+        second = client.post("/fx-watch/check?force_refresh=true")
+
+        # Assert
+        assert first.status_code == 200
+        assert second.status_code == 429
+        detail = second.json()["detail"]
+        assert detail["error_code"] == "FX_WATCH_REFRESH_COOLDOWN"
+        assert detail["retry_after_seconds"] >= 1
+        assert second.headers["Retry-After"] == str(detail["retry_after_seconds"])
+        assert mock_refresh_fx_data.call_count == 1
+
+    @patch.dict("api.routes.fx_watch_routes._force_refresh_tracker", {}, clear=True)
+    @patch("api.routes.fx_watch_routes.refresh_fx_data")
+    def test_non_force_refresh_should_not_be_blocked_by_force_refresh_cooldown(
+        self, mock_refresh_fx_data, client: TestClient
+    ):
+        # Act: trigger force refresh once, then normal check
+        force_refresh_response = client.post("/fx-watch/check?force_refresh=true")
+        normal_check_response = client.post("/fx-watch/check")
+
+        # Assert: normal check remains available
+        assert force_refresh_response.status_code == 200
+        assert normal_check_response.status_code == 200
+        assert mock_refresh_fx_data.call_count == 1
 
     @patch("application.portfolio.fx_watch_service.get_forex_history_long")
     def test_check_fx_watches_with_active_config(
@@ -319,6 +375,51 @@ class TestFXWatchActions:
         assert result["result"]["consecutive_increases"] == 3
         assert result["result"]["alert_on_recent_high"] is True
         assert result["result"]["alert_on_consecutive_increase"] is True
+        assert result["result"]["high_days_ago"] >= 0
+        assert result["result"]["distance_from_high_pct"] >= 0
+        assert result["result"]["trend_direction"] in {"rising", "falling", "sideways"}
+        assert isinstance(result["result"]["trend_strength_pct"], float)
+        assert result["result"]["signal_strength"] in {
+            "strong",
+            "moderate",
+            "weak",
+            "none",
+        }
+
+    @patch("application.portfolio.fx_watch_service.get_forex_history_long")
+    def test_check_fx_watch_response_should_include_trend_fields(
+        self, mock_get_history, client: TestClient
+    ):
+        client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "recent_high_days": 5,
+                "consecutive_increase_days": 2,
+            },
+        )
+        mock_get_history.return_value = [
+            {"date": "2026-02-07", "close": 150.0},
+            {"date": "2026-02-08", "close": 150.2},
+            {"date": "2026-02-09", "close": 150.4},
+            {"date": "2026-02-10", "close": 150.8},
+            {"date": "2026-02-11", "close": 151.0},
+            {"date": "2026-02-12", "close": 151.1},
+            {"date": "2026-02-13", "close": 151.2},
+            {"date": "2026-02-14", "close": 151.4},
+            {"date": "2026-02-15", "close": 151.5},
+            {"date": "2026-02-16", "close": 151.6},
+        ]
+
+        response = client.post("/fx-watch/check")
+        assert response.status_code == 200
+        item = response.json()["results"][0]["result"]
+        assert "high_days_ago" in item
+        assert "distance_from_high_pct" in item
+        assert "trend_direction" in item
+        assert "trend_strength_pct" in item
+        assert "signal_strength" in item
 
     @patch("application.portfolio.fx_watch_service.log_notification_sent")
     @patch("application.portfolio.fx_watch_service.is_within_rate_limit")

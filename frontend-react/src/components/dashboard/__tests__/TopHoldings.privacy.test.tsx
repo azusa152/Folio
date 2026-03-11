@@ -5,9 +5,10 @@ import { TopHoldings } from "../TopHoldings"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import type { RebalanceResponse } from "@/api/types/dashboard"
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
+vi.mock("@/hooks/useTerminology", () => ({
+  useTerminology: () => ({
+    term: (key: string, fallback?: string) => fallback ?? key,
+    isSimplified: false,
   }),
 }))
 

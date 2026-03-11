@@ -27,13 +27,19 @@ export type UpdateFxWatchRequest = components["schemas"]["FXWatchUpdateRequest"]
 export interface FxAnalysis {
   current_rate: number
   should_alert: boolean
+  scenario: string
   recommendation: string
   reasoning: string
   is_recent_high: boolean
   lookback_high: number
   lookback_days: number
+  high_days_ago: number
+  distance_from_high_pct: number
   consecutive_increases: number
   consecutive_threshold: number
+  trend_direction: "rising" | "falling" | "sideways"
+  trend_strength_pct: number
+  signal_strength: "strong" | "moderate" | "weak" | "none"
 }
 
 // GET /forex/{base}/{quote}/history-long returns list[dict]
@@ -44,3 +50,9 @@ export interface FxHistoryPoint {
 
 // Inverted map used by FX watch components: watch_id → analysis
 export type FxAnalysisMap = Record<number, FxAnalysis>
+
+// Frontend query state for FX analysis response.
+export interface FxAnalysisState {
+  checked_at: string | null
+  by_watch_id: FxAnalysisMap
+}

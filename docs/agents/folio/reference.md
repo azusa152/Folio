@@ -4,6 +4,35 @@ Detailed reference for signal taxonomy, market sentiment thresholds, endpoint fi
 
 ---
 
+## Webhook Contract
+
+Endpoint: `POST /webhook`
+
+Request body fields:
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `action` | string | Yes | Use `help` to discover available actions and workflows |
+| `ticker` | string | No | Required by ticker-based actions such as `signals`, `moat`, `alerts`, `analyze` |
+| `params` | object | No | Action-specific parameters |
+| `format` | `"detailed"` or `"concise"` | No | Default `detailed`; `concise` omits most `data` payloads to reduce tokens |
+
+Response envelope:
+
+| Field | Type | Always Present | Notes |
+|-------|------|----------------|-------|
+| `success` | bool | Yes | Execution result flag |
+| `message` | string | Yes | Human-readable action output |
+| `interpretation` | string | Yes | One-line pre-interpreted summary for agent decisioning |
+| `data` | object | Conditional | Included by default (`format=detailed`), omitted for most actions when `format=concise` |
+
+Composite actions (token-efficient):
+
+- `dashboard` — portfolio summary + market fear/greed context in one call
+- `analyze` — technical signals + moat trend + fundamentals in one call
+
+---
+
 ## Signal Taxonomy
 
 Folio uses two signal fields per stock:
@@ -200,6 +229,105 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/openapi.json` | OpenAPI spec |
 
 > CSV files are imported through the frontend UI. The browser parses CSV/TSV, maps columns to `HoldingImportItem[]`, then submits to `POST /holdings/import`.
+
+---
+
+## Error Codes
+
+Branch on `error_code` (machine-readable), not localized `detail`.
+
+### Stock
+
+- `STOCK_NOT_FOUND`
+- `STOCK_ALREADY_EXISTS`
+- `STOCK_ALREADY_INACTIVE`
+- `STOCK_ALREADY_ACTIVE`
+- `CATEGORY_UNCHANGED`
+
+### Portfolio
+
+- `HOLDING_NOT_FOUND`
+- `NET_WORTH_ITEM_NOT_FOUND`
+- `PROFILE_NOT_FOUND`
+- `NET_WORTH_SEED_NO_CASH_HOLDINGS`
+- `INVALID_SCENARIO_DROP`
+
+### Guru
+
+- `GURU_NOT_FOUND`
+- `GURU_FILING_NOT_FOUND`
+- `SYNC_IN_PROGRESS`
+
+### Backtest
+
+- `BACKTEST_SIGNAL_UNKNOWN`
+- `BACKTEST_DATA_NOT_FOUND`
+
+### System / Operations
+
+- `FX_WATCH_NOT_FOUND`
+- `SCAN_IN_PROGRESS`
+- `DIGEST_IN_PROGRESS`
+- `TELEGRAM_NOT_CONFIGURED`
+- `TELEGRAM_SEND_FAILED`
+- `PREFERENCES_UPDATE_FAILED`
+- `INVALID_INPUT`
+- `INTERNAL_ERROR`
+
+---
+
+## Transaction Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ticker` | string | Yes (via params or ticker) | Asset symbol |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL |
+| `quantity` | float | Yes | Number of shares/units |
+| `price` | float | No | Per-unit price |
+| `total_amount` | float | Yes | Total transaction value |
+| `date` | string | Yes | YYYY-MM-DD format |
+
+## Analytics Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `annualized_return` | float | Portfolio return annualized |
+| `annualized_volatility` | float | Standard deviation annualized |
+| `sharpe_ratio` | float | Risk-adjusted return (null if < 30 days) |
+| `sortino_ratio` | float | Downside risk-adjusted (null if < 30 days) |
+| `max_drawdown_pct` | float | Largest peak-to-trough decline (negative) |
+| `calmar_ratio` | float | Return / abs(max drawdown) |
+
+## Insights Response
+
+Array of insight objects:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | i18n key for the insight message |
+| `severity` | string | info / positive / warning / action |
+| `vars` | object | Interpolation variables for the message |
+| `category` | string | general / allocation / performance / risk |
+
+---
+
+## Asset Management API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/transactions` | List transactions (optional `ticker`, `limit`) |
+| `POST` | `/transactions` | Create transaction |
+| `GET` | `/transactions/{id}` | Get transaction by ID |
+| `DELETE` | `/transactions/{id}` | Delete transaction |
+| `GET` | `/accounts` | List accounts |
+| `POST` | `/accounts` | Create account |
+| `PUT` | `/accounts/{id}` | Update account |
+| `DELETE` | `/accounts/{id}` | Delete (deactivate) account |
+| `GET` | `/accounts/summary` | Account summary with holdings count |
+| `GET` | `/analytics/drawdown` | Drawdown time series |
+| `GET` | `/analytics/risk-metrics` | Sharpe, Sortino, max drawdown, volatility |
+| `GET` | `/analytics/contribution-growth` | Cumulative contributions vs market growth |
+| `GET` | `/analytics/insights` | Natural language portfolio insights |
 
 ---
 

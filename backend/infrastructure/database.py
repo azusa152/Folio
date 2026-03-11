@@ -6,6 +6,8 @@ Infrastructure — 資料庫連線與 Session 管理。
 import os
 from collections.abc import Generator
 
+from sqlalchemy import event
+from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from logging_config import get_logger
@@ -13,10 +15,36 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/radar.db")
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+IS_IN_MEMORY_SQLITE = DATABASE_URL in {
+    "sqlite://",
+    "sqlite:///:memory:",
+} or DATABASE_URL.endswith(":memory:")
 
-# SQLite 需要 check_same_thread=False 以支援多執行緒存取
-connect_args = {"check_same_thread": False}
-engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+engine_kwargs: dict[str, object] = {"echo": False}
+if IS_SQLITE:
+    # SQLite 需要 check_same_thread=False 以支援多執行緒存取
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    # File-based SQLite: use NullPool to avoid QueuePool exhaustion under threaded workloads.
+    # In-memory SQLite tests rely on a shared single connection.
+    engine_kwargs["poolclass"] = StaticPool if IS_IN_MEMORY_SQLITE else NullPool
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
+
+
+if IS_SQLITE and not IS_IN_MEMORY_SQLITE:
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_conn, connection_record) -> None:
+        """Tune SQLite for concurrent access in multi-thread workloads."""
+        del connection_record
+        cursor = dbapi_conn.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+        finally:
+            cursor.close()
+
 
 logger.info("資料庫連線位置：%s", DATABASE_URL)
 
@@ -41,10 +69,16 @@ def _run_migrations() -> None:
         "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
         "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
         "UPDATE holding SET currency = 'HKD' WHERE ticker LIKE '%.HK' AND currency = 'USD';",
+        # Holding: 新增現金標記欄位
+        "ALTER TABLE holding ADD COLUMN is_cash BOOLEAN DEFAULT 0;",
         # Holding: 現金持倉以 ticker 作為幣別
         "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
         # Holding: 新增帳戶類型欄位
         "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
+        # Holding: 新增帳戶 ID 欄位
+        "ALTER TABLE holding ADD COLUMN account_id INTEGER;",
+        # Transaction: 新增帳戶 ID 欄位（用於券商現金結算）
+        'ALTER TABLE "transaction" ADD COLUMN account_id INTEGER;',
         # ScanLog: 新增市場情緒原因說明欄位
         "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
         # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
@@ -75,6 +109,12 @@ def _run_migrations() -> None:
         "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
         # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
         "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
+        # PortfolioSnapshot: 新增個股市值 JSON 欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN holding_values TEXT DEFAULT '{}';",
+        # PortfolioSnapshot: 新增總成本基礎欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN cost_basis_total REAL;",
+        # PortfolioSnapshot: 新增地理區域市值 JSON 欄位
+        "ALTER TABLE portfoliosnapshot ADD COLUMN geographic_values TEXT DEFAULT '{}';",
         # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
         # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
@@ -85,6 +125,8 @@ def _run_migrations() -> None:
         "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
         # NetWorthItem: source tracking for seeded portfolio cash
         "ALTER TABLE networthitem ADD COLUMN source TEXT DEFAULT 'manual';",
+        # UserPreferences: terminology display mode (Phase 7)
+        "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
     ]
 
     with engine.connect() as conn:

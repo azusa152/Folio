@@ -5,7 +5,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlmodel import Session, func, select
 
@@ -15,6 +15,7 @@ from domain.constants import (
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
 from domain.entities import (
+    Account,
     FXWatchConfig,
     Guru,
     GuruFiling,
@@ -27,6 +28,7 @@ from domain.entities import (
     Stock,
     SystemTemplate,
     ThesisLog,
+    Transaction,
     UserInvestmentProfile,
     UserPreferences,
     UserTelegramSettings,
@@ -1242,6 +1244,19 @@ def find_holding_by_id(session: Session, holding_id: int) -> Holding | None:
     return session.get(Holding, holding_id)
 
 
+def find_cash_holding_by_account_and_currency(
+    session: Session, account_id: int, currency: str
+) -> Holding | None:
+    """查詢指定帳戶與幣別的現金持倉。"""
+    normalized_currency = currency.upper().strip()
+    stmt = select(Holding).where(
+        Holding.account_id == account_id,
+        Holding.is_cash == True,  # noqa: E712
+        Holding.currency == normalized_currency,
+    )
+    return session.exec(stmt).first()
+
+
 def save_holding(session: Session, holding: Holding) -> Holding:
     """新增或更新持倉（含 refresh）。"""
     session.add(holding)
@@ -1344,3 +1359,86 @@ def save_profile(
     session.commit()
     session.refresh(profile)
     return profile
+
+
+# ===========================================================================
+# Transaction Repository
+# ===========================================================================
+
+
+def find_all_transactions(
+    session: Session,
+    ticker: str | None = None,
+    account_id: int | None = None,
+    holding_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = 500,
+) -> list[Transaction]:
+    """查詢交易紀錄（支援篩選）。"""
+    stmt = select(Transaction).order_by(Transaction.transaction_date.desc())
+    if ticker:
+        stmt = stmt.where(Transaction.ticker == ticker)
+    if account_id is not None:
+        stmt = stmt.where(Transaction.account_id == account_id)
+    if holding_id is not None:
+        stmt = stmt.where(Transaction.holding_id == holding_id)
+    if start_date is not None:
+        stmt = stmt.where(Transaction.transaction_date >= start_date)
+    if end_date is not None:
+        stmt = stmt.where(Transaction.transaction_date <= end_date)
+    stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_transaction_by_id(session: Session, txn_id: int) -> Transaction | None:
+    """根據 ID 查詢單一交易紀錄。"""
+    return session.get(Transaction, txn_id)
+
+
+def save_transaction(session: Session, txn: Transaction) -> Transaction:
+    """新增或更新交易紀錄（含 refresh）。"""
+    session.add(txn)
+    session.commit()
+    session.refresh(txn)
+    return txn
+
+
+def delete_transaction(session: Session, txn: Transaction) -> None:
+    """刪除交易紀錄。"""
+    session.delete(txn)
+    session.commit()
+
+
+# ===========================================================================
+# Account Repository
+# ===========================================================================
+
+
+def find_all_accounts(session: Session, active_only: bool = True) -> list[Account]:
+    """查詢帳戶（預設僅啟用中，依名稱排序）。"""
+    stmt = select(Account).order_by(Account.name)
+    if active_only:
+        stmt = stmt.where(Account.is_active == True)  # noqa: E712
+    return list(session.exec(stmt).all())
+
+
+def find_account_by_id(session: Session, account_id: int) -> Account | None:
+    """根據 ID 查詢單一帳戶。"""
+    return session.get(Account, account_id)
+
+
+def save_account(session: Session, account: Account) -> Account:
+    """新增或更新帳戶（含 refresh）。"""
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+
+def deactivate_account(session: Session, account: Account) -> None:
+    """軟刪除帳戶（設為停用）。"""
+    account.is_active = False
+    account.updated_at = datetime.now(UTC)
+    session.add(account)
+    session.commit()

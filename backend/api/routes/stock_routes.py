@@ -487,16 +487,23 @@ async def webhook_route(
 ) -> WebhookResponse:
     """
     統一入口 — 供 OpenClaw 等 AI agent 使用。
-    支援的 action: help, summary, signals, scan, moat, alerts, add_stock
+    支援的 action 請呼叫 `help` 動態查詢完整清單。
 
     Rate limited: 5/minute per IP (prevents webhook abuse).
     """
     try:
-        result = handle_webhook(session, payload.action, payload.ticker, payload.params)
+        params = dict(payload.params)
+        if payload.format:
+            params["format"] = payload.format
+        result = handle_webhook(session, payload.action, payload.ticker, params)
         return WebhookResponse(**result)
     except Exception as e:
         logger.error("Webhook 處理失敗：%s", e, exc_info=True)
         return WebhookResponse(
             success=False,
             message=t(GENERIC_WEBHOOK_ERROR, lang=get_user_language(session)),
+            interpretation=t(
+                "webhook.interpretation.action_failed",
+                lang=get_user_language(session),
+            ),
         )

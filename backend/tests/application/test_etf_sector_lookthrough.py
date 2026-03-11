@@ -28,7 +28,7 @@ import pytest  # noqa: E402
 from sqlmodel import Session  # noqa: E402
 
 from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Holding, UserInvestmentProfile  # noqa: E402
+from domain.entities import Holding, Stock, UserInvestmentProfile  # noqa: E402
 from domain.enums import StockCategory  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -79,6 +79,16 @@ def _add_holding(session: Session, ticker: str, quantity: float = 10.0) -> None:
     )
 
 
+def _add_stock(session: Session, ticker: str, is_etf: bool = False) -> None:
+    session.add(
+        Stock(
+            ticker=ticker,
+            category=StockCategory.GROWTH,
+            is_etf=is_etf,
+        )
+    )
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -111,6 +121,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -154,6 +165,57 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    def test_approach_b_works_without_constituents(
+        self,
+        _mock_prewarm_signals,
+        _mock_prewarm_etf,
+        _mock_prewarm_etf_sw,
+        mock_signals,
+        mock_fx,
+        mock_sector,
+        mock_etf_holdings,
+        mock_etf_weights,
+        db_session: Session,
+    ):
+        """Regression: Approach B should run even when ETF top holdings are unavailable."""
+        # Arrange
+        _add_profile(db_session)
+        _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
+        db_session.commit()
+
+        mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+        mock_etf_weights.return_value = {
+            "Technology": 0.30,
+            "Healthcare": 0.20,
+        }
+        mock_sector.return_value = None
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        sector_exposure = {s["sector"]: s for s in result["sector_exposure"]}
+        total_mv = 10.0 * 200.0
+        assert sector_exposure["Technology"]["value"] == pytest.approx(
+            total_mv * 0.30, rel=0.01
+        )
+        assert sector_exposure["Healthcare"]["value"] == pytest.approx(
+            total_mv * 0.20, rel=0.01
+        )
+        assert "Unknown" not in sector_exposure
+        mock_sector.assert_not_called()
+
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_a_fallback_uses_constituent_sectors(
         self,
         _mock_prewarm_signals,
@@ -170,6 +232,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -224,6 +287,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -301,6 +365,138 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    def test_known_etf_without_lookthrough_data_classified_as_etf(
+        self,
+        _mock_prewarm_signals,
+        _mock_prewarm_etf,
+        _mock_prewarm_etf_sw,
+        mock_signals,
+        mock_fx,
+        mock_sector,
+        mock_etf_holdings,
+        mock_etf_weights,
+        db_session: Session,
+    ):
+        """Known ETF with unavailable A/B data should be labeled ETF, not Unknown."""
+        # Arrange
+        _add_profile(db_session)
+        _add_stock(db_session, "VOO", is_etf=True)
+        _add_holding(db_session, "VOO", quantity=10.0)
+        db_session.commit()
+
+        mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+        mock_etf_weights.return_value = None
+        mock_sector.return_value = None
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        sector_exposure = {s["sector"]: s for s in result["sector_exposure"]}
+        assert "ETF" in sector_exposure
+        assert "Unknown" not in sector_exposure
+        assert sector_exposure["ETF"]["value"] == pytest.approx(10.0 * 200.0, rel=0.01)
+
+    @patch("application.portfolio.rebalance_service.detect_is_etf")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    def test_runtime_detected_etf_classified_as_etf(
+        self,
+        _mock_prewarm_signals,
+        _mock_prewarm_etf,
+        _mock_prewarm_etf_sw,
+        mock_signals,
+        mock_fx,
+        mock_sector,
+        mock_etf_holdings,
+        mock_etf_weights,
+        mock_detect_etf,
+        db_session: Session,
+    ):
+        """ETF not in Stock table but detected at runtime should be labeled ETF."""
+        # Arrange — no Stock row for ARKK, so it is NOT in known_etf_tickers
+        _add_profile(db_session)
+        _add_holding(db_session, "ARKK", quantity=10.0)
+        db_session.commit()
+
+        mock_signals.return_value = {**_MOCK_SIGNALS, "price": 100.0}
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+        mock_etf_weights.return_value = None
+        mock_sector.return_value = None
+        mock_detect_etf.return_value = True
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        sector_exposure = {s["sector"]: s for s in result["sector_exposure"]}
+        assert "ETF" in sector_exposure
+        assert "Unknown" not in sector_exposure
+        assert sector_exposure["ETF"]["value"] == pytest.approx(10.0 * 100.0, rel=0.01)
+
+    @patch("application.portfolio.rebalance_service.detect_is_etf")
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    def test_non_etf_without_sector_stays_unknown(
+        self,
+        _mock_prewarm_signals,
+        _mock_prewarm_etf,
+        _mock_prewarm_etf_sw,
+        mock_signals,
+        mock_fx,
+        mock_sector,
+        mock_etf_holdings,
+        mock_etf_weights,
+        mock_detect_etf,
+        db_session: Session,
+    ):
+        """Non-ETF ticker without sector data should still be labeled Unknown."""
+        # Arrange
+        _add_profile(db_session)
+        _add_holding(db_session, "XYZ", quantity=5.0)
+        db_session.commit()
+
+        mock_signals.return_value = {**_MOCK_SIGNALS, "price": 50.0}
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+        mock_etf_weights.return_value = None
+        mock_sector.return_value = None
+        mock_detect_etf.return_value = False
+
+        # Act
+        result = calculate_rebalance(db_session, "USD")
+
+        # Assert
+        sector_exposure = {s["sector"]: s for s in result["sector_exposure"]}
+        assert "Unknown" in sector_exposure
+        assert "ETF" not in sector_exposure
+        assert sector_exposure["Unknown"]["value"] == pytest.approx(
+            5.0 * 50.0, rel=0.01
+        )
+
+    @patch("application.portfolio.rebalance_service.get_etf_sector_weights")
+    @patch("application.portfolio.rebalance_service.get_etf_top_holdings")
+    @patch("application.portfolio.rebalance_service.get_ticker_sector")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_mixed_portfolio_etf_and_direct(
         self,
         _mock_prewarm_signals,
@@ -318,6 +514,7 @@ class TestEtfSectorLookthrough:
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
         _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         def _signals_side_effect(ticker: str, *a, **kw):
@@ -327,14 +524,14 @@ class TestEtfSectorLookthrough:
         mock_signals.side_effect = _signals_side_effect
         mock_fx.return_value = {"USD": 1.0}
 
-        def _etf_holdings_side_effect(ticker: str):
+        def _etf_holdings_side_effect(ticker: str, **_kwargs):
             if ticker == "VTI":
                 return [{"symbol": "AAPL", "name": "Apple", "weight": 0.05}]
             return None
 
         mock_etf_holdings.side_effect = _etf_holdings_side_effect
 
-        def _etf_weights_side_effect(ticker: str):
+        def _etf_weights_side_effect(ticker: str, **_kwargs):
             if ticker == "VTI":
                 return {"Technology": 0.30, "Financial Services": 0.15}
             return None

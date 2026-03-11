@@ -1,13 +1,6 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { GuruStyleBadge } from "../GuruStyleBadge"
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) =>
-      opts?.defaultValue ?? key,
-  }),
-}))
 
 describe("GuruStyleBadge", () => {
   it("renders null when style is null", () => {

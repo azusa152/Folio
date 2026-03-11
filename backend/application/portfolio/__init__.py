@@ -1,5 +1,17 @@
 """application.portfolio sub-package — re-exports public API for backward compatibility."""
 
+from application.portfolio.account_service import (  # noqa: F401
+    create_account,
+    get_account_summary,
+    list_accounts,
+    remove_account,
+    update_account,
+)
+from application.portfolio.analytics_service import (  # noqa: F401
+    get_contribution_vs_growth,
+    get_drawdown_series,
+    get_risk_metrics,
+)
 from application.portfolio.crypto_service import (  # noqa: F401
     get_crypto_details,
     get_crypto_holding_prices,
@@ -23,6 +35,10 @@ from application.portfolio.holding_service import (  # noqa: F401
     import_holdings,
     list_holdings,
     update_holding,
+)
+from application.portfolio.insight_service import (  # noqa: F401
+    get_portfolio_insights,
+    invalidate_insight_cache,
 )
 from application.portfolio.net_worth_service import (  # noqa: F401
     calculate_net_worth,
@@ -49,6 +65,12 @@ from application.portfolio.snapshot_service import (  # noqa: F401
 )
 from application.portfolio.stress_test_service import (  # noqa: F401
     calculate_stress_test,
+)
+from application.portfolio.transaction_service import (  # noqa: F401
+    create_transaction,
+    get_transaction,
+    list_transactions,
+    remove_transaction,
 )
 
 # Backward-compatible aliases for external imports.

@@ -37,6 +37,13 @@ from domain.analysis.backtest import (  # noqa: F401
     deduplicate_signal_events,
     replay_historical_signals,
 )
+from domain.analysis.drawdown import (  # noqa: F401
+    DrawdownPeriod,
+    DrawdownPoint,
+    compute_drawdown_series,
+    compute_max_drawdown,
+    find_drawdown_periods,
+)
 from domain.analysis.fx_analysis import (  # noqa: F401
     FXRateAlert,
     FXTimingResult,
@@ -53,6 +60,11 @@ from domain.analysis.guru_backtest import (  # noqa: F401
     compute_alpha,
     compute_clone_returns,
     compute_quarter_return,
+)
+from domain.analysis.risk_metrics import (  # noqa: F401
+    RiskMetrics,
+    compute_daily_returns,
+    compute_risk_metrics,
 )
 from domain.analysis.smart_money import (  # noqa: F401
     classify_holding_change,

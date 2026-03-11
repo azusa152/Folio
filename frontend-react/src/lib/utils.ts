@@ -65,10 +65,15 @@ export function getErrorMessage(err: unknown): string {
   if (err == null) return ""
   if (typeof err === "string") return err
   if (typeof err === "object") {
-    if ("detail" in err && typeof (err as Record<string, unknown>).detail === "string")
-      return (err as Record<string, unknown>).detail as string
-    if ("message" in err && typeof (err as Record<string, unknown>).message === "string")
-      return (err as Record<string, unknown>).message as string
+    const obj = err as Record<string, unknown>
+    if ("detail" in obj) {
+      if (typeof obj.detail === "string") return obj.detail
+      if (typeof obj.detail === "object" && obj.detail !== null) {
+        const detail = obj.detail as Record<string, unknown>
+        if (typeof detail.detail === "string") return detail.detail
+      }
+    }
+    if ("message" in obj && typeof obj.message === "string") return obj.message
   }
   return String(err)
 }

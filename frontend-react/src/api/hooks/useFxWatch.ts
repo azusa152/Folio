@@ -4,6 +4,7 @@ import type {
   FxWatch,
   FxAnalysis,
   FxAnalysisMap,
+  FxAnalysisState,
   FxCheckResponse,
   FxHistoryPoint,
   CreateFxWatchRequest,
@@ -133,8 +134,10 @@ export function useToggleFxWatch() {
   })
 }
 
-async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
-  const { data, error } = await client.POST("/fx-watch/check")
+async function fetchFxAnalysis(forceRefresh = false): Promise<FxAnalysisState> {
+  const { data, error } = await client.POST("/fx-watch/check", {
+    params: { query: { force_refresh: forceRefresh } },
+  })
   if (error) throw error
   const response = data as unknown as FxCheckResponse
   const map: FxAnalysisMap = {}
@@ -142,24 +145,30 @@ async function fetchFxAnalysis(): Promise<FxAnalysisMap> {
     const entry: FxAnalysis = {
       current_rate: r.result.current_rate,
       should_alert: r.result.should_alert,
+      scenario: r.result.scenario,
       recommendation: r.result.recommendation,
       reasoning: r.result.reasoning,
       is_recent_high: r.result.is_recent_high,
       lookback_high: r.result.lookback_high,
       lookback_days: r.result.lookback_days,
+      high_days_ago: r.result.high_days_ago,
+      distance_from_high_pct: r.result.distance_from_high_pct,
       consecutive_increases: r.result.consecutive_increases,
       consecutive_threshold: r.result.consecutive_threshold,
+      trend_direction: r.result.trend_direction,
+      trend_strength_pct: r.result.trend_strength_pct,
+      signal_strength: r.result.signal_strength,
     }
     map[r.watch_id] = entry
   }
-  return map
+  return { checked_at: response.checked_at, by_watch_id: map }
 }
 
 /** Auto-fetches analysis for all active FX watches. Enabled only when watches exist. */
 export function useFxAnalysis(hasWatches: boolean) {
-  return useQuery<FxAnalysisMap>({
+  return useQuery<FxAnalysisState>({
     queryKey: ["fxAnalysis"],
-    queryFn: fetchFxAnalysis,
+    queryFn: () => fetchFxAnalysis(false),
     enabled: hasWatches,
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -169,7 +178,7 @@ export function useFxAnalysis(hasWatches: boolean) {
 export function useCheckFxWatches() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: fetchFxAnalysis,
+    mutationFn: () => fetchFxAnalysis(false),
     onSuccess: (data) => {
       queryClient.setQueryData(["fxAnalysis"], data)
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -187,6 +196,19 @@ export function useAlertFxWatches() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
+    },
+  })
+}
+
+export function useRefreshFxRates() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => fetchFxAnalysis(true),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["fxAnalysis"], data)
+      queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
+      queryClient.invalidateQueries({ queryKey: ["fxHistoryMap"] })
+      queryClient.invalidateQueries({ queryKey: ["fxHistory"] })
     },
   })
 }

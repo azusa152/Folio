@@ -29,6 +29,9 @@ from application.messaging.webhook_service import handle_webhook  # noqa: F401
 # ---------------------------------------------------------------------------
 # Rebalance Service (rebalance, currency exposure, X-Ray, FX alerts)
 # ---------------------------------------------------------------------------
+from application.portfolio.insight_service import (  # noqa: F401
+    invalidate_insight_cache,
+)
 from application.portfolio.rebalance_service import (  # noqa: F401
     _compute_holding_market_values,
     calculate_currency_exposure,

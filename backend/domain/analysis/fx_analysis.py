@@ -11,6 +11,11 @@ from domain.constants import (
     FX_DAILY_SPIKE_PCT,
     FX_LONG_TERM_TREND_PCT,
     FX_SHORT_TERM_SWING_PCT,
+    FX_WATCH_HIGH_RECENCY_THRESHOLD,
+    FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
+    FX_WATCH_TREND_LONG_WINDOW,
+    FX_WATCH_TREND_SHORT_WINDOW,
+    FX_WATCH_TREND_SIDEWAYS_THRESHOLD,
 )
 from domain.enums import FXAlertType, I18nKey
 
@@ -155,17 +160,92 @@ class FXTimingResult:
     should_alert: bool  # 是否應發出警報
     recommendation_zh: str  # 繁體中文建議
     reasoning_zh: str  # 繁體中文理由
+    high_days_ago: int = 0  # 回溯期間高點距今幾天
+    distance_from_high_pct: float = 0.0  # 距離回溯高點百分比
+    trend_direction: str = "sideways"  # rising / falling / sideways
+    trend_strength_pct: float = 0.0  # 近短天期變動百分比
+    signal_strength: str = "none"  # strong / moderate / weak / none
     # i18n support: scenario code + interpolation vars for t() in the service layer
     scenario: str = ""
     scenario_vars: dict = field(default_factory=dict)
 
 
-def is_recent_high(
+@dataclass(frozen=True)
+class FXRecentHighSignal:
+    """近期高點訊號。"""
+
+    is_recent_high: bool
+    lookback_high: float
+    high_days_ago: int
+    distance_from_high_pct: float
+
+
+def compute_sma(history: list[dict], window: int) -> float | None:
+    """計算最後 window 筆收盤價 SMA。"""
+    if window <= 0 or len(history) < window:
+        return None
+    recent = history[-window:]
+    closes = [row.get("close") for row in recent]
+    if any(not isinstance(close, (int, float)) or close <= 0 for close in closes):
+        return None
+    numeric_closes = [
+        float(close) for close in closes if isinstance(close, (int, float))
+    ]
+    return sum(numeric_closes) / len(numeric_closes)
+
+
+def detect_trend_direction(
+    history: list[dict],
+    short_window: int = FX_WATCH_TREND_SHORT_WINDOW,
+    long_window: int = FX_WATCH_TREND_LONG_WINDOW,
+) -> tuple[str, float]:
+    """以短長期 SMA 與近短天期變動率判斷方向與強度。"""
+    short_sma = compute_sma(history, short_window)
+    long_sma = compute_sma(history, long_window)
+    if short_sma is None or long_sma is None or long_sma <= 0:
+        return "sideways", 0.0
+
+    diff_ratio = (short_sma - long_sma) / long_sma
+    if abs(diff_ratio) <= FX_WATCH_TREND_SIDEWAYS_THRESHOLD:
+        direction = "sideways"
+    elif diff_ratio > 0:
+        direction = "rising"
+    else:
+        direction = "falling"
+
+    strength = 0.0
+    if len(history) >= short_window:
+        # Use the first point inside the short window as baseline,
+        # so "5-day strength" is computed from the recent 5 points.
+        prior = history[-short_window].get("close")
+        current = history[-1].get("close")
+        if prior is not None and current is not None and prior > 0:
+            strength = round(((current - prior) / prior) * 100, 2)
+    return direction, strength
+
+
+def find_high_recency(history: list[dict], lookback_days: int) -> int:
+    """回傳回溯區間高點距今天數（0 代表今天就是高點）。"""
+    if not history:
+        return 0
+    recent = history[-lookback_days:] if len(history) >= lookback_days else history
+    closes = [row.get("close") for row in recent]
+    valid_closes = [close for close in closes if close is not None]
+    if not valid_closes:
+        return 0
+    high = max(valid_closes)
+    high_idx = max(
+        i for i, close in enumerate(closes) if close is not None and close == high
+    )
+    return len(recent) - 1 - high_idx
+
+
+def analyze_recent_high(
     current_rate: float,
     history: list[dict],
     lookback_days: int,
-    tolerance_pct: float = 2.0,
-) -> tuple[bool, float]:
+    tolerance_pct: float = FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
+) -> FXRecentHighSignal:
     """
     判斷當前匯率是否接近近期高點。
 
@@ -176,21 +256,63 @@ def is_recent_high(
         tolerance_pct: 容忍百分比（預設 2%，即 98% 以上視為近期高點）
 
     Returns:
-        (是否接近高點, 期間最高價)
+        近期高點訊號
     """
     if not history:
-        return False, 0.0
+        return FXRecentHighSignal(
+            is_recent_high=False,
+            lookback_high=0.0,
+            high_days_ago=0,
+            distance_from_high_pct=0.0,
+        )
 
     # 取最近 N 天資料（若資料不足則取所有可用資料）
     recent = history[-lookback_days:] if len(history) >= lookback_days else history
-    high = max(d["close"] for d in recent)
+    valid_closes = [row.get("close") for row in recent if row.get("close") is not None]
+    if not valid_closes:
+        return FXRecentHighSignal(
+            is_recent_high=False,
+            lookback_high=0.0,
+            high_days_ago=0,
+            distance_from_high_pct=0.0,
+        )
+    high = max(valid_closes)
 
     if high <= 0:
-        return False, 0.0
+        return FXRecentHighSignal(
+            is_recent_high=False,
+            lookback_high=0.0,
+            high_days_ago=0,
+            distance_from_high_pct=0.0,
+        )
 
     # 當前價格達到期間高點的 (100 - tolerance_pct)% 以上
     threshold = high * (1.0 - tolerance_pct / 100.0)
-    return current_rate >= threshold, high
+    distance_pct = round(max(0.0, ((high - current_rate) / high) * 100), 2)
+    return FXRecentHighSignal(
+        is_recent_high=current_rate >= threshold,
+        lookback_high=high,
+        high_days_ago=find_high_recency(history, lookback_days),
+        distance_from_high_pct=distance_pct,
+    )
+
+
+def is_recent_high(
+    current_rate: float,
+    history: list[dict],
+    lookback_days: int,
+    tolerance_pct: float = FX_WATCH_RECENT_HIGH_TOLERANCE_PCT,
+) -> tuple[bool, float]:
+    """
+    保留既有介面：(是否接近高點, 回溯期間最高價)。
+    """
+    signal = analyze_recent_high(
+        current_rate=current_rate,
+        history=history,
+        lookback_days=lookback_days,
+        tolerance_pct=tolerance_pct,
+    )
+    return signal.is_recent_high, signal.lookback_high
 
 
 def count_consecutive_increases(history: list[dict]) -> int:
@@ -247,8 +369,13 @@ def assess_exchange_timing(
             is_recent_high=False,
             lookback_high=0.0,
             lookback_days=recent_high_days,
+            high_days_ago=0,
+            distance_from_high_pct=0.0,
             consecutive_increases=0,
             consecutive_threshold=consecutive_threshold,
+            trend_direction="sideways",
+            trend_strength_pct=0.0,
+            signal_strength="none",
             alert_on_recent_high=alert_on_recent_high,
             alert_on_consecutive_increase=alert_on_consecutive_increase,
             should_alert=False,
@@ -258,9 +385,18 @@ def assess_exchange_timing(
             scenario_vars={"base": base_currency, "quote": quote_currency},
         )
 
-    current_rate = history[-1]["close"]
-    near_high, high = is_recent_high(current_rate, history, recent_high_days)
+    current_rate = history[-1].get("close") or 0.0
+    recent_high = analyze_recent_high(current_rate, history, recent_high_days)
+    near_high = recent_high.is_recent_high
+    high = recent_high.lookback_high
     consec = count_consecutive_increases(history)
+    trend_direction, trend_strength = detect_trend_direction(history)
+
+    actionable_high = near_high and (
+        trend_direction != "falling"
+        or recent_high.high_days_ago <= FX_WATCH_HIGH_RECENCY_THRESHOLD
+        or consec >= 1
+    )
 
     # Common vars available to all scenario templates
     common_vars: dict = {
@@ -269,8 +405,12 @@ def assess_exchange_timing(
         "pair": f"{base_currency}/{quote_currency}",
         "high_days": recent_high_days,
         "high": high,
+        "high_days_ago": recent_high.high_days_ago,
+        "distance_pct": recent_high.distance_from_high_pct,
         "consec": consec,
         "consec_threshold": consecutive_threshold,
+        "trend_direction": trend_direction,
+        "trend_strength_pct": trend_strength,
     }
 
     # 判斷是否應發出警報：根據啟用的條件使用 OR 邏輯
@@ -282,7 +422,7 @@ def assess_exchange_timing(
         scenario = "disabled"
     else:
         # 評估啟用的條件
-        high_condition = alert_on_recent_high and near_high
+        high_condition = alert_on_recent_high and actionable_high
         consec_condition = (
             alert_on_consecutive_increase and consec >= consecutive_threshold
         )
@@ -296,7 +436,11 @@ def assess_exchange_timing(
                 scenario = "should_alert_both"
             elif high_condition:
                 triggers.append("近期高點")
-                scenario = "should_alert_high"
+                is_at_high = (
+                    recent_high.high_days_ago == 0
+                    and recent_high.distance_from_high_pct == 0.0
+                )
+                scenario = "at_high" if is_at_high else "approaching_high"
             else:
                 triggers.append("連續上漲")
                 scenario = "should_alert_consec"
@@ -304,13 +448,25 @@ def assess_exchange_timing(
             recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
             parts = []
             if high_condition:
-                parts.append(f"已接近 {recent_high_days} 日高點 ({high:.4f})")
+                parts.append(
+                    f"接近 {recent_high_days} 日高點 ({high:.4f})，"
+                    f"距高點 {recent_high.distance_from_high_pct:.2f}%"
+                )
             if consec_condition:
                 parts.append(f"連續上漲 {consec} 日")
+            if trend_direction != "sideways":
+                parts.append(f"短期趨勢為{trend_direction}")
             reasoning_zh = (
                 f"{base_currency}/{quote_currency} "
                 f"{'，且'.join(parts)}，現在可能是換匯好時機。"
             )
+        elif near_high and alert_on_recent_high:
+            recommendation_zh = "接近高點但正在回落，暫不建議追價"
+            reasoning_zh = (
+                f"匯率雖接近 {recent_high_days} 日高點，但高點已是 "
+                f"{recent_high.high_days_ago} 天前、短期趨勢偏弱，建議觀察。"
+            )
+            scenario = "declining_from_high"
         elif near_high:
             # 接近高點但連續上漲未達標（alert_on_recent_high 必為 False，否則 should_alert=True）
             recommendation_zh = "接近高點但上漲動能不足，可再觀察"
@@ -332,6 +488,15 @@ def assess_exchange_timing(
             reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {consec} 日。"
             scenario = "no_signal"
 
+    if should_alert and scenario in {"should_alert_both", "at_high"}:
+        signal_strength = "strong"
+    elif should_alert:
+        signal_strength = "moderate"
+    elif near_high or consec > 0:
+        signal_strength = "weak"
+    else:
+        signal_strength = "none"
+
     return FXTimingResult(
         base_currency=base_currency,
         quote_currency=quote_currency,
@@ -339,8 +504,13 @@ def assess_exchange_timing(
         is_recent_high=near_high,
         lookback_high=high,
         lookback_days=recent_high_days,
+        high_days_ago=recent_high.high_days_ago,
+        distance_from_high_pct=recent_high.distance_from_high_pct,
         consecutive_increases=consec,
         consecutive_threshold=consecutive_threshold,
+        trend_direction=trend_direction,
+        trend_strength_pct=trend_strength,
+        signal_strength=signal_strength,
         alert_on_recent_high=alert_on_recent_high,
         alert_on_consecutive_increase=alert_on_consecutive_increase,
         should_alert=should_alert,

@@ -5,6 +5,7 @@
 #  Quick reference (run `make help` for the full list):
 #
 #  Fullstack (composite):
+#    make dev              Start backend + frontend dev servers
 #    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs
 #    make lint             Lint backend + frontend
 #    make test             Test backend + frontend (pytest + Vitest)
@@ -20,6 +21,7 @@
 #
 #  Frontend (granular):
 #    make frontend-lint    ESLint
+#    make frontend-typecheck TypeScript type check
 #    make frontend-dev     Start Vite dev server
 #    make frontend-build   Production build (run generate-api first if types are stale)
 #    make frontend-security npm audit (high severity)
@@ -27,6 +29,7 @@
 #  CI Integrity:
 #    make check-api-spec   Verify OpenAPI spec matches backend (mirrors CI api-spec job)
 #    make check-constants  Verify backend/frontend constant sync
+#    make check-agent-doc-tokens Verify AI agent doc token budgets
 #    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
 #  Setup:
@@ -39,9 +42,12 @@
 #    make upgrade          Re-lock all deps to latest compatible versions
 #
 #  Docker:
-#    make up               Start all services (background)
+#    make up               Start all services (background, no rebuild)
 #    make down             Stop and remove all containers
-#    make restart          Rebuild and restart all services (down + up)
+#    make restart          Restart backend only (no rebuild)
+#    make restart-all      Restart all services (down + up, no rebuild)
+#    make rebuild          Rebuild images and restart all services
+#    make logs             Tail backend logs
 #
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
@@ -152,10 +158,13 @@ backend-typecheck: .venv-check ## pyright static type check (basic mode, advisor
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: frontend-lint frontend-dev frontend-build frontend-security
+.PHONY: frontend-lint frontend-typecheck frontend-dev frontend-build frontend-security
 
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-typecheck: .node-check ## TypeScript type check (frontend only)
+	cd $(FRONTEND_DIR) && npm run typecheck
 
 frontend-dev: .node-check generate-api ## Start Vite dev server (requires backend running; or cd frontend-react && npm run dev)
 	cd $(FRONTEND_DIR) && npm run dev
@@ -169,7 +178,15 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: lint test format ci clean frontend-test
+.PHONY: dev lint test format ci clean frontend-test frontend-typecheck
+
+dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
+	@echo "Starting backend on :8000 and frontend on :3000 ..."
+	@echo "Press Ctrl+C to stop both."
+	@trap 'kill 0' INT; \
+		(cd $(BACKEND_DIR) && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000) & \
+		(cd $(FRONTEND_DIR) && npm run dev) & \
+		wait
 
 lint: backend-lint frontend-lint ## Lint entire project (backend + frontend)
 
@@ -180,7 +197,7 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec check-i18n frontend-build frontend-security backend-security backend-typecheck ## Full CI check — mirrors all GitHub CI pipeline jobs
+ci: lint test check-constants check-api-spec check-i18n check-agent-doc-tokens frontend-build frontend-security backend-security backend-typecheck ## Full CI check — mirrors all GitHub CI pipeline jobs
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -199,15 +216,24 @@ generate-api: .venv-check .python-version-check ## Export OpenAPI spec and regen
 # ---------------------------------------------------------------------------
 #  Docker
 # ---------------------------------------------------------------------------
-.PHONY: up down restart
+.PHONY: up down restart restart-all rebuild logs
 
-up: ## Start all services (background, rebuild images)
-	docker compose up -d --build
+up: ## Start all services (background, no image rebuild)
+	docker compose up -d
 
 down: ## Stop and remove all containers
 	docker compose down
 
-restart: down up ## Rebuild and restart all services (preserves data volumes)
+restart: ## Restart backend only (force reload, no rebuild)
+	docker compose restart backend
+
+restart-all: down up ## Restart all services (preserves data volumes, no rebuild)
+
+rebuild: ## Rebuild images + restart all services
+	docker compose up -d --build
+
+logs: ## Tail backend logs
+	docker compose logs -f backend
 
 # ---------------------------------------------------------------------------
 #  Database
@@ -235,7 +261,7 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec check-i18n backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
@@ -243,10 +269,22 @@ check-constants: .venv-check ## Check backend/frontend constant sync
 check-i18n: .venv-check ## Check locale key parity (backend + frontend locale files)
 	$(PYTHON) scripts/check_locale_parity.py
 
+check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no venv needed)
+	python3 scripts/check_agent_doc_tokens.py
+
 check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
-	LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) scripts/export_openapi.py
-	git diff --exit-code $(FRONTEND_DIR)/src/api/openapi.json
+	@set -e; \
+		before=$$(mktemp); \
+		cp $(FRONTEND_DIR)/src/api/openapi.json $$before; \
+		LOG_DIR=/tmp/folio_logs DATABASE_URL=sqlite:// \
+			$(PYTHON) scripts/export_openapi.py; \
+		if ! cmp -s $$before $(FRONTEND_DIR)/src/api/openapi.json; then \
+			echo "OpenAPI spec changed after export. Run 'make generate-api' and commit the updated spec."; \
+			git --no-pager diff -- $(FRONTEND_DIR)/src/api/openapi.json; \
+			rm -f $$before; \
+			exit 1; \
+		fi; \
+		rm -f $$before
 
 backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors CI security job)
 	@set -e; \

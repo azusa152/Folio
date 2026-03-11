@@ -175,6 +175,11 @@ CATEGORY_ICON: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
+# Account Types
+# ---------------------------------------------------------------------------
+ACCOUNT_TYPE_OPTIONS = ["brokerage", "retirement", "savings", "crypto", "other"]
+
+# ---------------------------------------------------------------------------
 # User & Profile
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
@@ -234,7 +239,7 @@ DISK_PRICE_HISTORY_TTL = 1800  # L2: 30 minutes
 ETF_HOLDINGS_CACHE_MAXSIZE = 100
 ETF_HOLDINGS_CACHE_TTL = 86400  # 24 hours (ETF holdings change slowly)
 DISK_ETF_HOLDINGS_TTL = 604800  # 7 days
-ETF_TOP_N = 10  # only resolve top N constituents per ETF
+ETF_TOP_N = 25  # only resolve top N constituents per ETF
 DISK_ETF_SECTOR_WEIGHTS_TTL = 604800  # 7 days (same cadence as ETF holdings)
 
 # ---------------------------------------------------------------------------
@@ -264,6 +269,12 @@ FX_WATCH_DEFAULT_ALERT_ON_RECENT_HIGH = True  # Enable recent high alerts by def
 FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE = (
     True  # Enable consecutive increase alerts by default
 )
+FX_WATCH_TREND_SHORT_WINDOW = 5  # 5-day SMA window for trend direction
+FX_WATCH_TREND_LONG_WINDOW = 10  # 10-day SMA window for trend direction
+FX_WATCH_HIGH_RECENCY_THRESHOLD = 3  # alert if high was within N days
+FX_WATCH_TREND_SIDEWAYS_THRESHOLD = 0.001  # abs(short_sma-long_sma)/long_sma
+FX_WATCH_RECENT_HIGH_TOLERANCE_PCT = 2.0  # near-high tolerance percentage
+FX_WATCH_FORCE_REFRESH_COOLDOWN_SECONDS = 30  # cooldown between force_refresh calls
 
 # ---------------------------------------------------------------------------
 # X-Ray (Portfolio Overlap Analysis)
@@ -408,8 +419,16 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Portfolio health overview (plain text)",
         "requires_ticker": False,
     },
+    "dashboard": {
+        "description": "Portfolio + market overview in one call",
+        "requires_ticker": False,
+    },
     "signals": {
         "description": "Technical indicators for a ticker (RSI, MA, Bias)",
+        "requires_ticker": True,
+    },
+    "analyze": {
+        "description": "Full stock analysis (signals + moat + fundamentals)",
         "requires_ticker": True,
     },
     "scan": {
@@ -458,7 +477,72 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Send latest guru holding changes digest via Telegram",
         "requires_ticker": False,
     },
+    "transactions": {
+        "description": "List recent transactions (buy/sell/dividend/deposit/withdrawal)",
+        "requires_ticker": False,
+        "params": {
+            "ticker": "str (optional — filter by ticker)",
+            "limit": "int (optional — default 10, max 50)",
+        },
+    },
+    "add_transaction": {
+        "description": "Record a new transaction",
+        "requires_ticker": True,
+        "params": {
+            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)",
+            "quantity": "float (required)",
+            "price": "float (optional — per-unit price)",
+            "total_amount": "float (required — total transaction value)",
+            "date": "str (required — YYYY-MM-DD)",
+        },
+    },
+    "accounts": {
+        "description": "List accounts with holdings count per account",
+        "requires_ticker": False,
+    },
+    "analytics": {
+        "description": "Portfolio risk metrics: Sharpe, Sortino, max drawdown, volatility",
+        "requires_ticker": False,
+        "params": {
+            "start": "str (optional — YYYY-MM-DD start date)",
+            "end": "str (optional — YYYY-MM-DD end date)",
+        },
+    },
+    "insights": {
+        "description": "Natural language portfolio insights and suggestions",
+        "requires_ticker": False,
+        "params": {
+            "display_currency": "str (optional — default USD)",
+        },
+    },
 }
+
+# ---------------------------------------------------------------------------
+# Analytics — Drawdown & Risk Metrics
+# ---------------------------------------------------------------------------
+ANALYTICS_DEFAULT_LOOKBACK_DAYS = 365 * 10  # ~10 years — effectively "all data"
+
+# ---------------------------------------------------------------------------
+# Insight Thresholds
+# ---------------------------------------------------------------------------
+INSIGHT_CONCENTRATION_THRESHOLD = 0.40
+INSIGHT_OUTPERFORMANCE_THRESHOLD = 0.01
+INSIGHT_UNDERPERFORMANCE_THRESHOLD = -0.05
+INSIGHT_SEVERE_DRAWDOWN_THRESHOLD = -0.20
+INSIGHT_MODERATE_DRAWDOWN_THRESHOLD = -0.10
+INSIGHT_EXCELLENT_HEALTH_SCORE = 80
+INSIGHT_POOR_HEALTH_SCORE = 50
+INSIGHT_STRONG_SHARPE = 1.0
+
+# ---------------------------------------------------------------------------
+# Analytics / Risk Metrics
+# ---------------------------------------------------------------------------
+ANALYTICS_TRADING_DAYS_PER_YEAR = 252
+ANALYTICS_RISK_FREE_RATE = 0.04  # approximate US T-bill rate
+ANALYTICS_MIN_DAYS_FOR_RATIOS = 30
+ANALYTICS_MIN_DOWNSIDE_SAMPLES = 10
+DRAWDOWN_PERIOD_THRESHOLD_DEFAULT = -0.05
+DRAWDOWN_EPSILON = 1e-9
 
 # ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types
@@ -493,8 +577,19 @@ ERROR_STOCK_ALREADY_INACTIVE = "STOCK_ALREADY_INACTIVE"
 ERROR_STOCK_ALREADY_ACTIVE = "STOCK_ALREADY_ACTIVE"
 ERROR_CATEGORY_UNCHANGED = "CATEGORY_UNCHANGED"
 ERROR_HOLDING_NOT_FOUND = "HOLDING_NOT_FOUND"
+ERROR_TRANSACTION_NOT_FOUND = "TRANSACTION_NOT_FOUND"
 ERROR_NET_WORTH_ITEM_NOT_FOUND = "NET_WORTH_ITEM_NOT_FOUND"
 ERROR_PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
+ERROR_GURU_NOT_FOUND = "GURU_NOT_FOUND"
+ERROR_BACKTEST_SIGNAL_UNKNOWN = "BACKTEST_SIGNAL_UNKNOWN"
+ERROR_BACKTEST_DATA_NOT_FOUND = "BACKTEST_DATA_NOT_FOUND"
+ERROR_NET_WORTH_SEED_NO_CASH_HOLDINGS = "NET_WORTH_SEED_NO_CASH_HOLDINGS"
+ERROR_INVALID_SCENARIO_DROP = "INVALID_SCENARIO_DROP"
+ERROR_SYNC_IN_PROGRESS = "SYNC_IN_PROGRESS"
+ERROR_GURU_FILING_NOT_FOUND = "GURU_FILING_NOT_FOUND"
+ERROR_ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND"
+ERROR_INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE"
+ERROR_FX_WATCH_NOT_FOUND = "FX_WATCH_NOT_FOUND"
 ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS"
 ERROR_DIGEST_IN_PROGRESS = "DIGEST_IN_PROGRESS"
 ERROR_TELEGRAM_NOT_CONFIGURED = "TELEGRAM_NOT_CONFIGURED"
@@ -537,6 +632,12 @@ DISK_ROGUE_WAVE_TTL = 172800  # L2: 48 hours
 YFINANCE_RETRY_ATTEMPTS = 3
 YFINANCE_RETRY_WAIT_MIN = 2  # seconds (exponential backoff minimum)
 YFINANCE_RETRY_WAIT_MAX = 10  # seconds (exponential backoff maximum)
+YF_CONNECT_TIMEOUT = 10  # seconds (curl_cffi connect timeout)
+YF_READ_TIMEOUT = 30  # seconds (curl_cffi total/read timeout)
+PREWARM_BATCH_TIMEOUT = 120  # seconds (upper bound for prewarm batches)
+FG_COMPONENT_FAILURE_COOLDOWN_SECONDS = (
+    120  # short cooldown after transient FG failures
+)
 
 # ---------------------------------------------------------------------------
 # Beta Cache Configuration (Stress Test)
@@ -796,3 +897,14 @@ TWII_VOL_GREED = 10  # annualized vol 10–15% → 貪婪
 TW_VOL_BASE: float = 90.0
 TW_VOL_OFFSET: float = 8.0
 TW_VOL_SLOPE: float = 3.5
+
+# ---------------------------------------------------------------------------
+# Geographic Market Detection (ticker suffix → market code)
+# ---------------------------------------------------------------------------
+TICKER_MARKET_MAP: dict[str, str] = {
+    ".TW": "TW",
+    ".TWO": "TW",
+    ".T": "JP",
+    ".HK": "HK",
+}
+DEFAULT_MARKET = "US"

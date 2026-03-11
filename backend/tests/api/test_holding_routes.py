@@ -241,6 +241,28 @@ class TestImportHoldings:
 _PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
 
 
+class TestRebalanceResponse:
+    """Contract tests for GET /rebalance — verify response shape includes allocation keys."""
+
+    def test_should_include_geographic_and_asset_class_allocation(self, client):
+        # Arrange — NVDA is a US stock in the Growth category
+        _create_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        # Act
+        resp = client.get("/rebalance")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data["geographic_allocation"], dict)
+        assert isinstance(data["asset_class_allocation"], dict)
+        assert "US" in data["geographic_allocation"]
+        assert data["geographic_allocation"]["US"] > 0
+        assert "Equity" in data["asset_class_allocation"]
+        assert data["asset_class_allocation"]["Equity"] > 0
+
+
 class TestTriggerXrayAlert:
     """Tests for POST /rebalance/xray-alert."""
 

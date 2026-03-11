@@ -74,6 +74,685 @@
         }
       }
     },
+    "/analytics/drawdown": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Drawdown",
+        "operationId": "drawdown_analytics_drawdown_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DrawdownPointResponse"
+                  },
+                  "title": "Response Drawdown Analytics Drawdown Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/risk-metrics": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Risk Metrics",
+        "operationId": "risk_metrics_analytics_risk_metrics_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskMetricsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/contribution-growth": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Contribution Growth",
+        "operationId": "contribution_growth_analytics_contribution_growth_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContributionGrowthPoint"
+                  },
+                  "title": "Response Contribution Growth Analytics Contribution Growth Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/insights": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Portfolio Insights",
+        "operationId": "portfolio_insights_analytics_insights_get",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InsightResponse"
+                  },
+                  "title": "Response Portfolio Insights Analytics Insights Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Accounts",
+        "operationId": "get_accounts_accounts_get",
+        "parameters": [
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  },
+                  "title": "Response Get Accounts Accounts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Add Account",
+        "operationId": "add_account_accounts_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/summary": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Accounts Summary",
+        "operationId": "get_accounts_summary_accounts_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountSummaryItem"
+                  },
+                  "title": "Response Get Accounts Summary Accounts Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}/cash-balances": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Cash Balance List",
+        "operationId": "get_account_cash_balance_list_accounts__account_id__cash_balances_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountCashBalanceItem"
+                  },
+                  "title": "Response Get Account Cash Balance List Accounts  Account Id  Cash Balances Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}": {
+      "put": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Edit Account",
+        "operationId": "edit_account_accounts__account_id__put",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Deactivate Account Route",
+        "operationId": "deactivate_account_route_accounts__account_id__delete",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ticker": {
       "post": {
         "summary": "Add a stock to the watchlist",
@@ -1497,7 +2176,7 @@
     "/webhook": {
       "post": {
         "summary": "Unified webhook for AI agent actions",
-        "description": "\u7d71\u4e00\u5165\u53e3 \u2014 \u4f9b OpenClaw \u7b49 AI agent \u4f7f\u7528\u3002\n\u652f\u63f4\u7684 action: help, summary, signals, scan, moat, alerts, add_stock\n\nRate limited: 5/minute per IP (prevents webhook abuse).",
+        "description": "\u7d71\u4e00\u5165\u53e3 \u2014 \u4f9b OpenClaw \u7b49 AI agent \u4f7f\u7528\u3002\n\u652f\u63f4\u7684 action \u8acb\u547c\u53eb `help` \u52d5\u614b\u67e5\u8a62\u5b8c\u6574\u6e05\u55ae\u3002\n\nRate limited: 5/minute per IP (prevents webhook abuse).",
         "operationId": "webhook_route_webhook_post",
         "parameters": [
           {
@@ -4452,9 +5131,19 @@
     "/fx-watch/check": {
       "post": {
         "summary": "Check FX watches (no alert)",
-        "description": "\u6aa2\u67e5\u6240\u6709\u555f\u7528\u4e2d\u7684\u5916\u532f\u76e3\u63a7\u914d\u7f6e\uff0c\u7522\u51fa\u5206\u6790\u7d50\u679c\uff08\u4e0d\u767c\u9001\u901a\u77e5\uff09\u3002\n\nQuery Parameters:\n- user_id: \u4f7f\u7528\u8005 ID\uff08\u9810\u8a2d DEFAULT_USER_ID\uff09\n\nReturns:\n- total_watches: \u555f\u7528\u4e2d\u7684\u914d\u7f6e\u6578\u91cf\n- results: \u5206\u6790\u7d50\u679c\u5217\u8868\uff08\u542b\u914d\u7f6e ID\u3001\u8ca8\u5e63\u5c0d\u3001\u5206\u6790\u7d50\u679c\uff09",
+        "description": "\u6aa2\u67e5\u6240\u6709\u555f\u7528\u4e2d\u7684\u5916\u532f\u76e3\u63a7\u914d\u7f6e\uff0c\u7522\u51fa\u5206\u6790\u7d50\u679c\uff08\u4e0d\u767c\u9001\u901a\u77e5\uff09\u3002\n\nQuery Parameters:\n- force_refresh: \u82e5\u70ba True\uff0c\u5148\u6e05\u9664 FX \u5feb\u53d6\u518d\u91cd\u65b0\u6293\u53d6\u6700\u65b0\u8cc7\u6599\uff08\u9810\u8a2d False\uff09\n- user_id: \u4f7f\u7528\u8005 ID\uff08\u9810\u8a2d DEFAULT_USER_ID\uff09\n\nReturns:\n- checked_at: \u4f3a\u670d\u5668\u7aef\u5206\u6790\u5b8c\u6210\u7684 UTC ISO \u6642\u9593\u6233\n- total_watches: \u555f\u7528\u4e2d\u7684\u914d\u7f6e\u6578\u91cf\n- results: \u5206\u6790\u7d50\u679c\u5217\u8868\uff08\u542b\u914d\u7f6e ID\u3001\u8ca8\u5e63\u5c0d\u3001\u5206\u6790\u7d50\u679c\uff09",
         "operationId": "check_fx_watch_alerts_fx_watch_check_post",
         "parameters": [
+          {
+            "name": "force_refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Force Refresh"
+            }
+          },
           {
             "name": "user_id",
             "in": "query",
@@ -6009,6 +6698,324 @@
           }
         }
       }
+    },
+    "/transactions": {
+      "get": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "List transactions",
+        "operationId": "get_transactions_transactions_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "holding_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Holding Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  },
+                  "title": "Response Get Transactions Transactions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Add a transaction",
+        "operationId": "add_transaction_transactions_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{txn_id}": {
+      "get": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Get a transaction",
+        "operationId": "get_single_transaction_transactions__txn_id__get",
+        "parameters": [
+          {
+            "name": "txn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Txn Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Delete a transaction",
+        "operationId": "delete_single_transaction_transactions__txn_id__delete",
+        "parameters": [
+          {
+            "name": "txn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Txn Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6031,6 +7038,243 @@
         ],
         "title": "AcceptedResponse",
         "description": "\u975e\u540c\u6b65\u64cd\u4f5c\u5df2\u63a5\u53d7\u56de\u61c9\u3002"
+      },
+      "AccountCashBalanceItem": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "balance": {
+            "type": "number",
+            "title": "Balance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "balance"
+        ],
+        "title": "AccountCashBalanceItem"
+      },
+      "AccountRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "broker": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Broker"
+          },
+          "account_type": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Account Type",
+            "default": "brokerage"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Currency",
+            "default": "USD"
+          },
+          "institution": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Institution",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "broker"
+        ],
+        "title": "AccountRequest"
+      },
+      "AccountResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "broker": {
+            "type": "string",
+            "title": "Broker"
+          },
+          "account_type": {
+            "type": "string",
+            "title": "Account Type"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "institution": {
+            "type": "string",
+            "title": "Institution"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "name",
+          "broker",
+          "account_type",
+          "currency",
+          "institution",
+          "note",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AccountResponse"
+      },
+      "AccountSummaryItem": {
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AccountResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holdings_count": {
+            "type": "integer",
+            "title": "Holdings Count"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tickers"
+          },
+          "cash_balances": {
+            "items": {
+              "$ref": "#/components/schemas/AccountCashBalanceItem"
+            },
+            "type": "array",
+            "title": "Cash Balances"
+          }
+        },
+        "type": "object",
+        "required": [
+          "holdings_count",
+          "tickers"
+        ],
+        "title": "AccountSummaryItem"
+      },
+      "AccountUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "broker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker"
+          },
+          "account_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Type"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "AccountUpdateRequest"
       },
       "ActivityFeed": {
         "properties": {
@@ -6275,6 +7519,17 @@
             ],
             "title": "Broker"
           },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "account_type": {
             "anyOf": [
               {
@@ -6425,6 +7680,35 @@
         ],
         "title": "ConsensusStockItem",
         "description": "\u88ab\u591a\u4f4d\u5927\u5e2b\u540c\u6642\u6301\u6709\u7684\u5171\u8b58\u80a1\u7968\u3002"
+      },
+      "ContributionGrowthPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "market_value": {
+            "type": "number",
+            "title": "Market Value"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "market_value"
+        ],
+        "title": "ContributionGrowthPoint"
       },
       "CryptoPrice": {
         "properties": {
@@ -6703,6 +7987,34 @@
         "title": "DeactivateRequest",
         "description": "POST /ticker/{ticker}/deactivate \u8acb\u6c42 Body\u3002"
       },
+      "DrawdownPointResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "drawdown_pct": {
+            "type": "number",
+            "title": "Drawdown Pct"
+          },
+          "total_value": {
+            "type": "number",
+            "title": "Total Value"
+          },
+          "peak_value": {
+            "type": "number",
+            "title": "Peak Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "drawdown_pct",
+          "total_value",
+          "peak_value"
+        ],
+        "title": "DrawdownPointResponse"
+      },
       "FXAlertResponse": {
         "properties": {
           "message": {
@@ -6819,6 +8131,14 @@
             "type": "integer",
             "title": "Lookback Days"
           },
+          "high_days_ago": {
+            "type": "integer",
+            "title": "High Days Ago"
+          },
+          "distance_from_high_pct": {
+            "type": "number",
+            "title": "Distance From High Pct"
+          },
           "consecutive_increases": {
             "type": "integer",
             "title": "Consecutive Increases"
@@ -6826,6 +8146,29 @@
           "consecutive_threshold": {
             "type": "integer",
             "title": "Consecutive Threshold"
+          },
+          "trend_direction": {
+            "type": "string",
+            "enum": [
+              "rising",
+              "falling",
+              "sideways"
+            ],
+            "title": "Trend Direction"
+          },
+          "trend_strength_pct": {
+            "type": "number",
+            "title": "Trend Strength Pct"
+          },
+          "signal_strength": {
+            "type": "string",
+            "enum": [
+              "strong",
+              "moderate",
+              "weak",
+              "none"
+            ],
+            "title": "Signal Strength"
           },
           "alert_on_recent_high": {
             "type": "boolean",
@@ -6865,8 +8208,13 @@
           "is_recent_high",
           "lookback_high",
           "lookback_days",
+          "high_days_ago",
+          "distance_from_high_pct",
           "consecutive_increases",
           "consecutive_threshold",
+          "trend_direction",
+          "trend_strength_pct",
+          "signal_strength",
           "alert_on_recent_high",
           "alert_on_consecutive_increase",
           "should_alert",
@@ -6912,6 +8260,10 @@
       },
       "FXWatchCheckResponse": {
         "properties": {
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          },
           "total_watches": {
             "type": "integer",
             "title": "Total Watches"
@@ -6926,6 +8278,7 @@
         },
         "type": "object",
         "required": [
+          "checked_at",
           "total_watches",
           "results"
         ],
@@ -8446,6 +9799,17 @@
             ],
             "title": "Broker"
           },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "currency": {
             "type": "string",
             "maxLength": 3,
@@ -8525,6 +9889,17 @@
               }
             ],
             "title": "Broker"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           },
           "currency": {
             "type": "string",
@@ -8607,6 +9982,17 @@
             ],
             "title": "Broker"
           },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "currency": {
             "type": "string",
             "title": "Currency",
@@ -8681,6 +10067,34 @@
         ],
         "title": "ImportResponse",
         "description": "\u532f\u5165\u64cd\u4f5c\u56de\u61c9\u3002"
+      },
+      "InsightResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "vars": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Vars"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "severity",
+          "category"
+        ],
+        "title": "InsightResponse"
       },
       "LastScanResponse": {
         "properties": {
@@ -9225,6 +10639,21 @@
             "type": "boolean",
             "title": "Privacy Mode"
           },
+          "terminology_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "simplified",
+                  "expert"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminology Mode"
+          },
           "notification_preferences": {
             "anyOf": [
               {
@@ -9273,6 +10702,15 @@
           "privacy_mode": {
             "type": "boolean",
             "title": "Privacy Mode"
+          },
+          "terminology_mode": {
+            "type": "string",
+            "enum": [
+              "simplified",
+              "expert"
+            ],
+            "title": "Terminology Mode",
+            "default": "simplified"
           },
           "notification_preferences": {
             "additionalProperties": {
@@ -9728,6 +11166,18 @@
             "title": "Xray",
             "default": []
           },
+          "xray_coverage_pct": {
+            "type": "number",
+            "title": "Xray Coverage Pct",
+            "default": 0.0
+          },
+          "xray_skipped_etfs": {
+            "items": {
+              "$ref": "#/components/schemas/XRaySkippedETF"
+            },
+            "type": "array",
+            "title": "Xray Skipped Etfs"
+          },
           "health_score": {
             "type": "integer",
             "title": "Health Score",
@@ -9745,6 +11195,22 @@
             "type": "array",
             "title": "Sector Exposure",
             "default": []
+          },
+          "geographic_allocation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Geographic Allocation",
+            "description": "Market value by geographic region"
+          },
+          "asset_class_allocation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Asset Class Allocation",
+            "description": "Market value by asset class"
           },
           "calculated_at": {
             "type": "string",
@@ -9912,6 +11378,67 @@
         ],
         "title": "ResonanceTickerResponse",
         "description": "GET /resonance/{ticker} \u56de\u50b3\u7684\u5927\u5e2b\u5171\u9cf4\u8cc7\u6599\u3002"
+      },
+      "RiskMetricsResponse": {
+        "properties": {
+          "annualized_return": {
+            "type": "number",
+            "title": "Annualized Return"
+          },
+          "annualized_volatility": {
+            "type": "number",
+            "title": "Annualized Volatility"
+          },
+          "sharpe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Ratio"
+          },
+          "sortino_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortino Ratio"
+          },
+          "max_drawdown_pct": {
+            "type": "number",
+            "title": "Max Drawdown Pct"
+          },
+          "calmar_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar Ratio"
+          },
+          "trading_days": {
+            "type": "integer",
+            "title": "Trading Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "annualized_return",
+          "annualized_volatility",
+          "max_drawdown_pct",
+          "trading_days"
+        ],
+        "title": "RiskMetricsResponse"
       },
       "ScanSignal": {
         "type": "string",
@@ -10808,6 +12335,215 @@
         "title": "TickerCreateRequest",
         "description": "POST /ticker \u8acb\u6c42 Body\u3002"
       },
+      "TransactionRequest": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "holding_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Id"
+          },
+          "ticker": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Ticker"
+          },
+          "transaction_type": {
+            "type": "string",
+            "title": "Transaction Type",
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount",
+            "description": "Total transaction amount"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Currency",
+            "default": "USD"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "fee": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fee",
+            "default": 0.0
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transaction Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "transaction_type",
+          "quantity",
+          "total_amount",
+          "transaction_date"
+        ],
+        "title": "TransactionRequest"
+      },
+      "TransactionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "holding_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Id"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "transaction_type": {
+            "type": "string",
+            "title": "Transaction Type"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "fee": {
+            "type": "number",
+            "title": "Fee"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transaction Date"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "ticker",
+          "transaction_type",
+          "quantity",
+          "total_amount",
+          "currency",
+          "fee",
+          "note",
+          "transaction_date",
+          "created_at"
+        ],
+        "title": "TransactionResponse"
+      },
       "TwrResponse": {
         "properties": {
           "twr_pct": {
@@ -10892,6 +12628,17 @@
               }
             ],
             "title": "Broker"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           },
           "category": {
             "anyOf": [
@@ -11137,6 +12884,21 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Params"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "concise",
+                  "detailed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
           }
         },
         "type": "object",
@@ -11155,6 +12917,11 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "interpretation": {
+            "type": "string",
+            "title": "Interpretation",
+            "default": ""
           },
           "data": {
             "additionalProperties": true,
@@ -11316,6 +13083,25 @@
         ],
         "title": "XRayEntry",
         "description": "X-Ray: \u55ae\u4e00\u6a19\u7684\u771f\u5be6\u66dd\u96aa\uff08\u76f4\u63a5\u6301\u5009 + ETF \u9593\u63a5\u66dd\u96aa\uff09\u3002"
+      },
+      "XRaySkippedETF": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker"
+        ],
+        "title": "XRaySkippedETF",
+        "description": "X-Ray \u7121\u6cd5\u7a7f\u900f\u7684 ETF \u6458\u8981\u3002"
       }
     }
   }

@@ -13,7 +13,7 @@ import math
 import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 from typing import TypeVar
 
@@ -104,6 +104,7 @@ from domain.constants import (
     ETF_TOP_N,
     FEAR_GREED_CACHE_MAXSIZE,
     FEAR_GREED_CACHE_TTL,
+    FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
     FG_HYG_TICKER,
     FG_LOOKBACK_DAYS,
     FG_MA_WINDOW,
@@ -132,6 +133,7 @@ from domain.constants import (
     MOAT_CACHE_TTL,
     MOAT_PERSISTENT_FAILURE_THRESHOLD,
     NIKKEI_VI_TICKER,
+    PREWARM_BATCH_TIMEOUT,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
     ROGUE_WAVE_CACHE_MAXSIZE,
@@ -144,8 +146,10 @@ from domain.constants import (
     TWII_TICKER,
     VIX_HISTORY_PERIOD,
     VIX_TICKER,
+    YF_CONNECT_TIMEOUT,
     YF_INFO_CACHE_MAXSIZE,
     YF_INFO_CACHE_TTL,
+    YF_READ_TIMEOUT,
     YFINANCE_HISTORY_PERIOD,
     YFINANCE_RATE_LIMIT_CPS,
     YFINANCE_RETRY_ATTEMPTS,
@@ -161,6 +165,15 @@ T = TypeVar("T")
 
 logger = get_logger(__name__)
 
+
+class _FastShutdownExecutor(ThreadPoolExecutor):
+    """ThreadPoolExecutor that shuts down without blocking on context exit."""
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.shutdown(wait=False, cancel_futures=True)
+        return False
+
+
 _BEARISH_TIERS: frozenset = frozenset(
     {MarketSentiment.BEARISH, MarketSentiment.STRONG_BEARISH}
 )
@@ -169,7 +182,18 @@ _BEARISH_TIERS: frozenset = frozenset(
 # ---------------------------------------------------------------------------
 # Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
 # ---------------------------------------------------------------------------
-_RETRYABLE_EXCEPTIONS = (CurlError, ConnectionError, OSError)
+_RETRYABLE_EXCEPTIONS = (CurlError, ConnectionError, OSError, TimeoutError)
+_TRANSIENT_YF_ERROR_MARKERS: tuple[str, ...] = (
+    "ssl_error_syscall",
+    "failed to perform",
+    "curl: (35)",
+    "timed out",
+    "connection reset",
+    "connection aborted",
+    "temporarily unavailable",
+    "could not resolve host",
+    "max retries exceeded",
+)
 
 _yf_retry = retry(
     stop=stop_after_attempt(YFINANCE_RETRY_ATTEMPTS),
@@ -221,6 +245,40 @@ _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 # ---------------------------------------------------------------------------
 _inflight_lock = threading.Lock()
 _inflight_events: dict[str, threading.Event] = {}
+_fg_component_failures: dict[str, float] = {}
+_fg_component_failures_lock = threading.Lock()
+
+
+def _is_transient_yf_error(exc: Exception) -> bool:
+    """Classify transient Yahoo/yfinance transport errors by exception type/message."""
+    if isinstance(exc, (CurlError, ConnectionError, TimeoutError, OSError)):
+        return True
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _TRANSIENT_YF_ERROR_MARKERS)
+
+
+def _is_fg_component_in_cooldown(ticker: str, *, now: float | None = None) -> bool:
+    """Return True when ticker is inside short failure cooldown window."""
+    current = time.monotonic() if now is None else now
+    with _fg_component_failures_lock:
+        last_failed = _fg_component_failures.get(ticker)
+    return (
+        last_failed is not None
+        and current - last_failed < FG_COMPONENT_FAILURE_COOLDOWN_SECONDS
+    )
+
+
+def _mark_fg_component_failure(ticker: str, *, now: float | None = None) -> None:
+    """Record latest component fetch failure timestamp."""
+    current = time.monotonic() if now is None else now
+    with _fg_component_failures_lock:
+        _fg_component_failures[ticker] = current
+
+
+def _clear_fg_component_failure(ticker: str) -> None:
+    """Clear failure marker after successful fetch."""
+    with _fg_component_failures_lock:
+        _fg_component_failures.pop(ticker, None)
 
 
 def _deduped_fetch(
@@ -349,9 +407,51 @@ def clear_all_caches() -> dict:
     ]
     for cache in l1_caches:
         cache.clear()
+    with _fg_component_failures_lock:
+        _fg_component_failures.clear()
+    # Also reset sticky failure counters so cache clear fully resets runtime state.
+    with _moat_failure_lock:
+        _moat_failure_counts.clear()
     _disk_cache.clear()
     logger.info("已清除所有快取（L1×%d + L2 磁碟）。", len(l1_caches))
     return {"l1_cleared": len(l1_caches), "l2_cleared": True}
+
+
+def clear_forex_caches() -> dict:
+    """清除 FX 相關 L1 記憶體快取與對應 L2 磁碟快取。"""
+    l1_caches = [
+        _forex_cache,
+        _forex_history_cache,
+        _forex_history_long_cache,
+    ]
+    for cache in l1_caches:
+        cache.clear()
+
+    deleted_disk_entries = 0
+    for disk_prefix in [
+        DISK_KEY_FOREX,
+        DISK_KEY_FOREX_HISTORY,
+        DISK_KEY_FOREX_HISTORY_LONG,
+    ]:
+        try:
+            to_delete = [
+                key
+                for key in _disk_cache.iterkeys()
+                if isinstance(key, str) and key.startswith(f"{disk_prefix}:")
+            ]
+            for key in to_delete:
+                del _disk_cache[key]
+            deleted_disk_entries += len(to_delete)
+        except Exception:
+            # 非致命：若某一類 key 清除失敗，仍繼續清除其他 key。
+            logger.warning("清除 FX 磁碟快取失敗：prefix=%s", disk_prefix)
+
+    logger.info(
+        "已清除 FX 快取（L1×%d + L2 entries=%d）。",
+        len(l1_caches),
+        deleted_disk_entries,
+    )
+    return {"l1_cleared": len(l1_caches), "l2_entries_cleared": deleted_disk_entries}
 
 
 def _cached_fetch(
@@ -370,12 +470,14 @@ def _cached_fetch(
     若為錯誤，仍寫入 L1（短暫快取避免瞬間重複呼叫），但略過 L2/磁碟寫入，
     讓下次 L1 過期後可重新嘗試取得正確結果。
     """
+    l1_error_cached = None
     cached = l1_cache.get(ticker)
     if cached is not None:
         # If L1 has an error entry but L2 may have recovered valid data, fall through.
         if is_error is None or not is_error(cached):
             logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
             return cached
+        l1_error_cached = cached
         logger.debug(
             "%s L1 為錯誤結果，繼續嘗試 L2（prefix=%s）。", ticker, disk_prefix
         )
@@ -383,9 +485,23 @@ def _cached_fetch(
     disk_key = f"{disk_prefix}:{ticker}"
     disk_cached = _disk_get(disk_key)
     if disk_cached is not None:
-        logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
-        l1_cache[ticker] = disk_cached
-        return disk_cached
+        if is_error is not None and is_error(disk_cached):
+            # Stale error entry on disk (written before is_error was added).
+            # Purge it so the fetcher gets a chance to retrieve fresh data.
+            with contextlib.suppress(Exception):
+                _disk_cache.delete(disk_key)
+            logger.debug(
+                "%s L2 磁碟快取為舊錯誤結果，已清除（prefix=%s）。",
+                ticker,
+                disk_prefix,
+            )
+        else:
+            logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
+            l1_cache[ticker] = disk_cached
+            return disk_cached
+    if l1_error_cached is not None:
+        # Keep L1 error result for short-term dedup and avoid repeated immediate fetches.
+        return l1_error_cached
 
     logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
 
@@ -415,8 +531,57 @@ def _cached_fetch(
 
 
 def _get_session() -> cffi_requests.Session:
-    """建立模擬 Chrome 瀏覽器的 Session，以繞過 Yahoo Finance 的 bot 防護。"""
-    return cffi_requests.Session(impersonate=CURL_CFFI_IMPERSONATE)
+    """建立模擬 Chrome 瀏覽器的 Session，以繞過 Yahoo Finance 的 bot 防護。
+
+    Timeout defence layers:
+      1. Session-level timeout (here) — makes individual HTTP calls fail-fast.
+      2. Batch-level timeout (_run_batch_with_timeout) — caps total wall time
+         for parallel prewarm/batch operations.
+    Python cannot forcibly kill a running thread, so (1) is the primary guard.
+    (2) is defence-in-depth for any edge case where curl_cffi ignores (1).
+    """
+    return cffi_requests.Session(
+        impersonate=CURL_CFFI_IMPERSONATE,
+        timeout=(YF_CONNECT_TIMEOUT, YF_READ_TIMEOUT),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Batch execution with timeout — avoids blocking ThreadPoolExecutor teardown
+# ---------------------------------------------------------------------------
+
+
+def _run_batch_with_timeout(
+    futures: dict[Future, str],
+    executor: ThreadPoolExecutor,
+    *,
+    timeout: float | None = None,
+    label: str = "batch",
+) -> tuple[dict[Future, str], list[str]]:
+    """Collect completed futures within *timeout* seconds, then abandon stragglers.
+
+    Returns (completed_futures_subset, timed_out_keys).
+    On timeout, calls ``executor.shutdown(wait=False, cancel_futures=True)``
+    so the caller returns immediately — running worker threads are detached
+    (they will finish in the background and be garbage-collected).
+    """
+    if timeout is None:
+        timeout = PREWARM_BATCH_TIMEOUT
+    completed: dict[Future, str] = {}
+    timed_out_keys: list[str] = []
+    try:
+        for future in as_completed(futures, timeout=timeout):
+            completed[future] = futures[future]
+    except TimeoutError:
+        timed_out_keys = [futures[f] for f in futures if not f.done()]
+        executor.shutdown(wait=False, cancel_futures=True)
+        logger.warning(
+            "%s 批次逾時（%ds），%d 個任務未完成已放棄。",
+            label,
+            timeout,
+            len(timed_out_keys),
+        )
+    return completed, timed_out_keys
 
 
 # ---------------------------------------------------------------------------
@@ -649,7 +814,12 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
         return {**raw_signals, "status": build_signal_status(raw_signals)}
 
     except Exception as e:
-        logger.error("無法取得 %s 技術訊號：%s", ticker, e, exc_info=True)
+        if _is_transient_yf_error(e):
+            logger.warning(
+                "技術訊號暫時抓取失敗（%s），改以錯誤回應優雅降級：%s", ticker, e
+            )
+        else:
+            logger.error("無法取得 %s 技術訊號：%s", ticker, e, exc_info=True)
         return {
             "error": t(
                 "market.signals_fetch_error",
@@ -694,6 +864,7 @@ def batch_download_history(
             threads=True,
             progress=False,
             auto_adjust=True,
+            session=_get_session(),
         )
         result: dict = {}
         for ticker in tickers:
@@ -739,6 +910,7 @@ def batch_download_history_extended(
             threads=True,
             progress=False,
             auto_adjust=True,
+            session=_get_session(),
         )
         result: dict[str, list[dict]] = {}
         for ticker in tickers:
@@ -778,7 +950,6 @@ def prime_signals_cache_batch(
     跳過已在 L1 快取中的 ticker。
     回傳成功預熱的股票數量（不含已在快取中的）。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _prime_one(ticker: str, hist) -> str:
         """回傳 'primed' | 'cached' | 'failed'。"""
@@ -793,21 +964,21 @@ def prime_signals_cache_batch(
         return "primed"
 
     primed = already_cached = 0
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_prime_one, ticker, hist): ticker
             for ticker, hist in ticker_hist_map.items()
         }
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                outcome = future.result()
-                if outcome == "primed":
-                    primed += 1
-                elif outcome == "cached":
-                    already_cached += 1
-            except Exception as e:
-                logger.warning("預熱 %s 訊號快取失敗：%s", ticker, e)
+        completed, _ = _run_batch_with_timeout(futures, executor, label="訊號快取預熱")
+    for future in completed:
+        try:
+            outcome = future.result()
+            if outcome == "primed":
+                primed += 1
+            elif outcome == "cached":
+                already_cached += 1
+        except Exception as e:
+            logger.warning("預熱 %s 訊號快取失敗：%s", completed[future], e)
     logger.info(
         "訊號快取預熱完成：%d 新增，%d 已在快取，共 %d 檔。",
         primed,
@@ -825,18 +996,22 @@ def prewarm_signals_batch(
     已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
     回傳 {ticker: signals_dict} 對照表。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results: dict[str, dict | None] = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(get_technical_signals, t): t for t in tickers}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                results[ticker] = future.result()
-            except Exception as exc:
-                logger.error("預熱 %s 訊號失敗：%s", ticker, exc, exc_info=True)
-                results[ticker] = None
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="訊號預熱"
+        )
+    for future in completed:
+        ticker = completed[future]
+        try:
+            results[ticker] = future.result()
+        except Exception as exc:
+            logger.error("預熱 %s 訊號失敗：%s", ticker, exc, exc_info=True)
+            results[ticker] = None
+    for ticker in timed_out:
+        results[ticker] = None
     return results
 
 
@@ -1151,18 +1326,22 @@ def prewarm_moat_batch(
     已在 L1/L2 快取中的 ticker 不會重複呼叫 yfinance。
     回傳 {ticker: moat_dict} 對照表。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results: dict[str, dict | None] = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(analyze_moat_trend, t): t for t in tickers}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                results[ticker] = future.result()
-            except Exception as exc:
-                logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
-                results[ticker] = None
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="護城河預熱"
+        )
+    for future in completed:
+        ticker = completed[future]
+        try:
+            results[ticker] = future.result()
+        except Exception as exc:
+            logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
+            results[ticker] = None
+    for ticker in timed_out:
+        results[ticker] = None
     return results
 
 
@@ -1493,20 +1672,23 @@ def get_exchange_rates(
     if not foreign:
         return rates
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    with ThreadPoolExecutor(max_workers=len(foreign)) as executor:
+    with _FastShutdownExecutor(max_workers=len(foreign)) as executor:
         futures = {
             executor.submit(get_exchange_rate, display_currency, cur): cur
             for cur in foreign
         }
-        for future in as_completed(futures):
-            cur = futures[future]
-            try:
-                rates[cur] = future.result()
-            except Exception as exc:
-                logger.warning("並行取得匯率失敗（%s）：%s，使用 1.0", cur, exc)
-                rates[cur] = 1.0
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="匯率取得"
+        )
+    for future in completed:
+        cur = completed[future]
+        try:
+            rates[cur] = future.result()
+        except Exception as exc:
+            logger.warning("並行取得匯率失敗（%s）：%s，使用 1.0", cur, exc)
+            rates[cur] = 1.0
+    for cur in timed_out:
+        rates[cur] = 1.0
     return rates
 
 
@@ -1661,13 +1843,13 @@ def _is_nan(val) -> bool:
 # ---------------------------------------------------------------------------
 
 
+@_yf_retry
 def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
     """
     從 yfinance 取得 ETF 前 N 大成分股。
     回傳 [{"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.072}, ...] 或 None。
     非 ETF 標的會回傳 None。
     """
-    _rate_limiter.wait()
     try:
         t = _yf_ticker_obj(ticker)
         fd = t.funds_data
@@ -1675,7 +1857,10 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
             return None
         top = fd.top_holdings
         if top is None or top.empty:
-            return None
+            # yfinance occasionally returns empty top_holdings on transient failures.
+            # Raise to trigger tenacity retry and avoid false negative caching.
+            logger.debug("%s ETF top_holdings 為空，將重試抓取。", ticker)
+            raise OSError(f"{ticker}: yfinance returned empty ETF top_holdings")
 
         cols = list(top.columns)
         logger.debug(
@@ -1699,6 +1884,9 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
             )
         logger.info("%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N)
         return result if result else None
+    except _RETRYABLE_EXCEPTIONS as e:
+        logger.debug("%s 取得 ETF 成分股遇到暫時性錯誤，將重試：%s", ticker, e)
+        raise
     except Exception as e:
         logger.debug("%s 非 ETF 或取得成分股失敗：%s", ticker, e)
         return None
@@ -1708,7 +1896,9 @@ _ETF_NOT_FOUND_SENTINEL: list[dict] = []  # 空 list 作為「非 ETF」的快�
 _BETA_NOT_AVAILABLE: float = -999.0  # 哨兵值：yfinance 無提供 Beta 時的快取標記
 
 
-def get_etf_top_holdings(ticker: str) -> list[dict] | None:
+def get_etf_top_holdings(
+    ticker: str, *, is_known_etf: bool | None = None
+) -> list[dict] | None:
     """
     取得 ETF 前 N 大成分股（含 L1 + L2 快取）。
     非 ETF 標的回傳 None。使用空 list 哨兵避免反覆呼叫 yfinance。
@@ -1718,13 +1908,40 @@ def get_etf_top_holdings(ticker: str) -> list[dict] | None:
         result = _fetch_etf_top_holdings(t)
         return result if result else _ETF_NOT_FOUND_SENTINEL
 
-    data = _cached_fetch(
-        _etf_holdings_cache,
-        ticker,
-        DISK_KEY_ETF_HOLDINGS,
-        DISK_ETF_HOLDINGS_TTL,
-        _fetch_with_sentinel,
-    )
+    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
+    # skip ETF holdings fetch entirely to avoid unnecessary retries/calls.
+    cached_info = _yf_info_cache.get(ticker)
+    if (
+        is_known_etf is not True
+        and cached_info
+        and cached_info.get("quoteType", "") != "ETF"
+    ):
+        return None
+
+    try:
+        data = _cached_fetch(
+            _etf_holdings_cache,
+            ticker,
+            DISK_KEY_ETF_HOLDINGS,
+            DISK_ETF_HOLDINGS_TTL,
+            _fetch_with_sentinel,
+            is_error=lambda d: d == _ETF_NOT_FOUND_SENTINEL,
+        )
+    except _RETRYABLE_EXCEPTIONS as e:
+        # Graceful degradation: external API failures should never crash callers.
+        logger.warning("%s ETF 成分股抓取重試後仍失敗，回傳空結果：%s", ticker, e)
+        return None
+    # One-time cleanup for stale negative cache entries:
+    # if this ticker is known ETF, do not keep an empty-sentinel cached.
+    if data == _ETF_NOT_FOUND_SENTINEL and is_known_etf:
+        disk_key = f"{DISK_KEY_ETF_HOLDINGS}:{ticker}"
+        with contextlib.suppress(Exception):
+            _disk_cache.delete(disk_key)
+        _etf_holdings_cache.pop(ticker, None)
+        logger.warning(
+            "%s 為 ETF 但成分股快取為空，已清除負向快取以便下次重新抓取。",
+            ticker,
+        )
     return data if data else None
 
 
@@ -1735,18 +1952,22 @@ def prewarm_etf_holdings_batch(
     並行預熱多檔 ETF 的成分股快取。
     回傳 {ticker: holdings_list_or_None} 對照表。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results: dict[str, list[dict] | None] = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(get_etf_top_holdings, t): t for t in tickers}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                results[ticker] = future.result()
-            except Exception as exc:
-                logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
-                results[ticker] = None
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="ETF 成分股預熱"
+        )
+    for future in completed:
+        ticker = completed[future]
+        try:
+            results[ticker] = future.result()
+        except Exception as exc:
+            logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
+            results[ticker] = None
+    for ticker in timed_out:
+        results[ticker] = None
     return results
 
 
@@ -1821,7 +2042,9 @@ def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
         return None
 
 
-def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
+def get_etf_sector_weights(
+    ticker: str, *, is_known_etf: bool | None = None
+) -> dict[str, float] | None:
     """
     取得 ETF 行業板塊權重分佈（含 L1 + L2 快取）。
     回傳 {"Technology": 0.32, ...} 或 None（非 ETF 或無資料）。
@@ -1832,13 +2055,37 @@ def get_etf_sector_weights(ticker: str) -> dict[str, float] | None:
         result = _fetch_etf_sector_weights(t)
         return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
 
-    data = _cached_fetch(
-        _etf_sector_weights_cache,
-        ticker,
-        DISK_KEY_ETF_SECTOR_WEIGHTS,
-        DISK_ETF_SECTOR_WEIGHTS_TTL,
-        _fetch_with_sentinel,
-    )
+    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
+    # skip ETF sector fetch entirely to avoid unnecessary retries/calls.
+    cached_info = _yf_info_cache.get(ticker)
+    if (
+        is_known_etf is not True
+        and cached_info
+        and cached_info.get("quoteType", "") != "ETF"
+    ):
+        return None
+
+    try:
+        data = _cached_fetch(
+            _etf_sector_weights_cache,
+            ticker,
+            DISK_KEY_ETF_SECTOR_WEIGHTS,
+            DISK_ETF_SECTOR_WEIGHTS_TTL,
+            _fetch_with_sentinel,
+            is_error=lambda d: d == _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+        )
+    except _RETRYABLE_EXCEPTIONS as e:
+        logger.warning("%s ETF 板塊權重抓取重試後仍失敗，回傳空結果：%s", ticker, e)
+        return None
+    if data == _ETF_SECTOR_WEIGHTS_NOT_FOUND and is_known_etf:
+        disk_key = f"{DISK_KEY_ETF_SECTOR_WEIGHTS}:{ticker}"
+        with contextlib.suppress(Exception):
+            _disk_cache.delete(disk_key)
+        _etf_sector_weights_cache.pop(ticker, None)
+        logger.warning(
+            "%s 為 ETF 但板塊權重快取為空，已清除負向快取以便下次重新抓取。",
+            ticker,
+        )
     return data if data else None
 
 
@@ -1850,20 +2097,22 @@ def prewarm_etf_sector_weights_batch(
     非 ETF 標的會快速命中哨兵快取，不造成額外 yfinance 呼叫。
     回傳 {ticker: weights_or_None} 對照表。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     results: dict[str, dict[str, float] | None] = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                results[ticker] = future.result()
-            except Exception as exc:
-                logger.error(
-                    "預熱 %s ETF 行業板塊權重失敗：%s", ticker, exc, exc_info=True
-                )
-                results[ticker] = None
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="ETF 板塊權重預熱"
+        )
+    for future in completed:
+        ticker = completed[future]
+        try:
+            results[ticker] = future.result()
+        except Exception as exc:
+            logger.error("預熱 %s ETF 行業板塊權重失敗：%s", ticker, exc, exc_info=True)
+            results[ticker] = None
+    for ticker in timed_out:
+        results[ticker] = None
     return results
 
 
@@ -1921,7 +2170,10 @@ def get_vix_data() -> dict:
         }
 
     except Exception as e:
-        logger.error("取得 VIX 資料失敗：%s", e, exc_info=True)
+        if _is_transient_yf_error(e):
+            logger.info("取得 VIX 資料暫時失敗（非致命）：%s", e)
+        else:
+            logger.warning("取得 VIX 資料失敗（非致命）：%s", e, exc_info=True)
         return {
             "value": None,
             "change_1d": None,
@@ -1990,10 +2242,23 @@ def _fetch_fg_component_history(ticker: str) -> list[float] | None:
 
 def _fetch_fg_component_history_safe(ticker: str) -> list[float] | None:
     """Wrapper that catches all errors from _fetch_fg_component_history."""
+    if _is_fg_component_in_cooldown(ticker):
+        logger.debug(
+            "FG 組件 %s 於失敗冷卻期內，略過本次抓取（%ds）。",
+            ticker,
+            FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
+        )
+        return None
     try:
-        return _fetch_fg_component_history(ticker)
+        prices = _fetch_fg_component_history(ticker)
+        _clear_fg_component_failure(ticker)
+        return prices
     except Exception as e:
-        logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
+        _mark_fg_component_failure(ticker)
+        if _is_transient_yf_error(e):
+            logger.info("FG 組件 %s 暫時性網路錯誤，將短暫降級：%s", ticker, e)
+        else:
+            logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
         return None
 
 
@@ -2312,7 +2577,6 @@ def prewarm_beta_batch(
 
     回傳 {ticker: beta_or_None} 對照表。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     market_hist = None
     if hist_batch is not None:
@@ -2327,7 +2591,7 @@ def prewarm_beta_batch(
                 logger.warning("下載 SPY 歷史資料失敗，將回退至 yfinance info：%s", exc)
 
     results: dict[str, float | None] = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures: dict = {}
         for ticker in tickers:
             if (
@@ -2346,13 +2610,18 @@ def prewarm_beta_batch(
                 ] = ticker
             else:
                 futures[executor.submit(get_stock_beta, ticker)] = ticker
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                results[ticker] = future.result()
-            except Exception as exc:
-                logger.error("預熱 %s Beta 失敗：%s", ticker, exc, exc_info=True)
-                results[ticker] = None
+        completed, timed_out = _run_batch_with_timeout(
+            futures, executor, label="Beta 預熱"
+        )
+    for future in completed:
+        ticker = completed[future]
+        try:
+            results[ticker] = future.result()
+        except Exception as exc:
+            logger.error("預熱 %s Beta 失敗：%s", ticker, exc, exc_info=True)
+            results[ticker] = None
+    for ticker in timed_out:
+        results[ticker] = None
     return results
 
 
@@ -2519,20 +2788,20 @@ def prewarm_ticker_sector_batch(
     已有磁碟快取的 ticker 直接跳過，避免不必要的 yfinance 請求。
     用於 Approach A 前的批次預熱，讓後續逐一查詢可命中快取。
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{t}") is None]
     if not uncached:
         return
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                future.result()
-            except Exception as exc:
-                logger.warning("預熱 %s sector 失敗：%s", ticker, exc)
+        completed, _ = _run_batch_with_timeout(futures, executor, label="sector 預熱")
+    for future in completed:
+        ticker = completed[future]
+        try:
+            future.result()
+        except Exception as exc:
+            logger.warning("預熱 %s sector 失敗：%s", ticker, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -2584,6 +2853,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 auto_adjust=True,
                 progress=False,
                 threads=True,
+                session=_get_session(),
             )
             for ticker in uncached_tickers:
                 rp: float | None = None
@@ -2616,6 +2886,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
             auto_adjust=True,
             progress=False,
             threads=True,
+            session=_get_session(),
         )
         for ticker in tickers:
             cp: float | None = None

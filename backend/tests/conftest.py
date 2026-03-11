@@ -137,6 +137,7 @@ def _clean_tables():
     from application.guru.backtest_service import invalidate_guru_backtest_cache
     from application.guru.heatmap_service import invalidate_heatmap_cache
     from application.guru.resonance_service import invalidate_resonance_cache
+    from application.portfolio.insight_service import invalidate_insight_cache
     from application.portfolio.rebalance_service import invalidate_rebalance_cache
     from application.scan.backtest_service import invalidate_backtest_cache
     from application.stock.stock_service import invalidate_enriched_cache
@@ -145,6 +146,7 @@ def _clean_tables():
     invalidate_guru_backtest_cache()
     invalidate_heatmap_cache()
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     invalidate_backtest_cache()
     invalidate_enriched_cache()
 
