@@ -600,3 +600,60 @@ class TestRebalanceAdviceTranslation:
             f"Expected list[str], got: {advice}"
         )
         assert any("overweight" in a.lower() for a in advice)
+
+
+class TestRebalanceCacheRefresh:
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
+    def test_force_refresh_should_recompute_cached_rebalance(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        _mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 100}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="NVDA",
+                category=StockCategory.GROWTH,
+                quantity=10.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        mock_fx.return_value = {"USD": 1.0}
+        mock_signals.side_effect = [
+            {"price": 120.0, "previous_close": 110.0, "change_pct": 9.09},
+            {"price": 130.0, "previous_close": 120.0, "change_pct": 8.33},
+        ]
+
+        first = calculate_rebalance(db_session, "USD")
+        refreshed = calculate_rebalance(db_session, "USD", force_refresh=True)
+
+        assert first["total_value"] == pytest.approx(1200.0, rel=0.01)
+        assert refreshed["total_value"] == pytest.approx(1300.0, rel=0.01)

@@ -16,6 +16,7 @@ from domain.constants import (
     EQUITY_CATEGORIES,
     FG_SPY_TICKER,
     GURU_BACKFILL_YEARS,
+    PREWARM_REFRESH_INTERVAL,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_PRICE_FETCH_CATEGORIES,
@@ -46,6 +47,8 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 _prewarm_ready = False
 _prewarm_lock = threading.Lock()
+_periodic_refresh_started = False
+_periodic_refresh_lock = threading.Lock()
 
 
 def is_prewarm_ready() -> bool:
@@ -164,6 +167,7 @@ def prewarm_all_caches() -> None:
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
     _set_prewarm_ready(True)
     _prewarm_phase("scanlog_backfill", _run_scanlog_backfill)
+    _start_periodic_refresh_loop()
 
 
 # ---------------------------------------------------------------------------
@@ -424,3 +428,35 @@ def _prewarm_phase(name: str, fn) -> None:
         logger.info("快取預熱 [%s] 完成，耗時 %.1f 秒。", name, elapsed)
     except Exception as exc:
         logger.warning("快取預熱 [%s] 失敗（非致命）：%s", name, exc, exc_info=True)
+
+
+def _start_periodic_refresh_loop() -> None:
+    """Ensure only one periodic refresh loop is running."""
+    global _periodic_refresh_started
+    with _periodic_refresh_lock:
+        if _periodic_refresh_started:
+            return
+        _periodic_refresh_started = True
+    threading.Thread(target=_periodic_refresh_loop, daemon=True).start()
+    logger.info(
+        "快取預熱 [periodic] 週期刷新已啟動（每 %d 秒）。", PREWARM_REFRESH_INTERVAL
+    )
+
+
+def _periodic_refresh_loop() -> None:
+    while True:
+        time.sleep(PREWARM_REFRESH_INTERVAL)
+        _prewarm_phase("periodic_dashboard_hot_paths", _refresh_dashboard_hot_paths)
+
+
+def _refresh_dashboard_hot_paths() -> None:
+    """Refresh dashboard hot-path caches to avoid cold-start latency."""
+    from application.guru.resonance_service import get_great_minds_list
+    from application.portfolio.rebalance_service import calculate_rebalance
+    from application.stock.stock_service import get_enriched_stocks
+
+    with Session(engine) as session:
+        _ = get_enriched_stocks(session, force_refresh=True)
+        _ = calculate_rebalance(session, "USD", force_refresh=True)
+        _ = get_fear_greed_index()
+        _ = get_great_minds_list(session, force_refresh=True)

@@ -9,12 +9,13 @@ Application — Resonance Service：計算使用者投資組合與大師持倉�
 
 import threading
 
-from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from domain.constants import RESONANCE_CACHE_TTL
 from domain.entities import Holding, Stock
 from domain.smart_money import compute_resonance_matches
+from infrastructure.cache import SWRCache
+from infrastructure.database import engine
 from infrastructure.repositories import (
     find_all_active_gurus,
     find_holdings_by_guru_latest,
@@ -25,7 +26,12 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_resonance_cache: TTLCache = TTLCache(maxsize=1, ttl=RESONANCE_CACHE_TTL)
+_RESONANCE_STALE_TTL = RESONANCE_CACHE_TTL * 3
+_resonance_cache: SWRCache[str, list[dict]] = SWRCache(
+    maxsize=1,
+    fresh_ttl=RESONANCE_CACHE_TTL,
+    stale_ttl=_RESONANCE_STALE_TTL,
+)
 _resonance_cache_lock = threading.Lock()
 _resonance_in_progress: threading.Event | None = None
 
@@ -40,7 +46,9 @@ def invalidate_resonance_cache() -> None:
         _resonance_in_progress = None
 
 
-def compute_portfolio_resonance(session: Session) -> list[dict]:
+def compute_portfolio_resonance(
+    session: Session, force_refresh: bool = False
+) -> list[dict]:
     """
     計算所有大師的最新持倉與使用者關注清單／實際持倉的重疊。
 
@@ -66,8 +74,10 @@ def compute_portfolio_resonance(session: Session) -> list[dict]:
 
     while True:
         with _resonance_cache_lock:
-            cached = _resonance_cache.get(cache_key)
-            if cached is not None:
+            refresh_fn = None if force_refresh else _refresh_resonance_cache_background
+            cached, cache_state = _resonance_cache.get(cache_key, refresh_fn=refresh_fn)
+            if cached is not None and not force_refresh:
+                logger.debug("共鳴快取命中（%s）", cache_state)
                 return cached
 
             if _resonance_in_progress is None:
@@ -92,11 +102,16 @@ def compute_portfolio_resonance(session: Session) -> list[dict]:
         raise
 
     with _resonance_cache_lock:
-        _resonance_cache[cache_key] = results
+        _resonance_cache.set(cache_key, results)
         if _resonance_in_progress is not None:
             _resonance_in_progress.set()
         _resonance_in_progress = None
     return results
+
+
+def _refresh_resonance_cache_background() -> list[dict]:
+    with Session(engine) as bg_session:
+        return _compute_portfolio_resonance_uncached(bg_session)
 
 
 def _compute_portfolio_resonance_uncached(session: Session) -> list[dict]:
@@ -200,7 +215,7 @@ def get_resonance_for_ticker(session: Session, ticker: str) -> list[dict]:
     return results
 
 
-def get_great_minds_list(session: Session) -> list[dict]:
+def get_great_minds_list(session: Session, force_refresh: bool = False) -> list[dict]:
     """
     回傳「英雄所見略同」清單：使用者（關注清單或持倉）＋至少一位大師同時持有的股票。
 
@@ -215,7 +230,9 @@ def get_great_minds_list(session: Session) -> list[dict]:
             guru_count (int),
             gurus (list[dict]: guru_id, guru_display_name, action, weight_pct)
     """
-    resonance_results = compute_portfolio_resonance(session)
+    resonance_results = compute_portfolio_resonance(
+        session, force_refresh=force_refresh
+    )
     if not resonance_results:
         return []
 

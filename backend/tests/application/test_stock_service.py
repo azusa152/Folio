@@ -351,6 +351,37 @@ class TestGetEnrichedStocks:
         assert result[0]["market_cap"] == 123456789
         assert result[0]["trailing_pe"] == 18.2
 
+    def test_force_refresh_should_recompute_cached_enriched_data(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category=StockCategory.MOAT))
+
+        with (
+            patch(
+                f"{STOCK_MODULE}.get_technical_signals",
+                side_effect=[
+                    {"rsi": 50.0, "bias": 1.0, "price": 100.0},
+                    {"rsi": 60.0, "bias": 2.0, "price": 110.0},
+                ],
+            ) as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            first = get_enriched_stocks(db_session)
+            refreshed = get_enriched_stocks(db_session, force_refresh=True)
+
+        assert first[0]["price"] == 100.0
+        assert refreshed[0]["price"] == 110.0
+        assert mock_signals.call_count == 2
+
     def test_sector_field_included_in_enriched_response(self, db_session) -> None:
         """sector field from yfinance cache should be present in each enriched stock dict."""
         from domain.entities import Stock

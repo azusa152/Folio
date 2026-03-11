@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import client from "@/api/client"
 import type {
   NetWorthItemRequest,
@@ -22,6 +27,7 @@ export function useNetWorthSummary(displayCurrency = "USD", enabled = true) {
     },
     staleTime: 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -37,6 +43,7 @@ export function useNetWorthItems(displayCurrency = "USD", enabled = true) {
     },
     staleTime: 30 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -52,6 +59,7 @@ export function useNetWorthHistory(days = 30, displayCurrency = "USD", enabled =
     },
     staleTime: 5 * 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -67,6 +75,7 @@ export function useNetWorthSeedPreview(displayCurrency = "USD", enabled = true) 
     },
     staleTime: 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 

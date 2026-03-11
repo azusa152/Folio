@@ -6,7 +6,6 @@ import json as _json
 import threading
 from datetime import UTC, datetime
 
-from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from application.stock.stock_service import StockNotFoundError
@@ -37,6 +36,8 @@ from domain.rebalance import (
     compute_portfolio_health_score,
 )
 from i18n import get_user_language, t
+from infrastructure.cache import SWRCache
+from infrastructure.database import engine
 from infrastructure.market_data import (
     are_all_signals_in_l1,
     detect_is_etf,
@@ -64,10 +65,13 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# 再平衡計算結果的短效快取（key = (display_currency, lang)）。
-# 避免同一時間多個前端請求（Dashboard + Allocation + 快照觸發）重複執行完整計算。
-_rebalance_cache: TTLCache = TTLCache(
-    maxsize=REBALANCE_CACHE_MAXSIZE, ttl=REBALANCE_CACHE_TTL
+# 再平衡計算結果的 SWR 快取（key = (display_currency, lang)）。
+# stale 視窗可在背景刷新前先回傳舊值，避免前端冷啟動長時間 skeleton。
+_REBALANCE_STALE_TTL = REBALANCE_CACHE_TTL * 3
+_rebalance_cache: SWRCache[tuple, dict] = SWRCache(
+    maxsize=REBALANCE_CACHE_MAXSIZE,
+    fresh_ttl=REBALANCE_CACHE_TTL,
+    stale_ttl=_REBALANCE_STALE_TTL,
 )
 _rebalance_cache_lock = threading.Lock()
 
@@ -210,7 +214,11 @@ def _compute_holding_market_values(
 # ===========================================================================
 
 
-def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict:
+def calculate_rebalance(
+    session: Session,
+    display_currency: str = "USD",
+    force_refresh: bool = False,
+) -> dict:
     """
     計算再平衡分析：比較目標配置與實際持倉。
     1. 讀取啟用中的 UserInvestmentProfile（目標配置）
@@ -219,16 +227,29 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     4. 對非現金持倉查詢即時價格
     5. 委託 domain.rebalance 純函式計算偏移與建議
 
-    結果以 (display_currency, lang) 為 key 快取 60 秒，避免短時間內重複計算。
+    結果以 (display_currency, lang) 為 key 進行 SWR 快取，避免短時間內重複計算；
+    stale 狀態會背景 revalidate。force_refresh=True 可強制同步重算。
     快取命中時更新 calculated_at 為當前時間，避免回傳過期的計算時間戳。
     """
     lang = get_user_language(session)
     _cache_key = (display_currency, lang)
 
     with _rebalance_cache_lock:
-        cached = _rebalance_cache.get(_cache_key)
-        if cached is not None:
-            logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
+        refresh_fn = None
+        if not force_refresh:
+
+            def _refresh_fn() -> dict:
+                return _refresh_rebalance_cache_entry(_cache_key)
+
+            refresh_fn = _refresh_fn
+        cached, cache_state = _rebalance_cache.get(_cache_key, refresh_fn=refresh_fn)
+        if cached is not None and not force_refresh:
+            logger.debug(
+                "再平衡快取命中（%s）：%s (%s)",
+                cache_state,
+                display_currency,
+                lang,
+            )
             return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
 
     # In-flight 去重：同一 cache_key 同時只有一個計算在飛行中。
@@ -248,8 +269,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
             logger.debug("再平衡計算去重等待：%s (%s)", display_currency, lang)
             event.wait()
             with _rebalance_cache_lock:
-                cached = _rebalance_cache.get(_cache_key)
-                if cached is not None:
+                cached, state = _rebalance_cache.get(_cache_key)
+                if cached is not None and state != "expired":
                     return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
             continue
 
@@ -712,9 +733,15 @@ def _do_calculate_rebalance(
     result["calculated_at"] = datetime.now(UTC).isoformat()
 
     with _rebalance_cache_lock:
-        _rebalance_cache[_cache_key] = result
+        _rebalance_cache.set(_cache_key, result)
 
     return result
+
+
+def _refresh_rebalance_cache_entry(cache_key: tuple) -> dict:
+    display_currency, lang = cache_key
+    with Session(engine) as bg_session:
+        return _do_calculate_rebalance(bg_session, display_currency, lang, cache_key)
 
 
 def send_xray_warnings(

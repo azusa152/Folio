@@ -275,6 +275,7 @@ interface Props {
   enrichedStocks?: EnrichedStock[]
   holdings?: { id: number }[]
   isLoading: boolean
+  isRefreshing?: boolean
 }
 
 export function PortfolioPulse({
@@ -287,6 +288,7 @@ export function PortfolioPulse({
   enrichedStocks = [],
   holdings = [],
   isLoading,
+  isRefreshing = false,
 }: Props) {
   const { t } = useTranslation()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
@@ -336,8 +338,9 @@ export function PortfolioPulse({
   const changeAmt = rebalance?.total_value_change
   const ytdTwr = twr?.twr_pct
 
-  const fgScore = fearGreed?.composite_score ?? 50
-  const fgLevel = fearGreed?.composite_level ?? "N/A"
+  const fgScore = fearGreed?.composite_score ?? lastScan?.fear_greed_score ?? null
+  const fgLevel = fearGreed?.composite_level ?? lastScan?.fear_greed_level ?? null
+  const hasFearGreed = fgScore != null && fgLevel != null
   const vixVal = fearGreed?.vix?.value
   const vixChange = fearGreed?.vix?.change_1d
   const cnnScore = fearGreed?.cnn?.score
@@ -374,6 +377,11 @@ export function PortfolioPulse({
 
   return (
     <Card>
+      {isRefreshing && (
+        <p className="px-6 pt-4 text-xs text-muted-foreground text-right">
+          {t("common.loading")}
+        </p>
+      )}
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
         {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
         <div className="space-y-1 md:col-span-1">
@@ -440,12 +448,12 @@ export function PortfolioPulse({
               </InfoPopover>
             )}
           </div>
-          {fearGreed ? (
+          {hasFearGreed ? (
             <>
               <p className="sr-only" aria-live="polite">
-                {t("dashboard.fear_greed_title")}: {fgScore}/100, {fgLevel}
+                {t("dashboard.fear_greed_title")}: {fgScore!}/100, {fgLevel!}
               </p>
-              <FearGreedGauge score={fgScore} level={fgLevel} />
+              <FearGreedGauge score={fgScore!} level={fgLevel!} />
               <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
                 {FEAR_GREED_BANDS.map((band) => (
                   <span key={band.labelKey} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -465,7 +473,7 @@ export function PortfolioPulse({
                 {vixVal != null && " ｜ "}
                 {cnnScore != null ? `CNN=${cnnScore}` : t("config.fear_greed.cnn_unavailable")}
               </p>
-              {fearGreed.components && fearGreed.components.length > 0 && (
+              {fearGreed?.components && fearGreed.components.length > 0 && (
                 <FearGreedComponentBars components={fearGreed.components} />
               )}
             </>
