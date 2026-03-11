@@ -1281,6 +1281,17 @@ def delete_all_holdings(session: Session) -> int:
     return count
 
 
+def delete_holdings_by_account(session: Session, account_id: int) -> int:
+    """刪除指定帳戶的所有持倉，回傳刪除筆數。"""
+    stmt = select(Holding).where(Holding.account_id == account_id)
+    holdings = list(session.exec(stmt).all())
+    count = len(holdings)
+    for h in holdings:
+        session.delete(h)
+    session.commit()
+    return count
+
+
 # ===========================================================================
 # UserPreferences Repository
 # ===========================================================================

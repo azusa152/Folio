@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import type { components } from "@/api/types/generated"
 import type { TransactionRequest, TransactionResponse } from "@/api/types/transaction"
 
 interface UseTransactionsOptions {
@@ -66,6 +67,24 @@ export function useDeleteTransaction() {
         params: { path: { txn_id: txnId } },
       })
       if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["holdings"] })
+      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
+      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
+      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+    },
+  })
+}
+
+export function useImportTransactions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: components["schemas"]["TransactionImportRequest"]) => {
+      const { data, error } = await client.POST("/transactions/import", { body: payload })
+      if (error) throw error
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] })

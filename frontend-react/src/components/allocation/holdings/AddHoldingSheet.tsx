@@ -233,16 +233,22 @@ export function AddHoldingSheet({ open, onClose }: Props) {
 
   const handleImportConfirm = () => {
     if (!pendingImport) return
-    importMutation.mutate(pendingImport, {
-      onSuccess: () => {
-        setImportFeedback(null)
-        toast.success(t("allocation.sidebar.import_success"))
-        setPendingImport(null)
+    importMutation.mutate(
+      {
+        mode: "replace_all",
+        items: pendingImport,
       },
-      onError: (err: unknown) => {
+      {
+        onSuccess: () => {
+          setImportFeedback(null)
+          toast.success(t("allocation.sidebar.import_success"))
+          setPendingImport(null)
+        },
+        onError: (err: unknown) => {
           toast.error(getErrorMessage(err) || t("common.error"))
         },
-    })
+      },
+    )
   }
 
   const handleExport = async () => {

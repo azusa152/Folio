@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { Button } from "@/components/ui/button"
 import { useTransactions } from "@/api/hooks/useTransactions"
+import { TransactionCsvImportDialog } from "./TransactionCsvImportDialog"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { TransactionList } from "./TransactionList"
 
@@ -14,6 +15,7 @@ interface Props {
 
 export function TransactionsTab({ enabled, onRecordTransaction, onOpenAccounts }: Props) {
   const { t } = useTranslation()
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [tickerFilter, setTickerFilter] = useState("")
   const [accountFilter, setAccountFilter] = useState("")
   const { data: holdings } = useHoldings()
@@ -34,9 +36,18 @@ export function TransactionsTab({ enabled, onRecordTransaction, onOpenAccounts }
           <p className="text-sm font-semibold">{t("transactions.title")}</p>
           <p className="text-xs text-muted-foreground">{t("transactions.caption")}</p>
         </div>
-        <Button className="text-xs min-h-[44px]" onClick={onRecordTransaction}>
-          {t("transactions.record_button")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="text-xs min-h-[44px]"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            {t("transactions.import_button")}
+          </Button>
+          <Button className="text-xs min-h-[44px]" onClick={onRecordTransaction}>
+            {t("transactions.record_button")}
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -86,6 +97,10 @@ export function TransactionsTab({ enabled, onRecordTransaction, onOpenAccounts }
           ) : null}
         </div>
       ) : null}
+      <TransactionCsvImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+      />
     </div>
   )
 }

@@ -59,3 +59,40 @@ class TransactionResponse(BaseModel):
     note: str
     transaction_date: date
     created_at: str
+
+
+class TransactionImportItem(BaseModel):
+    account_id: int | None = None
+    ticker: str = Field(..., min_length=1, max_length=20)
+    transaction_type: str = Field(
+        ..., description="BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+    )
+    quantity: float = Field(..., gt=0)
+    price: float | None = None
+    total_amount: float = Field(..., description="Total transaction amount")
+    currency: str = Field(default="USD", max_length=10)
+    fx_rate: float | None = None
+    fee: float = Field(default=0.0, ge=0)
+    note: str = Field(default="", max_length=500)
+    transaction_date: date
+
+    @field_validator("ticker")
+    @classmethod
+    def import_ticker_must_be_uppercase(cls, v: str) -> str:
+        return v.upper().strip()
+
+    @field_validator("currency")
+    @classmethod
+    def import_currency_must_be_uppercase(cls, v: str) -> str:
+        return v.upper().strip()
+
+    @field_validator("transaction_type")
+    @classmethod
+    def import_validate_transaction_type(cls, v: str) -> str:
+        normalized = v.upper().strip()
+        return TransactionType(normalized).value
+
+
+class TransactionImportRequest(BaseModel):
+    account_id: int | None = None
+    items: list[TransactionImportItem]

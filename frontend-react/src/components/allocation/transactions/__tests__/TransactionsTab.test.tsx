@@ -12,6 +12,10 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/api/hooks/useTransactions", () => ({
   useTransactions: (params: unknown) => mockUseTransactions(params),
+  useImportTransactions: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock("@/api/hooks/useDashboard", () => ({

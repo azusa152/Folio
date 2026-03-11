@@ -114,6 +114,7 @@ from api.schemas.portfolio import (  # noqa: F401
     HoldingDetail,
     HoldingExportItem,
     HoldingImportItem,
+    HoldingImportRequest,
     HoldingRequest,
     HoldingResponse,
     RebalanceResponse,
@@ -163,6 +164,8 @@ from api.schemas.stock import (  # noqa: F401
     TickerCreateRequest,
 )
 from api.schemas.transaction import (  # noqa: F401
+    TransactionImportItem,
+    TransactionImportRequest,
     TransactionRequest,
     TransactionResponse,
 )

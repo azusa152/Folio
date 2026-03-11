@@ -9,7 +9,11 @@ from application.portfolio.settlement_service import (
     reverse_settlement,
     settle_transaction,
 )
-from domain.constants import ERROR_INVALID_INPUT, ERROR_TRANSACTION_NOT_FOUND
+from domain.constants import (
+    ERROR_INVALID_INPUT,
+    ERROR_TRANSACTION_NOT_FOUND,
+    GENERIC_VALIDATION_ERROR,
+)
 from domain.core.entities import Transaction
 from domain.enums import TransactionType
 from i18n import t
@@ -102,6 +106,42 @@ def get_transaction(session: Session, txn_id: int, lang: str) -> dict:
             },
         )
     return _to_dict(txn)
+
+
+def import_transactions(
+    session: Session,
+    data: list[dict],
+    lang: str,
+    *,
+    account_id: int | None = None,
+) -> dict:
+    if len(data) > 1000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
+
+    imported = 0
+    errors: list[str] = []
+    for index, item in enumerate(data):
+        try:
+            payload = {**item}
+            if account_id is not None:
+                payload["account_id"] = account_id
+            create_transaction(session, payload, lang)
+            imported += 1
+        except Exception as exc:
+            logger.warning("交易匯入第 %d 筆失敗：%s", index + 1, exc)
+            errors.append(t("api.import_item_failed", lang=lang, index=index + 1))
+
+    return {
+        "message": t("api.import_done", lang=lang, count=imported),
+        "imported": imported,
+        "errors": errors,
+    }
 
 
 def _to_dict(txn: Transaction) -> dict:

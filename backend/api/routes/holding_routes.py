@@ -9,7 +9,7 @@ from api.schemas import (
     CashHoldingRequest,
     CurrencyExposureResponse,
     FXAlertResponse,
-    HoldingImportItem,
+    HoldingImportRequest,
     HoldingRequest,
     HoldingResponse,
     ImportResponse,
@@ -137,14 +137,14 @@ def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
 @router.post(
     "/holdings/import",
     response_model=ImportResponse,
-    summary="Bulk import holdings (replace)",
+    summary="Bulk import holdings",
 )
 def import_holdings(
-    data: list[HoldingImportItem],
+    payload: HoldingImportRequest,
     session: Session = Depends(get_session),
 ) -> dict:
     """
-    批次匯入持倉（清除舊資料後重新匯入）。
+    批次匯入持倉（支援 replace_all / replace_account / append）。
 
     限制：
     - 最多一次匯入 1000 筆
@@ -153,7 +153,11 @@ def import_holdings(
     """
     lang = get_user_language(session)
     result = holding_service.import_holdings(
-        session, [item.model_dump() for item in data], lang
+        session,
+        [item.model_dump() for item in payload.items],
+        lang,
+        mode=payload.mode,
+        account_id=payload.account_id,
     )
     invalidate_rebalance_cache()
     invalidate_insight_cache()

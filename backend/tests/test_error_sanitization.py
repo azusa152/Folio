@@ -180,7 +180,10 @@ def test_holding_import_partial_failure_no_leak(client):
             "quantity": 10.0,
         },
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 200
     data = response.json()
     # Should report success count and errors list

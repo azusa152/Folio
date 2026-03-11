@@ -293,3 +293,57 @@ class TestImportHoldings:
         result = import_holdings(db_session, payload, _LANG)
         assert result["imported"] == 0
         assert len(result["errors"]) == 1
+
+    def test_replace_account_only_replaces_target_account(
+        self, db_session: Session
+    ) -> None:
+        _seed_holding(db_session, "AAPL")
+        account_holding = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker="MSFT",
+            category=StockCategory.TREND_SETTER,
+            quantity=3,
+            currency="USD",
+            account_id=7,
+        )
+        db_session.add(account_holding)
+        db_session.commit()
+
+        payload = [
+            {
+                "ticker": "TSLA",
+                "category": StockCategory.GROWTH,
+                "quantity": 2,
+                "currency": "USD",
+            }
+        ]
+        import_holdings(
+            db_session,
+            payload,
+            _LANG,
+            mode="replace_account",
+            account_id=7,
+        )
+
+        holdings = list_holdings(db_session)
+        tickers = {item["ticker"] for item in holdings}
+        assert "AAPL" in tickers
+        assert "MSFT" not in tickers
+        tsla = next(item for item in holdings if item["ticker"] == "TSLA")
+        assert tsla["account_id"] == 7
+
+    def test_append_mode_keeps_existing_holdings(self, db_session: Session) -> None:
+        _seed_holding(db_session, "AAPL")
+        payload = [
+            {
+                "ticker": "TSM",
+                "category": StockCategory.GROWTH,
+                "quantity": 8,
+                "currency": "USD",
+            }
+        ]
+
+        import_holdings(db_session, payload, _LANG, mode="append")
+        holdings = list_holdings(db_session)
+        tickers = {item["ticker"] for item in holdings}
+        assert tickers == {"AAPL", "TSM"}

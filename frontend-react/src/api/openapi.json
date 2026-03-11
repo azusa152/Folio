@@ -3639,8 +3639,8 @@
     },
     "/holdings/import": {
       "post": {
-        "summary": "Bulk import holdings (replace)",
-        "description": "\u6279\u6b21\u532f\u5165\u6301\u5009\uff08\u6e05\u9664\u820a\u8cc7\u6599\u5f8c\u91cd\u65b0\u532f\u5165\uff09\u3002\n\n\u9650\u5236\uff1a\n- \u6700\u591a\u4e00\u6b21\u532f\u5165 1000 \u7b46\n- ticker \u9577\u5ea6\u9650\u5236 20 \u5b57\u5143\n- quantity \u5fc5\u9808\u5927\u65bc 0",
+        "summary": "Bulk import holdings",
+        "description": "\u6279\u6b21\u532f\u5165\u6301\u5009\uff08\u652f\u63f4 replace_all / replace_account / append\uff09\u3002\n\n\u9650\u5236\uff1a\n- \u6700\u591a\u4e00\u6b21\u532f\u5165 1000 \u7b46\n- ticker \u9577\u5ea6\u9650\u5236 20 \u5b57\u5143\n- quantity \u5fc5\u9808\u5927\u65bc 0",
         "operationId": "import_holdings_holdings_import_post",
         "parameters": [
           {
@@ -3665,11 +3665,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/HoldingImportItem"
-                },
-                "title": "Data"
+                "$ref": "#/components/schemas/HoldingImportRequest"
               }
             }
           }
@@ -6903,6 +6899,65 @@
         }
       }
     },
+    "/transactions/import": {
+      "post": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Import transactions in bulk",
+        "operationId": "add_transactions_import_transactions_import_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/transactions/{txn_id}": {
       "get": {
         "tags": [
@@ -9844,6 +9899,44 @@
         "title": "HoldingImportItem",
         "description": "POST /holdings/import \u55ae\u7b46\u532f\u5165\u8cc7\u6599\u3002"
       },
+      "HoldingImportRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "replace_all",
+              "replace_account",
+              "append"
+            ],
+            "title": "Mode",
+            "default": "replace_all"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingImportItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "HoldingImportRequest",
+        "description": "POST /holdings/import request payload."
+      },
       "HoldingRequest": {
         "properties": {
           "ticker": {
@@ -12334,6 +12427,123 @@
         ],
         "title": "TickerCreateRequest",
         "description": "POST /ticker \u8acb\u6c42 Body\u3002"
+      },
+      "TransactionImportItem": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "ticker": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Ticker"
+          },
+          "transaction_type": {
+            "type": "string",
+            "title": "Transaction Type",
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount",
+            "description": "Total transaction amount"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Currency",
+            "default": "USD"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "fee": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fee",
+            "default": 0.0
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transaction Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "transaction_type",
+          "quantity",
+          "total_amount",
+          "transaction_date"
+        ],
+        "title": "TransactionImportItem"
+      },
+      "TransactionImportRequest": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionImportItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "TransactionImportRequest"
       },
       "TransactionRequest": {
         "properties": {

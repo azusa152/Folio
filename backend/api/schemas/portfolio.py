@@ -2,7 +2,9 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
-from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from domain.enums import StockCategory
 
@@ -103,6 +105,20 @@ class HoldingImportItem(BaseModel):
     def currency_must_be_uppercase(cls, v: str) -> str:
         """Currency must be uppercase."""
         return v.upper().strip()
+
+
+class HoldingImportRequest(BaseModel):
+    """POST /holdings/import request payload."""
+
+    mode: Literal["replace_all", "replace_account", "append"] = "replace_all"
+    account_id: int | None = None
+    items: list[HoldingImportItem]
+
+    @model_validator(mode="after")
+    def validate_account_for_replace_account(self) -> "HoldingImportRequest":
+        if self.mode == "replace_account" and self.account_id is None:
+            raise ValueError("account_id is required when mode is replace_account")
+        return self
 
 
 class HoldingExportItem(BaseModel):

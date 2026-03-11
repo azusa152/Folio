@@ -181,3 +181,84 @@ def test_create_transaction_with_account_should_return_account_id(client: TestCl
     )
     assert buy_resp.status_code == 201
     assert buy_resp.json()["account_id"] == account_id
+
+
+def test_import_transactions_should_return_import_summary(client: TestClient):
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "items": [
+                {
+                    "ticker": "AAPL",
+                    "transaction_type": "BUY",
+                    "quantity": 1,
+                    "price": 180.0,
+                    "total_amount": 180.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-10",
+                },
+                {
+                    "ticker": "AAPL",
+                    "transaction_type": "DIVIDEND",
+                    "quantity": 1,
+                    "total_amount": 3.5,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-11",
+                },
+            ]
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["imported"] == 2
+    assert body["errors"] == []
+
+
+def test_import_transactions_with_account_id_should_apply_to_all_items(
+    client: TestClient,
+):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "IB US",
+            "broker": "Interactive Brokers",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "account_id": account_id,
+            "items": [
+                {
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": 1000.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-10",
+                },
+                {
+                    "ticker": "AAPL",
+                    "transaction_type": "BUY",
+                    "quantity": 1,
+                    "price": 500.0,
+                    "total_amount": 500.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-10",
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["imported"] == 2
+    assert body["errors"] == []
+
+    txns = client.get("/transactions", params={"account_id": account_id}).json()
+    assert len(txns) >= 2
+    assert all(txn["account_id"] == account_id for txn in txns[:2])

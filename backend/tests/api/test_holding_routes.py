@@ -197,10 +197,23 @@ class TestImportHoldings:
         # Arrange — create initial holding
         _create_holding(client)
 
-        import_data = [
-            {"ticker": "AAPL", "category": "Growth", "quantity": 5, "currency": "USD"},
-            {"ticker": "GOOGL", "category": "Moat", "quantity": 3, "currency": "USD"},
-        ]
+        import_data = {
+            "mode": "replace_all",
+            "items": [
+                {
+                    "ticker": "AAPL",
+                    "category": "Growth",
+                    "quantity": 5,
+                    "currency": "USD",
+                },
+                {
+                    "ticker": "GOOGL",
+                    "category": "Moat",
+                    "quantity": 3,
+                    "currency": "USD",
+                },
+            ],
+        }
 
         # Act
         resp = client.post("/holdings/import", json=import_data)
@@ -222,7 +235,9 @@ class TestImportHoldings:
         _create_holding(client)
 
         # Act — import empty list (clears everything)
-        resp = client.post("/holdings/import", json=[])
+        resp = client.post(
+            "/holdings/import", json={"mode": "replace_all", "items": []}
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -232,6 +247,93 @@ class TestImportHoldings:
         # Verify all cleared
         holdings = client.get("/holdings").json()
         assert len(holdings) == 0
+
+    def test_import_replace_account_should_only_replace_selected_account(self, client):
+        # Arrange
+        account_a = client.post(
+            "/accounts",
+            json={
+                "name": "IB US",
+                "broker": "Interactive Brokers",
+                "account_type": "brokerage",
+                "currency": "USD",
+            },
+        )
+        account_b = client.post(
+            "/accounts",
+            json={
+                "name": "Futu HK",
+                "broker": "Futu",
+                "account_type": "brokerage",
+                "currency": "USD",
+            },
+        )
+        assert account_a.status_code == 201
+        assert account_b.status_code == 201
+        account_a_id = account_a.json()["id"]
+        account_b_id = account_b.json()["id"]
+
+        client.post(
+            "/holdings",
+            json={**HOLDING_PAYLOAD, "ticker": "AAPL", "account_id": account_a_id},
+        )
+        client.post(
+            "/holdings",
+            json={**HOLDING_PAYLOAD, "ticker": "MSFT", "account_id": account_b_id},
+        )
+
+        # Act
+        resp = client.post(
+            "/holdings/import",
+            json={
+                "mode": "replace_account",
+                "account_id": account_b_id,
+                "items": [
+                    {
+                        "ticker": "GOOGL",
+                        "category": "Growth",
+                        "quantity": 9,
+                        "currency": "USD",
+                    }
+                ],
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        holdings = client.get("/holdings").json()
+        ticker_to_account = {
+            holding["ticker"]: holding["account_id"] for holding in holdings
+        }
+        assert ticker_to_account["AAPL"] == account_a_id
+        assert "MSFT" not in ticker_to_account
+        assert ticker_to_account["GOOGL"] == account_b_id
+
+    def test_import_append_should_keep_existing_holdings(self, client):
+        # Arrange
+        _create_holding(client)
+
+        # Act
+        resp = client.post(
+            "/holdings/import",
+            json={
+                "mode": "append",
+                "items": [
+                    {
+                        "ticker": "QQQ",
+                        "category": "Growth",
+                        "quantity": 7,
+                        "currency": "USD",
+                    }
+                ],
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        holdings = client.get("/holdings").json()
+        tickers = {holding["ticker"] for holding in holdings}
+        assert tickers == {"NVDA", "QQQ"}
 
 
 # ---------------------------------------------------------------------------

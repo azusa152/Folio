@@ -18,6 +18,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     delete_all_holdings,
     delete_fx_watch,
     delete_holding,
+    delete_holdings_by_account,
     delete_price_alert,
     delete_transaction,
     find_account_by_id,

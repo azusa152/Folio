@@ -209,8 +209,8 @@ export function useDeleteHolding() {
 export function useImportHoldings() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (holdings: components["schemas"]["HoldingImportItem"][]) => {
-      const { data, error } = await client.POST("/holdings/import", { body: holdings })
+    mutationFn: async (payload: components["schemas"]["HoldingImportRequest"]) => {
+      const { data, error } = await client.POST("/holdings/import", { body: payload })
       if (error) throw error
       return data
     },

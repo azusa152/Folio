@@ -131,7 +131,9 @@ def test_stock_import_tags_validation(client):
 
 def test_holding_import_empty_list(client):
     """Holding import with empty list succeeds (clears existing)."""
-    response = client.post("/holdings/import", json=[])
+    response = client.post(
+        "/holdings/import", json={"mode": "replace_all", "items": []}
+    )
     assert response.status_code == 200
 
 
@@ -149,7 +151,10 @@ def test_holding_import_valid_payload(client):
             "is_cash": False,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["imported"] == 1
@@ -165,7 +170,10 @@ def test_holding_import_ticker_uppercase_normalization(client):
             "quantity": 10.0,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 200
 
     # Verify ticker is stored as uppercase
@@ -184,7 +192,10 @@ def test_holding_import_currency_uppercase_normalization(client):
             "currency": "usd",  # lowercase
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 200
 
     # Verify currency is stored as uppercase
@@ -202,7 +213,10 @@ def test_holding_import_missing_required_field(client):
             "category": VALID_CATEGORY,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -215,7 +229,10 @@ def test_holding_import_negative_quantity(client):
             "quantity": -10.0,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -228,7 +245,10 @@ def test_holding_import_zero_quantity(client):
             "quantity": 0.0,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -242,7 +262,10 @@ def test_holding_import_negative_cost_basis(client):
             "cost_basis": -150.0,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -256,7 +279,10 @@ def test_holding_import_oversized_list(client):
         }
         for i in range(1001)
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 400
     data = response.json()
     assert data["detail"]["error_code"] == ERROR_INVALID_INPUT
@@ -274,7 +300,10 @@ def test_holding_import_ticker_too_long(client):
             "quantity": 10.0,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -288,7 +317,10 @@ def test_holding_import_currency_too_short(client):
             "currency": "US",  # Only 2 chars
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -302,7 +334,10 @@ def test_holding_import_currency_too_long(client):
             "currency": "USDD",  # 4 chars
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 422
 
 
@@ -317,7 +352,10 @@ def test_holding_import_cash_holding(client):
             "is_cash": True,
         }
     ]
-    response = client.post("/holdings/import", json=payload)
+    response = client.post(
+        "/holdings/import",
+        json={"mode": "replace_all", "items": payload},
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["imported"] == 1

@@ -5,11 +5,16 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
-from api.schemas import MessageResponse
-from api.schemas.transaction import TransactionRequest, TransactionResponse
+from api.schemas import ImportResponse, MessageResponse
+from api.schemas.transaction import (
+    TransactionImportRequest,
+    TransactionRequest,
+    TransactionResponse,
+)
 from application.portfolio.transaction_service import (
     create_transaction,
     get_transaction,
+    import_transactions,
     list_transactions,
     remove_transaction,
 )
@@ -56,6 +61,24 @@ def add_transaction(
 ):
     lang = get_user_language(session)
     return create_transaction(session, body.model_dump(), lang)
+
+
+@router.post(
+    "/transactions/import",
+    response_model=ImportResponse,
+    summary="Import transactions in bulk",
+)
+def add_transactions_import(
+    body: TransactionImportRequest,
+    session: Session = Depends(get_session),
+):
+    lang = get_user_language(session)
+    return import_transactions(
+        session,
+        [item.model_dump() for item in body.items],
+        lang,
+        account_id=body.account_id,
+    )
 
 
 @router.get(

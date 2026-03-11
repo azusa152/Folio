@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { useAccounts } from "@/api/hooks/useAccounts"
 import { useImportHoldings } from "@/api/hooks/useAllocation"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,12 +31,14 @@ interface Props {
 }
 
 type Step = "select" | "map" | "preview"
+type ImportMode = "replace_all" | "replace_account" | "append"
 
 const TEMPLATE_URL = "/templates/holdings_csv_template.csv"
 
 export function CsvImportDialog({ open, onClose }: Props) {
   const { t } = useTranslation()
   const importMutation = useImportHoldings()
+  const { data: accounts } = useAccounts(open, true)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>("select")
@@ -47,12 +50,27 @@ export function CsvImportDialog({ open, onClose }: Props) {
   })
   const [feedback, setFeedback] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<CsvParseWarning[]>([])
-  const [replaceAllConfirmed, setReplaceAllConfirmed] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [importMode, setImportMode] = useState<ImportMode>("append")
+  const [destructiveConfirmed, setDestructiveConfirmed] = useState(false)
 
+  const selectedAccount = useMemo(
+    () => (accounts ?? []).find((account) => account.id === selectedAccountId) ?? null,
+    [accounts, selectedAccountId],
+  )
   const items = useMemo(() => transformRows(rows, mapping), [rows, mapping])
-  const errors = useMemo(() => validateRows(items), [items])
+  const itemsWithAccount = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        account_id: selectedAccountId,
+      })),
+    [items, selectedAccountId],
+  )
+  const errors = useMemo(() => validateRows(itemsWithAccount), [itemsWithAccount])
   const hasBlockingErrors = errors.size > 0
-  const hasNoRowsToImport = items.length === 0
+  const hasNoRowsToImport = itemsWithAccount.length === 0
+  const isDestructiveMode = importMode === "replace_all" || importMode === "replace_account"
 
   const reset = () => {
     setStep("select")
@@ -60,7 +78,9 @@ export function CsvImportDialog({ open, onClose }: Props) {
     setRows([])
     setFeedback(null)
     setParseWarnings([])
-    setReplaceAllConfirmed(false)
+    setSelectedAccountId(null)
+    setImportMode("append")
+    setDestructiveConfirmed(false)
     setMapping({ categoryDefault: "Growth", currencyDefault: "USD" })
   }
 
@@ -109,6 +129,10 @@ export function CsvImportDialog({ open, onClose }: Props) {
   }
 
   const goToPreview = () => {
+    if (importMode === "replace_account" && selectedAccountId == null) {
+      setFeedback(t("allocation.csv_import.select_account_for_replace"))
+      return
+    }
     if (!validateRequiredMappings()) return
     setFeedback(null)
     setStep("preview")
@@ -120,11 +144,21 @@ export function CsvImportDialog({ open, onClose }: Props) {
       setFeedback(t("allocation.csv_import.no_rows_to_import"))
       return
     }
-    if (!replaceAllConfirmed) {
-      setFeedback(t("allocation.csv_import.confirm_replace_all_required"))
+    if (importMode === "replace_account" && selectedAccountId == null) {
+      setFeedback(t("allocation.csv_import.select_account_for_replace"))
       return
     }
-    importMutation.mutate(items, {
+    if (isDestructiveMode && !destructiveConfirmed) {
+      setFeedback(t("allocation.csv_import.confirm_destructive_required"))
+      return
+    }
+    importMutation.mutate(
+      {
+        mode: importMode,
+        account_id: selectedAccountId,
+        items: itemsWithAccount,
+      },
+      {
       onSuccess: () => {
         toast.success(t("allocation.csv_import.import_success"))
         handleClose()
@@ -132,7 +166,8 @@ export function CsvImportDialog({ open, onClose }: Props) {
       onError: () => {
         toast.error(t("allocation.csv_import.import_error"))
       },
-    })
+      },
+    )
   }
 
   return (
@@ -173,23 +208,84 @@ export function CsvImportDialog({ open, onClose }: Props) {
           )}
 
           {step === "map" && (
-            <CsvColumnMapper headers={headers} mapping={mapping} onMappingChange={setMapping} />
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">{t("allocation.csv_import.account")}</p>
+                <select
+                  aria-label={t("allocation.csv_import.account")}
+                  value={selectedAccountId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    const nextAccountId = value ? Number(value) : null
+                    setSelectedAccountId(nextAccountId)
+                    const account = (accounts ?? []).find((item) => item.id === nextAccountId)
+                    setMapping((prev) => ({
+                      ...prev,
+                      brokerDefault: account?.broker ?? prev.brokerDefault,
+                    }))
+                  }}
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">{t("allocation.csv_import.account_optional")}</option>
+                  {(accounts ?? []).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <CsvColumnMapper headers={headers} mapping={mapping} onMappingChange={setMapping} />
+            </div>
           )}
 
           {step === "preview" && (
             <div className="space-y-3">
               <CsvPreviewTable items={items} errors={errors} parseWarnings={parseWarnings} />
-              <div className="flex items-start gap-2 rounded-md border p-3">
-                <input
-                  id="replace-all-confirm"
-                  type="checkbox"
-                  checked={replaceAllConfirmed}
-                  onChange={(event) => setReplaceAllConfirmed(event.target.checked)}
-                  className="mt-0.5 h-4 w-4"
-                />
-                <label htmlFor="replace-all-confirm" className="text-sm leading-5">
-                  {t("allocation.csv_import.replace_all_confirm")}
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-sm font-medium">{t("allocation.csv_import.import_mode")}</p>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    value="append"
+                    checked={importMode === "append"}
+                    onChange={() => { setImportMode("append"); setDestructiveConfirmed(false) }}
+                  />
+                  {t("allocation.csv_import.mode_append")}
                 </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    value="replace_account"
+                    checked={importMode === "replace_account"}
+                    disabled={!selectedAccount}
+                    onChange={() => { setImportMode("replace_account"); setDestructiveConfirmed(false) }}
+                  />
+                  {t("allocation.csv_import.mode_replace_account")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    value="replace_all"
+                    checked={importMode === "replace_all"}
+                    onChange={() => { setImportMode("replace_all"); setDestructiveConfirmed(false) }}
+                  />
+                  {t("allocation.csv_import.mode_replace_all")}
+                </label>
+                {isDestructiveMode && (
+                  <label className="mt-2 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50/70 p-2 text-sm text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                    <input
+                      type="checkbox"
+                      checked={destructiveConfirmed}
+                      onChange={(e) => setDestructiveConfirmed(e.target.checked)}
+                    />
+                    {importMode === "replace_all"
+                      ? t("allocation.csv_import.confirm_replace_all")
+                      : t("allocation.csv_import.confirm_replace_account")}
+                  </label>
+                )}
               </div>
             </div>
           )}
@@ -217,9 +313,9 @@ export function CsvImportDialog({ open, onClose }: Props) {
             <Button
               type="button"
               onClick={handleImport}
-              disabled={hasBlockingErrors || importMutation.isPending || hasNoRowsToImport || !replaceAllConfirmed}
+              disabled={hasBlockingErrors || importMutation.isPending || hasNoRowsToImport}
             >
-              {t("allocation.csv_import.confirm_import", { count: items.length })}
+              {t("allocation.csv_import.confirm_import", { count: itemsWithAccount.length })}
             </Button>
           ) : null}
         </DialogFooter>

@@ -244,8 +244,15 @@ def export_holdings(session: Session) -> list[dict]:
     ]
 
 
-def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
-    """Bulk import holdings (replace all). Returns {imported, errors}."""
+def import_holdings(
+    session: Session,
+    data: list[dict],
+    lang: str,
+    *,
+    mode: str = "replace_all",
+    account_id: int | None = None,
+) -> dict:
+    """Bulk import holdings with replace/append modes. Returns {imported, errors}."""
     if len(data) > 1000:
         raise HTTPException(
             status_code=400,
@@ -255,12 +262,34 @@ def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
             },
         )
 
-    repo.delete_all_holdings(session)
+    if mode == "replace_all":
+        repo.delete_all_holdings(session)
+    elif mode == "replace_account":
+        if account_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": ERROR_INVALID_INPUT,
+                    "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+                },
+            )
+        repo.delete_holdings_by_account(session, account_id)
+    elif mode != "append":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
 
     count = 0
     errors: list[str] = []
     for i, item in enumerate(data):
         try:
+            target_account_id = (
+                account_id if account_id is not None else item.get("account_id")
+            )
             holding = Holding(
                 user_id=DEFAULT_USER_ID,
                 ticker=item["ticker"].strip().upper(),
@@ -273,7 +302,7 @@ def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
                 quantity=item["quantity"],
                 cost_basis=item.get("cost_basis"),
                 broker=item.get("broker"),
-                account_id=item.get("account_id"),
+                account_id=target_account_id,
                 currency=item["currency"].strip().upper(),
                 account_type=item.get("account_type"),
                 is_cash=item.get("is_cash", False),

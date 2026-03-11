@@ -20,6 +20,12 @@ vi.mock("@/api/hooks/useAllocation", () => ({
   }),
 }))
 
+vi.mock("@/api/hooks/useAccounts", () => ({
+  useAccounts: () => ({
+    data: [{ id: 1, name: "IB US", broker: "Interactive Brokers" }],
+  }),
+}))
+
 vi.mock("@/lib/csv-import", async () => {
   const actual = await vi.importActual<typeof import("@/lib/csv-import")>("@/lib/csv-import")
   return {
@@ -120,12 +126,16 @@ describe("CsvImportDialog", () => {
     )
 
     const importButton = screen.getByRole("button", { name: "allocation.csv_import.confirm_import:1" })
-    expect(importButton).toBeDisabled()
-
-    fireEvent.click(screen.getByRole("checkbox"))
-    await waitFor(() => expect(importButton).not.toBeDisabled())
+    expect(importButton).not.toBeDisabled()
     fireEvent.click(importButton)
 
     expect(mutateMock).toHaveBeenCalledTimes(1)
+    expect(mutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "append",
+        account_id: null,
+      }),
+      expect.any(Object),
+    )
   })
 })
