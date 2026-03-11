@@ -32,6 +32,7 @@ import { NetWorthOverview } from "@/components/allocation/networth/NetWorthOverv
 import { NetWorthItemsTable } from "@/components/allocation/networth/NetWorthItemsTable"
 import { AddNetWorthItemSheet } from "@/components/allocation/networth/AddNetWorthItemSheet"
 import { NetWorthHistoryChart } from "@/components/allocation/networth/NetWorthHistoryChart"
+import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { TransactionsTab } from "@/components/allocation/transactions/TransactionsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 
@@ -46,6 +47,7 @@ export default function Allocation() {
     tabParam === "risk" ||
     tabParam === "actions" ||
     tabParam === "transactions" ||
+    tabParam === "accounts" ||
     tabParam === "net-worth" ||
     tabParam === "settings"
       ? tabParam
@@ -191,6 +193,7 @@ export default function Allocation() {
           <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
           <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
           <TabsTrigger value="transactions" className="min-h-[44px]">{t("allocation.tab.transactions")}</TabsTrigger>
+          <TabsTrigger value="accounts" className="min-h-[44px]">{t("allocation.tab.accounts")}</TabsTrigger>
           <TabsTrigger value="net-worth" className="min-h-[44px]">{t("allocation.tab.net_worth")}</TabsTrigger>
           <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
         </TabsList>
@@ -268,7 +271,13 @@ export default function Allocation() {
           <TransactionsTab
             enabled={activeTab === "transactions"}
             onRecordTransaction={() => openTransactionSheet()}
+            onOpenAccounts={() => setActiveTab("accounts")}
           />
+        </TabsContent>
+
+        {/* Accounts tab */}
+        <TabsContent value="accounts" className="mt-4 space-y-4">
+          <AccountsTab enabled={activeTab === "accounts"} />
         </TabsContent>
 
         {/* Net Worth tab */}
@@ -464,6 +473,10 @@ export default function Allocation() {
           open={transactionSheetOpen}
           onClose={() => setTransactionSheetOpen(false)}
           defaultTicker={transactionDefaultTicker}
+          onOpenAccounts={() => {
+            setTransactionSheetOpen(false)
+            setActiveTab("accounts")
+          }}
         />
       ) : null}
     </div>

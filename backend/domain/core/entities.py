@@ -197,6 +197,9 @@ class Transaction(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    account_id: int | None = Field(
+        default=None, foreign_key="account.id", description="關聯帳戶 ID（可選）"
+    )
     holding_id: int | None = Field(
         default=None, foreign_key="holding.id", description="關聯持倉 ID（可選）"
     )

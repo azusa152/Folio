@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -14,6 +15,8 @@ interface Props {
   onClose: () => void
   defaultTicker?: string
   defaultHoldingId?: number
+  defaultAccountId?: number
+  onOpenAccounts?: () => void
 }
 
 type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
@@ -36,14 +39,23 @@ function todayISO(): string {
   return `${year}-${month}-${day}`
 }
 
-export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldingId }: Props) {
+export function AddTransactionSheet({
+  open,
+  onClose,
+  defaultTicker,
+  defaultHoldingId,
+  defaultAccountId,
+  onOpenAccounts,
+}: Props) {
   const { t } = useTranslation()
   const addTransactionMutation = useAddTransaction()
   const { data: holdings } = useHoldings()
+  const { data: accounts } = useAccounts(open)
 
   const initialTicker = defaultTicker?.toUpperCase() ?? ""
 
   const [transactionType, setTransactionType] = useState<TransactionType>("BUY")
+  const [accountId, setAccountId] = useState(defaultAccountId != null ? String(defaultAccountId) : "")
   const [ticker, setTicker] = useState(initialTicker)
   const [holdingId, setHoldingId] = useState<string>(() => {
     if (defaultHoldingId != null) return String(defaultHoldingId)
@@ -62,6 +74,13 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
   const [manualTotal, setManualTotal] = useState(false)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [insufficientBalance, setInsufficientBalance] = useState<{ available: number; required: number } | null>(null)
+
+  const selectedAccountId = accountId ? Number(accountId) : null
+  const { data: cashBalances } = useAccountCashBalances(selectedAccountId, open)
+  const selectedCurrencyCashBalance =
+    (cashBalances ?? []).find((balance) => balance.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
+  const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
 
   const holdingOptions = useMemo(
     () =>
@@ -78,6 +97,7 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
 
   const resetForm = (options?: { keepDefaultTicker?: boolean; keepDefaultHoldingId?: boolean }) => {
     setTransactionType("BUY")
+    setAccountId(defaultAccountId != null ? String(defaultAccountId) : "")
     setTicker(options?.keepDefaultTicker ? initialTicker : "")
     setHoldingId(
       options?.keepDefaultHoldingId
@@ -95,6 +115,7 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
     setManualTotal(false)
     setMoreOptionsOpen(false)
     setFieldErrors({})
+    setInsufficientBalance(null)
   }
 
   const computeTotalAmount = (nextQuantity: string, nextPrice: string): string => {
@@ -136,6 +157,26 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
     return Object.keys(nextErrors).length === 0
   }
 
+  const parseInsufficientBalance = (err: unknown): { available: number; required: number } | null => {
+    const detail =
+      err && typeof err === "object" && "detail" in err
+        ? (err as { detail?: unknown }).detail
+        : null
+    if (!detail || typeof detail !== "object") return null
+    const errorCode = "error_code" in detail ? (detail as { error_code?: unknown }).error_code : null
+    if (errorCode !== "INSUFFICIENT_BALANCE") return null
+
+    const available =
+      "available" in detail && typeof (detail as { available?: unknown }).available === "number"
+        ? (detail as { available: number }).available
+        : 0
+    const required =
+      "required" in detail && typeof (detail as { required?: unknown }).required === "number"
+        ? (detail as { required: number }).required
+        : 0
+    return { available, required }
+  }
+
   return (
     <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <SheetContent side="right" className="w-80 sm:w-96 overflow-y-auto">
@@ -144,6 +185,83 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">{t("transactions.form.account")}</p>
+            <select
+              aria-label={t("transactions.form.account")}
+              value={accountId}
+              onChange={(event) => {
+                setAccountId(event.target.value)
+                setInsufficientBalance(null)
+              }}
+              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
+            >
+              <option value="">{t("transactions.form.account_optional")}</option>
+              {(accounts ?? []).map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.broker})
+                </option>
+              ))}
+            </select>
+            {selectedAccountId != null && selectedCurrencyCashBalance != null ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t("transactions.form.available_cash", {
+                  currency,
+                  amount: selectedCurrencyCashBalance.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  }),
+                })}
+              </p>
+            ) : null}
+            {(accounts ?? []).length === 0 ? (
+              <div className="text-[11px] text-muted-foreground">
+                <p>{t("transactions.form.account_empty_hint")}</p>
+                {onOpenAccounts ? (
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={onOpenAccounts}
+                  >
+                    {t("transactions.form.create_account")}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {selectedAccountId != null && (transactionType === "SELL" || transactionType === "DIVIDEND") ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t("transactions.form.proceeds_hint", {
+                  account: selectedAccount?.name ?? t("transactions.form.account_optional"),
+                })}
+              </p>
+            ) : null}
+            {insufficientBalance ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 space-y-1">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  {t("transactions.form.insufficient_balance", {
+                    available: insufficientBalance.available.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+                    required: insufficientBalance.required.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+                    currency,
+                  })}
+                </p>
+                <button
+                  type="button"
+                  className="text-[11px] text-primary hover:underline"
+                  onClick={() => {
+                    const shortfall = Math.max(0, insufficientBalance.required - insufficientBalance.available)
+                    setTransactionType("DEPOSIT")
+                    setQuantity("1")
+                    setPrice("")
+                    setManualTotal(true)
+                    setTotalAmount(shortfall > 0 ? String(shortfall) : "")
+                    setInsufficientBalance(null)
+                  }}
+                >
+                  {t("transactions.form.deposit_cash")}
+                </button>
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("transactions.form.type")}</p>
             <div className="grid grid-cols-2 gap-1">
@@ -370,6 +488,7 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
 
               addTransactionMutation.mutate(
                 {
+                  account_id: accountId ? Number(accountId) : undefined,
                   holding_id: holdingId ? Number(holdingId) : undefined,
                   ticker: ticker.trim(),
                   transaction_type: transactionType,
@@ -389,6 +508,8 @@ export function AddTransactionSheet({ open, onClose, defaultTicker, defaultHoldi
                     onClose()
                   },
                   onError: (err: unknown) => {
+                    const insufficient = parseInsufficientBalance(err)
+                    if (insufficient) setInsufficientBalance(insufficient)
                     toast.error(getErrorMessage(err) || t("common.error"))
                   },
                 },

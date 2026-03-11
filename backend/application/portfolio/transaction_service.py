@@ -5,6 +5,10 @@ from datetime import date
 from fastapi import HTTPException
 from sqlmodel import Session
 
+from application.portfolio.settlement_service import (
+    reverse_settlement,
+    settle_transaction,
+)
 from domain.constants import ERROR_INVALID_INPUT, ERROR_TRANSACTION_NOT_FOUND
 from domain.core.entities import Transaction
 from domain.enums import TransactionType
@@ -24,6 +28,7 @@ def list_transactions(
     session: Session,
     *,
     ticker: str | None = None,
+    account_id: int | None = None,
     holding_id: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -32,6 +37,7 @@ def list_transactions(
     txns = find_all_transactions(
         session,
         ticker=ticker,
+        account_id=account_id,
         holding_id=holding_id,
         start_date=start_date,
         end_date=end_date,
@@ -52,8 +58,11 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
                 "detail": t("common.validation_error", lang=lang),
             },
         ) from None
-    txn = Transaction(**data)
-    saved = save_transaction(session, txn)
+    if data.get("account_id") is not None:
+        saved = settle_transaction(session, data, lang)
+    else:
+        txn = Transaction(**data)
+        saved = save_transaction(session, txn)
     logger.info(
         "交易紀錄已建立：id=%s ticker=%s type=%s",
         saved.id,
@@ -73,7 +82,12 @@ def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
                 "detail": t("transaction.not_found", lang=lang),
             },
         )
-    delete_transaction(session, txn)
+    if txn.account_id is not None:
+        reverse_settlement(session, txn, lang)
+        session.delete(txn)
+        session.commit()
+    else:
+        delete_transaction(session, txn)
     logger.info("交易紀錄已刪除：id=%s", txn_id)
 
 
@@ -94,6 +108,7 @@ def _to_dict(txn: Transaction) -> dict:
     return {
         "id": txn.id,
         "user_id": txn.user_id,
+        "account_id": txn.account_id,
         "holding_id": txn.holding_id,
         "ticker": txn.ticker,
         "transaction_type": txn.transaction_type,

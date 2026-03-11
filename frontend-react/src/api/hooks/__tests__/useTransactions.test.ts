@@ -45,6 +45,7 @@ describe("useTransactions", () => {
       params: {
         query: {
           ticker: "AAPL",
+          account_id: undefined,
           holding_id: 1,
           limit: 20,
         },

@@ -35,6 +35,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_all_guru_summaries,
     find_all_holdings,
     find_all_transactions,
+    find_cash_holding_by_account_and_currency,
     find_consensus_stocks,
     find_filing_by_accession,
     find_filings_by_guru,

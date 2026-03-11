@@ -35,7 +35,13 @@ class AccountResponse(BaseModel):
     updated_at: str
 
 
+class AccountCashBalanceItem(BaseModel):
+    currency: str
+    balance: float
+
+
 class AccountSummaryItem(BaseModel):
     account: AccountResponse | None = None
     holdings_count: int
     tickers: list[str]
+    cash_balances: list[AccountCashBalanceItem] = Field(default_factory=list)

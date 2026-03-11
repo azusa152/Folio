@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from api.schemas import MessageResponse
 from api.schemas.account import (
+    AccountCashBalanceItem,
     AccountRequest,
     AccountResponse,
     AccountSummaryItem,
@@ -12,6 +13,7 @@ from api.schemas.account import (
 )
 from application.portfolio.account_service import (
     create_account,
+    get_account_cash_balances,
     get_account_summary,
     list_accounts,
     remove_account,
@@ -24,8 +26,11 @@ router = APIRouter(tags=["accounts"])
 
 
 @router.get("/accounts", response_model=list[AccountResponse])
-def get_accounts(session: Session = Depends(get_session)):
-    return list_accounts(session)
+def get_accounts(
+    include_inactive: bool = False,
+    session: Session = Depends(get_session),
+):
+    return list_accounts(session, include_inactive=include_inactive)
 
 
 @router.post("/accounts", response_model=AccountResponse, status_code=201)
@@ -37,6 +42,18 @@ def add_account(body: AccountRequest, session: Session = Depends(get_session)):
 @router.get("/accounts/summary", response_model=list[AccountSummaryItem])
 def get_accounts_summary(session: Session = Depends(get_session)):
     return get_account_summary(session)
+
+
+@router.get(
+    "/accounts/{account_id}/cash-balances",
+    response_model=list[AccountCashBalanceItem],
+)
+def get_account_cash_balance_list(
+    account_id: int,
+    session: Session = Depends(get_session),
+):
+    lang = get_user_language(session)
+    return get_account_cash_balances(session, account_id, lang)
 
 
 @router.put("/accounts/{account_id}", response_model=AccountResponse)

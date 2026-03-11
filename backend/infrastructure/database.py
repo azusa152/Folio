@@ -77,6 +77,8 @@ def _run_migrations() -> None:
         "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
         # Holding: 新增帳戶 ID 欄位
         "ALTER TABLE holding ADD COLUMN account_id INTEGER;",
+        # Transaction: 新增帳戶 ID 欄位（用於券商現金結算）
+        'ALTER TABLE "transaction" ADD COLUMN account_id INTEGER;',
         # ScanLog: 新增市場情緒原因說明欄位
         "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
         # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）

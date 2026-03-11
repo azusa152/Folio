@@ -137,3 +137,47 @@ def test_delete_transaction_response_body(client: TestClient):
     assert resp.status_code == 200
     assert "message" in resp.json()
     assert len(resp.json()["message"]) > 0
+
+
+def test_create_transaction_with_account_should_return_account_id(client: TestClient):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "IB US",
+            "broker": "Interactive Brokers",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 500.0,
+            "total_amount": 500.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert buy_resp.status_code == 201
+    assert buy_resp.json()["account_id"] == account_id

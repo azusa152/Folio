@@ -359,7 +359,9 @@
   "transaction": {
     "not_found": "Transaction not found",
     "created": "Transaction recorded",
-    "deleted": "Transaction deleted"
+    "deleted": "Transaction deleted",
+    "insufficient_balance": "Insufficient cash balance for this transaction",
+    "cash_holding_not_found": "No cash balance found for the selected account and currency"
   },
   "account": {
     "not_found": "Account not found",

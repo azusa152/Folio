@@ -758,6 +758,7 @@
       "risk": "🛡️ 風險分析",
       "actions": "💡 操作建議",
       "transactions": "🧾 交易紀錄",
+      "accounts": "🏦 帳戶",
       "settings": "⚙️ 設定",
       "net_worth": "💎 淨資產"
     },
@@ -1715,11 +1716,14 @@
     "record_from_holding": "記錄交易",
     "filter": {
       "ticker": "Ticker 篩選",
-      "all_tickers": "全部 ticker"
+      "all_tickers": "全部 ticker",
+      "account": "帳戶篩選",
+      "all_accounts": "全部帳戶"
     },
     "table": {
       "date": "日期",
       "ticker": "Ticker",
+      "account": "帳戶",
       "type": "類型",
       "quantity": "數量",
       "price": "單價",
@@ -1741,6 +1745,14 @@
     "form": {
       "title": "新增交易紀錄",
       "type": "交易類型",
+      "account": "券商帳戶",
+      "account_optional": "選填（不綁定帳戶）",
+      "account_empty_hint": "目前還沒有券商帳戶。",
+      "create_account": "前往帳戶分頁建立帳戶",
+      "available_cash": "可用現金（{{currency}}）：{{amount}}",
+      "proceeds_hint": "賣出/股息款項將匯入 {{account}} 現金餘額。",
+      "insufficient_balance": "餘額不足（{{currency}}）。可用：{{available}}，需求：{{required}}。",
+      "deposit_cash": "先存入現金",
       "ticker": "Ticker",
       "quantity": "數量",
       "price": "每單位價格",
@@ -1771,6 +1783,37 @@
     "toast": {
       "created": "已新增交易紀錄。",
       "deleted": "已刪除交易紀錄。"
+    }
+  },
+  "accounts": {
+    "title": "券商帳戶",
+    "caption": "建立虛擬券商帳戶，並用帳戶視角追蹤股票與現金。",
+    "add": "新增帳戶",
+    "empty": {
+      "title": "尚無帳戶",
+      "description": "先建立第一個券商帳戶，之後即可依券商追蹤交易與現金結算。"
+    },
+    "form": {
+      "create_title": "新增帳戶",
+      "edit_title": "編輯帳戶",
+      "name": "帳戶名稱",
+      "broker": "券商",
+      "account_type": "帳戶類型",
+      "currency": "基準幣別",
+      "institution": "機構名稱（選填）",
+      "note": "備註（選填）",
+      "save": "儲存",
+      "error_required": "請輸入帳戶名稱與券商。"
+    },
+    "toast": {
+      "created": "帳戶已建立。",
+      "updated": "帳戶已更新。",
+      "deactivated": "帳戶已停用。"
+    },
+    "summary": {
+      "positions": "持倉數：{{count}}",
+      "cash": "現金：{{balances}}",
+      "no_cash": "無現金餘額"
     }
   },
   "net_worth": {

@@ -4,6 +4,7 @@ Consumers using `from api.schemas import X` continue to work unchanged.
 """
 
 from api.schemas.account import (  # noqa: F401
+    AccountCashBalanceItem,
     AccountRequest,
     AccountResponse,
     AccountSummaryItem,

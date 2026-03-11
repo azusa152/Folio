@@ -403,6 +403,16 @@
         "operationId": "get_accounts_accounts_get",
         "parameters": [
           {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,
@@ -540,6 +550,68 @@
                     "$ref": "#/components/schemas/AccountSummaryItem"
                   },
                   "title": "Response Get Accounts Summary Accounts Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}/cash-balances": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Cash Balance List",
+        "operationId": "get_account_cash_balance_list_accounts__account_id__cash_balances_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountCashBalanceItem"
+                  },
+                  "title": "Response Get Account Cash Balance List Accounts  Account Id  Cash Balances Get"
                 }
               }
             }
@@ -6652,6 +6724,22 @@
             }
           },
           {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
             "name": "holding_id",
             "in": "query",
             "required": false,
@@ -6951,6 +7039,24 @@
         "title": "AcceptedResponse",
         "description": "\u975e\u540c\u6b65\u64cd\u4f5c\u5df2\u63a5\u53d7\u56de\u61c9\u3002"
       },
+      "AccountCashBalanceItem": {
+        "properties": {
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "balance": {
+            "type": "number",
+            "title": "Balance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "currency",
+          "balance"
+        ],
+        "title": "AccountCashBalanceItem"
+      },
       "AccountRequest": {
         "properties": {
           "name": {
@@ -7082,6 +7188,13 @@
             },
             "type": "array",
             "title": "Tickers"
+          },
+          "cash_balances": {
+            "items": {
+              "$ref": "#/components/schemas/AccountCashBalanceItem"
+            },
+            "type": "array",
+            "title": "Cash Balances"
           }
         },
         "type": "object",
@@ -12224,6 +12337,17 @@
       },
       "TransactionRequest": {
         "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "holding_id": {
             "anyOf": [
               {
@@ -12321,6 +12445,17 @@
           "user_id": {
             "type": "string",
             "title": "User Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           },
           "holding_id": {
             "anyOf": [

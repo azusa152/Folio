@@ -26,10 +26,12 @@ describe("TransactionList", () => {
     render(
       <TransactionList
         isLoading={false}
+        accounts={[{ id: 10, name: "IB Main", broker: "IB" } as never]}
         transactions={[
           {
             id: 42,
             user_id: "default",
+            account_id: 10,
             ticker: "AAPL",
             transaction_type: "BUY",
             quantity: 2,

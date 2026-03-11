@@ -758,6 +758,7 @@
       "risk": "🛡️ 风险分析",
       "actions": "💡 操作建议",
       "transactions": "🧾 交易记录",
+      "accounts": "🏦 账户",
       "settings": "⚙️ 设定",
       "net_worth": "💎 净资产"
     },
@@ -1715,11 +1716,14 @@
     "record_from_holding": "记录交易",
     "filter": {
       "ticker": "Ticker 筛选",
-      "all_tickers": "全部 ticker"
+      "all_tickers": "全部 ticker",
+      "account": "账户筛选",
+      "all_accounts": "全部账户"
     },
     "table": {
       "date": "日期",
       "ticker": "Ticker",
+      "account": "账户",
       "type": "类型",
       "quantity": "数量",
       "price": "单价",
@@ -1741,6 +1745,14 @@
     "form": {
       "title": "新增交易记录",
       "type": "交易类型",
+      "account": "券商账户",
+      "account_optional": "选填（不绑定账户）",
+      "account_empty_hint": "当前还没有券商账户。",
+      "create_account": "前往账户分页创建账户",
+      "available_cash": "可用现金（{{currency}}）：{{amount}}",
+      "proceeds_hint": "卖出/股息款项将计入 {{account}} 现金余额。",
+      "insufficient_balance": "余额不足（{{currency}}）。可用：{{available}}，需求：{{required}}。",
+      "deposit_cash": "先存入现金",
       "ticker": "Ticker",
       "quantity": "数量",
       "price": "每单位价格",
@@ -1771,6 +1783,37 @@
     "toast": {
       "created": "已新增交易记录。",
       "deleted": "已删除交易记录。"
+    }
+  },
+  "accounts": {
+    "title": "券商账户",
+    "caption": "创建虚拟券商账户，并按账户追踪股票和现金。",
+    "add": "新增账户",
+    "empty": {
+      "title": "暂无账户",
+      "description": "先创建第一个券商账户，即可按券商查看交易与现金结算。"
+    },
+    "form": {
+      "create_title": "新增账户",
+      "edit_title": "编辑账户",
+      "name": "账户名称",
+      "broker": "券商",
+      "account_type": "账户类型",
+      "currency": "基准币种",
+      "institution": "机构名称（选填）",
+      "note": "备注（选填）",
+      "save": "保存",
+      "error_required": "请输入账户名称与券商。"
+    },
+    "toast": {
+      "created": "账户已创建。",
+      "updated": "账户已更新。",
+      "deactivated": "账户已停用。"
+    },
+    "summary": {
+      "positions": "持仓数：{{count}}",
+      "cash": "现金：{{balances}}",
+      "no_cash": "无现金余额"
     }
   },
   "net_worth": {

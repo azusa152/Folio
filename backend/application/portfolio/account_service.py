@@ -58,9 +58,12 @@ def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Accou
 # ---------------------------------------------------------------------------
 
 
-def list_accounts(session: Session) -> list[dict]:
+def list_accounts(session: Session, include_inactive: bool = False) -> list[dict]:
     """Return all active accounts as dicts."""
-    return [_acct_to_dict(a) for a in repo.find_all_accounts(session)]
+    return [
+        _acct_to_dict(a)
+        for a in repo.find_all_accounts(session, active_only=not include_inactive)
+    ]
 
 
 def create_account(session: Session, data: dict, lang: str) -> dict:
@@ -104,11 +107,23 @@ def get_account_summary(session: Session) -> list[dict]:
     result = []
     for acct in accounts:
         acct_holdings = account_map.get(acct.id, [])
+        cash_balances: dict[str, float] = {}
+        for holding in acct_holdings:
+            if not holding.is_cash:
+                continue
+            currency = (holding.currency or "USD").upper()
+            cash_balances[currency] = cash_balances.get(currency, 0.0) + float(
+                holding.quantity
+            )
         result.append(
             {
                 "account": _acct_to_dict(acct),
                 "holdings_count": len(acct_holdings),
                 "tickers": [h.ticker for h in acct_holdings],
+                "cash_balances": [
+                    {"currency": currency, "balance": round(balance, 8)}
+                    for currency, balance in sorted(cash_balances.items())
+                ],
             }
         )
 
@@ -119,7 +134,28 @@ def get_account_summary(session: Session) -> list[dict]:
                 "account": None,
                 "holdings_count": len(unlinked),
                 "tickers": [h.ticker for h in unlinked],
+                "cash_balances": [],
             }
         )
 
     return result
+
+
+def get_account_cash_balances(
+    session: Session, account_id: int, lang: str
+) -> list[dict]:
+    """Return account cash balances grouped by currency."""
+    _get_account_or_raise(session, account_id, lang)
+    holdings = repo.find_all_holdings(session)
+
+    balances: dict[str, float] = {}
+    for h in holdings:
+        if h.account_id != account_id or not h.is_cash:
+            continue
+        currency = (h.currency or "USD").upper()
+        balances[currency] = balances.get(currency, 0.0) + float(h.quantity)
+
+    return [
+        {"currency": currency, "balance": round(balance, 8)}
+        for currency, balance in sorted(balances.items())
+    ]

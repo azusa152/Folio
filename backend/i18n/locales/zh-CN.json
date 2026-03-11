@@ -359,7 +359,9 @@
   "transaction": {
     "not_found": "交易记录未找到",
     "created": "交易已记录",
-    "deleted": "交易已删除"
+    "deleted": "交易已删除",
+    "insufficient_balance": "该交易的账户现金余额不足",
+    "cash_holding_not_found": "未找到所选账户与币种的现金余额"
   },
   "account": {
     "not_found": "找不到账户",

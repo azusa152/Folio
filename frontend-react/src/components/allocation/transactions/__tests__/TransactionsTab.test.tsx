@@ -20,6 +20,12 @@ vi.mock("@/api/hooks/useDashboard", () => ({
   }),
 }))
 
+vi.mock("@/api/hooks/useAccounts", () => ({
+  useAccounts: () => ({
+    data: [{ id: 1, name: "IB Main" }],
+  }),
+}))
+
 vi.mock("../TransactionList", () => ({
   TransactionList: () => <div>transaction-list</div>,
 }))
@@ -35,6 +41,7 @@ describe("TransactionsTab", () => {
 
     expect(mockUseTransactions).toHaveBeenLastCalledWith({
       ticker: undefined,
+      accountId: undefined,
       enabled: true,
       limit: 500,
     })
@@ -45,6 +52,22 @@ describe("TransactionsTab", () => {
 
     expect(mockUseTransactions).toHaveBeenLastCalledWith({
       ticker: "AAPL",
+      accountId: undefined,
+      enabled: true,
+      limit: 500,
+    })
+  })
+
+  it("passes account filter to useTransactions", () => {
+    render(<TransactionsTab enabled onRecordTransaction={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText("transactions.filter.account"), {
+      target: { value: "1" },
+    })
+
+    expect(mockUseTransactions).toHaveBeenLastCalledWith({
+      ticker: undefined,
+      accountId: 1,
       enabled: true,
       limit: 500,
     })

@@ -4,19 +4,27 @@ import type { TransactionRequest, TransactionResponse } from "@/api/types/transa
 
 interface UseTransactionsOptions {
   ticker?: string
+  accountId?: number
   holdingId?: number
   limit?: number
   enabled?: boolean
 }
 
-export function useTransactions({ ticker, holdingId, limit = 200, enabled = true }: UseTransactionsOptions = {}) {
+export function useTransactions({
+  ticker,
+  accountId,
+  holdingId,
+  limit = 200,
+  enabled = true,
+}: UseTransactionsOptions = {}) {
   return useQuery<TransactionResponse[]>({
-    queryKey: ["transactions", ticker ?? "", holdingId ?? null, limit],
+    queryKey: ["transactions", ticker ?? "", accountId ?? null, holdingId ?? null, limit],
     queryFn: async () => {
       const { data, error } = await client.GET("/transactions", {
         params: {
           query: {
             ticker: ticker || undefined,
+            account_id: accountId,
             holding_id: holdingId,
             limit,
           },
@@ -43,6 +51,8 @@ export function useAddTransaction() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
+      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
+      queryClient.invalidateQueries({ queryKey: ["accounts"] })
     },
   })
 }
@@ -61,6 +71,8 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] })
       queryClient.invalidateQueries({ queryKey: ["holdings"] })
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
+      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
+      queryClient.invalidateQueries({ queryKey: ["accounts"] })
     },
   })
 }

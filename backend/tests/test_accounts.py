@@ -59,6 +59,7 @@ def test_account_summary_with_holdings(client: TestClient):
     assert len(data) >= 1
     assert data[0]["account"]["name"] == "SBI Japan"
     assert data[0]["holdings_count"] == 0
+    assert data[0]["cash_balances"] == []
 
 
 def test_account_create_validation(client: TestClient):
@@ -67,3 +68,60 @@ def test_account_create_validation(client: TestClient):
 
     resp = client.post("/accounts", json={"name": "IB"})
     assert resp.status_code == 422
+
+
+def test_account_cash_balances_endpoint(client: TestClient):
+    acct_resp = client.post(
+        "/accounts",
+        json={
+            "name": "IB Main",
+            "broker": "Interactive Brokers",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert acct_resp.status_code == 201
+    account_id = acct_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 750.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    balances_resp = client.get(f"/accounts/{account_id}/cash-balances")
+    assert balances_resp.status_code == 200
+    assert balances_resp.json() == [{"currency": "USD", "balance": 750.0}]
+
+
+def test_accounts_include_inactive_query(client: TestClient):
+    created = client.post(
+        "/accounts",
+        json={
+            "name": "Legacy Broker",
+            "broker": "Legacy",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert created.status_code == 201
+    account_id = created.json()["id"]
+
+    deactivated = client.delete(f"/accounts/{account_id}")
+    assert deactivated.status_code == 200
+
+    active_only = client.get("/accounts")
+    assert active_only.status_code == 200
+    assert all(account["id"] != account_id for account in active_only.json())
+
+    with_inactive = client.get("/accounts?include_inactive=true")
+    assert with_inactive.status_code == 200
+    assert any(account["id"] == account_id for account in with_inactive.json())

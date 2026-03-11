@@ -1244,6 +1244,19 @@ def find_holding_by_id(session: Session, holding_id: int) -> Holding | None:
     return session.get(Holding, holding_id)
 
 
+def find_cash_holding_by_account_and_currency(
+    session: Session, account_id: int, currency: str
+) -> Holding | None:
+    """查詢指定帳戶與幣別的現金持倉。"""
+    normalized_currency = currency.upper().strip()
+    stmt = select(Holding).where(
+        Holding.account_id == account_id,
+        Holding.is_cash == True,  # noqa: E712
+        Holding.currency == normalized_currency,
+    )
+    return session.exec(stmt).first()
+
+
 def save_holding(session: Session, holding: Holding) -> Holding:
     """新增或更新持倉（含 refresh）。"""
     session.add(holding)
@@ -1356,6 +1369,7 @@ def save_profile(
 def find_all_transactions(
     session: Session,
     ticker: str | None = None,
+    account_id: int | None = None,
     holding_id: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -1365,6 +1379,8 @@ def find_all_transactions(
     stmt = select(Transaction).order_by(Transaction.transaction_date.desc())
     if ticker:
         stmt = stmt.where(Transaction.ticker == ticker)
+    if account_id is not None:
+        stmt = stmt.where(Transaction.account_id == account_id)
     if holding_id is not None:
         stmt = stmt.where(Transaction.holding_id == holding_id)
     if start_date is not None:

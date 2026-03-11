@@ -26,6 +26,7 @@ router = APIRouter(tags=["transactions"])
 )
 def get_transactions(
     ticker: str | None = Query(None),
+    account_id: int | None = Query(None),
     holding_id: int | None = Query(None),
     start: date | None = Query(None),
     end: date | None = Query(None),
@@ -35,6 +36,7 @@ def get_transactions(
     return list_transactions(
         session,
         ticker=ticker,
+        account_id=account_id,
         holding_id=holding_id,
         start_date=start,
         end_date=end,

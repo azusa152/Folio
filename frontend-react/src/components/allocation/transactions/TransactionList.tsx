@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import type { AccountResponse } from "@/api/types/account"
 import { useDeleteTransaction } from "@/api/hooks/useTransactions"
 import type { TransactionResponse } from "@/api/types/transaction"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   transactions: TransactionResponse[]
+  accounts: AccountResponse[]
   isLoading: boolean
 }
 
@@ -28,10 +30,11 @@ function fmtAmount(value: number, currency: string): string {
   }).format(value)
 }
 
-export function TransactionList({ transactions, isLoading }: Props) {
+export function TransactionList({ transactions, accounts, isLoading }: Props) {
   const { t } = useTranslation()
   const deleteMutation = useDeleteTransaction()
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
+  const accountMap = new Map(accounts.map((account) => [account.id, account.name]))
 
   if (isLoading) {
     return <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
@@ -53,6 +56,7 @@ export function TransactionList({ transactions, isLoading }: Props) {
           <tr className="text-muted-foreground border-b border-border">
             <th className="text-left py-1.5 pr-2">{t("transactions.table.date")}</th>
             <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
+            <th className="text-left py-1.5 pr-2">{t("transactions.table.account")}</th>
             <th className="text-left py-1.5 pr-2">{t("transactions.table.type")}</th>
             <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
             <th className="text-right py-1.5 pr-2">{t("transactions.table.price")}</th>
@@ -65,6 +69,9 @@ export function TransactionList({ transactions, isLoading }: Props) {
             <tr key={transaction.id} className="border-b border-border/50">
               <td className="py-1.5 pr-2 whitespace-nowrap">{transaction.transaction_date}</td>
               <td className="py-1.5 pr-2 font-medium">{transaction.ticker}</td>
+              <td className="py-1.5 pr-2">
+                {transaction.account_id != null ? accountMap.get(transaction.account_id) ?? "—" : "—"}
+              </td>
               <td className="py-1.5 pr-2">
                 <Badge variant="secondary" className={typeBadgeClass(transaction.transaction_type)}>
                   {t(`transactions.type.${transaction.transaction_type.toLowerCase()}`)}

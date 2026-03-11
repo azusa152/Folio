@@ -758,6 +758,7 @@
       "risk": "🛡️ リスク分析",
       "actions": "💡 アクション",
       "transactions": "🧾 取引履歴",
+      "accounts": "🏦 口座",
       "settings": "⚙️ 設定",
       "net_worth": "💎 純資産"
     },
@@ -1715,11 +1716,14 @@
     "record_from_holding": "記録",
     "filter": {
       "ticker": "Ticker フィルター",
-      "all_tickers": "すべての ticker"
+      "all_tickers": "すべての ticker",
+      "account": "口座フィルター",
+      "all_accounts": "すべての口座"
     },
     "table": {
       "date": "日付",
       "ticker": "Ticker",
+      "account": "口座",
       "type": "種別",
       "quantity": "数量",
       "price": "単価",
@@ -1741,6 +1745,14 @@
     "form": {
       "title": "取引を記録",
       "type": "取引種別",
+      "account": "証券口座",
+      "account_optional": "任意（口座を指定しない）",
+      "account_empty_hint": "証券口座がまだありません。",
+      "create_account": "口座タブで口座を作成する",
+      "available_cash": "利用可能現金（{{currency}}）：{{amount}}",
+      "proceeds_hint": "売却/配当の入金は {{account}} の現金残高に反映されます。",
+      "insufficient_balance": "残高不足（{{currency}}）。利用可能：{{available}}、必要額：{{required}}。",
+      "deposit_cash": "先に現金を入金",
       "ticker": "Ticker",
       "quantity": "数量",
       "price": "単価",
@@ -1771,6 +1783,37 @@
     "toast": {
       "created": "取引を記録しました。",
       "deleted": "取引を削除しました。"
+    }
+  },
+  "accounts": {
+    "title": "証券口座",
+    "caption": "仮想の証券口座を作成し、口座単位で株式と現金を管理します。",
+    "add": "口座を追加",
+    "empty": {
+      "title": "口座がありません",
+      "description": "最初の証券口座を作成すると、ブローカー別に取引と現金決済を追跡できます。"
+    },
+    "form": {
+      "create_title": "口座を作成",
+      "edit_title": "口座を編集",
+      "name": "口座名",
+      "broker": "ブローカー",
+      "account_type": "口座タイプ",
+      "currency": "基準通貨",
+      "institution": "金融機関名（任意）",
+      "note": "メモ（任意）",
+      "save": "保存",
+      "error_required": "口座名とブローカーを入力してください。"
+    },
+    "toast": {
+      "created": "口座を作成しました。",
+      "updated": "口座を更新しました。",
+      "deactivated": "口座を無効化しました。"
+    },
+    "summary": {
+      "positions": "保有件数: {{count}}",
+      "cash": "現金: {{balances}}",
+      "no_cash": "現金残高なし"
     }
   },
   "net_worth": {

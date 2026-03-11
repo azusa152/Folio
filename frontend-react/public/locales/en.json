@@ -758,6 +758,7 @@
       "risk": "🛡️ Risk",
       "actions": "💡 Actions",
       "transactions": "🧾 Transactions",
+      "accounts": "🏦 Accounts",
       "settings": "⚙️ Settings",
       "net_worth": "💎 Net Worth"
     },
@@ -1715,11 +1716,14 @@
     "record_from_holding": "Record",
     "filter": {
       "ticker": "Ticker Filter",
-      "all_tickers": "All tickers"
+      "all_tickers": "All tickers",
+      "account": "Account Filter",
+      "all_accounts": "All accounts"
     },
     "table": {
       "date": "Date",
       "ticker": "Ticker",
+      "account": "Account",
       "type": "Type",
       "quantity": "Qty",
       "price": "Price",
@@ -1741,6 +1745,14 @@
     "form": {
       "title": "Record Transaction",
       "type": "Transaction Type",
+      "account": "Brokerage account",
+      "account_optional": "Optional (no account)",
+      "account_empty_hint": "No brokerage accounts yet.",
+      "create_account": "Create an account in the Accounts tab",
+      "available_cash": "Available cash ({{currency}}): {{amount}}",
+      "proceeds_hint": "Proceeds will be added to {{account}} cash balance.",
+      "insufficient_balance": "Insufficient balance ({{currency}}). Available: {{available}}, Required: {{required}}.",
+      "deposit_cash": "Deposit cash",
       "ticker": "Ticker",
       "quantity": "Quantity",
       "price": "Price per unit",
@@ -1771,6 +1783,37 @@
     "toast": {
       "created": "Transaction recorded.",
       "deleted": "Transaction deleted."
+    }
+  },
+  "accounts": {
+    "title": "Brokerage Accounts",
+    "caption": "Create virtual broker accounts and track stock + cash positions by account.",
+    "add": "Add Account",
+    "empty": {
+      "title": "No accounts yet",
+      "description": "Create your first brokerage account to track trades and cash settlement by broker."
+    },
+    "form": {
+      "create_title": "Create account",
+      "edit_title": "Edit account",
+      "name": "Account name",
+      "broker": "Broker",
+      "account_type": "Account type",
+      "currency": "Base currency",
+      "institution": "Institution (optional)",
+      "note": "Note (optional)",
+      "save": "Save",
+      "error_required": "Account name and broker are required."
+    },
+    "toast": {
+      "created": "Account created.",
+      "updated": "Account updated.",
+      "deactivated": "Account deactivated."
+    },
+    "summary": {
+      "positions": "Positions: {{count}}",
+      "cash": "Cash: {{balances}}",
+      "no_cash": "No cash balance"
     }
   },
   "net_worth": {

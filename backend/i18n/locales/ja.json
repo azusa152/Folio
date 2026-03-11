@@ -359,7 +359,9 @@
   "transaction": {
     "not_found": "取引が見つかりません",
     "created": "取引を記録しました",
-    "deleted": "取引を削除しました"
+    "deleted": "取引を削除しました",
+    "insufficient_balance": "この取引に必要な現金残高が不足しています",
+    "cash_holding_not_found": "選択した口座と通貨の現金残高が見つかりません"
   },
   "account": {
     "not_found": "アカウントが見つかりません",

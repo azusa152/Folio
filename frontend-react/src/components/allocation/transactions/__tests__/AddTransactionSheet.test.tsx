@@ -25,6 +25,15 @@ vi.mock("@/api/hooks/useDashboard", () => ({
   }),
 }))
 
+vi.mock("@/api/hooks/useAccounts", () => ({
+  useAccounts: () => ({
+    data: [{ id: 7, name: "IB Main", broker: "Interactive Brokers" }],
+  }),
+  useAccountCashBalances: () => ({
+    data: [{ currency: "USD", balance: 500 }],
+  }),
+}))
+
 describe("AddTransactionSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -83,5 +92,46 @@ describe("AddTransactionSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.show_more" }))
     const holdingSelect = screen.getByLabelText("transactions.form.holding_link") as HTMLSelectElement
     expect(holdingSelect.value).toBe("1")
+  })
+
+  it("renders account selector and cash balance", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByLabelText("transactions.form.account")).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText("transactions.form.account"), { target: { value: "7" } })
+    expect(screen.getByText("transactions.form.available_cash")).toBeInTheDocument()
+  })
+
+  it("shows insufficient balance helper and can switch to deposit", () => {
+    mockMutate.mockImplementationOnce((_payload, opts) => {
+      opts?.onError?.({
+        detail: {
+          error_code: "INSUFFICIENT_BALANCE",
+          available: 10,
+          required: 20,
+        },
+      })
+    })
+
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "20" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "20" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.deposit_cash" }))
+    expect(screen.getByDisplayValue("10")).toBeInTheDocument()
   })
 })
