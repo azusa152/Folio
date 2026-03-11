@@ -814,7 +814,12 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
         return {**raw_signals, "status": build_signal_status(raw_signals)}
 
     except Exception as e:
-        logger.error("無法取得 %s 技術訊號：%s", ticker, e, exc_info=True)
+        if _is_transient_yf_error(e):
+            logger.warning(
+                "技術訊號暫時抓取失敗（%s），改以錯誤回應優雅降級：%s", ticker, e
+            )
+        else:
+            logger.error("無法取得 %s 技術訊號：%s", ticker, e, exc_info=True)
         return {
             "error": t(
                 "market.signals_fetch_error",

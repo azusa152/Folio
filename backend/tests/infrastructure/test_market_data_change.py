@@ -141,3 +141,35 @@ class TestDailyChangeCalculation:
         assert result["previous_close"] == 123.46  # Rounded to 2 decimals
         assert result["change_pct"] == 1.89  # Rounded to 2 decimals
         assert isinstance(result["change_pct"], float)
+
+    @patch("infrastructure.market_data.market_data.logger")
+    @patch("infrastructure.market_data.market_data._yf_history")
+    def test_fetch_signals_should_log_warning_for_transient_error(
+        self, mock_yf, mock_logger
+    ):
+        # Arrange
+        mock_yf.side_effect = OSError("yfinance returned empty history")
+
+        # Act
+        result = _fetch_signals_from_yf("^TWII")
+
+        # Assert
+        assert "error" in result
+        mock_logger.warning.assert_called_once()
+        mock_logger.error.assert_not_called()
+
+    @patch("infrastructure.market_data.market_data.logger")
+    @patch("infrastructure.market_data.market_data._yf_history")
+    def test_fetch_signals_should_log_error_for_non_transient_error(
+        self, mock_yf, mock_logger
+    ):
+        # Arrange
+        mock_yf.side_effect = ValueError("bad payload")
+
+        # Act
+        result = _fetch_signals_from_yf("NVDA")
+
+        # Assert
+        assert "error" in result
+        mock_logger.warning.assert_not_called()
+        mock_logger.error.assert_called_once()
