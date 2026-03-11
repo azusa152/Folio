@@ -121,6 +121,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -180,6 +181,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -230,6 +232,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -284,6 +287,7 @@ class TestEtfSectorLookthrough:
         # Arrange
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -510,6 +514,7 @@ class TestEtfSectorLookthrough:
         _add_profile(db_session)
         _add_holding(db_session, "VTI", quantity=10.0)
         _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
         def _signals_side_effect(ticker: str, *a, **kw):

@@ -1903,6 +1903,16 @@ def get_etf_top_holdings(
         result = _fetch_etf_top_holdings(t)
         return result if result else _ETF_NOT_FOUND_SENTINEL
 
+    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
+    # skip ETF holdings fetch entirely to avoid unnecessary retries/calls.
+    cached_info = _yf_info_cache.get(ticker)
+    if (
+        is_known_etf is not True
+        and cached_info
+        and cached_info.get("quoteType", "") != "ETF"
+    ):
+        return None
+
     try:
         data = _cached_fetch(
             _etf_holdings_cache,
@@ -2039,6 +2049,16 @@ def get_etf_sector_weights(
     def _fetch_with_sentinel(t: str) -> dict[str, float]:
         result = _fetch_etf_sector_weights(t)
         return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
+
+    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
+    # skip ETF sector fetch entirely to avoid unnecessary retries/calls.
+    cached_info = _yf_info_cache.get(ticker)
+    if (
+        is_known_etf is not True
+        and cached_info
+        and cached_info.get("quoteType", "") != "ETF"
+    ):
+        return None
 
     try:
         data = _cached_fetch(

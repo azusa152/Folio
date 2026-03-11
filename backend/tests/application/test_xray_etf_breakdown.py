@@ -290,6 +290,120 @@ class TestXRayEtfBreakdown:
             expected_indirect_pct, rel=0.01
         )
 
+    def test_non_etf_tickers_should_not_trigger_etf_fetch_or_prewarm(
+        self, db_session: Session
+    ):
+        """Only known ETFs should trigger ETF prewarm/fetch calls during X-Ray."""
+        # Arrange: one known ETF + one non-ETF stock
+        _add_profile(db_session)
+        _add_holding(db_session, "SOXX", quantity=10.0)
+        _add_holding(db_session, "AAPL", quantity=5.0)
+        _add_stock(db_session, "SOXX", is_etf=True)
+        _add_stock(db_session, "AAPL", is_etf=False)
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"SOXX": 200.0, "AAPL": 100.0}.get(ticker, 100.0),
+            }
+
+        def _holdings_side_effect(ticker: str, **kwargs):
+            if ticker != "SOXX":
+                pytest.fail(
+                    f"Non-ETF ticker should not call ETF holdings fetch: {ticker}"
+                )
+            assert kwargs.get("is_known_etf") is True
+            return [{"symbol": "NVDA", "name": "NVIDIA", "weight": 0.08}]
+
+        def _sector_side_effect(ticker: str, **kwargs):
+            if ticker != "SOXX":
+                pytest.fail(
+                    f"Non-ETF ticker should not call ETF sector fetch: {ticker}"
+                )
+            assert kwargs.get("is_known_etf") is True
+            return
+
+        with (
+            patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
+            patch(f"{_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}
+            ) as mock_prewarm_holdings,
+            patch(
+                f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}
+            ) as mock_prewarm_sectors,
+            patch(
+                f"{_MODULE}.get_etf_top_holdings", side_effect=_holdings_side_effect
+            ) as mock_get_holdings,
+            patch(
+                f"{_MODULE}.get_etf_sector_weights", side_effect=_sector_side_effect
+            ) as mock_get_sectors,
+        ):
+            # Act
+            result = calculate_rebalance(db_session, "USD")
+
+        # Assert: prewarm should receive ETF-only list
+        mock_prewarm_holdings.assert_called_once()
+        mock_prewarm_sectors.assert_called_once()
+        assert mock_prewarm_holdings.call_args.args[0] == ["SOXX"]
+        assert mock_prewarm_sectors.call_args.args[0] == ["SOXX"]
+
+        # Assert: ETF fetch calls may happen in multiple stages (X-Ray + sector),
+        # but must only target known ETF tickers.
+        assert mock_get_holdings.call_count >= 1
+        assert mock_get_sectors.call_count >= 1
+        assert {c.args[0] for c in mock_get_holdings.call_args_list} == {"SOXX"}
+        assert {c.args[0] for c in mock_get_sectors.call_args_list} == {"SOXX"}
+
+        # Assert: non-ETF AAPL remains direct exposure in X-Ray output
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "SOXX" not in xray
+        assert "AAPL" in xray
+        assert xray["AAPL"]["direct_weight_pct"] > 0
+        assert xray["AAPL"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
+
+    def test_unknown_non_etf_should_not_trigger_etf_fetch_calls(
+        self, db_session: Session
+    ):
+        """Ticker missing from Stock table should not probe ETF lookthrough paths."""
+        _add_profile(db_session)
+        _add_holding(db_session, "AAPL", quantity=5.0)
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"AAPL": 100.0}.get(ticker, 100.0),
+            }
+
+        with (
+            patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
+            patch(f"{_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
+            patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
+            patch(
+                f"{_MODULE}.get_etf_top_holdings",
+                side_effect=AssertionError("unknown non-ETF should not fetch holdings"),
+            ) as mock_get_holdings,
+            patch(
+                f"{_MODULE}.get_etf_sector_weights",
+                side_effect=AssertionError("unknown non-ETF should not fetch sectors"),
+            ) as mock_get_sectors,
+        ):
+            result = calculate_rebalance(db_session, "USD")
+
+        assert mock_get_holdings.call_count == 0
+        assert mock_get_sectors.call_count == 0
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "AAPL" in xray
+
 
 class TestEtfHoldingsSentinelCaching:
     """Sentinel caching prevents repeated yfinance calls for non-ETF tickers."""

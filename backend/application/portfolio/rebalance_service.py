@@ -427,23 +427,27 @@ def _do_calculate_rebalance(
     result["display_currency"] = display_currency
 
     # 8) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
-    # 先並行預熱所有可能的 ETF 成分股快取
-    xray_tickers = [
+    # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
+    # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
+    stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()
+    known_etf_tickers: set[str] = {
+        ticker.upper() for ticker, is_etf in stock_rows if bool(is_etf)
+    }
+    # 先計算所有符合 X-Ray 條件的股票，再過濾為已知 ETF 進行預熱。
+    all_xray_tickers = [
         t
         for t, agg in ticker_agg.items()
         if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
     ]
+    xray_tickers = [t for t in all_xray_tickers if t in known_etf_tickers]
     if xray_tickers:
-        logger.info("並行預熱 %d 檔 ETF 成分股及板塊權重...", len(xray_tickers))
+        logger.info(
+            "X-Ray 預熱：%d/%d 檔符合條件標的為已知 ETF，開始預熱成分股與板塊權重。",
+            len(xray_tickers),
+            len(all_xray_tickers),
+        )
         prewarm_etf_holdings_batch(xray_tickers)
         prewarm_etf_sector_weights_batch(xray_tickers)
-
-    # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
-    # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
-    known_etf_tickers: set[str] = {
-        s.ticker
-        for s in session.exec(select(Stock).where(Stock.is_etf == True))  # noqa: E712
-    }
 
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
     xray_analyzed_value = 0.0
@@ -455,13 +459,14 @@ def _do_calculate_rebalance(
         if cat in XRAY_SKIP_CATEGORIES or mv <= 0:
             continue
 
-        # 嘗試取得 ETF 成分股與板塊權重（板塊可反映 ETF 全部資產覆蓋）
-        constituents = get_etf_top_holdings(
-            ticker, is_known_etf=ticker in known_etf_tickers
-        )
-        etf_sector_weights = get_etf_sector_weights(
-            ticker, is_known_etf=ticker in known_etf_tickers
-        )
+        if ticker in known_etf_tickers:
+            # 僅已知 ETF 需要查詢成分股與板塊權重。
+            constituents = get_etf_top_holdings(ticker, is_known_etf=True)
+            etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
+        else:
+            constituents = None
+            etf_sector_weights = None
+
         if constituents:
             constituent_weight_sum = sum(c["weight"] for c in constituents)
             if etf_sector_weights:
@@ -502,7 +507,8 @@ def _do_calculate_rebalance(
             xray_analyzed_value += mv * min(coverage_weight_sum, 1.0)
         else:
             xray_analyzed_value += mv
-            # 非 ETF — 記錄為直接持倉
+            # 非 ETF 或未納入 Stock 表的 ETF 一律視為直接持倉。
+            # 若要啟用 ETF 穿透分析，需先將該標的加入 watchlist 並設定 is_etf=True。
             if ticker not in xray_map:
                 xray_map[ticker] = {
                     "name": "",
@@ -581,9 +587,9 @@ def _do_calculate_rebalance(
     etf_constituents_cache: dict[str, list[dict]] = {}
     constituent_symbols_for_sector: list[str] = []
     for ticker in equity_tickers_for_sector:
-        constituents = get_etf_top_holdings(
-            ticker, is_known_etf=ticker in known_etf_tickers
-        )
+        if ticker not in known_etf_tickers:
+            continue
+        constituents = get_etf_top_holdings(ticker, is_known_etf=True)
         if constituents:
             etf_constituents_cache[ticker] = constituents
             constituent_symbols_for_sector.extend(c["symbol"] for c in constituents)
@@ -603,8 +609,10 @@ def _do_calculate_rebalance(
         # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
         constituents = etf_constituents_cache.get(ticker)
         # Approach B：先嘗試 ETF 官方板塊權重分佈（與成分股資料來源獨立）
-        etf_sector_weights = get_etf_sector_weights(
-            ticker, is_known_etf=ticker in known_etf_tickers
+        etf_sector_weights = (
+            get_etf_sector_weights(ticker, is_known_etf=True)
+            if ticker in known_etf_tickers
+            else None
         )
         if etf_sector_weights:
             for sector_name, weight in etf_sector_weights.items():

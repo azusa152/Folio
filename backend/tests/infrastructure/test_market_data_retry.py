@@ -646,6 +646,38 @@ class TestEtfCacheErrorHandling:
         mock_disk_cache.delete.assert_called_once_with("etf_holdings:VTI")
         assert "VTI" not in _etf_holdings_cache
 
+    def test_get_etf_top_holdings_should_not_short_circuit_for_known_etf(self):
+        with (
+            patch(
+                "infrastructure.market_data.market_data._yf_info_cache.get",
+                return_value={"quoteType": "EQUITY"},
+            ),
+            patch(
+                "infrastructure.market_data.market_data._cached_fetch",
+                return_value=[{"symbol": "AAPL", "weight": 0.1}],
+            ) as mock_cached_fetch,
+        ):
+            result = get_etf_top_holdings("VTI", is_known_etf=True)
+
+        assert result == [{"symbol": "AAPL", "weight": 0.1}]
+        mock_cached_fetch.assert_called_once()
+
+    def test_get_etf_sector_weights_should_not_short_circuit_for_known_etf(self):
+        with (
+            patch(
+                "infrastructure.market_data.market_data._yf_info_cache.get",
+                return_value={"quoteType": "EQUITY"},
+            ),
+            patch(
+                "infrastructure.market_data.market_data._cached_fetch",
+                return_value={"Technology": 0.3},
+            ) as mock_cached_fetch,
+        ):
+            result = get_etf_sector_weights("VTI", is_known_etf=True)
+
+        assert result == {"Technology": 0.3}
+        mock_cached_fetch.assert_called_once()
+
 
 class TestEtfHoldingsRetry:
     """Verify ETF holdings fetch retries transient failures."""
