@@ -23,6 +23,12 @@ vi.mock("@/api/hooks/useCrypto", () => ({
   }),
 }))
 
+vi.mock("@/api/hooks/useAccounts", () => ({
+  useAccounts: () => ({
+    data: [{ id: 1, name: "Default", broker: "Default", currency: "USD" }],
+  }),
+}))
+
 describe("AddHoldingSheet crypto", () => {
   it("shows crypto tab and search field", () => {
     const queryClient = new QueryClient()

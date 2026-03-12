@@ -16,6 +16,20 @@ from domain.constants import (
 from i18n import t
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def test_webhook_exception_sanitized(client):
     """Webhook endpoint returns generic error on exception (no leak)."""
     # Patch handle_webhook where it's imported in stock_routes
@@ -173,6 +187,7 @@ def test_holding_import_partial_failure_no_leak(client):
         },
     )
 
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -182,7 +197,7 @@ def test_holding_import_partial_failure_no_leak(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 200
     data = response.json()

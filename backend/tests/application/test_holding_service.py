@@ -17,7 +17,7 @@ from application.portfolio.holding_service import (
     update_holding,
 )
 from domain.constants import DEFAULT_USER_ID
-from domain.entities import Holding
+from domain.entities import Account, Holding
 from domain.enums import StockCategory
 
 # ---------------------------------------------------------------------------
@@ -27,13 +27,30 @@ from domain.enums import StockCategory
 _LANG = "zh-TW"
 
 
-def _make_payload(**kwargs) -> dict:
+def _seed_account(
+    session: Session, *, name: str = "Default", broker: str = "Default"
+) -> Account:
+    account = Account(
+        user_id=DEFAULT_USER_ID,
+        name=name,
+        broker=broker,
+        account_type="brokerage",
+        currency="USD",
+    )
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+
+def _make_payload(account_id: int, **kwargs) -> dict:
     defaults = {
         "ticker": "AAPL",
         "category": StockCategory.TREND_SETTER,
         "quantity": 10.0,
         "cost_basis": 150.0,
         "broker": None,
+        "account_id": account_id,
         "currency": "usd",
         "account_type": None,
         "is_cash": False,
@@ -97,7 +114,8 @@ class TestListHoldings:
 
 class TestCreateHolding:
     def test_creates_holding_with_valid_payload(self, db_session: Session) -> None:
-        result = create_holding(db_session, _make_payload(), _LANG)
+        account = _seed_account(db_session)
+        result = create_holding(db_session, _make_payload(account.id), _LANG)
         assert result["ticker"] == "AAPL"
         assert result["currency"] == "USD"  # uppercased
         assert result["quantity"] == 10.0
@@ -106,29 +124,38 @@ class TestCreateHolding:
     def test_normalises_ticker_and_currency_to_uppercase(
         self, db_session: Session
     ) -> None:
+        account = _seed_account(db_session)
         result = create_holding(
-            db_session, _make_payload(ticker="msft", currency="usd"), _LANG
+            db_session,
+            _make_payload(account.id, ticker="msft", currency="usd"),
+            _LANG,
         )
         assert result["ticker"] == "MSFT"
         assert result["currency"] == "USD"
 
     def test_persists_to_database(self, db_session: Session) -> None:
-        create_holding(db_session, _make_payload(), _LANG)
+        account = _seed_account(db_session)
+        create_holding(db_session, _make_payload(account.id), _LANG)
         assert len(list_holdings(db_session)) == 1
 
     def test_crypto_holding_requires_usd_currency(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         with pytest.raises(HTTPException) as exc_info:
             create_holding(
                 db_session,
-                _make_payload(category=StockCategory.CRYPTO, currency="TWD"),
+                _make_payload(
+                    account.id, category=StockCategory.CRYPTO, currency="TWD"
+                ),
                 _LANG,
             )
         assert exc_info.value.status_code == 400
 
     def test_crypto_holding_normalizes_coingecko_id(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         result = create_holding(
             db_session,
             _make_payload(
+                account.id,
                 ticker="btc-usd",
                 category=StockCategory.CRYPTO,
                 currency="USD",
@@ -146,10 +173,12 @@ class TestCreateHolding:
 
 class TestCreateCashHolding:
     def test_creates_cash_holding(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         payload = {
             "currency": "twd",
             "amount": 100000.0,
             "broker": None,
+            "account_id": account.id,
             "account_type": None,
         }
         result = create_cash_holding(db_session, payload, _LANG)
@@ -168,30 +197,30 @@ class TestCreateCashHolding:
 class TestUpdateHolding:
     def test_updates_existing_holding(self, db_session: Session) -> None:
         holding = _seed_holding(db_session)
-        payload = _make_payload(quantity=20.0, cost_basis=180.0)
+        payload = {"quantity": 20.0, "cost_basis": 180.0}
         result = update_holding(db_session, holding.id, payload, _LANG)  # type: ignore[arg-type]
         assert result["quantity"] == 20.0
         assert result["cost_basis"] == 180.0
 
     def test_raises_404_for_nonexistent_id(self, db_session: Session) -> None:
         with pytest.raises(HTTPException) as exc_info:
-            update_holding(db_session, 99999, _make_payload(), _LANG)
+            update_holding(db_session, 99999, _make_payload(1), _LANG)
         assert exc_info.value.status_code == 404
 
     def test_normalises_ticker_and_currency(self, db_session: Session) -> None:
         holding = _seed_holding(db_session)
-        payload = _make_payload(ticker="tsla", currency="jpy")
+        payload = {"ticker": "tsla", "currency": "jpy"}
         result = update_holding(db_session, holding.id, payload, _LANG)  # type: ignore[arg-type]
         assert result["ticker"] == "TSLA"
         assert result["currency"] == "JPY"
 
     def test_crypto_update_rejects_non_usd_currency(self, db_session: Session) -> None:
         holding = _seed_holding(db_session, ticker="BTC-USD")
-        payload = _make_payload(
-            category=StockCategory.CRYPTO,
-            currency="JPY",
-            coingecko_id="bitcoin",
-        )
+        payload = {
+            "category": StockCategory.CRYPTO,
+            "currency": "JPY",
+            "coingecko_id": "bitcoin",
+        }
         with pytest.raises(HTTPException) as exc_info:
             update_holding(db_session, holding.id, payload, _LANG)  # type: ignore[arg-type]
         assert exc_info.value.status_code == 400
@@ -242,51 +271,63 @@ class TestExportHoldings:
 
 
 class TestImportHoldings:
-    def _import_payload(self) -> list[dict]:
+    def _import_payload(self, account_id: int) -> list[dict]:
         return [
             {
                 "ticker": "VTI",
                 "category": StockCategory.TREND_SETTER,
                 "quantity": 50.0,
                 "currency": "USD",
+                "account_id": account_id,
                 "is_cash": False,
             }
         ]
 
     def test_imports_holdings_successfully(self, db_session: Session) -> None:
-        result = import_holdings(db_session, self._import_payload(), _LANG)
+        account = _seed_account(db_session)
+        result = import_holdings(db_session, self._import_payload(account.id), _LANG)
         assert result["imported"] == 1
         assert result["errors"] == []
 
     def test_replaces_existing_holdings(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         _seed_holding(db_session, "AAPL")
         _seed_holding(db_session, "MSFT")
-        import_holdings(db_session, self._import_payload(), _LANG)
+        import_holdings(db_session, self._import_payload(account.id), _LANG)
         remaining = list_holdings(db_session)
         assert len(remaining) == 1
         assert remaining[0]["ticker"] == "VTI"
 
     def test_raises_400_when_data_exceeds_limit(self, db_session: Session) -> None:
-        big_data = [self._import_payload()[0]] * 1001
+        account = _seed_account(db_session)
+        big_data = [self._import_payload(account.id)[0]] * 1001
         with pytest.raises(HTTPException) as exc_info:
             import_holdings(db_session, big_data, _LANG)
         assert exc_info.value.status_code == 400
 
     def test_records_errors_for_invalid_items(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         bad_item = {"ticker": "BAD"}  # missing required fields
-        result = import_holdings(db_session, [bad_item], _LANG)
+        result = import_holdings(
+            db_session,
+            [bad_item],
+            _LANG,
+            account_id=account.id,
+        )
         assert result["imported"] == 0
         assert len(result["errors"]) == 1
 
     def test_import_crypto_with_non_usd_currency_records_error(
         self, db_session: Session
     ) -> None:
+        account = _seed_account(db_session)
         payload = [
             {
                 "ticker": "BTC-USD",
                 "category": StockCategory.CRYPTO,
                 "quantity": 1.25,
                 "currency": "TWD",
+                "account_id": account.id,
                 "is_cash": False,
             }
         ]
@@ -297,6 +338,9 @@ class TestImportHoldings:
     def test_replace_account_only_replaces_target_account(
         self, db_session: Session
     ) -> None:
+        _seed_account(db_session, name="A", broker="A")
+        account_b = _seed_account(db_session, name="B", broker="B")
+
         _seed_holding(db_session, "AAPL")
         account_holding = Holding(
             user_id=DEFAULT_USER_ID,
@@ -304,7 +348,7 @@ class TestImportHoldings:
             category=StockCategory.TREND_SETTER,
             quantity=3,
             currency="USD",
-            account_id=7,
+            account_id=account_b.id,
         )
         db_session.add(account_holding)
         db_session.commit()
@@ -322,7 +366,7 @@ class TestImportHoldings:
             payload,
             _LANG,
             mode="replace_account",
-            account_id=7,
+            account_id=account_b.id,
         )
 
         holdings = list_holdings(db_session)
@@ -330,9 +374,10 @@ class TestImportHoldings:
         assert "AAPL" in tickers
         assert "MSFT" not in tickers
         tsla = next(item for item in holdings if item["ticker"] == "TSLA")
-        assert tsla["account_id"] == 7
+        assert tsla["account_id"] == account_b.id
 
     def test_append_mode_keeps_existing_holdings(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
         _seed_holding(db_session, "AAPL")
         payload = [
             {
@@ -340,6 +385,7 @@ class TestImportHoldings:
                 "category": StockCategory.GROWTH,
                 "quantity": 8,
                 "currency": "USD",
+                "account_id": account.id,
             }
         ]
 

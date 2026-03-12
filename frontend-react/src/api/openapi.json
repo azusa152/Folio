@@ -7575,15 +7575,9 @@
             "title": "Broker"
           },
           "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
+            "type": "integer",
+            "title": "Account Id",
+            "description": "\u5e33\u6236 ID\uff08\u5fc5\u586b\uff09"
           },
           "account_type": {
             "anyOf": [
@@ -7600,7 +7594,8 @@
         "type": "object",
         "required": [
           "currency",
-          "amount"
+          "amount",
+          "account_id"
         ],
         "title": "CashHoldingRequest",
         "description": "POST /holdings/cash \u8acb\u6c42 Body\u3002"
@@ -9984,15 +9979,9 @@
             "title": "Broker"
           },
           "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
+            "type": "integer",
+            "title": "Account Id",
+            "description": "\u5e33\u6236 ID\uff08\u5fc5\u586b\uff09"
           },
           "currency": {
             "type": "string",
@@ -10020,7 +10009,8 @@
         "required": [
           "ticker",
           "category",
-          "quantity"
+          "quantity",
+          "account_id"
         ],
         "title": "HoldingRequest",
         "description": "POST /holdings \u8acb\u6c42 Body\u3002"
@@ -12548,15 +12538,9 @@
       "TransactionRequest": {
         "properties": {
           "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
+            "type": "integer",
+            "title": "Account Id",
+            "description": "\u5e33\u6236 ID\uff08\u5fc5\u586b\uff09"
           },
           "holding_id": {
             "anyOf": [
@@ -12638,6 +12622,7 @@
         },
         "type": "object",
         "required": [
+          "account_id",
           "ticker",
           "transaction_type",
           "quantity",

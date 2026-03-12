@@ -178,7 +178,18 @@ CATEGORY_ICON: dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Account Types
 # ---------------------------------------------------------------------------
-ACCOUNT_TYPE_OPTIONS = ["brokerage", "retirement", "savings", "crypto", "other"]
+ACCOUNT_TYPE_OPTIONS = [
+    "brokerage",
+    "retirement",
+    "savings",
+    "crypto",
+    "bank",
+    "wallet",
+    "cash_wallet",
+    "insurance",
+    "loan",
+    "other",
+]
 
 # ---------------------------------------------------------------------------
 # User & Profile

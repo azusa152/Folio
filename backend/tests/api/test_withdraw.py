@@ -5,8 +5,24 @@ Tests for POST /withdraw — 聰明提款機 (Smart Withdrawal / Liquidity Water
 from unittest.mock import patch
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def _setup_profile_and_holdings(client):
     """共用 setup：建立投資人格 + 持倉。"""
+    account_id = _create_account(client)
+
     # 建立投資人格（目標配置）
     client.post(
         "/profiles",
@@ -24,6 +40,7 @@ def _setup_profile_and_holdings(client):
             "category": "Growth",
             "quantity": 10,
             "cost_basis": 80.0,
+            "account_id": account_id,
             "currency": "USD",
         },
     )
@@ -35,6 +52,7 @@ def _setup_profile_and_holdings(client):
             "category": "Bond",
             "quantity": 50,
             "cost_basis": 100.0,
+            "account_id": account_id,
             "currency": "USD",
         },
     )
@@ -44,6 +62,7 @@ def _setup_profile_and_holdings(client):
         json={
             "currency": "USD",
             "amount": 5000.0,
+            "account_id": account_id,
         },
     )
 

@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/sheet"
 import { CsvImportDialog } from "@/components/allocation/holdings/CsvImportDialog"
 import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
+import { useAccounts } from "@/api/hooks/useAccounts"
 import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import { useHoldings } from "@/api/hooks/useDashboard"
-import { STOCK_CATEGORIES, DISPLAY_CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants"
+import { STOCK_CATEGORIES, DISPLAY_CURRENCIES } from "@/lib/constants"
 import type { StockCategory } from "@/api/types/allocation"
 import type { components } from "@/api/types/generated"
 import { getErrorMessage } from "@/lib/utils"
@@ -24,12 +25,14 @@ interface Props {
 }
 
 type AssetType = "stock" | "bond" | "cash" | "crypto"
+const CASH_ACCOUNT_SUBTYPES = ["savings", "fixed_deposit", "money_market", "other"] as const
 
 export function AddHoldingSheet({ open, onClose }: Props) {
   const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [assetType, setAssetType] = useState<AssetType>("stock")
+  const [accountId, setAccountId] = useState("")
   const [ticker, setTicker] = useState("")
   const [category, setCategory] = useState<StockCategory>("Growth")
   const [quantity, setQuantity] = useState("")
@@ -53,10 +56,13 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   const addHoldingMutation = useAddHolding()
   const addCashMutation = useAddCashHolding()
   const importMutation = useImportHoldings()
+  const { data: accounts } = useAccounts(open)
   const { data: holdings } = useHoldings()
   const { data: cryptoSearchResults } = useCryptoSearch(cryptoQuery)
+  const hasNoAccounts = (accounts ?? []).length === 0
 
   const resetForm = () => {
+    setAccountId("")
     setTicker("")
     setQuantity("")
     setAvgCost("")
@@ -70,6 +76,10 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   }
 
   const handleSubmitStock = () => {
+    if (!accountId) {
+      setFeedback(t("transactions.form.account_required"))
+      return
+    }
     if (!ticker.trim()) {
       setFeedback(t("allocation.sidebar.error_ticker"))
       return
@@ -91,6 +101,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
+        account_id: Number(accountId),
         currency,
       },
       {
@@ -107,6 +118,10 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   }
 
   const handleSubmitBond = () => {
+    if (!accountId) {
+      setFeedback(t("transactions.form.account_required"))
+      return
+    }
     if (!ticker.trim()) {
       setFeedback(t("allocation.sidebar.error_bond_ticker"))
       return
@@ -128,6 +143,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
+        account_id: Number(accountId),
         currency,
       },
       {
@@ -144,6 +160,10 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   }
 
   const handleSubmitCash = () => {
+    if (!accountId) {
+      setFeedback(t("transactions.form.account_required"))
+      return
+    }
     const cashAmountNum = Number(cashAmount)
     if (!cashAmount.trim() || Number.isNaN(cashAmountNum) || cashAmountNum <= 0) {
       setFeedback(t("allocation.sidebar.error_cash_amount"))
@@ -155,6 +175,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         currency,
         amount: cashAmountNum,
         broker: cashBank || undefined,
+        account_id: Number(accountId),
         account_type: cashAccountType || undefined,
       },
       {
@@ -171,6 +192,10 @@ export function AddHoldingSheet({ open, onClose }: Props) {
   }
 
   const handleSubmitCrypto = () => {
+    if (!accountId) {
+      setFeedback(t("transactions.form.account_required"))
+      return
+    }
     if (!ticker.trim()) {
       setFeedback(t("allocation.sidebar.crypto_select_required"))
       return
@@ -193,6 +218,7 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         quantity: quantityNum,
         cost_basis: avgCost ? Number(avgCost) : undefined,
         broker: broker || undefined,
+        account_id: Number(accountId),
         currency: "USD",
       },
       {
@@ -287,6 +313,31 @@ export function AddHoldingSheet({ open, onClose }: Props) {
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">{t("transactions.form.account")}</p>
+            <select
+              aria-label={t("transactions.form.account")}
+              value={accountId}
+              onChange={(e) => {
+                setAccountId(e.target.value)
+                setFeedback(null)
+              }}
+              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
+            >
+              <option value="">{t("transactions.form.account_required")}</option>
+              {(accounts ?? []).map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.broker})
+                </option>
+              ))}
+            </select>
+            {hasNoAccounts ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t("transactions.form.account_empty_hint")} {t("transactions.form.create_account")}
+              </p>
+            ) : null}
+          </div>
+
           {/* Asset type toggle */}
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("allocation.sidebar.asset_type")}</p>
@@ -452,7 +503,11 @@ export function AddHoldingSheet({ open, onClose }: Props) {
                   className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
                 >
                   <option value="">{t("allocation.sidebar.not_specified")}</option>
-                  {ACCOUNT_TYPES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  {CASH_ACCOUNT_SUBTYPES.map((a) => (
+                    <option key={a} value={a}>
+                      {t(`config.cash_subtype.${a}`)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <Button

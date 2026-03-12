@@ -125,10 +125,22 @@
       "2months": "2 個月",
       "3months": "3 個月"
     },
-    "account_type": {
+    "cash_subtype": {
       "savings": "活存",
       "fixed_deposit": "定存",
       "money_market": "貨幣市場基金",
+      "other": "其他"
+    },
+    "account_type": {
+      "brokerage": "券商帳戶",
+      "retirement": "退休帳戶（IRA/401k）",
+      "savings": "儲蓄帳戶",
+      "crypto": "加密貨幣交易所",
+      "bank": "銀行帳戶",
+      "wallet": "加密錢包",
+      "cash_wallet": "現金／電子錢包",
+      "insurance": "保險",
+      "loan": "貸款",
       "other": "其他"
     },
     "priority": {

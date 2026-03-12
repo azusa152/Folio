@@ -125,10 +125,22 @@
       "2months": "2 Months",
       "3months": "3 Months"
     },
-    "account_type": {
+    "cash_subtype": {
       "savings": "Checking/Savings",
       "fixed_deposit": "Fixed Deposit",
       "money_market": "Money Market Fund",
+      "other": "Other"
+    },
+    "account_type": {
+      "brokerage": "Brokerage",
+      "retirement": "Retirement (IRA/401k)",
+      "savings": "Savings",
+      "crypto": "Crypto Exchange",
+      "bank": "Bank Account",
+      "wallet": "Crypto Wallet",
+      "cash_wallet": "Cash / E-Wallet",
+      "insurance": "Insurance",
+      "loan": "Loan",
       "other": "Other"
     },
     "priority": {

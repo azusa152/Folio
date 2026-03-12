@@ -21,9 +21,30 @@ CASH_PAYLOAD = {
 }
 
 
-def _create_holding(client, payload=None):
+def _create_account(client) -> int:
+    resp = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+def _create_holding(client, payload=None, account_id=None):
     """Helper: create a holding and return its JSON body."""
-    resp = client.post("/holdings", json=payload or HOLDING_PAYLOAD)
+    resolved_account_id = account_id or _create_account(client)
+    holding_payload = {
+        **(payload or HOLDING_PAYLOAD),
+        "account_id": (
+            (payload or HOLDING_PAYLOAD).get("account_id", resolved_account_id)
+        ),
+    }
+    resp = client.post("/holdings", json=holding_payload)
     assert resp.status_code == 200
     return resp.json()
 
@@ -38,11 +59,9 @@ class TestCreateHolding:
 
     def test_create_holding_should_return_created_holding(self, client):
         # Act
-        resp = client.post("/holdings", json=HOLDING_PAYLOAD)
+        body = _create_holding(client)
 
         # Assert
-        assert resp.status_code == 200
-        body = resp.json()
         assert body["ticker"] == "NVDA"
         assert body["category"] == "Growth"
         assert body["quantity"] == 10
@@ -61,7 +80,10 @@ class TestCreateCashHolding:
 
     def test_create_cash_should_return_cash_holding(self, client):
         # Act
-        resp = client.post("/holdings/cash", json=CASH_PAYLOAD)
+        account_id = _create_account(client)
+        resp = client.post(
+            "/holdings/cash", json={**CASH_PAYLOAD, "account_id": account_id}
+        )
 
         # Assert
         assert resp.status_code == 200
@@ -70,9 +92,19 @@ class TestCreateCashHolding:
         assert body["is_cash"] is True
         assert body["quantity"] == 50000
 
+    def test_create_cash_should_return_422_when_missing_account(self, client):
+        # Act
+        resp = client.post("/holdings/cash", json=CASH_PAYLOAD)
+
+        # Assert
+        assert resp.status_code == 422
+
     def test_create_cash_should_return_422_when_missing_currency(self, client):
         # Act
-        resp = client.post("/holdings/cash", json={"amount": 1000})
+        account_id = _create_account(client)
+        resp = client.post(
+            "/holdings/cash", json={"amount": 1000, "account_id": account_id}
+        )
 
         # Assert
         assert resp.status_code == 422
@@ -98,8 +130,8 @@ class TestListHoldings:
 
         # Assert
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
-        assert resp.json()[0]["ticker"] == "NVDA"
+        tickers = {item["ticker"] for item in resp.json()}
+        assert tickers == {"USD", "NVDA"}
 
 
 class TestUpdateHolding:
@@ -122,11 +154,37 @@ class TestUpdateHolding:
 
     def test_update_should_return_404_for_nonexistent_id(self, client):
         # Act
-        resp = client.put("/holdings/99999", json=HOLDING_PAYLOAD)
+        account_id = _create_account(client)
+        resp = client.put(
+            "/holdings/99999", json={**HOLDING_PAYLOAD, "account_id": account_id}
+        )
 
         # Assert
         assert resp.status_code == 404
         assert resp.json()["detail"]["error_code"] == "HOLDING_NOT_FOUND"
+
+    def test_update_should_return_404_when_account_not_found(self, client):
+        # Arrange
+        created = _create_holding(client)
+        holding_id = created["id"]
+
+        # Act
+        resp = client.put(f"/holdings/{holding_id}", json={"account_id": 99999})
+
+        # Assert
+        assert resp.status_code == 404
+        assert resp.json()["detail"]["error_code"] == "ACCOUNT_NOT_FOUND"
+
+    def test_update_should_return_422_when_account_is_null(self, client):
+        # Arrange
+        created = _create_holding(client)
+        holding_id = created["id"]
+
+        # Act
+        resp = client.put(f"/holdings/{holding_id}", json={"account_id": None})
+
+        # Assert
+        assert resp.status_code == 422
 
 
 class TestDeleteHolding:
@@ -147,7 +205,8 @@ class TestDeleteHolding:
         # Verify deletion
         resp2 = client.get("/holdings")
         assert resp2.status_code == 200
-        assert len(resp2.json()) == 0
+        tickers = {item["ticker"] for item in resp2.json()}
+        assert "NVDA" not in tickers
 
     def test_delete_should_return_404_for_nonexistent_id(self, client):
         # Act
@@ -176,8 +235,9 @@ class TestExportHoldings:
 
     def test_export_should_return_all_holdings(self, client):
         # Arrange
-        _create_holding(client)
-        client.post("/holdings/cash", json=CASH_PAYLOAD)
+        account_id = _create_account(client)
+        _create_holding(client, account_id=account_id)
+        client.post("/holdings/cash", json={**CASH_PAYLOAD, "account_id": account_id})
 
         # Act
         resp = client.get("/holdings/export")
@@ -185,9 +245,8 @@ class TestExportHoldings:
         # Assert
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 2
         tickers = {item["ticker"] for item in data}
-        assert tickers == {"NVDA", "TWD"}
+        assert tickers == {"USD", "NVDA", "TWD"}
 
 
 class TestImportHoldings:
@@ -195,10 +254,12 @@ class TestImportHoldings:
 
     def test_import_should_replace_all_holdings(self, client):
         # Arrange — create initial holding
-        _create_holding(client)
+        created = _create_holding(client)
+        account_id = created["account_id"]
 
         import_data = {
             "mode": "replace_all",
+            "account_id": account_id,
             "items": [
                 {
                     "ticker": "AAPL",
@@ -311,8 +372,33 @@ class TestImportHoldings:
 
     def test_import_append_should_keep_existing_holdings(self, client):
         # Arrange
-        _create_holding(client)
+        created = _create_holding(client)
+        account_id = created["account_id"]
 
+        # Act
+        resp = client.post(
+            "/holdings/import",
+            json={
+                "mode": "append",
+                "account_id": account_id,
+                "items": [
+                    {
+                        "ticker": "QQQ",
+                        "category": "Growth",
+                        "quantity": 7,
+                        "currency": "USD",
+                    }
+                ],
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        holdings = client.get("/holdings").json()
+        tickers = {holding["ticker"] for holding in holdings}
+        assert tickers == {"USD", "NVDA", "QQQ"}
+
+    def test_import_should_return_422_when_missing_account_assignment(self, client):
         # Act
         resp = client.post(
             "/holdings/import",
@@ -330,10 +416,29 @@ class TestImportHoldings:
         )
 
         # Assert
-        assert resp.status_code == 200
-        holdings = client.get("/holdings").json()
-        tickers = {holding["ticker"] for holding in holdings}
-        assert tickers == {"NVDA", "QQQ"}
+        assert resp.status_code == 422
+
+    def test_import_should_return_404_when_account_not_found(self, client):
+        # Act
+        resp = client.post(
+            "/holdings/import",
+            json={
+                "mode": "append",
+                "account_id": 99999,
+                "items": [
+                    {
+                        "ticker": "QQQ",
+                        "category": "Growth",
+                        "quantity": 7,
+                        "currency": "USD",
+                    }
+                ],
+            },
+        )
+
+        # Assert
+        assert resp.status_code == 404
+        assert resp.json()["detail"]["error_code"] == "ACCOUNT_NOT_FOUND"
 
 
 # ---------------------------------------------------------------------------

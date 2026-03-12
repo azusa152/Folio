@@ -63,10 +63,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 種入系統預設大師（冪等）
     from application.guru.guru_service import seed_default_gurus
+    from application.portfolio.account_service import ensure_default_account
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
+        ensure_default_account(_session)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.scan.prewarm_service import prewarm_all_caches

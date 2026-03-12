@@ -22,7 +22,7 @@ class HoldingRequest(BaseModel):
     quantity: float
     cost_basis: float | None = None
     broker: str | None = None
-    account_id: int | None = None
+    account_id: int = Field(..., description="帳戶 ID（必填）")
     currency: str = "USD"
     account_type: str | None = None
     is_cash: bool = False
@@ -45,7 +45,7 @@ class CashHoldingRequest(BaseModel):
     currency: str  # e.g. "USD", "TWD"
     amount: float
     broker: str | None = None
-    account_id: int | None = None
+    account_id: int = Field(..., description="帳戶 ID（必填）")
     account_type: str | None = None
 
 
@@ -118,6 +118,12 @@ class HoldingImportRequest(BaseModel):
     def validate_account_for_replace_account(self) -> "HoldingImportRequest":
         if self.mode == "replace_account" and self.account_id is None:
             raise ValueError("account_id is required when mode is replace_account")
+        if self.account_id is None and any(
+            item.account_id is None for item in self.items
+        ):
+            raise ValueError(
+                "account_id is required either at request level or on every item"
+            )
         return self
 
 

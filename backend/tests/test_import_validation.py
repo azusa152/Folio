@@ -14,6 +14,20 @@ from i18n import t
 VALID_CATEGORY = "Growth"
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def test_stock_import_empty_list(client):
     """Stock import with empty list succeeds (no-op)."""
     response = client.post("/stocks/import", json=[])
@@ -139,6 +153,7 @@ def test_holding_import_empty_list(client):
 
 def test_holding_import_valid_payload(client):
     """Holding import with valid payload succeeds."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -153,7 +168,7 @@ def test_holding_import_valid_payload(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 200
     data = response.json()
@@ -163,6 +178,7 @@ def test_holding_import_valid_payload(client):
 
 def test_holding_import_ticker_uppercase_normalization(client):
     """Holding import normalizes ticker to uppercase."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "aapl",  # lowercase
@@ -172,7 +188,7 @@ def test_holding_import_ticker_uppercase_normalization(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 200
 
@@ -184,6 +200,7 @@ def test_holding_import_ticker_uppercase_normalization(client):
 
 def test_holding_import_currency_uppercase_normalization(client):
     """Holding import normalizes currency to uppercase."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -194,7 +211,7 @@ def test_holding_import_currency_uppercase_normalization(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 200
 
@@ -206,6 +223,7 @@ def test_holding_import_currency_uppercase_normalization(client):
 
 def test_holding_import_missing_required_field(client):
     """Holding import rejects payload with missing required field."""
+    account_id = _create_account(client)
     payload = [
         {
             # Missing "quantity" field
@@ -215,13 +233,14 @@ def test_holding_import_missing_required_field(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_negative_quantity(client):
     """Holding import rejects negative quantity."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -231,13 +250,14 @@ def test_holding_import_negative_quantity(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_zero_quantity(client):
     """Holding import rejects zero quantity."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -247,13 +267,14 @@ def test_holding_import_zero_quantity(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_negative_cost_basis(client):
     """Holding import rejects negative cost_basis."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -264,13 +285,14 @@ def test_holding_import_negative_cost_basis(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_oversized_list(client):
     """Holding import rejects payload with > 1000 items."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": f"TICK{i}",
@@ -281,7 +303,7 @@ def test_holding_import_oversized_list(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 400
     data = response.json()
@@ -293,6 +315,7 @@ def test_holding_import_oversized_list(client):
 
 def test_holding_import_ticker_too_long(client):
     """Holding import rejects ticker exceeding 20 chars."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "A" * 21,
@@ -302,13 +325,14 @@ def test_holding_import_ticker_too_long(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_currency_too_short(client):
     """Holding import rejects currency with < 3 chars."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -319,13 +343,14 @@ def test_holding_import_currency_too_short(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_currency_too_long(client):
     """Holding import rejects currency with > 3 chars."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "AAPL",
@@ -336,13 +361,14 @@ def test_holding_import_currency_too_long(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 422
 
 
 def test_holding_import_cash_holding(client):
     """Holding import accepts cash holding with is_cash=True."""
+    account_id = _create_account(client)
     payload = [
         {
             "ticker": "USD",
@@ -354,7 +380,7 @@ def test_holding_import_cash_holding(client):
     ]
     response = client.post(
         "/holdings/import",
-        json={"mode": "replace_all", "items": payload},
+        json={"mode": "replace_all", "account_id": account_id, "items": payload},
     )
     assert response.status_code == 200
     data = response.json()

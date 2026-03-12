@@ -125,10 +125,22 @@
       "2months": "2ヶ月",
       "3months": "3ヶ月"
     },
-    "account_type": {
+    "cash_subtype": {
       "savings": "普通預金",
       "fixed_deposit": "定期預金",
       "money_market": "マネーマーケットファンド",
+      "other": "その他"
+    },
+    "account_type": {
+      "brokerage": "証券口座",
+      "retirement": "退職口座（IRA/401k）",
+      "savings": "貯蓄口座",
+      "crypto": "暗号資産取引所",
+      "bank": "銀行口座",
+      "wallet": "暗号資産ウォレット",
+      "cash_wallet": "現金／電子ウォレット",
+      "insurance": "保険",
+      "loan": "ローン",
       "other": "その他"
     },
     "priority": {

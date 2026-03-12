@@ -92,7 +92,7 @@ export function AddTransactionSheet({
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
   const hasNoAccounts = (accounts ?? []).length === 0
   const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
-  const requiresAccount = transactionType === "BUY" || transactionType === "SELL"
+  const requiresAccount = true
 
   const holdingOptions = useMemo(
     () =>
@@ -226,9 +226,7 @@ export function AddTransactionSheet({
               }}
               className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
             >
-              <option value="">
-                {requiresAccount ? t("transactions.form.account_required") : t("transactions.form.account_optional")}
-              </option>
+              <option value="">{t("transactions.form.account_required")}</option>
               {(accounts ?? []).map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name} ({account.broker})
@@ -282,7 +280,7 @@ export function AddTransactionSheet({
             {selectedAccountId != null && (transactionType === "SELL" || transactionType === "DIVIDEND") ? (
               <p className="text-[11px] text-muted-foreground">
                 {t("transactions.form.proceeds_hint", {
-                  account: selectedAccount?.name ?? t("transactions.form.account_optional"),
+                  account: selectedAccount?.name ?? t("transactions.form.account_required"),
                 })}
               </p>
             ) : null}
@@ -595,7 +593,7 @@ export function AddTransactionSheet({
 
               addTransactionMutation.mutate(
                 {
-                  account_id: accountId ? Number(accountId) : undefined,
+                  account_id: Number(accountId),
                   holding_id: holdingId ? Number(holdingId) : undefined,
                   ticker: isCashMovement ? currency.toUpperCase() : ticker.trim(),
                   transaction_type: transactionType,

@@ -3,8 +3,41 @@
 from fastapi.testclient import TestClient
 
 
+def _create_account(client: TestClient) -> int:
+    resp = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+def _deposit_cash(client: TestClient, account_id: int, amount: float = 10000.0) -> None:
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": amount,
+            "currency": "USD",
+            "transaction_date": "2025-05-31",
+        },
+    )
+    assert resp.status_code == 201
+
+
 def test_create_and_list_transaction(client: TestClient):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id)
     payload = {
+        "account_id": account_id,
         "ticker": "AAPL",
         "transaction_type": "BUY",
         "quantity": 10,
@@ -51,27 +84,30 @@ def test_list_transactions_empty(client: TestClient):
 
 
 def test_create_transaction_with_optional_fields(client: TestClient):
+    account_id = _create_account(client)
     payload = {
-        "ticker": "MSFT",
-        "transaction_type": "DIVIDEND",
-        "quantity": 5,
+        "account_id": account_id,
+        "ticker": "USD",
+        "transaction_type": "DEPOSIT",
+        "quantity": 1,
         "total_amount": 25.0,
         "currency": "USD",
         "fee": 0.5,
-        "note": "Q2 dividend",
+        "note": "cash top-up",
         "transaction_date": "2025-07-15",
     }
     resp = client.post("/transactions", json=payload)
     assert resp.status_code == 201
     data = resp.json()
     assert data["fee"] == 0.5
-    assert data["note"] == "Q2 dividend"
+    assert data["note"] == "cash top-up"
     assert data["price"] is None
     assert data["holding_id"] is None
 
 
 def test_create_transaction_validation_error(client: TestClient):
     payload = {
+        "account_id": _create_account(client),
         "ticker": "",
         "transaction_type": "BUY",
         "quantity": 10,
@@ -84,6 +120,7 @@ def test_create_transaction_validation_error(client: TestClient):
 
 def test_create_transaction_invalid_type_should_return_422(client: TestClient):
     payload = {
+        "account_id": _create_account(client),
         "ticker": "AAPL",
         "transaction_type": "INVALID",
         "quantity": 10,
@@ -95,7 +132,10 @@ def test_create_transaction_invalid_type_should_return_422(client: TestClient):
 
 
 def test_create_transaction_lowercase_type_should_normalize(client: TestClient):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id)
     payload = {
+        "account_id": account_id,
         "ticker": "aapl",
         "transaction_type": "buy",
         "quantity": 5,
@@ -122,10 +162,12 @@ def test_list_transactions_zero_limit_should_return_422(client: TestClient):
 
 
 def test_delete_transaction_response_body(client: TestClient):
+    account_id = _create_account(client)
     payload = {
-        "ticker": "GOOG",
-        "transaction_type": "SELL",
-        "quantity": 2,
+        "account_id": account_id,
+        "ticker": "USD",
+        "transaction_type": "DEPOSIT",
+        "quantity": 1,
         "total_amount": 300.0,
         "transaction_date": "2025-08-01",
     }
@@ -184,28 +226,29 @@ def test_create_transaction_with_account_should_return_account_id(client: TestCl
 
 
 def test_import_transactions_should_return_import_summary(client: TestClient):
+    account_id = _create_account(client)
     resp = client.post(
         "/transactions/import",
         json={
+            "account_id": account_id,
             "items": [
                 {
-                    "ticker": "AAPL",
-                    "transaction_type": "BUY",
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
                     "quantity": 1,
-                    "price": 180.0,
                     "total_amount": 180.0,
                     "currency": "USD",
                     "transaction_date": "2026-03-10",
                 },
                 {
-                    "ticker": "AAPL",
-                    "transaction_type": "DIVIDEND",
+                    "ticker": "USD",
+                    "transaction_type": "WITHDRAWAL",
                     "quantity": 1,
                     "total_amount": 3.5,
                     "currency": "USD",
                     "transaction_date": "2026-03-11",
                 },
-            ]
+            ],
         },
     )
     assert resp.status_code == 200

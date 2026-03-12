@@ -35,8 +35,20 @@ _STOCK_HOLDING = {
 
 def _setup_portfolio(client: TestClient, holdings: list[dict] | None = None):
     """Create holdings and an investment profile."""
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
     for h in holdings or [_STOCK_HOLDING]:
-        resp = client.post("/holdings", json=h)
+        resp = client.post("/holdings", json={**h, "account_id": account_id})
         assert resp.status_code == 200
     resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
     assert resp.status_code in (200, 201)

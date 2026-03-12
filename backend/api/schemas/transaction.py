@@ -8,7 +8,7 @@ from domain.enums import TransactionType
 
 
 class TransactionRequest(BaseModel):
-    account_id: int | None = None
+    account_id: int = Field(..., description="帳戶 ID（必填）")
     holding_id: int | None = None
     ticker: str = Field(..., min_length=1, max_length=20)
     transaction_type: str = Field(

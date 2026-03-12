@@ -18,6 +18,7 @@ from infrastructure import repositories as repo
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+DEFAULT_ACCOUNT_NAME = "Default"
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +94,32 @@ def create_account(session: Session, data: dict, lang: str) -> dict:
     session.refresh(account)
     logger.info("新增帳戶：%s（%s）", account.name, account.broker)
     return _acct_to_dict(account)
+
+
+def ensure_default_account(session: Session) -> Account:
+    """Return the default account, creating it if it doesn't exist."""
+    existing = repo.find_all_accounts(session, active_only=False)
+    for account in existing:
+        if (
+            account.name == DEFAULT_ACCOUNT_NAME
+            and account.broker == DEFAULT_ACCOUNT_NAME
+        ):
+            return account
+
+    account_dict = create_account(
+        session,
+        {
+            "name": DEFAULT_ACCOUNT_NAME,
+            "broker": DEFAULT_ACCOUNT_NAME,
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+        lang="en",
+    )
+    created = repo.find_account_by_id(session, account_dict["id"])
+    if created is None:
+        raise RuntimeError("default account creation failed")
+    return created
 
 
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:

@@ -9,6 +9,20 @@ NET_WORTH_ITEM_PAYLOAD = {
 }
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def test_create_net_worth_item_should_return_200(client) -> None:
     resp = client.post("/net-worth/items", json=NET_WORTH_ITEM_PAYLOAD)
     assert resp.status_code == 200
@@ -117,9 +131,10 @@ def test_delete_net_worth_item_should_return_404_when_not_found(client) -> None:
 
 
 def test_get_net_worth_seed_preview_should_return_cash_positions(client) -> None:
+    account_id = _create_account(client)
     cash_resp = client.post(
         "/holdings/cash",
-        json={"currency": "USD", "amount": 1500.0},
+        json={"currency": "USD", "amount": 1500.0, "account_id": account_id},
     )
     assert cash_resp.status_code == 200
 
@@ -132,9 +147,10 @@ def test_get_net_worth_seed_preview_should_return_cash_positions(client) -> None
 
 
 def test_post_net_worth_seed_should_be_idempotent(client) -> None:
+    account_id = _create_account(client)
     cash_resp = client.post(
         "/holdings/cash",
-        json={"currency": "USD", "amount": 1200.0},
+        json={"currency": "USD", "amount": 1200.0, "account_id": account_id},
     )
     assert cash_resp.status_code == 200
 

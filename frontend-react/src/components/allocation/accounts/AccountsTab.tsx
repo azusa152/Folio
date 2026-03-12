@@ -10,9 +10,8 @@ import {
 } from "@/api/hooks/useAccounts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ACCOUNT_TYPES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
-
-const ACCOUNT_TYPES = ["brokerage", "retirement", "savings", "crypto", "other"] as const
 
 interface Props {
   enabled: boolean
@@ -182,7 +181,7 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
             >
               {ACCOUNT_TYPES.map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {t(`config.account_type.${value}`)}
                 </option>
               ))}
             </select>
@@ -246,7 +245,7 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
               <div>
                 <p className="text-sm font-semibold">{account.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {account.broker} · {account.account_type} · {account.currency}
+                  {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {t("accounts.summary.positions", {

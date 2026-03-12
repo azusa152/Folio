@@ -21,7 +21,6 @@ from infrastructure.persistence.repositories import (
     delete_transaction,
     find_all_transactions,
     find_transaction_by_id,
-    save_transaction,
 )
 from logging_config import get_logger
 
@@ -62,11 +61,7 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
                 "detail": t("common.validation_error", lang=lang),
             },
         ) from None
-    if data.get("account_id") is not None:
-        saved = settle_transaction(session, data, lang)
-    else:
-        txn = Transaction(**data)
-        saved = save_transaction(session, txn)
+    saved = settle_transaction(session, data, lang)
     logger.info(
         "交易紀錄已建立：id=%s ticker=%s type=%s",
         saved.id,

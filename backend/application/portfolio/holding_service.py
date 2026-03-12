@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from domain.constants import (
     DEFAULT_USER_ID,
+    ERROR_ACCOUNT_NOT_FOUND,
     ERROR_HOLDING_NOT_FOUND,
     ERROR_INVALID_INPUT,
     GENERIC_VALIDATION_ERROR,
@@ -96,6 +97,17 @@ def _get_holding_or_raise(session: Session, holding_id: int, lang: str) -> Holdi
     return holding
 
 
+def _ensure_account_exists(session: Session, account_id: int, lang: str) -> None:
+    if repo.find_account_by_id(session, account_id) is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_ACCOUNT_NOT_FOUND,
+                "detail": t("account.not_found", lang=lang),
+            },
+        )
+
+
 # ---------------------------------------------------------------------------
 # Service functions
 # ---------------------------------------------------------------------------
@@ -109,6 +121,17 @@ def list_holdings(session: Session) -> list[dict]:
 
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a new holding. Returns the created holding dict."""
+    account_id = payload.get("account_id")
+    if account_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
+    _ensure_account_exists(session, int(account_id), lang)
+
     input_category = payload["category"]
     category = (
         input_category
@@ -130,7 +153,7 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
         quantity=payload["quantity"],
         cost_basis=payload.get("cost_basis"),
         broker=payload.get("broker"),
-        account_id=payload.get("account_id"),
+        account_id=int(account_id),
         currency=currency,
         account_type=payload.get("account_type"),
         is_cash=payload.get("is_cash", False),
@@ -143,6 +166,17 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
 
 def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a cash holding. Returns the created holding dict."""
+    account_id = payload.get("account_id")
+    if account_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
+    _ensure_account_exists(session, int(account_id), lang)
+
     currency_upper = payload["currency"].strip().upper()
     purchase_fx_rate = (
         get_exchange_rate("USD", currency_upper) if currency_upper != "USD" else 1.0
@@ -154,7 +188,7 @@ def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
         quantity=payload["amount"],
         cost_basis=1.0,
         broker=payload.get("broker"),
-        account_id=payload.get("account_id"),
+        account_id=int(account_id),
         currency=currency_upper,
         account_type=payload.get("account_type"),
         is_cash=True,
@@ -187,7 +221,17 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
     if "broker" in payload:
         holding.broker = payload["broker"]
     if "account_id" in payload:
-        holding.account_id = payload["account_id"]
+        next_account_id = payload["account_id"]
+        if next_account_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": ERROR_INVALID_INPUT,
+                    "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+                },
+            )
+        _ensure_account_exists(session, int(next_account_id), lang)
+        holding.account_id = int(next_account_id)
     if "currency" in payload:
         holding.currency = payload["currency"].strip().upper()
     if "account_type" in payload:
@@ -262,9 +306,7 @@ def import_holdings(
             },
         )
 
-    if mode == "replace_all":
-        repo.delete_all_holdings(session)
-    elif mode == "replace_account":
+    if mode == "replace_account":
         if account_id is None:
             raise HTTPException(
                 status_code=400,
@@ -273,8 +315,7 @@ def import_holdings(
                     "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
                 },
             )
-        repo.delete_holdings_by_account(session, account_id)
-    elif mode != "append":
+    elif mode not in {"replace_all", "append"}:
         raise HTTPException(
             status_code=400,
             detail={
@@ -283,13 +324,34 @@ def import_holdings(
             },
         )
 
+    resolved_account_ids: list[int] = []
+    for item in data:
+        target_account_id = (
+            account_id if account_id is not None else item.get("account_id")
+        )
+        if target_account_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": ERROR_INVALID_INPUT,
+                    "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+                },
+            )
+        resolved_account_ids.append(int(target_account_id))
+
+    for candidate_account_id in set(resolved_account_ids):
+        _ensure_account_exists(session, candidate_account_id, lang)
+
+    if mode == "replace_all":
+        repo.delete_all_holdings(session)
+    elif mode == "replace_account":
+        # account_id validated and resolved above
+        repo.delete_holdings_by_account(session, int(account_id))
+
     count = 0
     errors: list[str] = []
     for i, item in enumerate(data):
         try:
-            target_account_id = (
-                account_id if account_id is not None else item.get("account_id")
-            )
             holding = Holding(
                 user_id=DEFAULT_USER_ID,
                 ticker=item["ticker"].strip().upper(),
@@ -302,7 +364,7 @@ def import_holdings(
                 quantity=item["quantity"],
                 cost_basis=item.get("cost_basis"),
                 broker=item.get("broker"),
-                account_id=target_account_id,
+                account_id=resolved_account_ids[i],
                 currency=item["currency"].strip().upper(),
                 account_type=item.get("account_type"),
                 is_cash=item.get("is_cash", False),

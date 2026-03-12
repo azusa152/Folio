@@ -2,6 +2,7 @@
 
 from application.portfolio.account_service import (  # noqa: F401
     create_account,
+    ensure_default_account,
     get_account_summary,
     list_accounts,
     remove_account,
