@@ -1,6 +1,6 @@
 """Account CRUD and aggregation routes."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from api.schemas import MessageResponse
@@ -11,6 +11,8 @@ from api.schemas.account import (
     AccountSummaryItem,
     AccountUpdateRequest,
 )
+from api.schemas.portfolio import HoldingResponse
+from api.schemas.transaction import TransactionResponse
 from application.portfolio.account_service import (
     create_account,
     get_account_cash_balances,
@@ -19,6 +21,8 @@ from application.portfolio.account_service import (
     remove_account,
     update_account,
 )
+from application.portfolio.holding_service import get_holdings_by_account
+from application.portfolio.transaction_service import list_transactions_by_account
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 
@@ -54,6 +58,40 @@ def get_account_cash_balance_list(
 ):
     lang = get_user_language(session)
     return get_account_cash_balances(session, account_id, lang)
+
+
+@router.get(
+    "/accounts/{account_id}/positions",
+    response_model=list[HoldingResponse],
+)
+def get_account_positions(
+    account_id: int,
+    session: Session = Depends(get_session),
+):
+    """Return all holdings (positions) for a given account."""
+    lang = get_user_language(session)
+    return get_holdings_by_account(session, account_id, lang)
+
+
+@router.get(
+    "/accounts/{account_id}/transactions",
+    response_model=list[TransactionResponse],
+)
+def get_account_transactions(
+    account_id: int,
+    limit: int = Query(default=100, le=500),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+):
+    """Return paginated transactions for a given account."""
+    lang = get_user_language(session)
+    return list_transactions_by_account(
+        session,
+        account_id,
+        lang=lang,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.put("/accounts/{account_id}", response_model=AccountResponse)

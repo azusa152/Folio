@@ -796,7 +796,6 @@
       "portfolio": "📊 投资组合",
       "risk": "🛡️ 风险分析",
       "actions": "💡 操作建议",
-      "transactions": "🧾 交易记录",
       "accounts": "🏦 账户",
       "settings": "⚙️ 设定",
       "net_worth": "💎 净资产"
@@ -901,7 +900,7 @@
       "title": "持仓明细",
       "empty": "无持仓数据。"
     },
-    "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“交易”页签中进行买入、卖出或仓位调整。",
+    "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“账户”页签中选择账户后进行买入、卖出或仓位调整。",
     "xray": {
       "title": "🔬 X-Ray 重叠分析",
       "empty": "无 ETF 重叠数据。",
@@ -1912,6 +1911,15 @@
       "positions": "持仓数：{{count}}",
       "cash": "现金：{{balances}}",
       "no_cash": "无现金余额"
+    },
+    "detail": {
+      "positions": "持仓",
+      "transactions": "交易",
+      "summary": "摘要",
+      "empty_positions": "该账户当前暂无持仓。",
+      "category": "分类",
+      "cost_basis": "成本",
+      "cash_position": "现金"
     }
   },
   "net_worth": {

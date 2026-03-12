@@ -796,7 +796,6 @@
       "portfolio": "📊 投資組合",
       "risk": "🛡️ 風險分析",
       "actions": "💡 操作建議",
-      "transactions": "🧾 交易紀錄",
       "accounts": "🏦 帳戶",
       "settings": "⚙️ 設定",
       "net_worth": "💎 淨資產"
@@ -901,7 +900,7 @@
       "title": "持倉明細",
       "empty": "無持倉資料。"
     },
-    "holdings_read_only_hint": "持倉現在由交易紀錄計算而來。請到「交易」分頁進行買入、賣出或調整部位。",
+    "holdings_read_only_hint": "持倉現在由交易紀錄計算而來。請到「帳戶」分頁選擇帳戶後進行買入、賣出或調整部位。",
     "xray": {
       "title": "🔬 X-Ray 重疊分析",
       "empty": "無 ETF 重疊資料。",
@@ -1912,6 +1911,15 @@
       "positions": "持倉數：{{count}}",
       "cash": "現金：{{balances}}",
       "no_cash": "無現金餘額"
+    },
+    "detail": {
+      "positions": "持倉",
+      "transactions": "交易",
+      "summary": "摘要",
+      "empty_positions": "此帳戶目前沒有持倉。",
+      "category": "分類",
+      "cost_basis": "成本",
+      "cash_position": "現金"
     }
   },
   "net_worth": {

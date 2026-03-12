@@ -153,3 +153,117 @@ def test_accounts_include_inactive_query(client: TestClient):
     with_inactive = client.get("/accounts?include_inactive=true")
     assert with_inactive.status_code == 200
     assert any(account["id"] == account_id for account in with_inactive.json())
+
+
+def test_account_positions_should_return_holdings_for_selected_account(
+    client: TestClient,
+):
+    account_a = client.post(
+        "/accounts",
+        json={
+            "name": "Primary",
+            "broker": "IBKR",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    account_b = client.post(
+        "/accounts",
+        json={
+            "name": "Secondary",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_a.status_code == 201
+    assert account_b.status_code == 201
+    account_a_id = account_a.json()["id"]
+    account_b_id = account_b.json()["id"]
+
+    create_a = client.post(
+        "/holdings",
+        json={
+            "ticker": "AAPL",
+            "category": "Growth",
+            "quantity": 2,
+            "cost_basis": 190,
+            "account_id": account_a_id,
+            "currency": "USD",
+        },
+    )
+    create_b = client.post(
+        "/holdings",
+        json={
+            "ticker": "TSLA",
+            "category": "Growth",
+            "quantity": 1,
+            "cost_basis": 230,
+            "account_id": account_b_id,
+            "currency": "USD",
+        },
+    )
+    assert create_a.status_code == 200
+    assert create_b.status_code == 200
+
+    resp = client.get(f"/accounts/{account_a_id}/positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert any(item["ticker"] == "AAPL" for item in payload)
+    assert all(item["account_id"] == account_a_id for item in payload)
+
+
+def test_account_transactions_should_return_paginated_transactions(client: TestClient):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Txn Account",
+            "broker": "IBKR",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    for amount, txn_date in ((1000.0, "2026-03-10"), (2000.0, "2026-03-11")):
+        txn_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": amount,
+                "currency": "USD",
+                "transaction_date": txn_date,
+            },
+        )
+        assert txn_resp.status_code == 201
+
+    first_page_resp = client.get(
+        f"/accounts/{account_id}/transactions?limit=1&offset=0"
+    )
+    assert first_page_resp.status_code == 200
+    first_page = first_page_resp.json()
+    assert len(first_page) == 1
+    assert first_page[0]["account_id"] == account_id
+
+    second_page_resp = client.get(
+        f"/accounts/{account_id}/transactions?limit=1&offset=1"
+    )
+    assert second_page_resp.status_code == 200
+    second_page = second_page_resp.json()
+    assert len(second_page) == 1
+    assert second_page[0]["account_id"] == account_id
+    assert first_page[0]["id"] != second_page[0]["id"]
+
+
+def test_account_positions_and_transactions_should_return_404_for_unknown_account(
+    client: TestClient,
+):
+    positions_resp = client.get("/accounts/99999/positions")
+    assert positions_resp.status_code == 404
+
+    transactions_resp = client.get("/accounts/99999/transactions")
+    assert transactions_resp.status_code == 404

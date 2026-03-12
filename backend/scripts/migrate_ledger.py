@@ -83,7 +83,7 @@ def migrate(dry_run: bool = False) -> dict[str, int]:
         default_account = _get_or_prepare_default_account(session)
 
         orphan_holdings = session.exec(
-            select(Holding).where(Holding.account_id.is_(None))
+            select(Holding).where(Holding.account_id == None)  # noqa: E711
         ).all()
         for holding in orphan_holdings:
             holding.account_id = default_account.id
@@ -91,7 +91,7 @@ def migrate(dry_run: bool = False) -> dict[str, int]:
             stats["orphan_holdings"] += 1
 
         orphan_transactions = session.exec(
-            select(Transaction).where(Transaction.account_id.is_(None))
+            select(Transaction).where(Transaction.account_id == None)  # noqa: E711
         ).all()
         for txn in orphan_transactions:
             txn.account_id = default_account.id

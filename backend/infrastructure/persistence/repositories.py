@@ -1239,6 +1239,14 @@ def find_all_holdings(session: Session) -> list[Holding]:
     return list(session.exec(select(Holding).order_by(Holding.id)).all())
 
 
+def find_holdings_by_account(session: Session, account_id: int) -> list[Holding]:
+    """查詢指定帳戶的所有持倉（依 ticker 排序）。"""
+    stmt = (
+        select(Holding).where(Holding.account_id == account_id).order_by(Holding.ticker)
+    )
+    return list(session.exec(stmt).all())
+
+
 def find_holding_by_id(session: Session, holding_id: int) -> Holding | None:
     """根據 ID 查詢單一持倉。"""
     return session.get(Holding, holding_id)
@@ -1413,6 +1421,20 @@ def find_all_transactions(
     if end_date is not None:
         stmt = stmt.where(Transaction.transaction_date <= end_date)
     stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_transactions_by_account(
+    session: Session, account_id: int, *, limit: int = 100, offset: int = 0
+) -> list[Transaction]:
+    """查詢指定帳戶的交易紀錄（依日期新到舊，含分頁）。"""
+    stmt = (
+        select(Transaction)
+        .where(Transaction.account_id == account_id)
+        .order_by(Transaction.transaction_date.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     return list(session.exec(stmt).all())
 
 

@@ -3,22 +3,34 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
   useAccounts,
+  useAccountPositions,
   useAccountSummary,
+  useAccountTransactions,
   useCreateAccount,
   useDeactivateAccount,
   useUpdateAccount,
 } from "@/api/hooks/useAccounts"
+import { TransactionList } from "@/components/allocation/transactions/TransactionList"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ACCOUNT_TYPES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
   enabled: boolean
   onDepositToAccount?: (accountId: number, currency: string) => void
+  onRecordTransaction?: (accountId: number, currency: string) => void
 }
 
-export function AccountsTab({ enabled, onDepositToAccount }: Props) {
+type AccountDetailView = "positions" | "transactions" | "summary"
+
+export function AccountsTab({
+  enabled,
+  onDepositToAccount,
+  onRecordTransaction,
+}: Props) {
   const { t } = useTranslation()
   const { data: accounts, isLoading } = useAccounts(enabled)
   const { data: accountSummary } = useAccountSummary(enabled)
@@ -34,6 +46,8 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
   const [currency, setCurrency] = useState("USD")
   const [institution, setInstitution] = useState("")
   const [note, setNote] = useState("")
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [detailView, setDetailView] = useState<AccountDetailView>("positions")
 
   const sortedAccounts = useMemo(
     () => [...(accounts ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -50,6 +64,26 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
     }
     return map
   }, [accountSummary])
+  const activeAccountId = useMemo(() => {
+    if (sortedAccounts.length === 0) return null
+    if (selectedAccountId == null) return sortedAccounts[0].id
+    return sortedAccounts.some((account) => account.id === selectedAccountId)
+      ? selectedAccountId
+      : sortedAccounts[0].id
+  }, [sortedAccounts, selectedAccountId])
+
+  const selectedAccount = useMemo(
+    () => sortedAccounts.find((account) => account.id === activeAccountId) ?? null,
+    [sortedAccounts, activeAccountId],
+  )
+  const { data: selectedAccountPositions, isLoading: isPositionsLoading } = useAccountPositions(
+    selectedAccount?.id ?? null,
+    enabled && selectedAccount != null,
+  )
+  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } = useAccountTransactions(
+    selectedAccount?.id ?? null,
+    enabled && selectedAccount != null,
+  )
 
   const resetForm = () => {
     setEditingId(null)
@@ -240,9 +274,20 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
 
       <div className="space-y-2">
         {sortedAccounts.map((account) => (
-          <div key={account.id} className="rounded-md border border-border p-3">
+          <div
+            key={account.id}
+            className={`rounded-md border p-3 transition-colors ${
+              activeAccountId === account.id
+                ? "border-primary bg-primary/5"
+                : "border-border"
+            }`}
+          >
             <div className="flex items-center justify-between gap-2">
-              <div>
+              <button
+                type="button"
+                className="text-left flex-1"
+                onClick={() => setSelectedAccountId(account.id)}
+              >
                 <p className="text-sm font-semibold">{account.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
@@ -260,7 +305,7 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
                         .join(" / ") || t("accounts.summary.no_cash"),
                   })}
                 </p>
-              </div>
+              </button>
               <div className="flex gap-2">
                 {onDepositToAccount ? (
                   <Button
@@ -270,6 +315,16 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
                     onClick={() => onDepositToAccount(account.id, account.currency || "USD")}
                   >
                     {t("accounts.quick_deposit")}
+                  </Button>
+                ) : null}
+                {onRecordTransaction ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => onRecordTransaction(account.id, account.currency || "USD")}
+                  >
+                    {t("transactions.record_button")}
                   </Button>
                 ) : null}
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(account)}>
@@ -293,6 +348,108 @@ export function AccountsTab({ enabled, onDepositToAccount }: Props) {
           </div>
         ))}
       </div>
+
+      {selectedAccount ? (
+        <div className="rounded-md border border-border p-3 space-y-3">
+          <div>
+            <p className="text-sm font-semibold">{selectedAccount.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)} · {selectedAccount.currency}
+            </p>
+          </div>
+
+          <Tabs value={detailView} onValueChange={(value) => setDetailView(value as AccountDetailView)}>
+            <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
+              <TabsTrigger value="positions" className="min-h-[44px]">
+                {t("accounts.detail.positions")}
+              </TabsTrigger>
+              <TabsTrigger value="transactions" className="min-h-[44px]">
+                {t("accounts.detail.transactions")}
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="min-h-[44px]">
+                {t("accounts.detail.summary")}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="positions" className="mt-3">
+              {isPositionsLoading ? (
+                <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+              ) : (selectedAccountPositions?.length ?? 0) === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
+                  <p className="text-xs text-muted-foreground">{t("accounts.detail.empty_positions")}</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground border-b border-border">
+                        <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
+                        <th className="text-left py-1.5 pr-2">{t("accounts.detail.category")}</th>
+                        <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
+                        <th className="text-right py-1.5 pr-2">{t("accounts.detail.cost_basis")}</th>
+                        <th className="text-left py-1.5 pr-2">{t("transactions.form.currency")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedAccountPositions ?? []).map((position) => (
+                        <tr key={position.id} className="border-b border-border/50">
+                          <td className="py-1.5 pr-2 font-medium">{position.ticker}</td>
+                          <td className="py-1.5 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[11px]">
+                                {String(position.category)}
+                              </Badge>
+                              {position.is_cash ? (
+                                <Badge variant="outline" className="text-[11px]">
+                                  {t("accounts.detail.cash_position")}
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="py-1.5 pr-2 text-right">{position.quantity}</td>
+                          <td className="py-1.5 pr-2 text-right">
+                            {position.cost_basis != null
+                              ? position.cost_basis.toLocaleString(undefined, { maximumFractionDigits: 4 })
+                              : "—"}
+                          </td>
+                          <td className="py-1.5 pr-2">{position.currency}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="transactions" className="mt-3">
+              <TransactionList
+                transactions={selectedAccountTransactions ?? []}
+                accounts={selectedAccount ? [selectedAccount] : []}
+                isLoading={isTransactionsLoading}
+              />
+            </TabsContent>
+
+            <TabsContent value="summary" className="mt-3 space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {t("accounts.summary.positions", {
+                  count: summaryByAccountId.get(selectedAccount.id)?.holdings_count ?? 0,
+                })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("accounts.summary.cash", {
+                  balances:
+                    (summaryByAccountId.get(selectedAccount.id)?.cash_balances ?? [])
+                      .map(
+                        (item) =>
+                          `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                      )
+                      .join(" / ") || t("accounts.summary.no_cash"),
+                })}
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -7,6 +7,8 @@ import type {
   AccountSummaryItem,
   AccountUpdateRequest,
 } from "@/api/types/account"
+import type { Holding } from "@/api/types/dashboard"
+import type { TransactionResponse } from "@/api/types/transaction"
 
 export function useAccounts(enabled = true, includeInactive = false) {
   return useQuery<AccountResponse[]>({
@@ -50,6 +52,46 @@ export function useAccountCashBalances(accountId: number | null, enabled = true)
       })
       if (error) throw error
       return (data ?? []) as unknown as AccountCashBalanceItem[]
+    },
+    enabled: enabled && accountId != null,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useAccountPositions(accountId: number | null, enabled = true) {
+  return useQuery<Holding[]>({
+    queryKey: ["account-positions", accountId],
+    queryFn: async () => {
+      if (accountId == null) return []
+      const { data, error } = await client.GET("/accounts/{account_id}/positions", {
+        params: { path: { account_id: accountId } },
+      })
+      if (error) throw error
+      return (data ?? []) as unknown as Holding[]
+    },
+    enabled: enabled && accountId != null,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useAccountTransactions(
+  accountId: number | null,
+  enabled = true,
+  limit = 100,
+  offset = 0,
+) {
+  return useQuery<TransactionResponse[]>({
+    queryKey: ["account-transactions", accountId, limit, offset],
+    queryFn: async () => {
+      if (accountId == null) return []
+      const { data, error } = await client.GET("/accounts/{account_id}/transactions", {
+        params: {
+          path: { account_id: accountId },
+          query: { limit, offset },
+        },
+      })
+      if (error) throw error
+      return (data ?? []) as unknown as TransactionResponse[]
     },
     enabled: enabled && accountId != null,
     staleTime: 30 * 1000,

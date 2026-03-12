@@ -796,7 +796,6 @@
       "portfolio": "📊 Portfolio",
       "risk": "🛡️ Risk",
       "actions": "💡 Actions",
-      "transactions": "🧾 Transactions",
       "accounts": "🏦 Accounts",
       "settings": "⚙️ Settings",
       "net_worth": "💎 Net Worth"
@@ -901,7 +900,7 @@
       "title": "Holdings Detail",
       "empty": "No holdings data."
     },
-    "holdings_read_only_hint": "Holdings are now computed from transactions. Use the Transactions tab to buy, sell, or adjust positions.",
+    "holdings_read_only_hint": "Holdings are now computed from transactions. Use the Accounts tab to buy, sell, or adjust positions.",
     "xray": {
       "title": "🔬 X-Ray Overlap Analysis",
       "empty": "No ETF overlap data.",
@@ -1912,6 +1911,15 @@
       "positions": "Positions: {{count}}",
       "cash": "Cash: {{balances}}",
       "no_cash": "No cash balance"
+    },
+    "detail": {
+      "positions": "Positions",
+      "transactions": "Transactions",
+      "summary": "Summary",
+      "empty_positions": "No positions in this account yet.",
+      "category": "Category",
+      "cost_basis": "Cost Basis",
+      "cash_position": "Cash"
     }
   },
   "net_worth": {

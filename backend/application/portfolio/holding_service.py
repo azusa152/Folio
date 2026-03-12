@@ -159,6 +159,13 @@ def list_holdings(session: Session) -> list[dict]:
     return [_holding_to_dict(h) for h in holdings]
 
 
+def get_holdings_by_account(session: Session, account_id: int, lang: str) -> list[dict]:
+    """Return enriched holdings for a specific account."""
+    _ensure_account_exists(session, account_id, lang)
+    holdings = repo.find_holdings_by_account(session, account_id)
+    return [_holding_to_dict(h) for h in holdings]
+
+
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
     """Create a holding by recording an OPENING_BALANCE transaction."""
     account_id = payload.get("account_id")

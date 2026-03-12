@@ -796,7 +796,6 @@
       "portfolio": "📊 ポートフォリオ",
       "risk": "🛡️ リスク分析",
       "actions": "💡 アクション",
-      "transactions": "🧾 取引履歴",
       "accounts": "🏦 口座",
       "settings": "⚙️ 設定",
       "net_worth": "💎 純資産"
@@ -901,7 +900,7 @@
       "title": "保有銘柄詳細",
       "empty": "保有データなし。"
     },
-    "holdings_read_only_hint": "保有銘柄は取引履歴から自動計算されます。売買や数量調整は「取引」タブから行ってください。",
+    "holdings_read_only_hint": "保有銘柄は取引履歴から自動計算されます。売買や数量調整は「口座」タブで口座を選択して行ってください。",
     "xray": {
       "title": "🔬 X-Ray 重複分析",
       "empty": "ETF重複データなし。",
@@ -1912,6 +1911,15 @@
       "positions": "保有件数: {{count}}",
       "cash": "現金: {{balances}}",
       "no_cash": "現金残高なし"
+    },
+    "detail": {
+      "positions": "保有",
+      "transactions": "取引",
+      "summary": "サマリー",
+      "empty_positions": "この口座にはまだ保有がありません。",
+      "category": "カテゴリ",
+      "cost_basis": "取得単価",
+      "cash_position": "現金"
     }
   },
   "net_worth": {

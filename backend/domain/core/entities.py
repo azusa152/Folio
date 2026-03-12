@@ -196,6 +196,7 @@ class Transaction(SQLModel, table=True):
         Index("ix_transaction_user_date", "user_id", "transaction_date"),
         Index("ix_transaction_holding_date", "holding_id", "transaction_date"),
         Index("ix_transaction_account_ticker", "account_id", "ticker"),
+        Index("ix_transaction_account_date", "account_id", "transaction_date"),
     )
 
     id: int | None = Field(default=None, primary_key=True)

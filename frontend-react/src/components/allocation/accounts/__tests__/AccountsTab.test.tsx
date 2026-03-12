@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AccountsTab } from "../AccountsTab"
 
@@ -23,13 +23,62 @@ vi.mock("sonner", () => ({
   },
 }))
 
+const mockDeleteTransactionMutate = vi.fn()
+
+vi.mock("@/api/hooks/useTransactions", () => ({
+  useDeleteTransaction: () => ({
+    mutate: mockDeleteTransactionMutate,
+    isPending: false,
+  }),
+}))
+
+let mockAccountsData = [
+  { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+]
+
 vi.mock("@/api/hooks/useAccounts", () => ({
   useAccounts: () => ({
-    data: [{ id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" }],
+    data: mockAccountsData,
     isLoading: false,
   }),
   useAccountSummary: () => ({
     data: [{ account: { id: 1 }, holdings_count: 2, tickers: ["AAPL"], cash_balances: [{ currency: "USD", balance: 1200 }] }],
+  }),
+  useAccountPositions: () => ({
+    data: [
+      {
+        id: 11,
+        ticker: "AAPL",
+        category: "Growth",
+        quantity: 2,
+        cost_basis: 190,
+        is_cash: false,
+        currency: "USD",
+      },
+    ],
+    isLoading: false,
+  }),
+  useAccountTransactions: () => ({
+    data: [
+      {
+        id: 99,
+        user_id: "default",
+        account_id: 1,
+        holding_id: null,
+        ticker: "MSFT",
+        transaction_type: "BUY",
+        quantity: 1,
+        price: 300,
+        total_amount: 300,
+        currency: "USD",
+        fx_rate: null,
+        fee: 0,
+        note: "",
+        transaction_date: "2026-03-12",
+        created_at: "2026-03-12T10:00:00",
+      },
+    ],
+    isLoading: false,
   }),
   useCreateAccount: () => ({
     mutate: mockCreateMutate,
@@ -48,12 +97,74 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 describe("AccountsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAccountsData = [
+      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+    ]
   })
 
   it("renders account summary with cash balances", () => {
     render(<AccountsTab enabled />)
     expect(screen.getByText("accounts.summary.positions:2")).toBeInTheDocument()
     expect(screen.getByText("accounts.summary.cash:USD 1,200")).toBeInTheDocument()
+  })
+
+  it("shows selected account detail positions", () => {
+    render(<AccountsTab enabled />)
+    fireEvent.click(screen.getByRole("button", { name: /IB Main/i }))
+    expect(screen.getAllByText("AAPL").length).toBeGreaterThan(0)
+  })
+
+
+  it("renders positions detail columns", () => {
+    render(<AccountsTab enabled />)
+    expect(screen.getByText("accounts.detail.category")).toBeInTheDocument()
+    expect(screen.getByText("accounts.detail.cost_basis")).toBeInTheDocument()
+    expect(screen.getByText("Growth")).toBeInTheDocument()
+  })
+
+  it("renders transactions sub-tab content", async () => {
+    render(<AccountsTab enabled />)
+    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
+    fireEvent.mouseDown(transactionsTab)
+    fireEvent.click(transactionsTab)
+
+    await waitFor(() => {
+      expect(transactionsTab).toHaveAttribute("data-state", "active")
+      expect(screen.getByText("transactions.table.date")).toBeInTheDocument()
+      expect(screen.getByText("MSFT")).toBeInTheDocument()
+    })
+  })
+
+  it("renders summary sub-tab content", () => {
+    render(<AccountsTab enabled />)
+    fireEvent.click(screen.getByRole("tab", { name: "accounts.detail.summary" }))
+    expect(screen.getAllByText("accounts.summary.positions:2").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("accounts.summary.cash:USD 1,200").length).toBeGreaterThan(0)
+  })
+
+  it("shows no-accounts empty description", () => {
+    mockAccountsData = []
+    render(<AccountsTab enabled />)
+    expect(screen.getByText("accounts.empty.description")).toBeInTheDocument()
+  })
+
+  it("highlights fallback account when selected account is removed", () => {
+    mockAccountsData = [
+      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+      { id: 2, name: "SBI Sub", broker: "SBI", account_type: "brokerage", currency: "JPY" },
+    ]
+    const { rerender } = render(<AccountsTab enabled />)
+
+    fireEvent.click(screen.getByRole("button", { name: /SBI Sub/i }))
+
+    mockAccountsData = [
+      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+    ]
+    rerender(<AccountsTab enabled />)
+
+    const ibButton = screen.getByRole("button", { name: /IB Main/i })
+    const ibCard = ibButton.closest("div.rounded-md.border")
+    expect(ibCard).toHaveClass("border-primary")
   })
 
   it("creates account with required payload", () => {

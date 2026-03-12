@@ -33,6 +33,7 @@ from application.portfolio.holding_service import (  # noqa: F401
     create_holding,
     delete_holding,
     export_holdings,
+    get_holdings_by_account,
     import_holdings,
     list_holdings,
     update_holding,
@@ -71,6 +72,7 @@ from application.portfolio.transaction_service import (  # noqa: F401
     create_transaction,
     get_transaction,
     list_transactions,
+    list_transactions_by_account,
     remove_transaction,
 )
 

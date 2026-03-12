@@ -10,6 +10,7 @@ from application.portfolio.settlement_service import (
     settle_transaction,
 )
 from domain.constants import (
+    ERROR_ACCOUNT_NOT_FOUND,
     ERROR_INVALID_INPUT,
     ERROR_TRANSACTION_NOT_FOUND,
     GENERIC_VALIDATION_ERROR,
@@ -17,11 +18,7 @@ from domain.constants import (
 from domain.core.entities import Transaction
 from domain.enums import TransactionType
 from i18n import t
-from infrastructure.persistence.repositories import (
-    delete_transaction,
-    find_all_transactions,
-    find_transaction_by_id,
-)
+from infrastructure import repositories as repo
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -37,7 +34,7 @@ def list_transactions(
     end_date: date | None = None,
     limit: int = 500,
 ) -> list[dict]:
-    txns = find_all_transactions(
+    txns = repo.find_all_transactions(
         session,
         ticker=ticker,
         account_id=account_id,
@@ -45,6 +42,29 @@ def list_transactions(
         start_date=start_date,
         end_date=end_date,
         limit=limit,
+    )
+    return [_to_dict(txn) for txn in txns]
+
+
+def list_transactions_by_account(
+    session: Session,
+    account_id: int,
+    *,
+    lang: str,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict]:
+    account = repo.find_account_by_id(session, account_id)
+    if account is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error_code": ERROR_ACCOUNT_NOT_FOUND,
+                "detail": t("account.not_found", lang=lang),
+            },
+        )
+    txns = repo.find_transactions_by_account(
+        session, account_id, limit=limit, offset=offset
     )
     return [_to_dict(txn) for txn in txns]
 
@@ -72,7 +92,7 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
 
 
 def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
-    txn = find_transaction_by_id(session, txn_id)
+    txn = repo.find_transaction_by_id(session, txn_id)
     if txn is None:
         raise HTTPException(
             status_code=404,
@@ -86,12 +106,12 @@ def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
         session.delete(txn)
         session.commit()
     else:
-        delete_transaction(session, txn)
+        repo.delete_transaction(session, txn)
     logger.info("交易紀錄已刪除：id=%s", txn_id)
 
 
 def get_transaction(session: Session, txn_id: int, lang: str) -> dict:
-    txn = find_transaction_by_id(session, txn_id)
+    txn = repo.find_transaction_by_id(session, txn_id)
     if txn is None:
         raise HTTPException(
             status_code=404,
