@@ -11,6 +11,28 @@ interface UseTransactionsOptions {
   enabled?: boolean
 }
 
+const TRANSACTION_INVALIDATION_KEYS = [
+  ["transactions"],
+  ["holdings"],
+  ["rebalance"],
+  ["currency-exposure"],
+  ["stress-test"],
+  ["net-worth"],
+  ["snapshots"],
+  ["account-cash-balances"],
+  ["accounts"],
+  ["account-summary"],
+  ["account-positions"],
+  ["account-transactions"],
+  ["stocks"],
+] as const
+
+function invalidateTransactionDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  TRANSACTION_INVALIDATION_KEYS.forEach((queryKey) => {
+    queryClient.invalidateQueries({ queryKey: [...queryKey] })
+  })
+}
+
 export function useTransactions({
   ticker,
   accountId,
@@ -48,17 +70,7 @@ export function useAddTransaction() {
       if (error) throw error
       return data as unknown as TransactionResponse
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
-      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["stocks"] })
-    },
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
 }
 
@@ -72,17 +84,7 @@ export function useDeleteTransaction() {
       })
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
-      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["stocks"] })
-    },
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
 }
 
@@ -94,16 +96,6 @@ export function useImportTransactions() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
-      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
-      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["stocks"] })
-    },
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
 }
