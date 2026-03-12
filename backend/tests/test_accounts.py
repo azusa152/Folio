@@ -267,3 +267,67 @@ def test_account_positions_and_transactions_should_return_404_for_unknown_accoun
 
     transactions_resp = client.get("/accounts/99999/transactions")
     assert transactions_resp.status_code == 404
+
+
+def test_deactivate_all_accounts_should_hide_positions_from_holdings_and_rebalance(
+    client: TestClient,
+):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "IB Main",
+            "broker": "Interactive Brokers",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert buy_resp.status_code == 201
+    profile_resp = client.post(
+        "/profiles",
+        json={"config": {"Growth": 100}, "home_currency": "USD"},
+    )
+    assert profile_resp.status_code in (200, 201)
+
+    rebalance_before = client.get("/rebalance")
+    assert rebalance_before.status_code == 200
+    assert len(rebalance_before.json()["holdings_detail"]) >= 1
+
+    deactivate_resp = client.delete(f"/accounts/{account_id}")
+    assert deactivate_resp.status_code == 200
+
+    holdings_resp = client.get("/holdings")
+    assert holdings_resp.status_code == 200
+    assert holdings_resp.json() == []
+
+    rebalance_after = client.get("/rebalance")
+    assert rebalance_after.status_code == 404

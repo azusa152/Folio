@@ -22,6 +22,7 @@ describe("HoldingsTable", () => {
         holdings={[
           {
             ticker: "AAPL",
+            account_name: "IB Main",
             category: "Growth",
             quantity: 2,
             market_value: 200,
@@ -36,6 +37,8 @@ describe("HoldingsTable", () => {
       />,
     )
 
+    expect(screen.getByText("allocation.col.account")).toBeInTheDocument()
+    expect(screen.getByText("IB Main")).toBeInTheDocument()
     expect(screen.getByText("config.category.growth")).toBeInTheDocument()
   })
 })

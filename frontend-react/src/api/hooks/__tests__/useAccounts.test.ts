@@ -1,9 +1,9 @@
 import { createElement } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import client from "@/api/client"
-import { useAccountPositions, useAccountTransactions } from "../useAccounts"
+import { useAccountPositions, useAccountTransactions, useDeactivateAccount } from "../useAccounts"
 
 vi.mock("@/api/client", () => ({
   default: {
@@ -16,7 +16,10 @@ vi.mock("@/api/client", () => ({
   },
 }))
 
-const mockClient = client as unknown as { GET: ReturnType<typeof vi.fn> }
+const mockClient = client as unknown as {
+  GET: ReturnType<typeof vi.fn>
+  DELETE: ReturnType<typeof vi.fn>
+}
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -61,5 +64,33 @@ describe("useAccounts extra hooks", () => {
         },
       },
     )
+  })
+
+  it("invalidates holdings and rebalance after account deactivation", async () => {
+    mockClient.DELETE.mockResolvedValueOnce({ error: undefined })
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const invalidateSpy = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockResolvedValue(undefined)
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(() => useDeactivateAccount(), { wrapper })
+
+    await act(async () => {
+      await result.current.mutateAsync(7)
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["accounts"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["account-summary"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["holdings"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rebalance"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["currency-exposure"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["stress-test"] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["net-worth"] })
   })
 })

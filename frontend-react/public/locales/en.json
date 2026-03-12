@@ -882,6 +882,7 @@
     },
     "col": {
       "ticker": "Ticker",
+      "account": "Account",
       "category": "Category",
       "qty": "Qty",
       "value": "Value",

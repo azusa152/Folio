@@ -22,6 +22,7 @@ from domain.constants import (
 from domain.entities import Holding, NetWorthItem, NetWorthSnapshot, PortfolioSnapshot
 from i18n import t
 from infrastructure.market_data import get_exchange_rates
+from infrastructure.repositories import find_holdings_for_active_accounts
 from logging_config import get_logger
 
 if TYPE_CHECKING:
@@ -178,7 +179,11 @@ def _get_latest_portfolio_snapshot(session: Session) -> PortfolioSnapshot | None
 
 def _list_user_holdings(session: Session) -> list[Holding]:
     return list(
-        session.exec(select(Holding).where(Holding.user_id == DEFAULT_USER_ID)).all()
+        find_holdings_for_active_accounts(
+            session,
+            include_unlinked=False,
+            user_id=DEFAULT_USER_ID,
+        )
     )
 
 

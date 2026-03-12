@@ -1239,6 +1239,28 @@ def find_all_holdings(session: Session) -> list[Holding]:
     return list(session.exec(select(Holding).order_by(Holding.id)).all())
 
 
+def find_holdings_for_active_accounts(
+    session: Session,
+    *,
+    include_unlinked: bool = True,
+    user_id: str | None = None,
+) -> list[Holding]:
+    """查詢啟用帳戶持倉（可選擇是否包含未綁定帳戶的舊資料）。"""
+    stmt = select(Holding).order_by(Holding.id)
+    if include_unlinked:
+        stmt = stmt.outerjoin(Account, Holding.account_id == Account.id).where(
+            (Holding.account_id == None)  # noqa: E711
+            | (Account.is_active == True)  # noqa: E712
+        )
+    else:
+        stmt = stmt.join(Account, Holding.account_id == Account.id).where(
+            Account.is_active == True  # noqa: E712
+        )
+    if user_id is not None:
+        stmt = stmt.where(Holding.user_id == user_id)
+    return list(session.exec(stmt).all())
+
+
 def find_holdings_by_account(session: Session, account_id: int) -> list[Holding]:
     """查詢指定帳戶的所有持倉（依 ticker 排序）。"""
     stmt = (

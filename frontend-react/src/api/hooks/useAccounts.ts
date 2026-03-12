@@ -149,6 +149,11 @@ export function useDeactivateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
       queryClient.invalidateQueries({ queryKey: ["account-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["holdings"] })
+      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
+      queryClient.invalidateQueries({ queryKey: ["currency-exposure"] })
+      queryClient.invalidateQueries({ queryKey: ["stress-test"] })
+      queryClient.invalidateQueries({ queryKey: ["net-worth"] })
     },
   })
 }

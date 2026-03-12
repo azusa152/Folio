@@ -3,12 +3,11 @@ Application — 壓力測試服務。
 提供組合壓力測試分析，評估市場崩盤情境下的預期損失。
 """
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from application.portfolio.rebalance_service import _compute_holding_market_values
 from application.stock.stock_service import StockNotFoundError
 from domain.constants import CATEGORY_FALLBACK_BETA, DEFAULT_USER_ID
-from domain.entities import Holding
 from domain.enums import StockCategory
 from domain.stress_test import calculate_stress_test as _pure_stress_test
 from i18n import get_user_language, t
@@ -17,6 +16,7 @@ from infrastructure.market_data import (
     get_stock_beta,
     prewarm_beta_batch,
 )
+from infrastructure.repositories import find_holdings_for_active_accounts
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -49,9 +49,13 @@ def calculate_stress_test(
 
     Privacy: 不記錄絕對金額日誌（僅記錄 portfolio beta 與 scenario %）
     """
-    # 1) 取得所有持倉
+    # 1) 取得持倉（僅啟用帳戶）
     holdings = list(
-        session.exec(select(Holding).where(Holding.user_id == DEFAULT_USER_ID)).all()
+        find_holdings_for_active_accounts(
+            session,
+            include_unlinked=False,
+            user_id=DEFAULT_USER_ID,
+        )
     )
 
     if not holdings:
@@ -64,7 +68,7 @@ def calculate_stress_test(
     fx_rates = get_exchange_rates(display_currency, holding_currencies)
 
     # 3) 計算持倉市值（複用再平衡服務邏輯）
-    _currency_values, _cash_currency_values, ticker_agg = (
+    _currency_values, _cash_currency_values, ticker_agg, _account_ticker_agg = (
         _compute_holding_market_values(holdings, fx_rates)
     )
 

@@ -882,6 +882,7 @@
     },
     "col": {
       "ticker": "代号",
+      "account": "账户",
       "category": "类别",
       "qty": "数量",
       "value": "市值",

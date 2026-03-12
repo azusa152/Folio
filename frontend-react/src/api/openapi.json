@@ -9839,6 +9839,28 @@
       },
       "HoldingDetail": {
         "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
           "ticker": {
             "type": "string",
             "title": "Ticker"
@@ -9940,7 +9962,7 @@
           "weight_pct"
         ],
         "title": "HoldingDetail",
-        "description": "\u518d\u5e73\u8861\u5206\u6790\u4e2d\u7684\u500b\u80a1\u660e\u7d30\uff08\u540c ticker \u8de8\u5238\u5546\u5408\u4f75\uff09\u3002"
+        "description": "\u518d\u5e73\u8861\u5206\u6790\u4e2d\u7684\u6301\u5009\u660e\u7d30\uff08account+ticker\uff09\u3002"
       },
       "HoldingImportItem": {
         "properties": {

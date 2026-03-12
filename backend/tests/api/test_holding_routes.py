@@ -520,6 +520,94 @@ class TestRebalanceResponse:
         assert "Equity" in data["asset_class_allocation"]
         assert data["asset_class_allocation"]["Equity"] > 0
 
+    def test_holdings_detail_should_split_same_ticker_by_account(self, client):
+        account_a = client.post(
+            "/accounts",
+            json={
+                "name": "Primary Account",
+                "broker": "Interactive Brokers",
+                "account_type": "brokerage",
+                "currency": "USD",
+            },
+        )
+        account_b = client.post(
+            "/accounts",
+            json={
+                "name": "Secondary Account",
+                "broker": "SBI",
+                "account_type": "brokerage",
+                "currency": "USD",
+            },
+        )
+        assert account_a.status_code == 201
+        assert account_b.status_code == 201
+        account_a_id = account_a.json()["id"]
+        account_b_id = account_b.json()["id"]
+
+        for account_id in (account_a_id, account_b_id):
+            deposit_resp = client.post(
+                "/transactions",
+                json={
+                    "account_id": account_id,
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": 1000.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-12",
+                },
+            )
+            assert deposit_resp.status_code == 201
+
+        buy_a = client.post(
+            "/transactions",
+            json={
+                "account_id": account_a_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 2,
+                "price": 100.0,
+                "total_amount": 200.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        buy_b = client.post(
+            "/transactions",
+            json={
+                "account_id": account_b_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 3,
+                "price": 100.0,
+                "total_amount": 300.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        assert buy_a.status_code == 201
+        assert buy_b.status_code == 201
+
+        profile_resp = client.post(
+            "/profiles",
+            json={"config": {"Growth": 100}, "home_currency": "USD"},
+        )
+        assert profile_resp.status_code in (200, 201)
+
+        rebalance_resp = client.get("/rebalance")
+        assert rebalance_resp.status_code == 200
+        details = [
+            row
+            for row in rebalance_resp.json()["holdings_detail"]
+            if row["ticker"] == "AAPL"
+        ]
+        assert len(details) == 2
+        assert {row["account_name"] for row in details} == {
+            "Primary Account",
+            "Secondary Account",
+        }
+        assert {row["account_id"] for row in details} == {account_a_id, account_b_id}
+
 
 class TestTriggerXrayAlert:
     """Tests for POST /rebalance/xray-alert."""

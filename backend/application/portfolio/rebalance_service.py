@@ -18,7 +18,7 @@ from domain.constants import (
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Holding, Stock, UserInvestmentProfile
+from domain.entities import Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL, StockCategory
 from domain.fx_analysis import (
     FXRateAlert,
@@ -60,7 +60,11 @@ from infrastructure.notification import (
     is_within_rate_limit,
     send_telegram_message_dual,
 )
-from infrastructure.repositories import log_notification_sent
+from infrastructure.repositories import (
+    find_all_accounts,
+    find_holdings_for_active_accounts,
+    log_notification_sent,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -95,10 +99,11 @@ def invalidate_rebalance_cache() -> None:
 def _compute_holding_market_values(
     holdings: list,
     fx_rates: dict[str, float],
-) -> tuple[dict[str, float], dict[str, float], dict[str, dict]]:
+    account_name_by_id: dict[int, str] | None = None,
+) -> tuple[dict[str, float], dict[str, float], dict[str, dict], dict[tuple, dict]]:
     """
     共用邏輯：計算所有持倉的當前與前一交易日市值（已換算目標幣別）。
-    回傳 (currency_values, cash_currency_values, ticker_agg)。
+    回傳 (currency_values, cash_currency_values, ticker_agg, account_ticker_agg)。
 
     - currency_values: {幣別: 總市值} — 全部持倉（當前）
     - cash_currency_values: {幣別: 現金市值} — 僅現金部位
@@ -108,6 +113,7 @@ def _compute_holding_market_values(
     currency_values: dict[str, float] = {}
     cash_currency_values: dict[str, float] = {}
     ticker_agg: dict[str, dict] = {}
+    account_ticker_agg: dict[tuple, dict] = {}
 
     for h in holdings:
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
@@ -205,8 +211,38 @@ def _compute_holding_market_values(
         if h.cost_basis is not None:
             ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
             ticker_agg[key]["cost_qty"] += h.quantity
+        account_key = (h.account_id, h.ticker)
+        if account_key not in account_ticker_agg:
+            account_ticker_agg[account_key] = {
+                "account_id": h.account_id,
+                "account_name": (
+                    account_name_by_id.get(h.account_id)
+                    if (account_name_by_id is not None and h.account_id is not None)
+                    else None
+                ),
+                "ticker": h.ticker,
+                "category": cat,
+                "currency": h.currency,
+                "qty": 0.0,
+                "mv": 0.0,
+                "prev_mv": 0.0,
+                "cost_sum": 0.0,
+                "cost_qty": 0.0,
+                "price": price,
+                "fx": fx,
+                "has_prev_close": False,
+                "purchase_fx_rate": getattr(h, "purchase_fx_rate", None),
+            }
+        account_ticker_agg[account_key]["qty"] += h.quantity
+        account_ticker_agg[account_key]["mv"] += market_value
+        account_ticker_agg[account_key]["prev_mv"] += previous_market_value
+        if has_prev_close:
+            account_ticker_agg[account_key]["has_prev_close"] = True
+        if h.cost_basis is not None:
+            account_ticker_agg[account_key]["cost_sum"] += h.cost_basis * h.quantity
+            account_ticker_agg[account_key]["cost_qty"] += h.quantity
 
-    return currency_values, cash_currency_values, ticker_agg
+    return currency_values, cash_currency_values, ticker_agg, account_ticker_agg
 
 
 # ===========================================================================
@@ -310,10 +346,12 @@ def _do_calculate_rebalance(
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         raise StockNotFoundError(t("rebalance.no_holdings", lang=lang))
@@ -358,10 +396,19 @@ def _do_calculate_rebalance(
         logger.info("並行預熱 %d 檔加密貨幣報價...", len(crypto_ids))
         prewarm_crypto_prices(crypto_ids)
 
+    account_name_by_id = {
+        account.id: account.name
+        for account in find_all_accounts(session)
+        if account.id is not None
+    }
+
     # 4) 使用共用邏輯計算各持倉市值
-    _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
-        holdings,
-        fx_rates,
+    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+            account_name_by_id,
+        )
     )
 
     # 4.5) 取得每個分類的市值合計
@@ -397,9 +444,9 @@ def _do_calculate_rebalance(
     result["total_value_change"] = round(total_value_change, 2)
     result["total_value_change_pct"] = total_value_change_pct
 
-    # 7) 建立個股明細（含佔比）
+    # 7) 建立個股明細（account+ticker，含佔比）
     holdings_detail = []
-    for ticker, agg in ticker_agg.items():
+    for agg in account_ticker_agg.values():
         avg_cost = (
             round(agg["cost_sum"] / agg["cost_qty"], 2) if agg["cost_qty"] > 0 else None
         )
@@ -420,7 +467,9 @@ def _do_calculate_rebalance(
 
         holdings_detail.append(
             {
-                "ticker": ticker,
+                "account_id": agg["account_id"],
+                "account_name": agg.get("account_name"),
+                "ticker": agg["ticker"],
                 "category": agg["category"],
                 "currency": agg["currency"],
                 "quantity": round(
@@ -813,10 +862,12 @@ def calculate_currency_exposure(
         ).first()
         home_currency = profile.home_currency if profile else "TWD"
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         return {
@@ -869,9 +920,11 @@ def calculate_currency_exposure(
         prewarm_crypto_prices(crypto_ids)
 
     # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
-    currency_values, cash_currency_values, _ticker_agg = _compute_holding_market_values(
-        holdings,
-        fx_rates,
+    currency_values, cash_currency_values, _ticker_agg, _account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+        )
     )
 
     total_value_home = sum(currency_values.values())
@@ -1212,10 +1265,12 @@ def calculate_withdrawal(
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         lang = get_user_language(session)

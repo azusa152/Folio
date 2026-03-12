@@ -882,6 +882,7 @@
     },
     "col": {
       "ticker": "代號",
+      "account": "帳戶",
       "category": "類別",
       "qty": "數量",
       "value": "市值",

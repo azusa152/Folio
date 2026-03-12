@@ -882,6 +882,7 @@
     },
     "col": {
       "ticker": "銘柄",
+      "account": "口座",
       "category": "カテゴリ",
       "qty": "数量",
       "value": "評価額",

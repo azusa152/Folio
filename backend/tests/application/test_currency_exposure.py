@@ -12,7 +12,8 @@ from application.portfolio.rebalance_service import (
     calculate_currency_exposure,
     send_xray_warnings,
 )
-from domain.entities import Holding
+from domain.constants import DEFAULT_USER_ID
+from domain.entities import Account, Holding
 from domain.enums import StockCategory
 
 REBALANCE_MODULE = "application.portfolio.rebalance_service"
@@ -25,13 +26,29 @@ def _make_holding(
     quantity: float = 10.0,
     cost_basis: float = 100.0,
     is_cash: bool = False,
+    account_id: int | None = None,
 ) -> Holding:
+    if account_id is None:
+        account = Account(
+            user_id=DEFAULT_USER_ID,
+            name=f"{ticker}-acct",
+            broker="Test Broker",
+            account_type="brokerage",
+            currency=currency,
+            is_active=True,
+        )
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+        account_id = account.id
+
     holding = Holding(
         user_id="default",
         ticker=ticker,
         category=StockCategory.MOAT,
         quantity=quantity,
         cost_basis=cost_basis,
+        account_id=account_id,
         currency=currency,
         is_cash=is_cash,
     )
@@ -165,6 +182,76 @@ class TestCalculateCurrencyExposure:
             "calculated_at",
         }
         assert required_keys.issubset(result.keys())
+
+    def test_excludes_inactive_and_unlinked_holdings(self, db_session: Session) -> None:
+        active_account = Account(
+            user_id=DEFAULT_USER_ID,
+            name="Active Account",
+            broker="Active Broker",
+            account_type="brokerage",
+            currency="USD",
+            is_active=True,
+        )
+        inactive_account = Account(
+            user_id=DEFAULT_USER_ID,
+            name="Inactive Account",
+            broker="Inactive Broker",
+            account_type="brokerage",
+            currency="USD",
+            is_active=False,
+        )
+        db_session.add(active_account)
+        db_session.add(inactive_account)
+        db_session.commit()
+        db_session.refresh(active_account)
+        db_session.refresh(inactive_account)
+
+        # Included: active account
+        _make_holding(
+            db_session,
+            ticker="AAPL",
+            currency="USD",
+            quantity=2.0,
+            cost_basis=100.0,
+            account_id=active_account.id,
+        )
+        # Excluded: inactive account
+        _make_holding(
+            db_session,
+            ticker="MSFT",
+            currency="USD",
+            quantity=5.0,
+            cost_basis=100.0,
+            account_id=inactive_account.id,
+        )
+        # Excluded: unlinked orphan
+        orphan = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker="ORPHAN",
+            category=StockCategory.MOAT,
+            quantity=10.0,
+            cost_basis=100.0,
+            account_id=None,
+            currency="USD",
+            is_cash=False,
+        )
+        db_session.add(orphan)
+        db_session.commit()
+
+        with (
+            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(
+                f"{REBALANCE_MODULE}.get_technical_signals",
+                return_value={"price": 100.0},
+            ),
+            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
+            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
+            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+        ):
+            result = calculate_currency_exposure(db_session, home_currency="USD")
+
+        # Only AAPL should contribute: 2 * 100 = 200
+        assert result["total_value_home"] == pytest.approx(200.0, rel=0.01)
 
 
 # ===========================================================================

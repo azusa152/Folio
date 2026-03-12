@@ -108,6 +108,52 @@ class TestListHoldings:
             "updated_at",
         } <= keys
 
+    def test_excludes_holdings_from_inactive_accounts(
+        self, db_session: Session
+    ) -> None:
+        active_account = _seed_account(db_session, name="Active", broker="Active")
+        inactive_account = _seed_account(db_session, name="Inactive", broker="Inactive")
+        inactive_account.is_active = False
+        db_session.add(inactive_account)
+        db_session.commit()
+
+        create_holding(
+            db_session,
+            _make_payload(active_account.id, ticker="AAPL"),
+            _LANG,
+        )
+        create_holding(
+            db_session,
+            _make_payload(inactive_account.id, ticker="MSFT"),
+            _LANG,
+        )
+
+        result = list_holdings(db_session)
+        tickers = {item["ticker"] for item in result if not item["is_cash"]}
+        assert tickers == {"AAPL"}
+
+    def test_excludes_unlinked_orphan_holdings(self, db_session: Session) -> None:
+        active_account = _seed_account(db_session, name="Active", broker="Active")
+        create_holding(
+            db_session,
+            _make_payload(active_account.id, ticker="AAPL"),
+            _LANG,
+        )
+        orphan = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker="ORPHAN",
+            category=StockCategory.TREND_SETTER,
+            quantity=1.0,
+            currency="USD",
+            account_id=None,
+        )
+        db_session.add(orphan)
+        db_session.commit()
+
+        result = list_holdings(db_session)
+        tickers = {item["ticker"] for item in result if not item["is_cash"]}
+        assert tickers == {"AAPL"}
+
 
 # ---------------------------------------------------------------------------
 # create_holding

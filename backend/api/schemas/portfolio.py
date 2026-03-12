@@ -157,8 +157,10 @@ class CategoryAllocation(BaseModel):
 
 
 class HoldingDetail(BaseModel):
-    """再平衡分析中的個股明細（同 ticker 跨券商合併）。"""
+    """再平衡分析中的持倉明細（account+ticker）。"""
 
+    account_id: int | None = None
+    account_name: str | None = None
     ticker: str
     category: str
     currency: str = "USD"

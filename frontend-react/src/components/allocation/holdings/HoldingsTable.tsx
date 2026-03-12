@@ -55,6 +55,7 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
           <thead>
             <tr className="text-muted-foreground border-b border-border">
               <th className="text-left py-0.5 pr-2">{t("allocation.col.ticker")}</th>
+              <th className="text-left py-0.5 pr-2">{t("allocation.col.account")}</th>
               <th className="text-left py-0.5 pr-2">{t("allocation.col.category")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.qty")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.value")}</th>
@@ -78,6 +79,7 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
               return (
                 <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">{h.account_name ?? "—"}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground">
                     {t(`config.category.${h.category.toLowerCase()}`)}
                   </td>

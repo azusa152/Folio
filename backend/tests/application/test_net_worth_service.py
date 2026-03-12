@@ -16,8 +16,24 @@ from application.portfolio.net_worth_service import (
     seed_from_portfolio,
     take_net_worth_snapshot,
 )
-from domain.entities import Holding, PortfolioSnapshot
+from domain.constants import DEFAULT_USER_ID
+from domain.entities import Account, Holding, PortfolioSnapshot
 from domain.enums import StockCategory
+
+
+def _seed_account(db_session: Session, *, name: str = "NetWorth Account") -> Account:
+    account = Account(
+        user_id=DEFAULT_USER_ID,
+        name=name,
+        broker="Test Broker",
+        account_type="brokerage",
+        currency="USD",
+        is_active=True,
+    )
+    db_session.add(account)
+    db_session.commit()
+    db_session.refresh(account)
+    return account
 
 
 def test_calculate_net_worth_should_aggregate_investments_assets_and_liabilities(
@@ -105,12 +121,14 @@ def test_snapshot_and_history_should_return_saved_net_worth(
 def test_calculate_net_worth_should_fallback_to_holdings_when_snapshot_missing(
     db_session: Session,
 ) -> None:
+    account = _seed_account(db_session)
     db_session.add(
         Holding(
             ticker="AAPL",
             quantity=2.0,
             cost_basis=100.0,
             category="GROWTH",
+            account_id=account.id,
             currency="USD",
         )
     )
@@ -141,6 +159,7 @@ def test_create_item_should_store_minimum_payment(db_session: Session) -> None:
 def test_seed_from_portfolio_should_create_items_and_be_idempotent(
     db_session: Session,
 ) -> None:
+    account = _seed_account(db_session)
     db_session.add_all(
         [
             Holding(
@@ -148,6 +167,7 @@ def test_seed_from_portfolio_should_create_items_and_be_idempotent(
                 quantity=1000.0,
                 cost_basis=1.0,
                 category=StockCategory.CASH,
+                account_id=account.id,
                 currency="USD",
                 is_cash=True,
             ),
@@ -156,6 +176,7 @@ def test_seed_from_portfolio_should_create_items_and_be_idempotent(
                 quantity=6000.0,
                 cost_basis=1.0,
                 category=StockCategory.CASH,
+                account_id=account.id,
                 currency="TWD",
                 is_cash=True,
             ),
@@ -180,6 +201,7 @@ def test_seed_from_portfolio_should_create_items_and_be_idempotent(
 def test_get_seed_preview_should_return_non_cash_investment_and_cash_positions(
     db_session: Session,
 ) -> None:
+    account = _seed_account(db_session)
     db_session.add_all(
         [
             Holding(
@@ -187,6 +209,7 @@ def test_get_seed_preview_should_return_non_cash_investment_and_cash_positions(
                 quantity=2.0,
                 cost_basis=100.0,
                 category=StockCategory.GROWTH,
+                account_id=account.id,
                 currency="USD",
                 is_cash=False,
                 purchase_fx_rate=1.0,
@@ -196,6 +219,7 @@ def test_get_seed_preview_should_return_non_cash_investment_and_cash_positions(
                 quantity=300.0,
                 cost_basis=1.0,
                 category=StockCategory.CASH,
+                account_id=account.id,
                 currency="USD",
                 is_cash=True,
             ),
@@ -215,12 +239,14 @@ def test_get_seed_preview_should_return_non_cash_investment_and_cash_positions(
 def test_get_seed_preview_should_convert_cash_value_with_rates_when_no_snapshot(
     db_session: Session,
 ) -> None:
+    account = _seed_account(db_session)
     db_session.add(
         Holding(
             ticker="JPY",
             quantity=10000.0,
             cost_basis=1.0,
             category=StockCategory.CASH,
+            account_id=account.id,
             currency="JPY",
             is_cash=True,
             purchase_fx_rate=None,

@@ -155,7 +155,7 @@ def _close_and_delete_holding_for_replace(
 
 def list_holdings(session: Session) -> list[dict]:
     """Return all holdings as dicts, ordered by id."""
-    holdings = repo.find_all_holdings(session)
+    holdings = repo.find_holdings_for_active_accounts(session, include_unlinked=False)
     return [_holding_to_dict(h) for h in holdings]
 
 

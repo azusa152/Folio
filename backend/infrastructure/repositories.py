@@ -50,6 +50,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_holdings_by_filing,
     find_holdings_by_guru_latest,
     find_holdings_by_ticker_across_gurus,
+    find_holdings_for_active_accounts,
     find_inactive_stocks,
     find_latest_filing_by_guru,
     find_latest_removal,
