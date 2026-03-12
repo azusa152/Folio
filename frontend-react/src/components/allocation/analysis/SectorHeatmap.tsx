@@ -64,7 +64,7 @@ export function SectorHeatmap({ data }: Props) {
         ? t("allocation.sector.unknown")
         : d.sector,
     size: d.value,
-    weight_pct: d.weight_pct,
+    weight_pct: d.equity_pct,
     colorIdx: i,
   }))
   const hasUnresolvedEtf = data.some((d) => d.sector === ETF_UNRESOLVED_SECTOR)

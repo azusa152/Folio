@@ -24,16 +24,16 @@ describe("SectorAllocationCard", () => {
     render(
       <SectorAllocationCard
         sectorExposure={[
-          { sector: "Technology", value: 30000, weight_pct: 40 },
-          { sector: "Healthcare", value: 15000, weight_pct: 20 },
-          { sector: "Financials", value: 10000, weight_pct: 13.3 },
+          { sector: "Technology", value: 30000, weight_pct: 40, equity_pct: 80 },
+          { sector: "Healthcare", value: 15000, weight_pct: 20, equity_pct: 15 },
+          { sector: "Financials", value: 10000, weight_pct: 13.3, equity_pct: 5 },
         ]}
       />,
     )
 
     expect(screen.getByText("allocation.sector_standalone.title")).toBeInTheDocument()
     expect(screen.getByTestId("sector-pie")).toBeInTheDocument()
-    expect(screen.getByText(/Technology/)).toBeInTheDocument()
+    expect(screen.getByText(/Technology \(80.0%\)/)).toBeInTheDocument()
     expect(screen.getByText(/Healthcare/)).toBeInTheDocument()
   })
 
@@ -50,6 +50,7 @@ describe("SectorAllocationCard", () => {
       sector: `Sector${i}`,
       value: (10 - i) * 1000,
       weight_pct: (10 - i) * 5,
+      equity_pct: (10 - i) * 5,
     }))
 
     render(<SectorAllocationCard sectorExposure={sectors} />)

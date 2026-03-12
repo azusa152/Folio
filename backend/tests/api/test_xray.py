@@ -43,6 +43,28 @@ _CASH_HOLDING = {
     "is_cash": True,
 }
 
+_CASH_TW_HOLDING = {
+    "ticker": "USD.TW",
+    "category": "Cash",
+    "quantity": 1_000_000,
+    "cost_basis": 1.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": True,
+}
+
+_BOND_TW_HOLDING = {
+    "ticker": "BND.TW",
+    "category": "Bond",
+    "quantity": 100,
+    "cost_basis": 100.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": False,
+}
+
 
 def _setup_portfolio(client: TestClient, holdings: list[dict] | None = None):
     """Create holdings and an investment profile."""
@@ -283,3 +305,21 @@ class TestXRayResponseContract:
         resp = client.get("/rebalance")
 
         assert resp.status_code == 404
+
+    def test_sector_equity_pct_and_geo_should_exclude_cash(self, client):
+        """Sector equity pct and geographic allocation should not be diluted by cash."""
+        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_TW_HOLDING, _BOND_TW_HOLDING])
+
+        resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert len(data["sector_exposure"]) == 1
+        sector = data["sector_exposure"][0]
+        assert sector["equity_pct"] == 100
+        assert sector["weight_pct"] < 100
+
+        assert set(data["geographic_allocation"].keys()) == {"US", "TW"}
+        assert data["geographic_allocation"]["US"] == sector["value"]
+        assert data["geographic_allocation"]["TW"] > 0

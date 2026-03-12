@@ -767,7 +767,7 @@ def _do_calculate_rebalance(
     holding_market_data = [
         {"ticker": ticker, "market_value": agg["mv"]}
         for ticker, agg in ticker_agg.items()
-        if agg["mv"] > 0
+        if agg["mv"] > 0 and agg["category"] != StockCategory.CASH
     ]
     result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
 
