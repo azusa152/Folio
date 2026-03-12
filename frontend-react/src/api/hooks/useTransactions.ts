@@ -54,6 +54,9 @@ export function useAddTransaction() {
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
       queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
+      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
     },
   })
 }
@@ -74,6 +77,9 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
       queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
+      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
     },
   })
 }
@@ -92,6 +98,9 @@ export function useImportTransactions() {
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
       queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      queryClient.invalidateQueries({ queryKey: ["account-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["account-positions"] })
+      queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
     },
   })
 }
