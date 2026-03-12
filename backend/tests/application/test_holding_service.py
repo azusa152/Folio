@@ -300,6 +300,31 @@ class TestDeleteHolding:
             delete_holding(db_session, 99999, _LANG)
         assert exc_info.value.status_code == 404
 
+    def test_delete_without_account_id_should_succeed_without_adjustment(
+        self, db_session: Session
+    ) -> None:
+        orphan = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker="ORPHAN",
+            category=StockCategory.TREND_SETTER,
+            quantity=3.0,
+            currency="USD",
+            account_id=None,
+        )
+        db_session.add(orphan)
+        db_session.commit()
+        db_session.refresh(orphan)
+
+        result = delete_holding(db_session, orphan.id, _LANG)  # type: ignore[arg-type]
+
+        assert "message" in result
+        assert (
+            db_session.exec(select(Holding).where(Holding.id == orphan.id)).first()
+            is None
+        )
+        txns = db_session.exec(select(Transaction)).all()
+        assert txns == []
+
 
 # ---------------------------------------------------------------------------
 # export_holdings

@@ -376,32 +376,27 @@ def delete_holding(session: Session, holding_id: int, lang: str) -> dict:
     ticker = holding.ticker
     if float(holding.quantity) > 1e-9:
         if holding.account_id is None:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": ERROR_INVALID_INPUT,
-                    "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
-                },
-            )
-        qty = float(holding.quantity)
-        txn_data = {
-            "account_id": int(holding.account_id),
-            "ticker": holding.ticker,
-            "transaction_type": TransactionType.ADJUSTMENT.value,
-            "quantity": qty,
-            "price": holding.cost_basis,
-            "total_amount": _signed_adjustment_amount(
-                quantity=qty,
-                cost_basis=holding.cost_basis,
-                is_decrease=True,
-            ),
-            "currency": holding.currency,
-            "fee": 0.0,
-            "note": "Position closed via holding deletion",
-            "transaction_date": date.today(),
-        }
-        settle_transaction(session, txn_data, lang)
-        session.refresh(holding)
+            logger.warning("刪除持倉略過交易入帳（缺少 account_id）：%s", ticker)
+        else:
+            qty = float(holding.quantity)
+            txn_data = {
+                "account_id": int(holding.account_id),
+                "ticker": holding.ticker,
+                "transaction_type": TransactionType.ADJUSTMENT.value,
+                "quantity": qty,
+                "price": holding.cost_basis,
+                "total_amount": _signed_adjustment_amount(
+                    quantity=qty,
+                    cost_basis=holding.cost_basis,
+                    is_decrease=True,
+                ),
+                "currency": holding.currency,
+                "fee": 0.0,
+                "note": "Position closed via holding deletion",
+                "transaction_date": date.today(),
+            }
+            settle_transaction(session, txn_data, lang)
+            session.refresh(holding)
     repo.delete_holding(session, holding)
     logger.info("刪除持倉：%s", ticker)
     return {"message": t("api.holding_deleted", lang=lang, ticker=ticker)}
