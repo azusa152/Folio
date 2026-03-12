@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Building2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
@@ -221,7 +222,23 @@ export function AddTransactionSheet({
           <SheetTitle className="text-sm">{t("transactions.form.title")}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-4 space-y-4">
+        {hasNoAccounts ? (
+          <div className="mt-4 flex flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+            <div className="rounded-full bg-muted p-4">
+              <Building2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{t("transactions.empty_state.title")}</p>
+              <p className="text-xs text-muted-foreground">{t("transactions.empty_state.description")}</p>
+            </div>
+            {onOpenAccounts ? (
+              <Button size="sm" onClick={onOpenAccounts}>
+                {t("transactions.empty_state.create_account")}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("transactions.form.account")}</p>
             <select
@@ -682,7 +699,8 @@ export function AddTransactionSheet({
           >
             {t("transactions.form.submit")}
           </Button>
-        </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   )

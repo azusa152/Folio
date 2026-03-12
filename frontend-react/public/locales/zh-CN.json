@@ -1787,6 +1787,11 @@
       "title": "目前尚无交易记录",
       "description": "先新增第一笔交易，建立清楚的投资历史。"
     },
+    "empty_state": {
+      "title": "请先创建账户",
+      "description": "在记录交易前，请先创建券商或银行账户。只需几秒钟即可完成。",
+      "create_account": "创建账户"
+    },
     "form": {
       "title": "新增交易记录",
       "type": "交易类型",

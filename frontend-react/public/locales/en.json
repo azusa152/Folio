@@ -1787,6 +1787,11 @@
       "title": "No transactions yet",
       "description": "Record your first transaction to build a clear portfolio history."
     },
+    "empty_state": {
+      "title": "Create an account first",
+      "description": "You need a brokerage or bank account before recording transactions. It only takes a few seconds.",
+      "create_account": "Create Account"
+    },
     "form": {
       "title": "Record Transaction",
       "type": "Transaction Type",

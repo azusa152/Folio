@@ -10,7 +10,6 @@ import { useAccounts } from "@/api/hooks/useAccounts"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
-import { AddHoldingSheet } from "@/components/allocation/holdings/AddHoldingSheet"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
 import { StressTest } from "@/components/allocation/tools/StressTest"
@@ -42,7 +41,6 @@ export default function Allocation() {
   const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
   const tabParam = searchParams.get("tab")
   const activeTab =
@@ -167,9 +165,9 @@ export default function Allocation() {
         <Button
           size="sm"
           className="text-xs shrink-0 min-h-[44px]"
-          onClick={() => setSheetOpen(true)}
+          onClick={() => openTransactionSheet()}
         >
-          {t("allocation.sidebar.add_holding")}
+          {t("transactions.record_button")}
         </Button>
       </div>
 
@@ -487,8 +485,6 @@ export default function Allocation() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Holding sidebar sheet */}
-      <AddHoldingSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
       <AddNetWorthItemSheet
         key={`${netWorthSheetOpen ? "open" : "closed"}-${netWorthSheetKind}`}
         open={netWorthSheetOpen}
