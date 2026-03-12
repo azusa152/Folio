@@ -79,6 +79,7 @@
     "display_order_updated": "✅ Updated display order for {count} stocks.",
     "thesis_updated": "✅ {ticker} thesis updated to version {version}.",
     "added": "✅ Added {ticker} to {category} category.",
+    "auto_thesis": "Auto-tracked via transaction",
     "import_missing_ticker": "Missing ticker field",
     "import_invalid_category": "{ticker}: invalid category {category}",
     "import_complete": "✅ Import complete: {created} added, {updated} updated, {errors} errors.",

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
 import { useHoldings } from "@/api/hooks/useDashboard"
+import { useRadarStocks } from "@/api/hooks/useRadar"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
@@ -57,6 +58,7 @@ export function AddTransactionSheet({
   const { t } = useTranslation()
   const addTransactionMutation = useAddTransaction()
   const { data: holdings } = useHoldings()
+  const { data: radarStocks, isLoading: isRadarStocksLoading } = useRadarStocks()
   const { data: accounts } = useAccounts(open)
 
   const initialTicker = defaultTicker?.toUpperCase() ?? ""
@@ -79,6 +81,7 @@ export function AddTransactionSheet({
   const [fxRate, setFxRate] = useState("")
   const [fee, setFee] = useState("0")
   const [note, setNote] = useState("")
+  const [thesis, setThesis] = useState("")
   const [transactionDate, setTransactionDate] = useState(todayISO())
   const [manualTotal, setManualTotal] = useState(false)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
@@ -92,6 +95,13 @@ export function AddTransactionSheet({
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
   const hasNoAccounts = (accounts ?? []).length === 0
   const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
+  const isNewToRadar = useMemo(() => {
+    if (isRadarStocksLoading) return false
+    if (isCashMovement) return false
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) return false
+    return !(radarStocks ?? []).some((stock) => stock.ticker.toUpperCase() === normalizedTicker)
+  }, [isCashMovement, isRadarStocksLoading, radarStocks, ticker])
   const requiresAccount = true
 
   const holdingOptions = useMemo(
@@ -123,6 +133,7 @@ export function AddTransactionSheet({
     setFxRate("")
     setFee("0")
     setNote("")
+    setThesis("")
     setTransactionDate(todayISO())
     setManualTotal(false)
     setMoreOptionsOpen(false)
@@ -353,6 +364,19 @@ export function AddTransactionSheet({
                 className="text-xs"
               />
               {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
+            </div>
+          ) : null}
+
+          {!isCashMovement && isNewToRadar ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium">{t("transactions.form.thesis")}</p>
+              <Input
+                value={thesis}
+                aria-label={t("transactions.form.thesis")}
+                onChange={(event) => setThesis(event.target.value)}
+                placeholder={t("transactions.form.thesis_hint")}
+                className="text-xs"
+              />
             </div>
           ) : null}
 
@@ -604,10 +628,11 @@ export function AddTransactionSheet({
                   fx_rate: fxRate ? Number(fxRate) : undefined,
                   fee: fee ? Number(fee) : 0,
                   note: note.trim(),
+                  thesis: thesis.trim() || undefined,
                   transaction_date: transactionDate,
                 },
                 {
-                  onSuccess: () => {
+                  onSuccess: (data) => {
                     const selectedId = accountId ? Number(accountId) : null
                     if (transactionType === "DEPOSIT" && selectedId != null) {
                       toast.success(t("transactions.toast.created"), {
@@ -621,6 +646,9 @@ export function AddTransactionSheet({
                       })
                     } else {
                       toast.success(t("transactions.toast.created"))
+                    }
+                    if (data.auto_radar) {
+                      toast.info(t("holding.auto_radar"))
                     }
                     resetForm({ keepDefaultTicker: true, keepDefaultHoldingId: true })
                     onClose()

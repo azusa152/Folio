@@ -182,6 +182,73 @@ def create_stock(
     return stock
 
 
+def ensure_stock_on_radar(
+    session: Session,
+    ticker: str,
+    thesis: str | None = None,
+) -> tuple[Stock, bool]:
+    """
+    Ensure ticker exists in radar stock list without committing.
+
+    Returns (stock, created):
+    - created=False when stock already exists
+    - created=True when a new stock + initial thesis log are added to session
+    """
+    ticker_upper = ticker.upper()
+    existing = repo.find_stock_by_ticker(session, ticker_upper)
+    if existing:
+        if existing.is_active:
+            return existing, False
+
+        has_custom_thesis = bool(thesis and thesis.strip())
+        final_thesis = thesis.strip() if has_custom_thesis and thesis else ""
+        existing.is_active = True
+        if has_custom_thesis:
+            existing.current_thesis = final_thesis
+            existing.current_tags = ""
+        existing.last_scan_signal = ScanSignal.NORMAL.value
+        existing.signal_since = None
+        repo.update_stock(session, existing)
+        if has_custom_thesis:
+            _append_thesis_log(session, ticker_upper, final_thesis, tags="")
+        else:
+            _append_thesis_log(
+                session,
+                ticker_upper,
+                t("stock.reactivated_log", lang="zh-TW"),
+                tags=existing.current_tags,
+            )
+        return existing, True
+
+    is_etf = detect_is_etf(ticker_upper)
+    category = StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH
+    lang = get_user_language(session)
+    final_thesis = (
+        thesis.strip()
+        if thesis and thesis.strip()
+        else t("stock.auto_thesis", lang=lang)
+    )
+
+    stock = Stock(
+        ticker=ticker_upper,
+        category=category,
+        current_thesis=final_thesis,
+        current_tags="",
+        is_active=True,
+        is_etf=is_etf,
+    )
+    session.add(stock)
+
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=final_thesis,
+        tags="",
+        version=1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+    return stock, True
+
+
 def list_active_stocks(session: Session) -> list[dict]:
     """取得所有啟用中的追蹤股票（僅 DB 資料，不含技術訊號）。"""
     logger.info("取得所有追蹤股票清單...")

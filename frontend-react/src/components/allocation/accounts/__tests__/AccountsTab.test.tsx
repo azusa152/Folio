@@ -119,7 +119,7 @@ describe("AccountsTab", () => {
     render(<AccountsTab enabled />)
     expect(screen.getByText("accounts.detail.category")).toBeInTheDocument()
     expect(screen.getByText("accounts.detail.cost_basis")).toBeInTheDocument()
-    expect(screen.getByText("Growth")).toBeInTheDocument()
+    expect(screen.getByText("config.category.growth")).toBeInTheDocument()
   })
 
   it("renders transactions sub-tab content", async () => {

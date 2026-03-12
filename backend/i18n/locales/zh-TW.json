@@ -79,6 +79,7 @@
     "display_order_updated": "✅ 已更新 {count} 檔股票的顯示順位。",
     "thesis_updated": "✅ {ticker} 觀點已更新至第 {version} 版。",
     "added": "✅ 已新增 {ticker} 到 {category} 分類。",
+    "auto_thesis": "透過交易自動追蹤",
     "import_missing_ticker": "缺少 ticker 欄位",
     "import_invalid_category": "{ticker}: 無效分類 {category}",
     "import_complete": "✅ 匯入完成：新增 {created}，更新 {updated}，錯誤 {errors}。",

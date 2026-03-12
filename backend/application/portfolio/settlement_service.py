@@ -132,7 +132,7 @@ def settle_transaction(session: Session, txn_data: dict, lang: str) -> Transacti
             stock_holding = Holding(
                 user_id=DEFAULT_USER_ID,
                 ticker=ticker,
-                category=_infer_category(txn_data),
+                category=_infer_category(session, txn_data),
                 quantity=0.0,
                 cost_basis=txn_data.get("price"),
                 broker=account.broker,
@@ -320,8 +320,14 @@ def _is_cash_ticker(ticker: str, currency: str) -> bool:
     return ticker.upper().strip() == currency.upper().strip()
 
 
-def _infer_category(txn_data: dict) -> StockCategory:
-    """Best-effort category inference from transaction payload."""
+def _infer_category(session: Session, txn_data: dict) -> StockCategory:
+    """Infer category by radar stock first, then payload fallback."""
+    ticker = str(txn_data.get("ticker", "")).upper().strip()
+    if ticker:
+        stock = repo.find_stock_by_ticker(session, ticker)
+        if stock:
+            return stock.category
+
     raw = str(txn_data.get("category", StockCategory.GROWTH.value))
     try:
         return StockCategory(raw)

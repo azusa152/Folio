@@ -225,6 +225,176 @@ def test_create_transaction_with_account_should_return_account_id(client: TestCl
     assert buy_resp.json()["account_id"] == account_id
 
 
+def test_create_transaction_should_auto_add_new_stock_with_custom_thesis(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "QQQ",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+            "thesis": "Core ETF thesis",
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["ticker"] == "QQQ"
+    assert body["auto_radar"] is True
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    qqq = next(stock for stock in stocks_resp.json() if stock["ticker"] == "QQQ")
+    assert qqq["current_thesis"] == "Core ETF thesis"
+
+
+def test_create_transaction_should_not_recreate_existing_radar_stock(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    create_stock_resp = client.post(
+        "/ticker",
+        json={
+            "ticker": "QQQ",
+            "category": "Trend_Setter",
+            "thesis": "Original thesis",
+            "is_etf": True,
+        },
+    )
+    assert create_stock_resp.status_code == 200
+
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "QQQ",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+            "thesis": "Should not override",
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["auto_radar"] is False
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    qqq = next(stock for stock in stocks_resp.json() if stock["ticker"] == "QQQ")
+    assert qqq["current_thesis"] == "Original thesis"
+
+
+def test_create_cash_transaction_should_not_trigger_auto_radar(client: TestClient):
+    account_id = _create_account(client)
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 250.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["auto_radar"] is False
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    assert all(stock["ticker"] != "USD" for stock in stocks_resp.json())
+
+
+def test_create_transaction_should_reactivate_inactive_stock_on_radar(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    create_stock_resp = client.post(
+        "/ticker",
+        json={
+            "ticker": "QQQ",
+            "category": "Trend_Setter",
+            "thesis": "Old thesis",
+            "is_etf": True,
+        },
+    )
+    assert create_stock_resp.status_code == 200
+    deactivate_resp = client.post("/ticker/QQQ/deactivate", json={"reason": "cleanup"})
+    assert deactivate_resp.status_code == 200
+
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "QQQ",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+            "thesis": "Reactivated via transaction",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["auto_radar"] is True
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    qqq = next(stock for stock in stocks_resp.json() if stock["ticker"] == "QQQ")
+    assert qqq["is_active"] is True
+    assert qqq["current_thesis"] == "Reactivated via transaction"
+
+
+def test_import_transactions_should_not_leak_auto_radar_from_failed_item(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "account_id": account_id,
+            "items": [
+                {
+                    "ticker": "AAPL",
+                    "transaction_type": "BUY",
+                    "quantity": 1,
+                    "price": 100.0,
+                    "total_amount": 100.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-10",
+                    "thesis": "Should not persist",
+                },
+                {
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": 1000.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-10",
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["imported"] == 1
+    assert len(body["errors"]) == 1
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    assert all(stock["ticker"] != "AAPL" for stock in stocks_resp.json())
+
+
 def test_import_transactions_should_return_import_summary(client: TestClient):
     account_id = _create_account(client)
     resp = client.post(

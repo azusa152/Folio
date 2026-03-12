@@ -57,6 +57,7 @@ export function useAddTransaction() {
       queryClient.invalidateQueries({ queryKey: ["account-summary"] })
       queryClient.invalidateQueries({ queryKey: ["account-positions"] })
       queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["stocks"] })
     },
   })
 }
@@ -80,6 +81,7 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: ["account-summary"] })
       queryClient.invalidateQueries({ queryKey: ["account-positions"] })
       queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["stocks"] })
     },
   })
 }
@@ -101,6 +103,7 @@ export function useImportTransactions() {
       queryClient.invalidateQueries({ queryKey: ["account-summary"] })
       queryClient.invalidateQueries({ queryKey: ["account-positions"] })
       queryClient.invalidateQueries({ queryKey: ["account-transactions"] })
+      queryClient.invalidateQueries({ queryKey: ["stocks"] })
     },
   })
 }

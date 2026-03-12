@@ -12,7 +12,7 @@ from application.portfolio.transaction_service import (
     remove_transaction,
 )
 from domain.constants import DEFAULT_USER_ID, ERROR_INSUFFICIENT_BALANCE
-from domain.entities import Account, Holding, Transaction
+from domain.entities import Account, Holding, Stock, Transaction
 from domain.enums import StockCategory
 
 
@@ -399,6 +399,48 @@ def test_opening_balance_stock_ticker_should_create_stock_without_touching_cash(
     ).one()
     assert pytest.approx(cash_holding.quantity, rel=1e-9) == 1000.0
     assert pytest.approx(stock_holding.quantity, rel=1e-9) == 10.0
+
+
+def test_opening_balance_stock_should_use_existing_radar_category(
+    db_session: Session,
+):
+    account = _create_account(db_session)
+    db_session.add(
+        Stock(
+            ticker="QQQ",
+            category=StockCategory.TREND_SETTER,
+            current_thesis="ETF thesis",
+            current_tags="",
+            is_active=True,
+            is_etf=True,
+        )
+    )
+    db_session.commit()
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "QQQ",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 3,
+            "price": 100.0,
+            "total_amount": 300.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    stock_holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "QQQ",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert stock_holding.category == StockCategory.TREND_SETTER
 
 
 def test_adjustment_stock_ticker_should_modify_stock_without_touching_cash(

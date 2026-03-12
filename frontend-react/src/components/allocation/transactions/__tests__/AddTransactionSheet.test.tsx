@@ -3,7 +3,16 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AddTransactionSheet } from "../AddTransactionSheet"
 
-const mockMutate = vi.fn()
+const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState } = vi.hoisted(() => ({
+  mockMutate: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+  radarState: {
+    stocks: [] as Array<{ ticker: string }>,
+    isLoading: false,
+  },
+}))
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -12,7 +21,7 @@ vi.mock("react-i18next", () => ({
 }))
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: toastSuccessMock, error: toastErrorMock, info: toastInfoMock },
 }))
 
 vi.mock("@/api/hooks/useTransactions", () => ({
@@ -22,6 +31,13 @@ vi.mock("@/api/hooks/useTransactions", () => ({
 vi.mock("@/api/hooks/useDashboard", () => ({
   useHoldings: () => ({
     data: [{ id: 1, ticker: "AAPL" }],
+  }),
+}))
+
+vi.mock("@/api/hooks/useRadar", () => ({
+  useRadarStocks: () => ({
+    data: radarState.stocks,
+    isLoading: radarState.isLoading,
   }),
 }))
 
@@ -37,6 +53,8 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 describe("AddTransactionSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    radarState.stocks = []
+    radarState.isLoading = false
   })
 
   it("validates fx rate and fee before submit", () => {
@@ -216,5 +234,50 @@ describe("AddTransactionSheet", () => {
 
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
     expect(mockMutate).not.toHaveBeenCalled()
+  })
+
+  it("does not show thesis field while radar stocks are loading", () => {
+    radarState.isLoading = true
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
+  })
+
+  it("shows thesis field only when ticker is new to radar", () => {
+    radarState.stocks = [{ ticker: "NVDA" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByLabelText("transactions.form.thesis")).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText("transactions.form.ticker"), { target: { value: "NVDA" } })
+    expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
+  })
+
+  it("shows auto-radar toast when mutation returns auto_radar true", () => {
+    mockMutate.mockImplementationOnce((_payload, opts) => {
+      opts?.onSuccess?.({ auto_radar: true })
+    })
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(toastInfoMock).toHaveBeenCalledWith("holding.auto_radar")
   })
 })

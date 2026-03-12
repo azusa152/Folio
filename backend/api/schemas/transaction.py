@@ -25,6 +25,11 @@ class TransactionRequest(BaseModel):
     fx_rate: float | None = None
     fee: float = Field(default=0.0, ge=0)
     note: str = Field(default="", max_length=500)
+    thesis: str | None = Field(
+        default=None,
+        max_length=5000,
+        description="Thesis used when auto-adding a new ticker to radar",
+    )
     transaction_date: date
 
     @field_validator("ticker")
@@ -63,6 +68,7 @@ class TransactionResponse(BaseModel):
     note: str
     transaction_date: date
     created_at: str
+    auto_radar: bool = False
 
 
 class TransactionImportItem(BaseModel):

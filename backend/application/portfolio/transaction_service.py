@@ -9,6 +9,7 @@ from application.portfolio.settlement_service import (
     reverse_settlement,
     settle_transaction,
 )
+from application.stock.stock_service import ensure_stock_on_radar
 from domain.constants import (
     ERROR_ACCOUNT_NOT_FOUND,
     ERROR_INVALID_INPUT,
@@ -81,14 +82,29 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
                 "detail": t("common.validation_error", lang=lang),
             },
         ) from None
-    saved = settle_transaction(session, data, lang)
+    ticker = str(data.get("ticker", "")).upper().strip()
+    currency = str(data.get("currency", "USD")).upper().strip() or "USD"
+    is_cash_ticker = ticker == currency
+    thesis = data.pop("thesis", None)
+
+    auto_radar = False
+    try:
+        if ticker and not is_cash_ticker:
+            _, auto_radar = ensure_stock_on_radar(session, ticker, thesis=thesis)
+        saved = settle_transaction(session, data, lang)
+    except Exception:
+        # import_transactions continues on per-item failures; clear pending state
+        # so later successful items cannot accidentally flush previous changes.
+        session.rollback()
+        raise
+
     logger.info(
         "交易紀錄已建立：id=%s ticker=%s type=%s",
         saved.id,
         saved.ticker,
         saved.transaction_type,
     )
-    return _to_dict(saved)
+    return _to_dict(saved, auto_radar=auto_radar)
 
 
 def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
@@ -159,7 +175,7 @@ def import_transactions(
     }
 
 
-def _to_dict(txn: Transaction) -> dict:
+def _to_dict(txn: Transaction, *, auto_radar: bool = False) -> dict:
     return {
         "id": txn.id,
         "user_id": txn.user_id,
@@ -176,4 +192,5 @@ def _to_dict(txn: Transaction) -> dict:
         "note": txn.note,
         "transaction_date": txn.transaction_date.isoformat(),
         "created_at": txn.created_at.isoformat(),
+        "auto_radar": auto_radar,
     }

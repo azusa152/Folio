@@ -78,7 +78,9 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
               return (
                 <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                  <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">
+                    {t(`config.category.${h.category.toLowerCase()}`)}
+                  </td>
                   <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}

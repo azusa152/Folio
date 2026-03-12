@@ -79,6 +79,7 @@
     "display_order_updated": "✅ {count}銘柄の表示順序を更新しました。",
     "thesis_updated": "✅ {ticker} の投資テーゼをバージョン{version}に更新しました。",
     "added": "✅ {ticker} を {category} カテゴリに追加しました。",
+    "auto_thesis": "取引経由で自動追跡",
     "import_missing_ticker": "tickerフィールドがありません",
     "import_invalid_category": "{ticker}: 無効なカテゴリ {category}",
     "import_complete": "✅ インポート完了: {created}件追加、{updated}件更新、{errors}件エラー。",

@@ -1799,6 +1799,8 @@
       "insufficient_balance": "Insufficient balance ({{currency}}). Available: {{available}}, Required: {{required}}.",
       "deposit_cash": "Deposit cash",
       "ticker": "Ticker",
+      "thesis": "Investment Thesis",
+      "thesis_hint": "Optional - why you are investing. Default: auto-tracked via transaction.",
       "quantity": "Quantity",
       "price": "Price per unit",
       "price_hint": "Leave blank if this transaction has no unit price.",

@@ -397,7 +397,7 @@ export function AccountsTab({
                           <td className="py-1.5 pr-2">
                             <div className="flex items-center gap-1.5">
                               <Badge variant="secondary" className="text-[11px]">
-                                {String(position.category)}
+                                {t(`config.category.${String(position.category).toLowerCase()}`)}
                               </Badge>
                               {position.is_cash ? (
                                 <Badge variant="outline" className="text-[11px]">

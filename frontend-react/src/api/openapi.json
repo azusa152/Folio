@@ -12762,6 +12762,19 @@
             "title": "Note",
             "default": ""
           },
+          "thesis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis",
+            "description": "Thesis used when auto-adding a new ticker to radar"
+          },
           "transaction_date": {
             "type": "string",
             "format": "date",
@@ -12869,6 +12882,11 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "auto_radar": {
+            "type": "boolean",
+            "title": "Auto Radar",
+            "default": false
           }
         },
         "type": "object",

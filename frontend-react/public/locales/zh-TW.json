@@ -1799,6 +1799,8 @@
       "insufficient_balance": "餘額不足（{{currency}}）。可用：{{available}}，需求：{{required}}。",
       "deposit_cash": "先存入現金",
       "ticker": "Ticker",
+      "thesis": "投資觀點",
+      "thesis_hint": "選填 - 可填寫投資理由。未填時預設為「透過交易自動追蹤」。",
       "quantity": "數量",
       "price": "每單位價格",
       "price_hint": "若此交易沒有單價可留空。",
