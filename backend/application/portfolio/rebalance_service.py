@@ -522,6 +522,16 @@ def _do_calculate_rebalance(
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
     xray_analyzed_value = 0.0
     xray_skipped_etfs: list[dict[str, object]] = []
+    xray_denominator = sum(
+        agg["mv"]
+        for agg in ticker_agg.values()
+        if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
+    )
+    xray_pct = (
+        (lambda val: round((val / xray_denominator) * 100, 2))
+        if xray_denominator > 0
+        else (lambda _val: 0.0)
+    )
 
     for ticker, agg in ticker_agg.items():
         cat = agg["category"]
@@ -561,9 +571,7 @@ def _do_calculate_rebalance(
         elif ticker in known_etf_tickers and not etf_sector_weights:
             # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
             # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
-            skipped_weight_pct = (
-                round((mv / total_value) * 100, 2) if total_value > 0 else 0.0
-            )
+            skipped_weight_pct = xray_pct(mv)
             xray_skipped_etfs.append(
                 {"ticker": ticker, "weight_pct": skipped_weight_pct}
             )
@@ -594,15 +602,9 @@ def _do_calculate_rebalance(
         total_val = data["direct"] + data["indirect"]
         if total_val <= 0:
             continue
-        direct_pct = (
-            round((data["direct"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
-        indirect_pct = (
-            round((data["indirect"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
-        total_pct = (
-            round((total_val / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
+        direct_pct = xray_pct(data["direct"])
+        indirect_pct = xray_pct(data["indirect"])
+        total_pct = xray_pct(total_val)
         xray_entries.append(
             {
                 "symbol": symbol,
@@ -619,9 +621,7 @@ def _do_calculate_rebalance(
 
     xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
     result["xray"] = xray_entries
-    result["xray_coverage_pct"] = (
-        round((xray_analyzed_value / total_value) * 100, 2) if total_value > 0 else 0.0
-    )
+    result["xray_coverage_pct"] = xray_pct(xray_analyzed_value)
     result["xray_skipped_etfs"] = sorted(
         xray_skipped_etfs,
         key=lambda x: float(x["weight_pct"]),

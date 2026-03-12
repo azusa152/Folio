@@ -907,7 +907,7 @@
       "empty": "No ETF overlap data.",
       "subtitle": "Shows your true stock exposure, including overlap hidden inside ETFs.",
       "coverage_label": "Data coverage",
-      "coverage": "Covers {{pct}}% of portfolio",
+      "coverage": "Covers {{pct}}% of equity exposure (cash and bonds excluded)",
       "low_coverage": "X-Ray coverage is currently low, so this view may miss meaningful exposures.",
       "show_table": "Show table anyway",
       "hide_table": "Hide table",

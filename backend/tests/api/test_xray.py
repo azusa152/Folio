@@ -32,6 +32,17 @@ _STOCK_HOLDING = {
     "is_cash": False,
 }
 
+_CASH_HOLDING = {
+    "ticker": "USD",
+    "category": "Cash",
+    "quantity": 1_000_000,
+    "cost_basis": 1.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": True,
+}
+
 
 def _setup_portfolio(client: TestClient, holdings: list[dict] | None = None):
     """Create holdings and an investment profile."""
@@ -158,6 +169,20 @@ class TestXRayCoverageMath:
         data = resp.json()
         assert data["xray_coverage_pct"] >= 99.0
 
+    def test_direct_stock_row_percentages_should_exclude_cash_denominator(self, client):
+        """AAPL + large cash should still report 100% equity xray row weights."""
+        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_HOLDING])
+
+        resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["xray_coverage_pct"] == 100
+        xray_by_symbol = {entry["symbol"]: entry for entry in data["xray"]}
+        assert "AAPL" in xray_by_symbol
+        assert xray_by_symbol["AAPL"]["direct_weight_pct"] == 100
+        assert xray_by_symbol["AAPL"]["total_weight_pct"] == 100
+
 
 class TestXRaySkippedEtfs:
     """Verify skipped ETFs are reported when constituents are unavailable."""
@@ -207,6 +232,31 @@ class TestXRaySkippedEtfs:
         assert resp.status_code == 200
         data = resp.json()
         assert data["xray_skipped_etfs"] == []
+
+    def test_skipped_etf_weight_should_exclude_cash_denominator(self, client):
+        """Skipped ETF with large cash still uses equity-only denominator."""
+        _setup_portfolio(client, [_ETF_HOLDING, _CASH_HOLDING])
+        _mark_etf(client, "VTI")
+
+        with (
+            patch(
+                "application.portfolio.rebalance_service.get_etf_top_holdings",
+                return_value=None,
+            ),
+            patch(
+                "application.portfolio.rebalance_service.get_etf_sector_weights",
+                return_value=None,
+            ),
+        ):
+            resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        skipped = data["xray_skipped_etfs"]
+        skipped_tickers = [e["ticker"] for e in skipped]
+        assert "VTI" in skipped_tickers
+        vti_entry = next(e for e in skipped if e["ticker"] == "VTI")
+        assert vti_entry["weight_pct"] == 100
 
 
 class TestXRayResponseContract:

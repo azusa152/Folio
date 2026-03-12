@@ -217,7 +217,10 @@ class RebalanceResponse(BaseModel):
     advice: list[str]
     holdings_detail: list[HoldingDetail] = []
     xray: list[XRayEntry] = []
-    xray_coverage_pct: float = 0.0
+    xray_coverage_pct: float = Field(
+        default=0.0,
+        description="X-Ray coverage over equity exposure (cash/bond excluded)",
+    )
     xray_skipped_etfs: list[XRaySkippedETF] = Field(default_factory=list)
     health_score: int = 100
     health_level: str = "healthy"  # "healthy" | "caution" | "alert"

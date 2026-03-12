@@ -907,7 +907,7 @@
       "empty": "無 ETF 重疊資料。",
       "subtitle": "顯示你的真實個股曝險，包含 ETF 內隱藏的重疊持股。",
       "coverage_label": "資料覆蓋率",
-      "coverage": "目前覆蓋投資組合 {{pct}}%",
+      "coverage": "目前覆蓋股票曝險 {{pct}}%（不含現金與債券）",
       "low_coverage": "目前 X-Ray 覆蓋率偏低，結果可能遺漏重要曝險。",
       "show_table": "仍然顯示表格",
       "hide_table": "隱藏表格",

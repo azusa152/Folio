@@ -83,6 +83,7 @@ def _add_holding(
     ticker: str,
     quantity: float = 10.0,
     category: StockCategory = StockCategory.GROWTH,
+    is_cash: bool = False,
     *,
     account_id: int | None = None,
 ) -> None:
@@ -94,7 +95,7 @@ def _add_holding(
             quantity=quantity,
             cost_basis=100.0,
             currency="USD",
-            is_cash=False,
+            is_cash=is_cash,
             account_id=account_id,
         )
     )
@@ -243,6 +244,56 @@ class TestXRayEtfBreakdown:
         assert "NVDA" in xray
         assert xray["NVDA"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.01)
         assert xray["NVDA"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
+
+    @patch(f"{_MODULE}.get_etf_top_holdings")
+    @patch(f"{_MODULE}.get_exchange_rates")
+    @patch(f"{_MODULE}.get_technical_signals")
+    def test_xray_coverage_should_exclude_cash_from_denominator(
+        self,
+        mock_signals,
+        mock_fx,
+        mock_etf_holdings,
+        db_session: Session,
+    ):
+        """Cash should not dilute X-Ray coverage percentage."""
+        acct = _seed_account(db_session)
+        _add_profile(db_session)
+        _add_holding(db_session, "AAPL", quantity=10.0, account_id=acct.id)
+        _add_holding(
+            db_session,
+            "USD",
+            quantity=90000.0,
+            category=StockCategory.CASH,
+            is_cash=True,
+            account_id=acct.id,
+        )
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"AAPL": 100.0, "USD": 1.0}.get(ticker, 100.0),
+            }
+
+        mock_signals.side_effect = _signals_side_effect
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+
+        patchers = [patch(p, return_value=None) for p in _BASE_PATCHES]
+        for p in patchers:
+            p.start()
+
+        try:
+            result = calculate_rebalance(db_session, "USD")
+        finally:
+            for p in patchers:
+                p.stop()
+
+        assert result["xray_coverage_pct"] == pytest.approx(100.0, rel=0.001)
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "AAPL" in xray
+        assert xray["AAPL"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.001)
+        assert xray["AAPL"]["total_weight_pct"] == pytest.approx(100.0, rel=0.001)
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")

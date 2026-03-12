@@ -907,7 +907,7 @@
       "empty": "无 ETF 重叠数据。",
       "subtitle": "显示你的真实个股敞口，包含 ETF 内隐藏的重叠持股。",
       "coverage_label": "数据覆盖率",
-      "coverage": "当前覆盖投资组合 {{pct}}%",
+      "coverage": "当前覆盖股票敞口 {{pct}}%（不含现金与债券）",
       "low_coverage": "当前 X-Ray 覆盖率偏低，结果可能遗漏重要敞口。",
       "show_table": "仍然显示表格",
       "hide_table": "隐藏表格",

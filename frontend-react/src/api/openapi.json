@@ -11422,6 +11422,7 @@
           "xray_coverage_pct": {
             "type": "number",
             "title": "Xray Coverage Pct",
+            "description": "X-Ray coverage over equity exposure (cash/bond excluded)",
             "default": 0.0
           },
           "xray_skipped_etfs": {
