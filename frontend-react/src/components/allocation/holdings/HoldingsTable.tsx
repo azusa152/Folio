@@ -8,7 +8,6 @@ interface Props {
   holdings: HoldingDetail[]
   privacyMode: boolean
   displayCurrency?: string
-  onRecordTransaction?: (ticker: string) => void
 }
 
 function fmt(v: number | null | undefined, decimals = 2): string {
@@ -37,7 +36,7 @@ function computeFxReturn(purchaseFx: number | null | undefined, currentFx: numbe
   return (currentFx / purchaseFx - 1) * 100
 }
 
-export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecordTransaction }: Props) {
+export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
 
@@ -48,6 +47,9 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
   return (
     <div className="space-y-1">
       <p className="text-sm font-semibold">{t("allocation.holdings.title")}</p>
+      <div className="text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2 mb-2">
+        {t("allocation.holdings_read_only_hint")}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -59,9 +61,6 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
               <th className="text-right py-0.5 pr-2">{t("allocation.col.weight_pct")}</th>
               <th className="text-right py-0.5 pr-2">{term("cost_basis", t("allocation.col.cost"))}</th>
               <th className="text-right py-0.5">{t("allocation.col.change_pct")}</th>
-              {onRecordTransaction ? (
-                <th className="text-right py-0.5">{t("transactions.table.actions")}</th>
-              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -114,17 +113,6 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
                       </div>
                     )}
                   </td>
-                  {onRecordTransaction ? (
-                    <td className="py-0.5 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => onRecordTransaction(h.ticker)}
-                        className="text-[11px] text-primary hover:underline"
-                      >
-                        {t("transactions.record_from_holding")}
-                      </button>
-                    </td>
-                  ) : null}
                 </tr>
               )
             })}

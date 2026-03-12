@@ -901,6 +901,7 @@
       "title": "持仓明细",
       "empty": "无持仓数据。"
     },
+    "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“交易”页签中进行买入、卖出或仓位调整。",
     "xray": {
       "title": "🔬 X-Ray 重叠分析",
       "empty": "无 ETF 重叠数据。",

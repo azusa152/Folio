@@ -49,6 +49,12 @@ def _create_holding(client, payload=None, account_id=None):
     return resp.json()
 
 
+def _list_transactions(client):
+    resp = client.get("/transactions")
+    assert resp.status_code == 200
+    return resp.json()
+
+
 # ---------------------------------------------------------------------------
 # Holdings CRUD
 # ---------------------------------------------------------------------------
@@ -73,6 +79,13 @@ class TestCreateHolding:
 
         # Assert
         assert resp.status_code == 422
+
+    def test_create_holding_should_record_opening_balance_transaction(self, client):
+        _create_holding(client)
+        txns = _list_transactions(client)
+        assert len(txns) == 1
+        assert txns[0]["transaction_type"] == "OPENING_BALANCE"
+        assert txns[0]["ticker"] == "NVDA"
 
 
 class TestCreateCashHolding:
@@ -186,6 +199,15 @@ class TestUpdateHolding:
         # Assert
         assert resp.status_code == 422
 
+    def test_update_quantity_should_create_adjustment_transaction(self, client):
+        created = _create_holding(client)
+        holding_id = created["id"]
+        resp = client.put(f"/holdings/{holding_id}", json={"quantity": 25})
+        assert resp.status_code == 200
+        txns = _list_transactions(client)
+        assert len(txns) == 2
+        assert any(txn["transaction_type"] == "ADJUSTMENT" for txn in txns)
+
 
 class TestDeleteHolding:
     """Tests for DELETE /holdings/{holding_id}."""
@@ -215,6 +237,15 @@ class TestDeleteHolding:
         # Assert
         assert resp.status_code == 404
         assert resp.json()["detail"]["error_code"] == "HOLDING_NOT_FOUND"
+
+    def test_delete_should_create_zeroing_adjustment_before_removal(self, client):
+        created = _create_holding(client)
+        holding_id = created["id"]
+        resp = client.delete(f"/holdings/{holding_id}")
+        assert resp.status_code == 200
+        txns = _list_transactions(client)
+        assert len(txns) == 2
+        assert any(txn["transaction_type"] == "ADJUSTMENT" for txn in txns)
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +321,17 @@ class TestImportHoldings:
         tickers = {h["ticker"] for h in holdings}
         assert "NVDA" not in tickers
         assert tickers == {"AAPL", "GOOGL"}
+        txns = _list_transactions(client)
+        opening_tickers = {
+            txn["ticker"]
+            for txn in txns
+            if txn["transaction_type"] == "OPENING_BALANCE"
+        }
+        assert {"AAPL", "GOOGL"} <= opening_tickers
+        assert any(
+            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "NVDA"
+            for txn in txns
+        )
 
     def test_import_should_handle_empty_list(self, client):
         # Arrange — create initial holding
@@ -369,6 +411,15 @@ class TestImportHoldings:
         assert ticker_to_account["AAPL"] == account_a_id
         assert "MSFT" not in ticker_to_account
         assert ticker_to_account["GOOGL"] == account_b_id
+        txns = _list_transactions(client)
+        assert any(
+            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "MSFT"
+            for txn in txns
+        )
+        assert not any(
+            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "AAPL"
+            for txn in txns
+        )
 
     def test_import_append_should_keep_existing_holdings(self, client):
         # Arrange

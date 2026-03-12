@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { CsvImportDialog } from "@/components/allocation/holdings/CsvImportDialog"
-import { useAddHolding, useAddCashHolding, useImportHoldings } from "@/api/hooks/useAllocation"
+import { useAddCashHolding, useAddHolding, useImportHoldings } from "@/api/hooks/useAllocation"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import { useHoldings } from "@/api/hooks/useDashboard"

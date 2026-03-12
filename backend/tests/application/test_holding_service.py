@@ -5,7 +5,7 @@ Uses db_session fixture (in-memory SQLite) — no mocks required for pure CRUD.
 
 import pytest
 from fastapi import HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from application.portfolio.holding_service import (
     create_cash_holding,
@@ -17,8 +17,8 @@ from application.portfolio.holding_service import (
     update_holding,
 )
 from domain.constants import DEFAULT_USER_ID
-from domain.entities import Account, Holding
-from domain.enums import StockCategory
+from domain.entities import Account, Holding, Transaction
+from domain.enums import StockCategory, TransactionType
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -62,12 +62,14 @@ def _make_payload(account_id: int, **kwargs) -> dict:
 def _seed_holding(
     session: Session, ticker: str = "AAPL", quantity: float = 5.0
 ) -> Holding:
+    account = _seed_account(session, name=f"{ticker}-account", broker="Test")
     h = Holding(
         user_id=DEFAULT_USER_ID,
         ticker=ticker,
         category=StockCategory.TREND_SETTER,
         quantity=quantity,
         currency="USD",
+        account_id=account.id,
     )
     session.add(h)
     session.commit()
@@ -138,6 +140,14 @@ class TestCreateHolding:
         create_holding(db_session, _make_payload(account.id), _LANG)
         assert len(list_holdings(db_session)) == 1
 
+    def test_creates_opening_balance_transaction(self, db_session: Session) -> None:
+        account = _seed_account(db_session)
+        create_holding(db_session, _make_payload(account.id), _LANG)
+        txns = db_session.exec(select(Transaction)).all()
+        assert len(txns) == 1
+        assert txns[0].transaction_type == TransactionType.OPENING_BALANCE
+        assert txns[0].ticker == "AAPL"
+
     def test_crypto_holding_requires_usd_currency(self, db_session: Session) -> None:
         account = _seed_account(db_session)
         with pytest.raises(HTTPException) as exc_info:
@@ -202,6 +212,42 @@ class TestUpdateHolding:
         assert result["quantity"] == 20.0
         assert result["cost_basis"] == 180.0
 
+    def test_quantity_change_creates_adjustment_transaction(
+        self, db_session: Session
+    ) -> None:
+        holding = _seed_holding(db_session, quantity=5.0)
+        update_holding(
+            db_session,
+            holding.id,
+            {"quantity": 8.0},
+            _LANG,  # type: ignore[arg-type]
+        )
+        txns = db_session.exec(select(Transaction)).all()
+        assert len(txns) == 1
+        assert txns[0].transaction_type == TransactionType.ADJUSTMENT
+        assert txns[0].quantity == 3.0
+
+    def test_quantity_decrease_with_zero_basis_keeps_decrease_direction(
+        self, db_session: Session
+    ) -> None:
+        holding = _seed_holding(db_session, quantity=9.0)
+        holding.cost_basis = 0.0
+        db_session.add(holding)
+        db_session.commit()
+
+        update_holding(
+            db_session,
+            holding.id,
+            {"quantity": 4.0},
+            _LANG,  # type: ignore[arg-type]
+        )
+
+        txns = db_session.exec(select(Transaction)).all()
+        assert len(txns) == 1
+        assert txns[0].transaction_type == TransactionType.ADJUSTMENT
+        assert txns[0].quantity == 5.0
+        assert txns[0].total_amount < 0
+
     def test_raises_404_for_nonexistent_id(self, db_session: Session) -> None:
         with pytest.raises(HTTPException) as exc_info:
             update_holding(db_session, 99999, _make_payload(1), _LANG)
@@ -237,6 +283,17 @@ class TestDeleteHolding:
         result = delete_holding(db_session, holding.id, _LANG)  # type: ignore[arg-type]
         assert "message" in result
         assert len(list_holdings(db_session)) == 0
+
+    def test_delete_creates_zeroing_adjustment_transaction(
+        self, db_session: Session
+    ) -> None:
+        holding = _seed_holding(db_session, quantity=7.0)
+        delete_holding(db_session, holding.id, _LANG)  # type: ignore[arg-type]
+        txns = db_session.exec(select(Transaction)).all()
+        assert len(txns) == 1
+        assert txns[0].transaction_type == TransactionType.ADJUSTMENT
+        assert txns[0].quantity == 7.0
+        assert txns[0].total_amount < 0
 
     def test_raises_404_for_nonexistent_id(self, db_session: Session) -> None:
         with pytest.raises(HTTPException) as exc_info:
@@ -288,6 +345,9 @@ class TestImportHoldings:
         result = import_holdings(db_session, self._import_payload(account.id), _LANG)
         assert result["imported"] == 1
         assert result["errors"] == []
+        txns = db_session.exec(select(Transaction)).all()
+        assert len(txns) == 1
+        assert txns[0].transaction_type == TransactionType.OPENING_BALANCE
 
     def test_replaces_existing_holdings(self, db_session: Session) -> None:
         account = _seed_account(db_session)
@@ -297,6 +357,15 @@ class TestImportHoldings:
         remaining = list_holdings(db_session)
         assert len(remaining) == 1
         assert remaining[0]["ticker"] == "VTI"
+        txns = db_session.exec(select(Transaction)).all()
+        opening_count = sum(
+            1 for txn in txns if txn.transaction_type == TransactionType.OPENING_BALANCE
+        )
+        adjustment_count = sum(
+            1 for txn in txns if txn.transaction_type == TransactionType.ADJUSTMENT
+        )
+        assert opening_count == 1
+        assert adjustment_count == 2
 
     def test_raises_400_when_data_exceeds_limit(self, db_session: Session) -> None:
         account = _seed_account(db_session)
@@ -375,6 +444,14 @@ class TestImportHoldings:
         assert "MSFT" not in tickers
         tsla = next(item for item in holdings if item["ticker"] == "TSLA")
         assert tsla["account_id"] == account_b.id
+        txns = db_session.exec(select(Transaction)).all()
+        closing_for_msft = [
+            txn
+            for txn in txns
+            if txn.transaction_type == TransactionType.ADJUSTMENT
+            and txn.ticker == "MSFT"
+        ]
+        assert len(closing_for_msft) == 1
 
     def test_append_mode_keeps_existing_holdings(self, db_session: Session) -> None:
         account = _seed_account(db_session)

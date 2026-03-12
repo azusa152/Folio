@@ -244,7 +244,6 @@ export default function Allocation() {
             displayCurrency={displayCurrency}
             privacyMode={privacyMode}
             enabled={activeTab === "portfolio"}
-            onRecordTransaction={(ticker) => openTransactionSheet({ ticker })}
           />
         </TabsContent>
 

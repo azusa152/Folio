@@ -5,7 +5,7 @@ Application — Holding Service。
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
@@ -13,15 +13,16 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+    from domain.entities import Holding
+
+from application.portfolio.settlement_service import settle_transaction
 from domain.constants import (
-    DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
     ERROR_HOLDING_NOT_FOUND,
     ERROR_INVALID_INPUT,
     GENERIC_VALIDATION_ERROR,
 )
-from domain.entities import Holding
-from domain.enums import StockCategory
+from domain.enums import StockCategory, TransactionType
 from i18n import t
 from infrastructure import repositories as repo
 from infrastructure.market_data import get_exchange_rate
@@ -108,6 +109,45 @@ def _ensure_account_exists(session: Session, account_id: int, lang: str) -> None
         )
 
 
+def _signed_adjustment_amount(
+    *, quantity: float, cost_basis: float | None, is_decrease: bool
+) -> float:
+    """Build a non-zero signed marker amount for stock ADJUSTMENT direction."""
+    unit_price = float(cost_basis or 0)
+    magnitude = quantity * unit_price
+    if magnitude <= 0:
+        magnitude = quantity
+    return -magnitude if is_decrease else magnitude
+
+
+def _close_and_delete_holding_for_replace(
+    session: Session, *, holding: Holding, lang: str, note: str
+) -> None:
+    if holding.account_id is None:
+        repo.delete_holding(session, holding)
+        return
+    if float(holding.quantity) > 1e-9:
+        txn_data = {
+            "account_id": int(holding.account_id),
+            "ticker": holding.ticker,
+            "transaction_type": TransactionType.ADJUSTMENT.value,
+            "quantity": float(holding.quantity),
+            "price": holding.cost_basis,
+            "total_amount": _signed_adjustment_amount(
+                quantity=float(holding.quantity),
+                cost_basis=holding.cost_basis,
+                is_decrease=True,
+            ),
+            "currency": holding.currency,
+            "fee": 0.0,
+            "note": note,
+            "transaction_date": date.today(),
+        }
+        settle_transaction(session, txn_data, lang)
+        session.refresh(holding)
+    repo.delete_holding(session, holding)
+
+
 # ---------------------------------------------------------------------------
 # Service functions
 # ---------------------------------------------------------------------------
@@ -120,7 +160,7 @@ def list_holdings(session: Session) -> list[dict]:
 
 
 def create_holding(session: Session, payload: dict, lang: str) -> dict:
-    """Create a new holding. Returns the created holding dict."""
+    """Create a holding by recording an OPENING_BALANCE transaction."""
     account_id = payload.get("account_id")
     if account_id is None:
         raise HTTPException(
@@ -145,27 +185,53 @@ def create_holding(session: Session, payload: dict, lang: str) -> dict:
         coingecko_id=payload.get("coingecko_id"),
         lang=lang,
     )
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=payload["ticker"].strip().upper(),
-        coingecko_id=coingecko_id,
-        category=category,
-        quantity=payload["quantity"],
-        cost_basis=payload.get("cost_basis"),
-        broker=payload.get("broker"),
-        account_id=int(account_id),
-        currency=currency,
-        account_type=payload.get("account_type"),
-        is_cash=payload.get("is_cash", False),
-        purchase_fx_rate=purchase_fx_rate,
+    ticker = payload["ticker"].strip().upper()
+    is_cash = bool(payload.get("is_cash", False))
+    quantity = float(payload["quantity"])
+    cost_basis = payload.get("cost_basis")
+    if is_cash:
+        ticker = currency
+        cost_basis = 1.0
+
+    txn_data = {
+        "account_id": int(account_id),
+        "ticker": ticker,
+        "transaction_type": TransactionType.OPENING_BALANCE.value,
+        "quantity": quantity,
+        "price": cost_basis,
+        "total_amount": quantity * (cost_basis or 0) if not is_cash else quantity,
+        "currency": currency,
+        "fee": 0.0,
+        "note": "Created via holding form",
+        "transaction_date": date.today(),
+        "category": category.value,
+    }
+    settle_transaction(session, txn_data, lang)
+
+    holding = (
+        repo.find_cash_holding_by_account_and_currency(
+            session, int(account_id), currency
+        )
+        if is_cash
+        else repo.find_stock_holding_by_account_and_ticker(
+            session, int(account_id), ticker
+        )
     )
+    if holding is None:
+        return {}
+
+    # Keep the same metadata behavior as legacy direct holding creation.
+    holding.coingecko_id = coingecko_id
+    holding.broker = payload.get("broker")
+    holding.account_type = payload.get("account_type")
+    holding.purchase_fx_rate = purchase_fx_rate
     saved = repo.save_holding(session, holding)
-    logger.info("新增持倉：%s（%s）", saved.ticker, saved.category)
+    logger.info("新增持倉（交易入帳）：%s（%s）", saved.ticker, saved.category)
     return _holding_to_dict(saved)
 
 
 def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
-    """Create a cash holding. Returns the created holding dict."""
+    """Create a cash holding by recording an OPENING_BALANCE transaction."""
     account_id = payload.get("account_id")
     if account_id is None:
         raise HTTPException(
@@ -181,21 +247,31 @@ def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
     purchase_fx_rate = (
         get_exchange_rate("USD", currency_upper) if currency_upper != "USD" else 1.0
     )
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=currency_upper,
-        category=StockCategory.CASH,
-        quantity=payload["amount"],
-        cost_basis=1.0,
-        broker=payload.get("broker"),
-        account_id=int(account_id),
-        currency=currency_upper,
-        account_type=payload.get("account_type"),
-        is_cash=True,
-        purchase_fx_rate=purchase_fx_rate,
+    amount = float(payload["amount"])
+    txn_data = {
+        "account_id": int(account_id),
+        "ticker": currency_upper,
+        "transaction_type": TransactionType.OPENING_BALANCE.value,
+        "quantity": amount,
+        "price": 1.0,
+        "total_amount": amount,
+        "currency": currency_upper,
+        "fee": 0.0,
+        "note": "Created via cash holding form",
+        "transaction_date": date.today(),
+    }
+    settle_transaction(session, txn_data, lang)
+
+    holding = repo.find_cash_holding_by_account_and_currency(
+        session, int(account_id), currency_upper
     )
+    if holding is None:
+        return {}
+    holding.broker = payload.get("broker")
+    holding.account_type = payload.get("account_type")
+    holding.purchase_fx_rate = purchase_fx_rate
     saved = repo.save_holding(session, holding)
-    logger.info("新增現金持倉：%s %.2f", saved.ticker, saved.quantity)
+    logger.info("新增現金持倉（交易入帳）：%s %.2f", saved.ticker, saved.quantity)
     return _holding_to_dict(saved)
 
 
@@ -214,8 +290,7 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
             if isinstance(input_category, StockCategory)
             else StockCategory(str(input_category))
         )
-    if "quantity" in payload:
-        holding.quantity = payload["quantity"]
+    original_quantity = float(holding.quantity)
     if "cost_basis" in payload:
         holding.cost_basis = payload["cost_basis"]
     if "broker" in payload:
@@ -252,6 +327,37 @@ def update_holding(session: Session, holding_id: int, payload: dict, lang: str) 
     holding.purchase_fx_rate = purchase_fx_rate
     holding.coingecko_id = normalized_coingecko_id
 
+    if "quantity" in payload:
+        new_quantity = float(payload["quantity"])
+        qty_delta = new_quantity - original_quantity
+        if abs(qty_delta) > 1e-9:
+            if holding.account_id is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error_code": ERROR_INVALID_INPUT,
+                        "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+                    },
+                )
+            abs_delta = abs(qty_delta)
+            txn_data = {
+                "account_id": int(holding.account_id),
+                "ticker": holding.ticker,
+                "transaction_type": TransactionType.ADJUSTMENT.value,
+                "quantity": abs_delta,
+                "price": holding.cost_basis,
+                "total_amount": _signed_adjustment_amount(
+                    quantity=abs_delta,
+                    cost_basis=holding.cost_basis,
+                    is_decrease=qty_delta < 0,
+                ),
+                "currency": holding.currency,
+                "fee": 0.0,
+                "note": f"Adjusted from {original_quantity} to {new_quantity}",
+                "transaction_date": date.today(),
+            }
+            settle_transaction(session, txn_data, lang)
+            session.refresh(holding)
     holding.updated_at = datetime.now(UTC)
     saved = repo.save_holding(session, holding)
     return _holding_to_dict(saved)
@@ -261,6 +367,34 @@ def delete_holding(session: Session, holding_id: int, lang: str) -> dict:
     """Delete a holding. Raises HTTPException 404 if not found."""
     holding = _get_holding_or_raise(session, holding_id, lang)
     ticker = holding.ticker
+    if float(holding.quantity) > 1e-9:
+        if holding.account_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": ERROR_INVALID_INPUT,
+                    "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+                },
+            )
+        qty = float(holding.quantity)
+        txn_data = {
+            "account_id": int(holding.account_id),
+            "ticker": holding.ticker,
+            "transaction_type": TransactionType.ADJUSTMENT.value,
+            "quantity": qty,
+            "price": holding.cost_basis,
+            "total_amount": _signed_adjustment_amount(
+                quantity=qty,
+                cost_basis=holding.cost_basis,
+                is_decrease=True,
+            ),
+            "currency": holding.currency,
+            "fee": 0.0,
+            "note": "Position closed via holding deletion",
+            "transaction_date": date.today(),
+        }
+        settle_transaction(session, txn_data, lang)
+        session.refresh(holding)
     repo.delete_holding(session, holding)
     logger.info("刪除持倉：%s", ticker)
     return {"message": t("api.holding_deleted", lang=lang, ticker=ticker)}
@@ -342,50 +476,86 @@ def import_holdings(
     for candidate_account_id in set(resolved_account_ids):
         _ensure_account_exists(session, candidate_account_id, lang)
 
-    if mode == "replace_all":
-        repo.delete_all_holdings(session)
-    elif mode == "replace_account":
-        # account_id validated and resolved above
-        repo.delete_holdings_by_account(session, int(account_id))
+    if mode in {"replace_all", "replace_account"}:
+        existing_holdings = repo.find_all_holdings(session)
+        if mode == "replace_account":
+            existing_holdings = [
+                h for h in existing_holdings if h.account_id == int(account_id)
+            ]
+        for existing in existing_holdings:
+            _close_and_delete_holding_for_replace(
+                session,
+                holding=existing,
+                lang=lang,
+                note=(
+                    "Closed via holdings import replace_all"
+                    if mode == "replace_all"
+                    else "Closed via holdings import replace_account"
+                ),
+            )
 
     count = 0
     errors: list[str] = []
     for i, item in enumerate(data):
         try:
-            holding = Holding(
-                user_id=DEFAULT_USER_ID,
-                ticker=item["ticker"].strip().upper(),
-                coingecko_id=None,
-                category=(
-                    item["category"]
-                    if isinstance(item["category"], StockCategory)
-                    else StockCategory(str(item["category"]))
-                ),
-                quantity=item["quantity"],
-                cost_basis=item.get("cost_basis"),
-                broker=item.get("broker"),
-                account_id=resolved_account_ids[i],
-                currency=item["currency"].strip().upper(),
-                account_type=item.get("account_type"),
-                is_cash=item.get("is_cash", False),
+            target_account_id = resolved_account_ids[i]
+            category = (
+                item["category"]
+                if isinstance(item["category"], StockCategory)
+                else StockCategory(str(item["category"]))
             )
-            (
-                holding.currency,
-                holding.purchase_fx_rate,
-                holding.coingecko_id,
-            ) = _validate_crypto_payload(
-                category=holding.category,
-                currency=holding.currency,
+            is_cash = bool(item.get("is_cash", False))
+            raw_currency = str(item.get("currency", "USD"))
+            raw_ticker = str(item["ticker"])
+            quantity = float(item["quantity"])
+            cost_basis = item.get("cost_basis")
+            if is_cash:
+                category = StockCategory.CASH
+            currency, purchase_fx_rate, coingecko_id = _validate_crypto_payload(
+                category=category,
+                currency=raw_currency.strip().upper(),
                 coingecko_id=item.get("coingecko_id"),
                 lang=lang,
             )
-            session.add(holding)
+            ticker = currency if is_cash else raw_ticker.strip().upper()
+            price = 1.0 if is_cash else cost_basis
+
+            txn_data = {
+                "account_id": target_account_id,
+                "ticker": ticker,
+                "transaction_type": TransactionType.OPENING_BALANCE.value,
+                "quantity": quantity,
+                "price": price,
+                "total_amount": quantity * (cost_basis or 0)
+                if not is_cash
+                else quantity,
+                "currency": currency,
+                "fee": 0.0,
+                "note": f"Imported row {i + 1}",
+                "transaction_date": date.today(),
+                "category": category.value,
+            }
+            settle_transaction(session, txn_data, lang)
+
+            created = (
+                repo.find_cash_holding_by_account_and_currency(
+                    session, target_account_id, currency
+                )
+                if is_cash
+                else repo.find_stock_holding_by_account_and_ticker(
+                    session, target_account_id, ticker
+                )
+            )
+            if created is not None:
+                created.broker = item.get("broker")
+                created.account_type = item.get("account_type")
+                created.coingecko_id = coingecko_id
+                created.purchase_fx_rate = purchase_fx_rate
+                repo.save_holding(session, created)
             count += 1
         except Exception as e:
             logger.warning("持倉匯入第 %d 筆失敗：%s", i + 1, e)
             errors.append(t("api.import_item_failed", lang=lang, index=i + 1))
-
-    session.commit()
     logger.info("匯入持倉完成：%d 筆成功，%d 筆失敗。", count, len(errors))
     return {
         "message": t("api.import_done", lang=lang, count=count),

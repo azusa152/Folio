@@ -23,7 +23,6 @@ interface Props {
   displayCurrency: string
   privacyMode: boolean
   enabled: boolean
-  onRecordTransaction?: (ticker: string) => void
 }
 
 type DrillSource = "category" | "geo" | "asset_class"
@@ -50,7 +49,7 @@ function filterHoldingsByDrill(
   }
 }
 
-export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRecordTransaction }: Props) {
+export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
   const { data, isLoading } = useAllocRebalance(displayCurrency, enabled)
@@ -149,7 +148,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
             holdings={filterHoldingsByDrill(data.holdings_detail, drill.source, drill.value)}
             privacyMode={privacyMode}
             displayCurrency={displayCurrency}
-            onRecordTransaction={onRecordTransaction}
           />
         </div>
       )}
@@ -191,7 +189,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
                 holdings={filterHoldingsByDrill(data.holdings_detail, drill.source, drill.value)}
                 privacyMode={privacyMode}
                 displayCurrency={displayCurrency}
-                onRecordTransaction={onRecordTransaction}
               />
             </div>
           )}
@@ -210,7 +207,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
         holdings={data.holdings_detail}
         privacyMode={privacyMode}
         displayCurrency={displayCurrency}
-        onRecordTransaction={onRecordTransaction}
       />
 
       <hr className="border-border" />
