@@ -143,6 +143,17 @@
       "loan": "貸款",
       "other": "其他"
     },
+    "transaction_type": {
+      "BUY": "買入",
+      "SELL": "賣出",
+      "DIVIDEND": "股息",
+      "DEPOSIT": "存入",
+      "WITHDRAWAL": "提領",
+      "OPENING_BALANCE": "期初餘額",
+      "ADJUSTMENT": "調整",
+      "TRANSFER_IN": "轉入",
+      "TRANSFER_OUT": "轉出"
+    },
     "priority": {
       "rebalance": "🔄 再平衡",
       "tax": "📉 節稅",
@@ -1765,7 +1776,11 @@
       "sell": "賣出",
       "dividend": "股息",
       "deposit": "存入",
-      "withdrawal": "提領"
+      "withdrawal": "提領",
+      "opening_balance": "期初餘額",
+      "adjustment": "調整",
+      "transfer_in": "轉入",
+      "transfer_out": "轉出"
     },
     "empty": {
       "title": "目前尚無交易紀錄",
@@ -2022,6 +2037,10 @@
     "moderate_drawdown": "投資組合從峰值下跌了{{drawdown_pct}}% — 在正常範圍內。",
     "strong_risk_adjusted": "夏普比率{{sharpe}}表明風險調整後收益優異。",
     "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能補償所承擔的風險。"
+  },
+  "transaction": {
+    "stock_holding_not_found": "所選帳戶中找不到此股票代號的持倉。",
+    "insufficient_shares": "持股數量不足。可用: {{available}}，需要: {{required}}。"
   },
   "simple": {
     "twr": "投資組合回報",

@@ -188,7 +188,7 @@ class Holding(SQLModel, table=True):
 
 
 class Transaction(SQLModel, table=True):
-    """持倉交易紀錄（買入 / 賣出 / 股息 / 存入 / 提取）。"""
+    """持倉交易紀錄（含買賣、股息、入出金與對帳調整類型）。"""
 
     __table_args__ = (
         Index("ix_transaction_user_date", "user_id", "transaction_date"),
@@ -205,7 +205,10 @@ class Transaction(SQLModel, table=True):
     )
     ticker: str = Field(description="資產代號")
     transaction_type: TransactionType = Field(
-        description="交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)"
+        description=(
+            "交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/"
+            "OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)"
+        )
     )
     quantity: float = Field(description="交易數量")
     price: float | None = Field(default=None, description="每單位成交價格")

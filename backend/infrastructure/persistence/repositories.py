@@ -1257,6 +1257,20 @@ def find_cash_holding_by_account_and_currency(
     return session.exec(stmt).first()
 
 
+def find_stock_holding_by_account_and_ticker(
+    session: Session, account_id: int, ticker: str
+) -> Holding | None:
+    """查詢指定帳戶與代號的非現金持倉。"""
+    normalized_ticker = ticker.upper().strip()
+    stmt = (
+        select(Holding)
+        .where(Holding.account_id == account_id)
+        .where(func.upper(Holding.ticker) == normalized_ticker)
+        .where(Holding.is_cash == False)  # noqa: E712
+    )
+    return session.exec(stmt).first()
+
+
 def save_holding(session: Session, holding: Holding) -> Holding:
     """新增或更新持倉（含 refresh）。"""
     session.add(holding)

@@ -65,6 +65,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_scan_logs_since,
     find_sector_breakdown,
     find_stock_by_ticker,
+    find_stock_holding_by_account_and_ticker,
     find_system_templates,
     find_telegram_settings,
     find_thesis_history,

@@ -143,6 +143,17 @@
       "loan": "ローン",
       "other": "その他"
     },
+    "transaction_type": {
+      "BUY": "買付",
+      "SELL": "売却",
+      "DIVIDEND": "配当",
+      "DEPOSIT": "入金",
+      "WITHDRAWAL": "出金",
+      "OPENING_BALANCE": "開始残高",
+      "ADJUSTMENT": "調整",
+      "TRANSFER_IN": "振替入金",
+      "TRANSFER_OUT": "振替出金"
+    },
     "priority": {
       "rebalance": "🔄 リバランス",
       "tax": "📉 節税",
@@ -1765,7 +1776,11 @@
       "sell": "売却",
       "dividend": "配当",
       "deposit": "入金",
-      "withdrawal": "出金"
+      "withdrawal": "出金",
+      "opening_balance": "開始残高",
+      "adjustment": "調整",
+      "transfer_in": "振替入金",
+      "transfer_out": "振替出金"
     },
     "empty": {
       "title": "まだ取引履歴がありません",
@@ -2022,6 +2037,10 @@
     "moderate_drawdown": "ポートフォリオはピークから{{drawdown_pct}}%下落しています — 通常の範囲内です。",
     "strong_risk_adjusted": "シャープレシオ{{sharpe}}は、優れたリスク調整後リターンを示しています。",
     "negative_risk_adjusted": "シャープレシオ{{sharpe}}は、リスクに見合ったリターンが得られていないことを示しています。"
+  },
+  "transaction": {
+    "stock_holding_not_found": "選択した口座にこのティッカーの株式ポジションが見つかりません。",
+    "insufficient_shares": "株数が不足しています。利用可能: {{available}}、必要: {{required}}。"
   },
   "simple": {
     "twr": "ポートフォリオリターン",

@@ -361,7 +361,9 @@
     "created": "取引を記録しました",
     "deleted": "取引を削除しました",
     "insufficient_balance": "この取引に必要な現金残高が不足しています",
-    "cash_holding_not_found": "選択した口座と通貨の現金残高が見つかりません"
+    "cash_holding_not_found": "選択した口座と通貨の現金残高が見つかりません",
+    "stock_holding_not_found": "選択した口座にこのティッカーの株式ポジションが見つかりません。",
+    "insufficient_shares": "株数が不足しています。利用可能: {{available}}、必要: {{required}}。"
   },
   "account": {
     "not_found": "アカウントが見つかりません",

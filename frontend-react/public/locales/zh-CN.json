@@ -143,6 +143,17 @@
       "loan": "贷款",
       "other": "其他"
     },
+    "transaction_type": {
+      "BUY": "买入",
+      "SELL": "卖出",
+      "DIVIDEND": "股息",
+      "DEPOSIT": "存入",
+      "WITHDRAWAL": "提领",
+      "OPENING_BALANCE": "期初余额",
+      "ADJUSTMENT": "调整",
+      "TRANSFER_IN": "转入",
+      "TRANSFER_OUT": "转出"
+    },
     "priority": {
       "rebalance": "🔄 再平衡",
       "tax": "📉 节税",
@@ -1765,7 +1776,11 @@
       "sell": "卖出",
       "dividend": "股息",
       "deposit": "存入",
-      "withdrawal": "提领"
+      "withdrawal": "提领",
+      "opening_balance": "期初余额",
+      "adjustment": "调整",
+      "transfer_in": "转入",
+      "transfer_out": "转出"
     },
     "empty": {
       "title": "目前尚无交易记录",
@@ -2022,6 +2037,10 @@
     "moderate_drawdown": "投资组合从峰值下跌了{{drawdown_pct}}% — 在正常范围内。",
     "strong_risk_adjusted": "夏普比率{{sharpe}}表明风险调整后收益优异。",
     "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能补偿所承担的风险。"
+  },
+  "transaction": {
+    "stock_holding_not_found": "所选账户中未找到该股票代码的持仓。",
+    "insufficient_shares": "持股数量不足。可用: {{available}}，需要: {{required}}。"
   },
   "simple": {
     "twr": "投资组合回报",

@@ -12,7 +12,11 @@ class TransactionRequest(BaseModel):
     holding_id: int | None = None
     ticker: str = Field(..., min_length=1, max_length=20)
     transaction_type: str = Field(
-        ..., description="BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+        ...,
+        description=(
+            "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / "
+            "OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+        ),
     )
     quantity: float = Field(..., gt=0)
     price: float | None = None
@@ -65,7 +69,11 @@ class TransactionImportItem(BaseModel):
     account_id: int | None = None
     ticker: str = Field(..., min_length=1, max_length=20)
     transaction_type: str = Field(
-        ..., description="BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+        ...,
+        description=(
+            "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / "
+            "OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+        ),
     )
     quantity: float = Field(..., gt=0)
     price: float | None = None

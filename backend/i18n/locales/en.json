@@ -361,7 +361,9 @@
     "created": "Transaction recorded",
     "deleted": "Transaction deleted",
     "insufficient_balance": "Insufficient cash balance for this transaction",
-    "cash_holding_not_found": "No cash balance found for the selected account and currency"
+    "cash_holding_not_found": "No cash balance found for the selected account and currency",
+    "stock_holding_not_found": "No stock position found for this ticker in the selected account.",
+    "insufficient_shares": "Insufficient shares. Available: {{available}}, Required: {{required}}."
   },
   "account": {
     "not_found": "Account not found",

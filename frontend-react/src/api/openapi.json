@@ -12440,7 +12440,7 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
@@ -12562,7 +12562,7 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",

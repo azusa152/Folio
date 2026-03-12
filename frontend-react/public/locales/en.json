@@ -143,6 +143,17 @@
       "loan": "Loan",
       "other": "Other"
     },
+    "transaction_type": {
+      "BUY": "Buy",
+      "SELL": "Sell",
+      "DIVIDEND": "Dividend",
+      "DEPOSIT": "Deposit",
+      "WITHDRAWAL": "Withdrawal",
+      "OPENING_BALANCE": "Opening Balance",
+      "ADJUSTMENT": "Adjustment",
+      "TRANSFER_IN": "Transfer In",
+      "TRANSFER_OUT": "Transfer Out"
+    },
     "priority": {
       "rebalance": "🔄 Rebalance",
       "tax": "📉 Tax-Loss",
@@ -1765,7 +1776,11 @@
       "sell": "Sell",
       "dividend": "Dividend",
       "deposit": "Deposit",
-      "withdrawal": "Withdrawal"
+      "withdrawal": "Withdrawal",
+      "opening_balance": "Opening Balance",
+      "adjustment": "Adjustment",
+      "transfer_in": "Transfer In",
+      "transfer_out": "Transfer Out"
     },
     "empty": {
       "title": "No transactions yet",
@@ -2022,6 +2037,10 @@
     "moderate_drawdown": "Your portfolio has declined {{drawdown_pct}}% from its peak — within normal range.",
     "strong_risk_adjusted": "Your Sharpe ratio of {{sharpe}} indicates strong risk-adjusted returns.",
     "negative_risk_adjusted": "Your Sharpe ratio of {{sharpe}} suggests returns haven't compensated for risk."
+  },
+  "transaction": {
+    "stock_holding_not_found": "No stock position found for this ticker in the selected account.",
+    "insufficient_shares": "Insufficient shares. Available: {{available}}, Required: {{required}}."
   },
   "simple": {
     "twr": "Portfolio Return",

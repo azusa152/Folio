@@ -361,7 +361,9 @@
     "created": "交易已記錄",
     "deleted": "交易已刪除",
     "insufficient_balance": "此交易的帳戶現金餘額不足",
-    "cash_holding_not_found": "找不到所選帳戶與幣別的現金餘額"
+    "cash_holding_not_found": "找不到所選帳戶與幣別的現金餘額",
+    "stock_holding_not_found": "所選帳戶中找不到此股票代號的持倉。",
+    "insufficient_shares": "持股數量不足。可用: {{available}}，需要: {{required}}。"
   },
   "account": {
     "not_found": "找不到帳戶",
