@@ -12,7 +12,7 @@ Self-hosted investment tracking. Backend: `http://localhost:8000`.
 - For market timing, use `fear_greed` and include JP/TW thresholds when relevant.
 - For cash needs / what to sell, use `withdraw` with `amount` and `currency`.
 - For asset review, use `analytics` then `insights`.
-- For trade recording, use `add_transaction` with `ticker`, `type`, `quantity`, `total_amount`, `date`.
+- For trade recording, use `add_transaction` with required `account_id`, `ticker`, `type`, `quantity`, `total_amount`, `date`; supported types: BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT.
 
 ## Auth
 

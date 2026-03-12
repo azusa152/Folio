@@ -219,7 +219,7 @@
     "title": "📊 Portfolio Overview",
     "sop": {
       "title": "📖 Portfolio Overview: User Manual",
-      "content": "### Page Overview\n\nThis is your **investment dashboard home page**, providing an at-a-glance portfolio health overview. All data is calculated in real-time by the system — no manual action required.\n\n---\n\n### 🕐 Data Update Times\n\nTwo timestamps appear at the top of the page:\n\n- **💰 Price Data Updated** — Last time stock prices were fetched via yfinance. Corresponds to market values in rebalance analysis\n- **🔍 Last Scan** — Last time the three-layer funnel scan was executed. Scans run automatically every 15 minutes\n\n> If there's a significant time gap between the two, you can trigger a manual scan from the \"Investment Radar\" page.\n\n---\n\n### 📊 Portfolio Pulse (Hero Section — 3 Columns)\n\nThe hero card shows the three most critical numbers without scrolling:\n\n- **Left (wide): Total Portfolio Value** — Holdings market value in selected currency, with daily P&L (▲/▼ percentage and amount). Privacy mode masks the amount.\n- **Center: Fear & Greed Gauge** — Compact semi-circle showing the composite Fear & Greed Index (0–100). Data source priority: CNN Fear & Greed Index → VIX fallback. VIX value and CNN score shown as caption below.\n- **Right: Market Sentiment / Health Score / Tracking** — Three stacked metrics:\n  - *Market Sentiment*: Based on Trend Setter stocks vs their 60-day MA\n  - *Health Score*: % of tracked stocks with NORMAL signal (≥80% green, ≥50% yellow, <50% red)\n  - *Tracking / Holdings*: Radar-tracked count vs holdings count\n\n**Fear & Greed color bands:**\n\n| Score | Color | Level |\n|-------|-------|-------|\n| 0–25 | 🟥 Deep Red | Extreme Fear |\n| 25–45 | 🟧 Orange | Fear |\n| 45–55 | 🟨 Yellow | Neutral |\n| 55–75 | 🟩 Light Green | Greed |\n| 75–100 | 🟢 Dark Green | Extreme Greed |\n\n---\n\n### ⚠️ Signal Alerts (Action Required)\n\nShown **before** allocation — these require your attention first.\n\nLists all tracked stocks with **non-NORMAL signals** as a table with icon, ticker, category, and signal name:\n\n| Signal | Icon | Meaning |\n|--------|------|---------|\n| Thesis At Risk | 🚨 | Moat compromised (gross margin declining significantly) |\n| Undervalued Opportunity | 💎 | Significant undervaluation detected |\n| Heavy Selloff | 📉 | RSI oversold |\n| Early Rebound Setup | 🟢 | Low RSI with price below MA60 — possible selective entry opportunity |\n| Near Entry Zone | 🎯 | Entering accumulation zone — RSI approaching buy range |\n| Overheating Risk | 🔥 | High bias + high RSI with volume surge — short-term overheating risk |\n| Elevated Risk | ⚠️ | Elevated caution |\n| Momentum Weakening | 🔻 | Momentum weakening |\n\nIf alerts exist, **rebalance suggestions** appear inline below the alert list (auto-generated add/reduce advice). If all stocks are NORMAL, a green success banner appears instead.\n\n---\n\n### 🎯 Allocation at a Glance (Side by Side)\n\nTwo charts displayed side by side inside a bordered card:\n\n- **Left — Dual Donut (Target vs Actual)**: Two donut charts with the same category colors. Left donut = target allocation from your investor profile; right donut = current holdings by market value. Hover for exact percentages.\n- **Right — Drift Bar Chart**: Gap between actual and target for each category (percentage points). Positive = overweight; negative = underweight. Orange dashed lines mark ±5% threshold; bars turn red when exceeded.\n\n---\n\n### 🏆 Top 10 Holdings\n\nTop 10 holdings ranked by **weight (% of total market value)**, displayed as a styled table with color-coded daily change:\n\n- **Daily Change** — Green (▲) for positive, red (▼) for negative, from yfinance historical data\n- **Privacy Mode** — Market value column is masked as `***`; daily change percentage still shows\n\n> 💡 If a single holding exceeds 15% weight, watch for concentration risk. Visit the Asset Allocation page's X-Ray analysis for detailed exposure.\n>\n> ⚠️ **Note**: Daily change requires at least 2 days of history. Newly added stocks show `N/A`.\n\n---\n\n### 🏦 Smart Money Resonance\n\nShows which of your watchlist/holdings overlap with top institutional investors' 13F filings.\n\n- **3 KPI metrics always visible**: Overlapping stock count, number of gurus with overlap, strongest resonance signal\n- **Expand \"📋 Top 5 Resonance Details\"** to see per-stock guru cards (collapsed by default to save space)\n- **\"View Smart Money\" button** in the section header links directly to the full Smart Money page\n\n> ⚠️ Based on quarterly 13F snapshots — not real-time data.\n\n---\n\n### 🙈 Privacy Mode (Cross-Device Sync)\n\nThe privacy toggle in the title row masks all **monetary amounts** (total value, holding values), keeping only percentages and category structure. The setting is saved to the database and syncs across devices and sessions. Can also be toggled from the Asset Allocation page — both pages stay in sync.\n\n---\n\n### 📊 Holding Breakdown\n\nThe **Holding Breakdown** card shows a visual summary of each holding's percentage weight. A stacked bar gives an at-a-glance overview; below it, individual holdings are listed from largest to smallest with inline progress bars. Click **Show all holdings** to expand beyond the default top 8.\n\n### 🎓 Onboarding\n\nFirst-time users see a guided setup banner: add a stock in Radar, then add holdings in Allocation. The banner disappears automatically once both steps are completed."
+      "content": "### Page Overview\\n\\nThis dashboard summarizes your portfolio from **ledger-derived positions** and account balances.\\n\\n---\\n\\n### What To Check First\\n\\n- Price update time and last scan time\\n- Signal alerts and rebalance drift\\n- Account and position health\\n\\n---\\n\\n### Position Model\\n\\n- Portfolio value and charts are based on positions derived from transactions.\\n- Record transactions in Allocation to update both cash and stock positions.\\n- Keep the UI label **Holding Breakdown** if shown in the page; it represents the current position view.\\n\\n---\\n\\n### Onboarding\\n\\nStart by adding a stock in Radar, then create an account and record transactions in Allocation."
     },
     "currency_selector": "Display Currency",
     "price_updated": "💰 Price updated: {{timestamp}}",
@@ -235,8 +235,8 @@
       "market_sentiment": "Market Sentiment",
       "total_value": "Total Market Value",
       "health_score": "Health Score",
-      "tracking_holdings": "Tracking / Holdings",
-      "tracking_holdings_value": "{{stocks}} stocks / {{holdings}} holdings"
+      "tracking_holdings": "Tracking / Positions",
+      "tracking_holdings_value": "{{stocks}} stocks / {{holdings}} positions"
     },
     "chart": {
       "target": "🎯 Target Allocation",
@@ -249,7 +249,7 @@
     "button_setup_persona": "💼 Set Up Investment Persona",
     "button_track_stock": "📡 Track Stocks",
     "button_goto_radar": "📡 Go to Radar to Add Stocks",
-    "button_add_holdings": "💼 Add Holdings",
+    "button_add_holdings": "🧾 Record Transactions",
     "market_sentiment": "Market Sentiment",
     "total_market_value": "Total Market Value",
     "net_worth_title": "Net Worth",
@@ -258,7 +258,7 @@
     "health_delta": "{{normal}}/{{total}} Normal",
     "allocation_title": "🎯 Target vs Actual Allocation",
     "drift_title": "📊 Drift Analysis",
-    "no_allocation_data": "📭 No allocation data. Please set up your persona and add holdings first.",
+    "no_allocation_data": "📭 No allocation data. Please set up your persona, create an account, and record transactions first.",
     "signal_alerts_title": "⚠️ Signal Alerts",
     "signal_buy_title": "🟢 Buy Opportunities",
     "signal_risk_title": "🚨 Risk Warnings",
@@ -273,9 +273,9 @@
     "no_tracking_stocks_title": "No signals to show",
     "no_tracking_stocks_description": "Add stocks to your watchlist in Radar so Folio can monitor signals for you.",
     "onboarding_title": "Start your portfolio in 2 steps",
-    "onboarding_description": "Add your first stock in Radar, then add holdings in Allocation to unlock portfolio analysis.",
+    "onboarding_description": "Add your first stock in Radar, then create an account and record transactions in Allocation to track your portfolio.",
     "onboarding_goto_radar": "Go to Radar",
-    "onboarding_goto_allocation": "Add Holdings",
+    "onboarding_goto_allocation": "Go to Allocation",
     "section_market_pulse": "Market Pulse",
     "section_portfolio_overview": "Portfolio Overview",
     "section_deep_dive": "Deep Dive",
@@ -312,7 +312,7 @@
       "dividend_converted": "Converted"
     },
     "no_holdings": "No holdings data.",
-    "no_holdings_data": "📭 No holdings data. Please add holdings first.",
+    "no_holdings_data": "📭 No position data yet. Record transactions to build your portfolio.",
     "resonance": {
       "title": "🏆 Smart Money Resonance",
       "caption": "⚠️ Based on quarterly 13F snapshots, not real-time.",
@@ -657,21 +657,21 @@
   },
   "allocation": {
     "title": "💼 Asset Allocation",
-    "caption": "Holdings · Rebalance · Telegram Notifications",
+    "caption": "Positions · Rebalance · Telegram Notifications",
     "sop": {
       "title": "📖 Asset Allocation: User Manual",
-      "content": "### Page Overview\n\nThis page handles **personal asset holdings management** and **portfolio rebalance analysis**. Switch from Investment Radar via the sidebar navigation.\n\n### 🙈 Privacy Mode (Cross-Device Sync)\n\nThe **privacy mode toggle** in the top-right corner masks all sensitive monetary figures (total value, holding quantities, prices, cost basis, market value) with `***`, keeping only percentages and category structure. Ideal for screen sharing or screenshots — backend data is not affected. **Privacy mode is saved to the database** and syncs across devices and browser sessions. Can also be toggled from the Portfolio Overview page — both pages stay in sync.\n\n---\n\n### Sidebar — Add Holdings (Four Modes)\n\nSwitch between four holding types via \"Asset Type\":\n\n- **📈 Stock**: Select market (🇺🇸 US / 🇹🇼 TW / 🇯🇵 JP / 🇭🇰 HK), enter ticker (system auto-appends suffix like `.TW`, `.T`), select category, enter shares, cost basis, and broker\n- **🛡️ Bond**: Enter bond ticker (e.g., TLT, BND), select currency, enter shares, cost basis, and broker\n- **💵 Cash**: Select currency and amount, optionally add bank, account type (savings/time deposit/money market fund), and notes\n- **₿ Crypto**: Search coin name/symbol, select a result to auto-fill ticker and CoinGecko ID, then enter quantity, average cost, and currency (USD)\n\n#### Radar Auto-Sync\n\n- If the ticker is **already tracked in Radar**, the category field auto-populates from Radar (locked, not editable)\n- If it's a **new ticker**, the system automatically adds it to Radar tracking after creating the holding — you can optionally add an initial thesis\n\nThe sidebar also provides **Export / Import holdings** (JSON format) and import template download.\n\n---\n\n### Step 1 — Set Target Allocation (Collapsible)\n\n- Choose from 6 preset **investor profile templates** (Retirement Defense, Standard, Aggressive, Barbell, Sniper, Custom)\n- Each template has default target ratios for six categories\n- **Fine-tune** category percentages anytime (must total 100%)\n- After selecting a template, click **\"🔄 Switch Style\"** to change to another\n- Once set, this section auto-collapses — click to expand and edit\n\n---\n\n### Step 2 — Holdings Management\n\n- Holdings table supports **inline editing**: click cells to modify quantity, cost basis, broker, category\n- Click \"💾 Save Changes\" to batch-update after editing\n- Select a holding from the dropdown and click \"🗑️ Delete\" to remove\n- Add new holdings via the sidebar\n\n---\n\n### Analysis Tabs (Rebalance / Currency Exposure / Smart Withdrawal / Stress Test)\n\nAfter completing Steps 1 & 2, the four analysis tabs (📊 Rebalance, 💱 Currency Exposure, 💰 Smart Withdrawal, 🧪 Stress Test) become available. The \"⚙️ Settings\" tab has a shared **display currency selector** and **🔄 Refresh** button — switching currency or refreshing applies to all analysis tabs.\n\n#### 📊 Rebalance Analysis\n\n- **Loading Indicator**: Shows \"📊 Loading rebalance analysis...\" animation while loading, auto-collapses to \"✅ Rebalance analysis loaded\"\n- **Data Update Time**: Shows data fetch time (🕐), auto-detects browser timezone for local time display\n- **Live Exchange Rates**: System fetches real-time rates via yfinance (1-hour cache) for accurate cross-currency conversion\n- **Dual Pie Charts**: Target allocation vs actual allocation\n- **Drift Bar Chart**: Deviation per category (red = overweight / green = underweight)\n- **Holdings Detail**: Shows each stock's original currency, quantity, price, cost basis, converted market value, and weight; non-USD holdings additionally display **Home Return** (local price return + FX impact) and **FX Return** (purchase FX rate snapshot vs current rate)\n- **Rebalance Suggestions**: Auto-flags categories drifting >5%, with add/reduce recommendations\n- **🔬 X-Ray Analysis**: Auto-parses ETF top 10 holdings, calculates \"direct holdings + indirect ETF exposure\" true ratios. Stacked bar chart shows concentration risk; orange warnings at >15% threshold; one-click Telegram alert\n\n> 💡 Periodically (e.g., quarterly) reviewing asset allocation is the most important — yet most neglected — investment discipline.\n\n#### 💱 Currency Exposure Monitor\n\n- **Home Currency Setting**: Switch home currency in the top-right (e.g., TWD → USD) — used as the FX exposure baseline\n- **Dual Tabs**:\n  - **💵 Cash Currency Exposure** (default): Analyzes only cash position currency distribution — FX risk impacts cash most directly\n  - **📊 Full Asset Currency Exposure**: Analyzes entire portfolio (stocks, bonds, cash) currency distribution\n- **Currency Distribution Pie**: Donut chart showing market value proportion per currency\n- **Risk Level**: Auto-determined by FX alert severity\n  - 🟢 Low Risk: No significant FX alerts\n  - 🟡 Medium Risk: Short-term (5-day) swing detected\n  - 🔴 High Risk: Single-day extreme movement detected\n- **Recent FX Changes**: Shows 5-day FX rate change for each foreign currency vs home currency, with 📈📉 direction indicators\n- **FX Alerts**: Three-tier detection (🔴 1-day >1.5% / 🟡 5-day >2% / 🔵 3-month >8%), color-coded\n- **Smart Advice**: System highlights cash position exposure amounts needing attention\n- **Telegram Alerts**: Sent when FX changes exceed thresholds (including cash exposure amounts). Auto-checks every 6 hours; manual trigger via \"📨 Send FX Exposure Alert to Telegram\"\n\n#### 💰 Smart Withdrawal\n\nWhen you need to withdraw cash from your portfolio, the system uses a **Liquidity Waterfall** three-tier priority algorithm to suggest the optimal sell plan:\n\n1. **🔄 Rebalance** (Priority 1): Sell overweight assets first — simultaneously returning to target allocation\n2. **📉 Tax Harvesting** (Priority 2): Sell positions at a loss for Tax-Loss Harvesting\n3. **💧 Liquidity** (Priority 3): Sell by liquidity order (Cash → Bond → Growth → Moat → Trend Setter)\n\n- Enter **withdrawal amount** and **currency**, click \"💰 Calculate Withdrawal Plan\"\n- System shows sell recommendations table (ticker, quantity, amount, reason) and summary metrics (target, sellable total, shortfall)\n- If portfolio value is insufficient, a **shortfall warning** appears\n- Optionally enable \"📡 Send Telegram Notification\" to sync recommendations to Telegram\n\n> 💡 Smart Withdrawal's core principle: sell what should be sold first (overweight), then what saves taxes (losses), and only then tap liquid assets — protecting your compounding core holdings.\n\n#### 🧪 Stress Test\n\nSimulates market crash scenarios to test your portfolio's resilience. Based on linear CAPM model (β values) to estimate expected losses during market downturns.\n\n- **Crash Scenario Slider**: Select market decline (-50% to 0%) to simulate S&P 500-like crashes\n- **Portfolio Weighted Beta**: Overall Beta value (Beta > 1.0 = more volatile than market; Beta < 1.0 = more stable)\n- **Expected Loss Amount**: Shows projected portfolio loss amount and percentage under the scenario\n- **Pain Levels**:\n  - 🟢 Gentle Breeze (< 10% loss)\n  - 🟡 Noticeable Correction (10–20% loss)\n  - 🟠 Significant Damage (20–30% loss)\n  - 🔴 Sleepless Nights (≥ 30% loss)\n- **Holdings Breakdown**: Per-stock expected loss detail, sorted by impact\n- **Smart Advice**: At \"Sleepless Nights\" level, system provides risk management suggestions (review Beta, emergency fund, leverage risk, etc.)\n- **Privacy Mode**: Supports amount masking — only percentages and levels shown\n\n> 💡 Stress testing helps you assess portfolio resilience and understand extreme-scenario risk exposure. Regularly reviewing Beta and expected losses is a key part of risk management.\n\n---\n\n### Telegram Settings (Dual Mode)\n\n- **System Default Bot**: Uses `TELEGRAM_BOT_TOKEN` from `.env` — no additional setup needed\n- **Custom Bot**: Enter custom Bot Token and Chat ID, toggle \"Use Custom Bot\"\n- With custom bot enabled, all scan notifications, price alerts, and weekly digests go through your custom bot\n- When custom bot is disabled/not set, automatically falls back to system default bot\n- **Test Button**: After saving, click \"📨 Send Test Message\" to verify the setup\n- **Weekly Digest**: Click \"📬 Send Weekly Digest\" to manually trigger the portfolio health report (runs in background, results sent via Telegram)\n\n---\n\n### 🌍 Geographic & Asset Class Views\n\nThe allocation page includes **Geographic Allocation** (breakdown by region: US/TW/JP/HK) and **Asset Class** (Equity/Fixed Income/Alternatives/Cash) tabs, giving you a multi-dimensional view of your portfolio.\n\n### 📊 Analytics Tabs\n\n- **Drawdown**: Peak-to-trough decline tracking with inverted area chart\n- **Risk Metrics**: Sharpe ratio, Sortino ratio, Calmar ratio, annualized volatility\n- **Contribution vs Growth**: Stacked area showing cumulative deposits versus market appreciation\n\n### 📝 Terminology Mode\n\nSwitch between **Expert** (full financial terminology) and **Simplified** (plain-language labels) in Settings. The display mode applies across all pages."
+      "content": "### Page Overview\\n\\nAsset Allocation is now **ledger-driven**: transactions are the source of truth, and holdings are a materialized position view.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nPositions are computed from those transactions automatically.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only position view**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all operate on the ledger-derived positions.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds positions from the ledger."
     },
-    "sop_csv_note": "You can now import holdings from CSV/TSV with auto column mapping and preview before import.",
+    "sop_csv_note": "CSV/TSV import creates OPENING_BALANCE transactions per row, with column mapping and preview before import.",
     "quick_start": {
       "title": "Quick Start: Account to Trade in 3 Steps",
       "step1": "Create a brokerage account in the Accounts tab.",
       "step2": "Deposit cash with the account-level Deposit button or from Transactions as DEPOSIT.",
-      "step3": "Record a BUY transaction with the same account; balances settle automatically."
+      "step3": "Record a BUY transaction with the same account; both cash and stock positions settle automatically."
     },
     "sidebar": {
       "header": "💰 Asset Management",
-      "add_holding": "➕ Add Holding",
+      "add_holding": "➕ Add Position",
       "asset_type": "Asset Type",
       "asset_stock": "📈 Stock",
       "asset_bond": "🛡️ Bond",
@@ -785,7 +785,7 @@
       "parse_warning_item": "Row {{row}} ({{code}}): {{message}}"
     },
     "error_loading": "❌ Failed to load asset allocation: {{error}}",
-    "setup_required": "⚠️ Please complete Step 1 (Target Allocation) and Step 2 (Add Holdings) in the ⚙️ Settings tab first.",
+    "setup_required": "⚠️ Please complete Step 1 (Target Allocation), then record transactions to build positions.",
     "tab": {
       "setup": "⚙️ Settings",
       "rebalance": "📊 Rebalance",
@@ -807,7 +807,7 @@
       "hide_details": "Hide details"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
-    "step2_title": "💼 Step 2 — Holdings Management",
+    "step2_title": "🧾 Step 2 — Record Transactions",
     "display_currency": "Display Currency",
     "refresh_button": "🔄 Refresh",
     "error_setup": "❌ Failed to load settings: {{error}}",
@@ -1362,7 +1362,7 @@
         "cash": "💵 Cash FX Exposure",
         "total": "📊 Total Asset FX Exposure"
       },
-      "no_cash": "No cash holdings. Add cash in Step 2.",
+      "no_cash": "No cash position yet. Record a DEPOSIT transaction first.",
       "cash_total": "💰 Cash Total ({{currency}})",
       "cash_non_home_pct": "🌍 Cash Non-Home %",
       "risk_level": "Risk Level",
@@ -1438,7 +1438,7 @@
       }
     },
     "holdings": {
-      "no_data": "No holdings. Add stocks, bonds, or cash via the sidebar.",
+      "no_data": "No positions yet. Record a transaction to create your first position.",
       "col": {
         "ticker": "Ticker",
         "category": "Category",
@@ -1479,7 +1479,7 @@
       "description": "**Simulate a market crash to see how your portfolio holds up.**\n\nUses linear CAPM (β) to estimate expected loss per holding.\nThis tool helps you:\n- Assess portfolio resilience\n- Identify high-Beta exposure\n- See cash & bond buffer effect",
       "slider_label": "🌊 Market Crash Scenario",
       "slider_help": "Simulate market (e.g. S&P 500) drop %. E.g. -20% = 20% crash.",
-      "no_data": "⚠️ No holdings or stress data. Add holdings in Step 2 first.",
+      "no_data": "⚠️ No position or stress data yet. Record transactions first.",
       "beta_label": "Portfolio Weighted Beta",
       "beta_help": "Overall Beta. >1.0 = more volatile than market, <1.0 = more stable.",
       "loss_label": "Expected Loss",
@@ -1750,7 +1750,7 @@
   },
   "transactions": {
     "title": "Transaction Records",
-    "caption": "Log buys, sells, dividends, and cash movements in one place.",
+    "caption": "All position changes flow through transactions. Log buys, sells, dividends, deposits, and adjustments.",
     "record_button": "Record Transaction",
     "import_button": "Import CSV",
     "record_from_holding": "Record",
@@ -1882,11 +1882,11 @@
   },
   "accounts": {
     "title": "Brokerage Accounts",
-    "caption": "Create virtual broker accounts and track stock + cash positions by account.",
+    "caption": "Accounts are the central hub for managing positions and transactions. Each account tracks cash balances and stock positions.",
     "add": "Add Account",
     "empty": {
       "title": "No accounts yet",
-      "description": "Create your first brokerage account to track trades and cash settlement by broker."
+      "description": "Create your first account to start tracking positions and recording transactions."
     },
     "form": {
       "create_title": "Create account",

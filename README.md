@@ -51,7 +51,7 @@
 
 ### 資產配置
 
-- **War Room** — 6 種投資人格範本、三種資產類型持倉管理、多幣別匯率轉換、再平衡分析、聰明提款
+- **War Room** — 帳本驅動（Ledger-driven）持倉管理、6 種投資人格範本、帳戶中心導覽、多幣別匯率轉換、再平衡分析、聰明提款、持倉一致性驗證
 - **加密貨幣追蹤** — 支援 BTC、ETH 等主流幣，整合 CoinGecko 報價（24h 漲跌 / 市值 / 交易量）並與股票、債券、現金同一投資組合檢視
 - **購買匯率快照 & FX 報酬拆解** — 新增持倉時自動記錄當下匯率（`purchase_fx_rate`），持倉明細同時顯示**本幣報酬**（本地股價漲跌 + 匯率影響）與**匯率報酬**，完整呈現跨幣別投資的真實損益
 - **壓力測試** — 模擬大盤崩盤情境（-50% 至 0%），基於 CAPM Beta 計算各持倉預期損失與痛苦等級（微風輕拂 / 有感修正 / 傷筋動骨 / 睡不著覺），檢視投資組合抗跌能力
@@ -68,7 +68,7 @@
 - **淨資產追蹤 (Net Worth)** — 在 Asset Allocation 新增 Net Worth 分頁，追蹤非投資資產（房產 / 儲蓄 / 車輛）與負債（房貸 / 貸款 / 信用卡）；提供 1M/3M/6M/1Y/Max 趨勢圖、負債類型快速預設（房貸 / 貸款 / 信用卡）與每月最低還款欄位，Dashboard 也會顯示「投資資產 + 其他資產 - 負債」淨資產摘要
 - **持倉-雷達自動同步** — 新增持倉時自動帶入雷達分類，省去重複操作
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
-- **交易紀錄** — 記錄買入/賣出/股息/存入/提領，連結至個別持倉
+- **交易紀錄** — 記錄買入/賣出/股息/存入/提領/期初餘額/調整/轉入/轉出，作為持倉唯一來源
 - **帳戶管理** — 依券商帳戶分組持倉，提供聚合視圖
 - **開戶到下單引導流程** — 新建帳戶後可一鍵存入資金，入金後可直接銜接 BUY 紀錄；系統會顯示可用現金、即時檢查餘額不足，並提供補足差額的快捷入金操作
 - **地理配置** — 依地區（US/TW/JP/HK）拆解市值分佈
@@ -170,7 +170,7 @@ graph LR
     subgraph backend [Backend Modules]
       SCAN["Scan Engine"]
       PERSONA["Persona System"]
-      HOLDINGS["Holdings CRUD"]
+      HOLDINGS["Position Cache"]
       REBALANCE["Rebalance Engine"]
       STRESS["Stress Test Engine"]
       NOTIFY["Notification\n(Dual-Mode)"]
@@ -367,19 +367,20 @@ python scripts/import_stocks.py path/to/custom_list.json
 - 上傳後會先進入 **欄位對應**（ticker / quantity / category 等）
 - 對應完成後提供 **資料預覽與錯誤檢查**，確認後才會送出匯入
 - 匯入模式目前為 **Replace-all**（會先清空舊持倉再匯入）
+- 每列匯入資料會建立對應的 `OPENING_BALANCE` 交易，持倉快取由交易自動推導
 
 <details>
 <summary>📄 持倉 CSV 格式範例（點擊展開）</summary>
 
 ```csv
-ticker,category,quantity,cost_basis,currency,broker,account_type
-AAPL,Growth,10,150.00,USD,Interactive Brokers,
-2330.TW,Moat,100,580.00,TWD,Fubon,
-7203.T,Growth,200,2800.00,JPY,Rakuten,
-USD,Cash,50000,1.00,USD,Bank of America,savings
+ticker,category,quantity,cost_basis,currency,broker,account_type,account_id
+AAPL,Growth,10,150.00,USD,Interactive Brokers,,1
+2330.TW,Moat,100,580.00,TWD,Fubon,,2
+7203.T,Growth,200,2800.00,JPY,Rakuten,,3
+USD,Cash,50000,1.00,USD,Bank of America,savings,4
 ```
 
-- `ticker`、`quantity`、`category` 為必要欄位（可在 UI 中對應不同欄名）
+- `ticker`、`quantity`、`category`、`account_id` 為必要欄位（可在 UI 中對應不同欄名）
 - `currency`、`broker`、`cost_basis`、`account_type` 為選填
 - 現金列可使用 `category=Cash`，系統會自動視為現金持倉
 
@@ -664,11 +665,11 @@ docker compose up --build -d
 | `POST` | `/profiles` | 建立新的投資組合配置 |
 | `PUT` | `/profiles/{id}` | 更新投資組合配置 |
 | `DELETE` | `/profiles/{id}` | 停用投資組合配置 |
-| `GET` | `/holdings` | 取得所有持倉 |
-| `POST` | `/holdings` | 新增持倉（含可選 broker / currency 欄位） |
+| `GET` | `/holdings` | 取得所有持倉（由交易推導的 materialized position cache） |
+| `POST` | `/holdings` | 新增持倉（建立 `OPENING_BALANCE` 交易並自動更新持倉快取） |
 | `POST` | `/holdings/cash` | 新增現金持倉 |
-| `PUT` | `/holdings/{id}` | 更新持倉 |
-| `DELETE` | `/holdings/{id}` | 刪除持倉 |
+| `PUT` | `/holdings/{id}` | 更新持倉（建立 `ADJUSTMENT` 交易調整數量） |
+| `DELETE` | `/holdings/{id}` | 刪除持倉（先以 `ADJUSTMENT` 歸零後移除快取列） |
 | `GET` | `/holdings/export` | 匯出持倉（JSON） |
 | `POST` | `/holdings/import` | 匯入持倉 |
 | `GET` | `/crypto/search` | 搜尋加密貨幣（回傳 `id/symbol/name/thumb/ticker`） |
@@ -715,7 +716,7 @@ docker compose up --build -d
 | `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
 | `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
 | `GET` | `/transactions` | 交易紀錄列表（支援 `ticker`、`limit` 篩選） |
-| `POST` | `/transactions` | 新增交易紀錄 |
+| `POST` | `/transactions` | 新增交易紀錄（支援 BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT） |
 | `GET` | `/transactions/{id}` | 取得單筆交易紀錄 |
 | `DELETE` | `/transactions/{id}` | 刪除交易紀錄 |
 | `GET` | `/accounts` | 帳戶列表 |
@@ -723,6 +724,8 @@ docker compose up --build -d
 | `PUT` | `/accounts/{id}` | 更新帳戶 |
 | `DELETE` | `/accounts/{id}` | 停用帳戶 |
 | `GET` | `/accounts/summary` | 帳戶摘要（含各帳戶持倉數量） |
+| `GET` | `/accounts/{id}/positions` | 取得指定帳戶持倉（position cache） |
+| `GET` | `/accounts/{id}/transactions` | 取得指定帳戶交易紀錄（分頁） |
 | `GET` | `/analytics/drawdown` | 回撤時間序列 |
 | `GET` | `/analytics/risk-metrics` | 風險指標（Sharpe、Sortino、最大回撤、年化波動率） |
 | `GET` | `/analytics/contribution-growth` | 累計貢獻 vs 市場增長 |
@@ -798,23 +801,32 @@ curl -X POST http://localhost:8000/profiles \
   -d '{"name": "標準型", "source_template_id": "balanced", "config": {"Trend_Setter": 25, "Moat": 30, "Growth": 15, "Bond": 20, "Cash": 10}}'
 ```
 
-### 新增持倉
+### 新增持倉（建立 OPENING_BALANCE）
 
 ```bash
-# 新增美股持倉（broker、currency 為選填，currency 預設 USD）
+# 新增美股持倉（`account_id` 必填；會建立 OPENING_BALANCE 交易）
 curl -X POST http://localhost:8000/holdings \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade", "currency": "USD"}'
+  -d '{"account_id": 1, "ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade", "currency": "USD"}'
 
 # 新增台股持倉（指定 TWD 幣別）
 curl -X POST http://localhost:8000/holdings \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "2330.TW", "category": "Moat", "quantity": 100, "cost_basis": 580.0, "broker": "永豐金", "currency": "TWD"}'
+  -d '{"account_id": 2, "ticker": "2330.TW", "category": "Moat", "quantity": 100, "cost_basis": 580.0, "broker": "永豐金", "currency": "TWD"}'
 
 # 新增現金持倉
 curl -X POST http://localhost:8000/holdings/cash \
   -H "Content-Type: application/json" \
-  -d '{"currency": "TWD", "amount": 100000}'
+  -d '{"account_id": 2, "currency": "TWD", "amount": 100000}'
+```
+
+### 直接新增交易（OPENING_BALANCE / ADJUSTMENT / TRANSFER）
+
+```bash
+# 建立 OPENING_BALANCE 交易（設定帳戶初始部位）
+curl -X POST http://localhost:8000/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"account_id": 1, "ticker": "NVDA", "type": "OPENING_BALANCE", "quantity": 50, "total_amount": 6000, "date": "2026-03-12"}'
 ```
 
 ### 再平衡分析
@@ -931,7 +943,7 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | `alerts` | 查看價格警報 | 是 |
 | `add_stock` | 新增股票 | 是（在 params 中） |
 | `transactions` | 查看近期交易紀錄（可選 `ticker`、`limit`） | 否 |
-| `add_transaction` | 記錄買賣/股息/存入/提領 | 是 |
+| `add_transaction` | 記錄交易（BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT） | 是 |
 | `accounts` | 列出帳戶及持倉數量 | 否 |
 | `analytics` | 風險指標：Sharpe、Sortino、最大回撤 | 否 |
 | `insights` | 自然語言投資組合洞察 | 否 |
@@ -1065,6 +1077,9 @@ azusa-stock/
 │   ├── config/                        # 設定檔
 │   │   ├── system_personas.json      #   投資人格範本（6 種）
 │   │   └── templates/                #   匯入範本 (stock / holding)
+│   │
+│   ├── scripts/                       # 後端腳本
+│   │   └── migrate_ledger.py         #   Ledger 資料遷移（持倉 -> OPENING_BALANCE）
 │   │
 │   └── api/                          # API 層：薄控制器
 │       ├── schemas/                  #   Pydantic 請求/回應 Schema 子套件

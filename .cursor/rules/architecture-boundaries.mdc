@@ -38,7 +38,7 @@ session.exec(select(...))                                 # Use application serv
 
 ## When Adding a New Endpoint
 
-1. Create or extend the service method in the appropriate `application/<domain>/` sub-package first
+1. Create or extend the service method in the appropriate `application/<domain>/` sub-package first (use `application/portfolio/settlement_service.py` as the primary mutation path for position-changing flows)
 2. The route in `api/routes/` calls the service — never touches infrastructure directly
 3. Add a **contract test** in `backend/tests/` that calls the endpoint with the expected minimal payload and asserts a 2xx response. This catches schema mismatches between frontend expectations and backend request validation.
 4. Run `make ci` to verify boundaries and contract tests pass

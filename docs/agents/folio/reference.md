@@ -189,9 +189,11 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
-| `GET` | `/holdings` | All holdings |
-| `POST` | `/holdings` | Add holding (body: `ticker`, `quantity`, `cost`, `currency`; auto-snapshots FX rate) |
+| `GET` | `/holdings` | All holdings (materialized position cache derived from transactions) |
+| `POST` | `/holdings` | Add holding (creates an `OPENING_BALANCE` transaction; position cache updates automatically) |
 | `POST` | `/holdings/cash` | Add cash holding |
+| `PUT` | `/holdings/{id}` | Update holding (creates an `ADJUSTMENT` transaction for quantity changes) |
+| `DELETE` | `/holdings/{id}` | Delete holding (zeros position via `ADJUSTMENT`, then removes cache row) |
 | `GET` | `/holdings/export` | Export holdings (JSON) |
 | `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
@@ -247,6 +249,7 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 ### Portfolio
 
 - `HOLDING_NOT_FOUND`
+- `INSUFFICIENT_BALANCE`
 - `NET_WORTH_ITEM_NOT_FOUND`
 - `PROFILE_NOT_FOUND`
 - `NET_WORTH_SEED_NO_CASH_HOLDINGS`
@@ -281,7 +284,8 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `ticker` | string | Yes (via params or ticker) | Asset symbol |
-| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL |
+| `account_id` | integer | Yes | Account identifier for ledger settlement |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT |
 | `quantity` | float | Yes | Number of shares/units |
 | `price` | float | No | Per-unit price |
 | `total_amount` | float | Yes | Total transaction value |
@@ -324,6 +328,8 @@ Array of insight objects:
 | `PUT` | `/accounts/{id}` | Update account |
 | `DELETE` | `/accounts/{id}` | Delete (deactivate) account |
 | `GET` | `/accounts/summary` | Account summary with holdings count |
+| `GET` | `/accounts/{id}/positions` | Holdings scoped to a specific account (position cache) |
+| `GET` | `/accounts/{id}/transactions` | Paginated transactions for a specific account |
 | `GET` | `/analytics/drawdown` | Drawdown time series |
 | `GET` | `/analytics/risk-metrics` | Sharpe, Sortino, max drawdown, volatility |
 | `GET` | `/analytics/contribution-growth` | Cumulative contributions vs market growth |

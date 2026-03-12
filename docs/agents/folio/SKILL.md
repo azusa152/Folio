@@ -1,6 +1,6 @@
 ---
 name: folio
-description: Self-hosted investment tracking for stocks, portfolio, holdings, FX monitoring, and guru 13F analysis. Use when asked about portfolio status, stock analysis, market sentiment, alerts, FX timing, smart withdrawal, or superinvestor positions. Backend must be running at http://localhost:8000.
+description: Self-hosted investment tracking for stocks, portfolio, ledger-driven positions, FX monitoring, and guru 13F analysis. Use when asked about portfolio status, stock analysis, market sentiment, alerts, FX timing, smart withdrawal, or superinvestor positions. Backend must be running at http://localhost:8000.
 homepage: http://localhost:8000/docs
 metadata: { "openclaw": { "requires": { "bins": ["docker", "curl"] }, "emoji": "📊" } }
 ---
@@ -74,7 +74,7 @@ Verbosity (top-level `format` field in request body):
 - `guru_sync` - sync all tracked gurus (13F)
 - `guru_summary` - send latest guru digest
 - `transactions` - list recent transactions (optional `ticker`, `limit`)
-- `add_transaction {ticker}` - record buy/sell/dividend/deposit/withdrawal (`type`, `quantity`, `total_amount`, `date`)
+- `add_transaction {ticker}` - record transactions (`type`: BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT, required `account_id`, `quantity`, `total_amount`, `date`)
 - `accounts` - list accounts with holdings count
 - `analytics` - risk metrics: Sharpe, Sortino, max drawdown (`start`, `end`)
 - `insights` - natural language portfolio insights (`display_currency`)
@@ -85,7 +85,9 @@ Verbosity (top-level `format` field in request body):
 - Buy decision: `analyze {ticker}` -> `fear_greed`
 - Need cash: `withdraw {amount, currency}`
 - Asset review: `dashboard` -> `analytics` -> `insights` -> `transactions` with `ticker`
-- Record trade: `add_transaction {ticker}` -> `transactions` with `ticker` to confirm
+- Record trade: `add_transaction {ticker}` -> `transactions` with `ticker` to confirm (BUY/SELL auto-settle both cash and stock positions)
+
+All position mutations now go through the transaction API; holdings are a derived position cache.
 
 ## Signal Cheatsheet
 
