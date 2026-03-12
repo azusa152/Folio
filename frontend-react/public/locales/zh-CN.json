@@ -1801,6 +1801,7 @@
       "ticker": "Ticker",
       "thesis": "投资观点",
       "thesis_hint": "选填 - 可填写投资理由。未填写时默认使用“通过交易自动追踪”。",
+      "category": "类别",
       "quantity": "数量",
       "price": "每单位价格",
       "price_hint": "若此交易没有单价可留空。",

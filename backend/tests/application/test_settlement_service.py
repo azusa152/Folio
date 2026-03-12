@@ -443,6 +443,46 @@ def test_opening_balance_stock_should_use_existing_radar_category(
     assert stock_holding.category == StockCategory.TREND_SETTER
 
 
+def test_existing_stock_holding_should_sync_category_from_radar_on_new_transaction(
+    db_session: Session,
+):
+    account = _create_account(db_session)
+    _create_cash_holding(db_session, account.id, 1000.0)
+    stock_holding = _create_stock_holding(db_session, account.id, "AAPL", 10.0)
+    assert stock_holding.category == StockCategory.GROWTH
+
+    db_session.add(
+        Stock(
+            ticker="AAPL",
+            category=StockCategory.MOAT,
+            current_thesis="Updated on radar",
+            current_tags="",
+            is_active=True,
+            is_etf=False,
+        )
+    )
+    db_session.commit()
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 12),
+        },
+        "en",
+    )
+
+    db_session.refresh(stock_holding)
+    assert stock_holding.category == StockCategory.MOAT
+
+
 def test_adjustment_stock_ticker_should_modify_stock_without_touching_cash(
     db_session: Session,
 ):

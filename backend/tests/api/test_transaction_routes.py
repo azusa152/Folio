@@ -355,6 +355,86 @@ def test_create_transaction_should_reactivate_inactive_stock_on_radar(
     assert qqq["current_thesis"] == "Reactivated via transaction"
 
 
+def test_reactivate_inactive_stock_should_apply_explicit_category_from_transaction(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id, amount=1000.0)
+    create_stock_resp = client.post(
+        "/ticker",
+        json={
+            "ticker": "CSCO",
+            "category": "Growth",
+            "thesis": "Old thesis",
+            "is_etf": False,
+        },
+    )
+    assert create_stock_resp.status_code == 200
+    deactivate_resp = client.post("/ticker/CSCO/deactivate", json={"reason": "cleanup"})
+    assert deactivate_resp.status_code == 200
+
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "CSCO",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-12",
+            "thesis": "Reactivated via transaction",
+            "category": "Moat",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["auto_radar"] is True
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    csco = next(stock for stock in stocks_resp.json() if stock["ticker"] == "CSCO")
+    assert csco["is_active"] is True
+    assert csco["category"] == "Moat"
+
+
+def test_create_transaction_with_new_ticker_should_use_explicit_category(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id, amount=1000.0)
+
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "CSCO",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-12",
+            "thesis": "Networking thesis",
+            "category": "Moat",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["auto_radar"] is True
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    csco = next(stock for stock in stocks_resp.json() if stock["ticker"] == "CSCO")
+    assert csco["category"] == "Moat"
+
+    holdings_resp = client.get("/holdings")
+    assert holdings_resp.status_code == 200
+    csco_holding = next(
+        holding for holding in holdings_resp.json() if holding["ticker"] == "CSCO"
+    )
+    assert csco_holding["category"] == "Moat"
+
+
 def test_import_transactions_should_not_leak_auto_radar_from_failed_item(
     client: TestClient,
 ):

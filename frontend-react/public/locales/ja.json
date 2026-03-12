@@ -1801,6 +1801,7 @@
       "ticker": "Ticker",
       "thesis": "投資テーゼ",
       "thesis_hint": "任意 - 投資理由を入力します。未入力時は「取引経由で自動追跡」が使われます。",
+      "category": "カテゴリ",
       "quantity": "数量",
       "price": "単価",
       "price_hint": "単価がない取引は空欄でも構いません。",

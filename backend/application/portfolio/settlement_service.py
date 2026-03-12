@@ -152,6 +152,9 @@ def settle_transaction(session: Session, txn_data: dict, lang: str) -> Transacti
                 },
             )
 
+        # Keep holding category aligned with radar stock/category inference.
+        stock_holding.category = _infer_category(session, txn_data)
+
         quantity = float(txn_data.get("quantity", 0) or 0)
         if txn_type in (TransactionType.BUY, TransactionType.OPENING_BALANCE):
             _update_cost_basis(stock_holding, quantity, txn_data)

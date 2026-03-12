@@ -4,11 +4,12 @@ import { toast } from "sonner"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { CATEGORY_ICON_SHORT, DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
+type StockCategory = (typeof STOCK_CATEGORIES)[number]
 
 interface FieldErrors {
   account?: string
@@ -82,6 +84,7 @@ export function AddTransactionSheet({
   const [fee, setFee] = useState("0")
   const [note, setNote] = useState("")
   const [thesis, setThesis] = useState("")
+  const [category, setCategory] = useState<StockCategory>("Growth")
   const [transactionDate, setTransactionDate] = useState(todayISO())
   const [manualTotal, setManualTotal] = useState(false)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
@@ -134,6 +137,7 @@ export function AddTransactionSheet({
     setFee("0")
     setNote("")
     setThesis("")
+    setCategory("Growth")
     setTransactionDate(todayISO())
     setManualTotal(false)
     setMoreOptionsOpen(false)
@@ -377,6 +381,19 @@ export function AddTransactionSheet({
                 placeholder={t("transactions.form.thesis_hint")}
                 className="text-xs"
               />
+              <p className="text-xs font-medium pt-2">{t("transactions.form.category")}</p>
+              <Select value={category} onValueChange={(value) => setCategory(value as StockCategory)}>
+                <SelectTrigger aria-label={t("transactions.form.category")} className="text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STOCK_CATEGORIES.map((item) => (
+                    <SelectItem key={item} value={item} className="text-xs">
+                      {CATEGORY_ICON_SHORT[item] ?? ""} {t(`config.category.${item.toLowerCase()}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           ) : null}
 
@@ -629,6 +646,7 @@ export function AddTransactionSheet({
                   fee: fee ? Number(fee) : 0,
                   note: note.trim(),
                   thesis: thesis.trim() || undefined,
+                  category: isNewToRadar ? category : undefined,
                   transaction_date: transactionDate,
                 },
                 {

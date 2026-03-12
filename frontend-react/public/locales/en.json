@@ -1801,6 +1801,7 @@
       "ticker": "Ticker",
       "thesis": "Investment Thesis",
       "thesis_hint": "Optional - why you are investing. Default: auto-tracked via transaction.",
+      "category": "Category",
       "quantity": "Quantity",
       "price": "Price per unit",
       "price_hint": "Leave blank if this transaction has no unit price.",

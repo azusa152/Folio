@@ -186,6 +186,7 @@ def ensure_stock_on_radar(
     session: Session,
     ticker: str,
     thesis: str | None = None,
+    category: StockCategory | str | None = None,
 ) -> tuple[Stock, bool]:
     """
     Ensure ticker exists in radar stock list without committing.
@@ -195,6 +196,16 @@ def ensure_stock_on_radar(
     - created=True when a new stock + initial thesis log are added to session
     """
     ticker_upper = ticker.upper()
+    resolved_category: StockCategory | None = None
+    if category is not None:
+        if isinstance(category, StockCategory):
+            resolved_category = category
+        else:
+            normalized_category = category.strip()
+            if not normalized_category:
+                raise ValueError("category must not be empty")
+            resolved_category = StockCategory(normalized_category)
+
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
         if existing.is_active:
@@ -203,6 +214,8 @@ def ensure_stock_on_radar(
         has_custom_thesis = bool(thesis and thesis.strip())
         final_thesis = thesis.strip() if has_custom_thesis and thesis else ""
         existing.is_active = True
+        if resolved_category is not None:
+            existing.category = resolved_category
         if has_custom_thesis:
             existing.current_thesis = final_thesis
             existing.current_tags = ""
@@ -221,7 +234,11 @@ def ensure_stock_on_radar(
         return existing, True
 
     is_etf = detect_is_etf(ticker_upper)
-    category = StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH
+    resolved_category = (
+        resolved_category
+        if resolved_category is not None
+        else (StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH)
+    )
     lang = get_user_language(session)
     final_thesis = (
         thesis.strip()
@@ -231,7 +248,7 @@ def ensure_stock_on_radar(
 
     stock = Stock(
         ticker=ticker_upper,
-        category=category,
+        category=resolved_category,
         current_thesis=final_thesis,
         current_tags="",
         is_active=True,

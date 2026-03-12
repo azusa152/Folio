@@ -5,6 +5,8 @@ All infrastructure.market_data calls are mocked — no network I/O.
 
 from unittest.mock import patch
 
+import pytest
+
 STOCK_MODULE = "application.stock.stock_service"
 
 
@@ -378,6 +380,48 @@ class TestEnsureStockOnRadar:
         assert len(history) == 1
         assert isinstance(history[0].content, str)
         assert len(history[0].content) > 0
+
+    def test_reactivate_with_category_updates_stock_category(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="CSCO",
+                category=StockCategory.GROWTH,
+                current_thesis="Old thesis",
+                current_tags="legacy",
+                is_active=False,
+                is_etf=False,
+                last_scan_signal="THESIS_BROKEN",
+            ),
+        )
+
+        stock, created = ensure_stock_on_radar(
+            db_session, "CSCO", thesis="Reactivated", category="Moat"
+        )
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.category == StockCategory.MOAT
+        assert stock.current_thesis == "Reactivated"
+
+    def test_invalid_category_should_raise_value_error(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+
+        with (
+            patch(f"{STOCK_MODULE}.detect_is_etf", return_value=False),
+            pytest.raises(ValueError, match="Invalid_Category"),
+        ):
+            ensure_stock_on_radar(
+                db_session,
+                "AAPL",
+                thesis="Any thesis",
+                category="Invalid_Category",
+            )
 
 
 # ===========================================================================

@@ -4,7 +4,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field, field_validator
 
-from domain.enums import TransactionType
+from domain.enums import StockCategory, TransactionType
 
 
 class TransactionRequest(BaseModel):
@@ -30,6 +30,10 @@ class TransactionRequest(BaseModel):
         max_length=5000,
         description="Thesis used when auto-adding a new ticker to radar",
     )
+    category: str | None = Field(
+        default=None,
+        description="Stock category used when auto-adding a new ticker to radar",
+    )
     transaction_date: date
 
     @field_validator("ticker")
@@ -50,6 +54,15 @@ class TransactionRequest(BaseModel):
         """Transaction type must be one of the supported enum values."""
         normalized = v.upper().strip()
         return TransactionType(normalized).value
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, v: str | None) -> str | None:
+        """Category must be one of supported stock categories when provided."""
+        if v is None:
+            return None
+        normalized = v.strip()
+        return StockCategory(normalized).value
 
 
 class TransactionResponse(BaseModel):

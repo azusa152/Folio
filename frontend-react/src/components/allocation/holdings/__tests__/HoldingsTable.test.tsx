@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { HoldingsTable } from "../HoldingsTable"
@@ -28,7 +29,7 @@ describe("HoldingsTable", () => {
             cost_total: 180,
             change_pct: 5,
             currency: "USD",
-          } as any,
+          } as unknown as ComponentProps<typeof HoldingsTable>["holdings"][number],
         ]}
         privacyMode={false}
         displayCurrency="USD"

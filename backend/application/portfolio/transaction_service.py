@@ -17,7 +17,7 @@ from domain.constants import (
     GENERIC_VALIDATION_ERROR,
 )
 from domain.core.entities import Transaction
-from domain.enums import TransactionType
+from domain.enums import StockCategory, TransactionType
 from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
@@ -86,11 +86,26 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
     currency = str(data.get("currency", "USD")).upper().strip() or "USD"
     is_cash_ticker = ticker == currency
     thesis = data.pop("thesis", None)
+    raw_category = data.pop("category", None)
+    category: StockCategory | None = None
+    if raw_category is not None:
+        try:
+            category = StockCategory(str(raw_category).strip())
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": ERROR_INVALID_INPUT,
+                    "detail": t("common.validation_error", lang=lang),
+                },
+            ) from None
 
     auto_radar = False
     try:
         if ticker and not is_cash_ticker:
-            _, auto_radar = ensure_stock_on_radar(session, ticker, thesis=thesis)
+            _, auto_radar = ensure_stock_on_radar(
+                session, ticker, thesis=thesis, category=category
+            )
         saved = settle_transaction(session, data, lang)
     except Exception:
         # import_transactions continues on per-item failures; clear pending state

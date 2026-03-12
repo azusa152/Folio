@@ -1801,6 +1801,7 @@
       "ticker": "Ticker",
       "thesis": "投資觀點",
       "thesis_hint": "選填 - 可填寫投資理由。未填時預設為「透過交易自動追蹤」。",
+      "category": "類別",
       "quantity": "數量",
       "price": "每單位價格",
       "price_hint": "若此交易沒有單價可留空。",

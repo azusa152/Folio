@@ -12775,6 +12775,18 @@
             "title": "Thesis",
             "description": "Thesis used when auto-adding a new ticker to radar"
           },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category",
+            "description": "Stock category used when auto-adding a new ticker to radar"
+          },
           "transaction_date": {
             "type": "string",
             "format": "date",

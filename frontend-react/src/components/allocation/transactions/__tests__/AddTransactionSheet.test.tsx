@@ -55,6 +55,10 @@ describe("AddTransactionSheet", () => {
     vi.clearAllMocks()
     radarState.stocks = []
     radarState.isLoading = false
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      value: vi.fn(),
+      writable: true,
+    })
   })
 
   it("validates fx rate and fee before submit", () => {
@@ -258,8 +262,49 @@ describe("AddTransactionSheet", () => {
     )
 
     expect(screen.getByLabelText("transactions.form.thesis")).toBeInTheDocument()
+    expect(screen.getByLabelText("transactions.form.category")).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText("transactions.form.ticker"), { target: { value: "NVDA" } })
     expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("transactions.form.category")).not.toBeInTheDocument()
+  })
+
+  it("submits default category for new-to-radar ticker", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(mockMutate).toHaveBeenCalled()
+    const [payload] = mockMutate.mock.calls[0]
+    expect(payload.category).toBe("Growth")
+  })
+
+  it("submits selected category for new-to-radar ticker", () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByLabelText("transactions.form.category"))
+    fireEvent.click(screen.getByText("🏰 config.category.moat"))
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(mockMutate).toHaveBeenCalled()
+    const [payload] = mockMutate.mock.calls[0]
+    expect(payload.category).toBe("Moat")
   })
 
   it("shows auto-radar toast when mutation returns auto_radar true", () => {
