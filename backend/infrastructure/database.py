@@ -271,6 +271,26 @@ def _run_backtest_migrations() -> None:
                 conn.rollback()
 
 
+def _run_ledger_indexes() -> None:
+    """Ledger 索引遷移（補充 account+ticker 查詢效能所需 index）。"""
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+
+    migrations = [
+        "CREATE INDEX IF NOT EXISTS ix_holding_account_ticker ON holding (account_id, ticker);",
+        'CREATE INDEX IF NOT EXISTS ix_transaction_account_ticker ON "transaction" (account_id, ticker);',
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.debug("Ledger 索引遷移成功：%s", sql.strip())
+            except OperationalError:
+                conn.rollback()
+
+
 def _backfill_signal_since() -> None:
     """
     回填 Stock.signal_since：對已有非 NORMAL 訊號但 signal_since 為 NULL 的股票，
@@ -329,6 +349,7 @@ def create_db_and_tables() -> None:
     _run_migrations()
     _run_smart_money_migrations()
     _run_backtest_migrations()
+    _run_ledger_indexes()
 
     logger.info("載入系統人格範本...")
     _load_system_personas()

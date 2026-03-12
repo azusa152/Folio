@@ -238,7 +238,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore
+.PHONY: backup restore migrate-ledger migrate-ledger-dry
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -257,6 +257,12 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 	docker run --rm -v $$vol:/data -v $$(pwd)/backups:/backup alpine \
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "Restored from $$file"
+
+migrate-ledger: .venv-check ## Run ledger migration (backfill opening balances)
+	cd $(BACKEND_DIR) && uv run python -m scripts.migrate_ledger
+
+migrate-ledger-dry: .venv-check ## Dry-run ledger migration
+	cd $(BACKEND_DIR) && uv run python -m scripts.migrate_ledger --dry-run
 
 # ---------------------------------------------------------------------------
 #  Utilities

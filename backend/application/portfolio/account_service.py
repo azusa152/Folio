@@ -10,7 +10,11 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
-from domain.constants import DEFAULT_USER_ID, ERROR_ACCOUNT_NOT_FOUND
+from domain.constants import (
+    DEFAULT_ACCOUNT_NAME,
+    DEFAULT_USER_ID,
+    ERROR_ACCOUNT_NOT_FOUND,
+)
 from domain.entities import Account, Holding
 from domain.enums import StockCategory
 from i18n import t
@@ -18,7 +22,6 @@ from infrastructure import repositories as repo
 from logging_config import get_logger
 
 logger = get_logger(__name__)
-DEFAULT_ACCOUNT_NAME = "Default"
 
 
 # ---------------------------------------------------------------------------

@@ -178,6 +178,7 @@ CATEGORY_ICON: dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Account Types
 # ---------------------------------------------------------------------------
+DEFAULT_ACCOUNT_NAME = "Default"
 ACCOUNT_TYPE_OPTIONS = [
     "brokerage",
     "retirement",

@@ -160,6 +160,8 @@ class Account(SQLModel, table=True):
 class Holding(SQLModel, table=True):
     """使用者的實際持倉（用於資產配置計算）。"""
 
+    __table_args__ = (Index("ix_holding_account_ticker", "account_id", "ticker"),)
+
     id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     ticker: str = Field(description="資產代號（股票代號或幣別如 USD）")
@@ -193,6 +195,7 @@ class Transaction(SQLModel, table=True):
     __table_args__ = (
         Index("ix_transaction_user_date", "user_id", "transaction_date"),
         Index("ix_transaction_holding_date", "holding_id", "transaction_date"),
+        Index("ix_transaction_account_ticker", "account_id", "ticker"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
