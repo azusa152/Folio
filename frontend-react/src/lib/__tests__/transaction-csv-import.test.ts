@@ -54,6 +54,23 @@ describe("transaction-csv-import", () => {
       expect(mapping.tickerColumn).toBe("ticker")
     })
 
+    it("detects broker-style aliases like number of shares and currency type", () => {
+      const mapping = autoDetectTransactionColumns([
+        "Trade Date",
+        "Type",
+        "Symbol",
+        "Number Of Shares",
+        "Price",
+        "Currency Type",
+      ])
+
+      expect(mapping.dateColumn).toBe("Trade Date")
+      expect(mapping.typeColumn).toBe("Type")
+      expect(mapping.tickerColumn).toBe("Symbol")
+      expect(mapping.quantityColumn).toBe("Number Of Shares")
+      expect(mapping.currencyColumn).toBe("Currency Type")
+    })
+
     it("returns undefined for unrecognized headers", () => {
       const mapping = autoDetectTransactionColumns(["foo", "bar"])
       expect(mapping.dateColumn).toBeUndefined()
@@ -128,6 +145,10 @@ describe("transaction-csv-import", () => {
         transformTransactionRow({ ...row("cashout"), type: "cashout" }, baseMapping)
           .transaction_type,
       ).toBe("WITHDRAWAL")
+      expect(
+        transformTransactionRow({ ...row("cash"), type: "cash" }, baseMapping)
+          .transaction_type,
+      ).toBe("DEPOSIT")
     })
 
     it("uses transactionTypeDefault for unknown type", () => {
@@ -187,6 +208,24 @@ describe("transaction-csv-import", () => {
         baseMapping,
       ).transaction_date,
       ).toBe("2024-06-15")
+    })
+
+    it("normalizes DD/MM/YYYY HH:MM format", () => {
+      expect(
+        transformTransactionRow(
+          { ...row("date-time"), date: "29/04/2025 09:17" },
+          baseMapping,
+        ).transaction_date,
+      ).toBe("2025-04-29")
+    })
+
+    it("normalizes DD/MM/YYYY format", () => {
+      expect(
+        transformTransactionRow(
+          { ...row("date"), date: "07/05/2025" },
+          baseMapping,
+        ).transaction_date,
+      ).toBe("2025-05-07")
     })
 
     it("returns empty string for invalid date", () => {

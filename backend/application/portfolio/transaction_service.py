@@ -33,7 +33,7 @@ def list_transactions(
     holding_id: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
-    limit: int = 500,
+    limit: int | None = 500,
 ) -> list[dict]:
     txns = repo.find_all_transactions(
         session,
@@ -188,6 +188,52 @@ def import_transactions(
         "imported": imported,
         "errors": errors,
     }
+
+
+def export_transactions_csv_rows(
+    session: Session,
+    *,
+    ticker: str | None = None,
+    account_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int | None = None,
+) -> list[dict[str, str | float | None]]:
+    transactions = list_transactions(
+        session,
+        ticker=ticker,
+        account_id=account_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
+    account_name_by_id: dict[int, str] = {}
+    rows: list[dict[str, str | float | None]] = []
+    for txn in transactions:
+        txn_account_id = txn.get("account_id")
+        account_name: str | None = None
+        if isinstance(txn_account_id, int):
+            account_name = account_name_by_id.get(txn_account_id)
+            if account_name is None:
+                account = repo.find_account_by_id(session, txn_account_id)
+                account_name = account.name if account is not None else ""
+                account_name_by_id[txn_account_id] = account_name
+        rows.append(
+            {
+                "transaction_date": txn.get("transaction_date"),
+                "ticker": txn.get("ticker"),
+                "transaction_type": txn.get("transaction_type"),
+                "quantity": txn.get("quantity"),
+                "price": txn.get("price"),
+                "total_amount": txn.get("total_amount"),
+                "currency": txn.get("currency"),
+                "fx_rate": txn.get("fx_rate"),
+                "fee": txn.get("fee"),
+                "note": txn.get("note"),
+                "account_name": account_name or "",
+            }
+        )
+    return rows
 
 
 def _to_dict(txn: Transaction, *, auto_radar: bool = False) -> dict:

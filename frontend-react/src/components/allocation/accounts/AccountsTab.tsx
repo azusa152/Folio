@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Download, Upload } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -11,6 +12,7 @@ import {
   useUpdateAccount,
 } from "@/api/hooks/useAccounts"
 import { TransactionList } from "@/components/allocation/transactions/TransactionList"
+import { TransactionCsvImportDialog } from "@/components/allocation/transactions/TransactionCsvImportDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +50,8 @@ export function AccountsTab({
   const [note, setNote] = useState("")
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [detailView, setDetailView] = useState<AccountDetailView>("positions")
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   const sortedAccounts = useMemo(
     () => [...(accounts ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -173,6 +177,36 @@ export function AccountsTab({
         },
       },
     )
+  }
+
+  const handleExportCsv = async () => {
+    if (selectedAccount?.id == null) return
+    setExportingCsv(true)
+    try {
+      const headers: HeadersInit = {}
+      const apiKey = import.meta.env.VITE_API_KEY
+      if (apiKey) headers["X-API-Key"] = apiKey
+
+      const params = new URLSearchParams({ account_id: String(selectedAccount.id) })
+      const response = await fetch(`/api/transactions/export-csv?${params.toString()}`, {
+        headers,
+      })
+      if (!response.ok) throw new Error(response.statusText)
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const contentDisposition = response.headers.get("Content-Disposition") || ""
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+      link.download = filenameMatch?.[1] || `transactions_${selectedAccount.id}.csv`
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(t("transactions.export_error"))
+    } finally {
+      setExportingCsv(false)
+    }
   }
 
   return (
@@ -422,6 +456,28 @@ export function AccountsTab({
             </TabsContent>
 
             <TabsContent value="transactions" className="mt-3">
+              <div className="mb-3 flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setImportDialogOpen(true)}
+                  disabled={selectedAccount == null}
+                >
+                  <Upload className="mr-1 h-3.5 w-3.5" />
+                  {t("transactions.import_button")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={handleExportCsv}
+                  disabled={selectedAccount == null || (selectedAccountTransactions?.length ?? 0) === 0 || exportingCsv}
+                >
+                  <Download className="mr-1 h-3.5 w-3.5" />
+                  {t("transactions.export_button")}
+                </Button>
+              </div>
               <TransactionList
                 transactions={selectedAccountTransactions ?? []}
                 accounts={selectedAccount ? [selectedAccount] : []}
@@ -450,6 +506,11 @@ export function AccountsTab({
           </Tabs>
         </div>
       ) : null}
+      <TransactionCsvImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        defaultAccountId={selectedAccount?.id ?? null}
+      />
     </div>
   )
 }

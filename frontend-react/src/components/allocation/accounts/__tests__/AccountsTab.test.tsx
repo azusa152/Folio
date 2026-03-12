@@ -24,16 +24,40 @@ vi.mock("sonner", () => ({
 }))
 
 const mockDeleteTransactionMutate = vi.fn()
+const mockImportTransactionsMutate = vi.fn()
 
 vi.mock("@/api/hooks/useTransactions", () => ({
   useDeleteTransaction: () => ({
     mutate: mockDeleteTransactionMutate,
     isPending: false,
   }),
+  useImportTransactions: () => ({
+    mutate: mockImportTransactionsMutate,
+    isPending: false,
+  }),
 }))
 
 let mockAccountsData = [
   { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+]
+let mockAccountTransactionsData = [
+  {
+    id: 99,
+    user_id: "default",
+    account_id: 1,
+    holding_id: null,
+    ticker: "MSFT",
+    transaction_type: "BUY",
+    quantity: 1,
+    price: 300,
+    total_amount: 300,
+    currency: "USD",
+    fx_rate: null,
+    fee: 0,
+    note: "",
+    transaction_date: "2026-03-12",
+    created_at: "2026-03-12T10:00:00",
+  },
 ]
 
 vi.mock("@/api/hooks/useAccounts", () => ({
@@ -59,25 +83,7 @@ vi.mock("@/api/hooks/useAccounts", () => ({
     isLoading: false,
   }),
   useAccountTransactions: () => ({
-    data: [
-      {
-        id: 99,
-        user_id: "default",
-        account_id: 1,
-        holding_id: null,
-        ticker: "MSFT",
-        transaction_type: "BUY",
-        quantity: 1,
-        price: 300,
-        total_amount: 300,
-        currency: "USD",
-        fx_rate: null,
-        fee: 0,
-        note: "",
-        transaction_date: "2026-03-12",
-        created_at: "2026-03-12T10:00:00",
-      },
-    ],
+    data: mockAccountTransactionsData,
     isLoading: false,
   }),
   useCreateAccount: () => ({
@@ -97,8 +103,28 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 describe("AccountsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
     mockAccountsData = [
       { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+    ]
+    mockAccountTransactionsData = [
+      {
+        id: 99,
+        user_id: "default",
+        account_id: 1,
+        holding_id: null,
+        ticker: "MSFT",
+        transaction_type: "BUY",
+        quantity: 1,
+        price: 300,
+        total_amount: 300,
+        currency: "USD",
+        fx_rate: null,
+        fee: 0,
+        note: "",
+        transaction_date: "2026-03-12",
+        created_at: "2026-03-12T10:00:00",
+      },
     ]
   })
 
@@ -132,6 +158,51 @@ describe("AccountsTab", () => {
       expect(transactionsTab).toHaveAttribute("data-state", "active")
       expect(screen.getByText("transactions.table.date")).toBeInTheDocument()
       expect(screen.getByText("MSFT")).toBeInTheDocument()
+    })
+  })
+
+  it("shows import/export toolbar actions in account transactions tab", async () => {
+    render(<AccountsTab enabled />)
+    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
+    fireEvent.click(transactionsTab)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "transactions.import_button" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeInTheDocument()
+    })
+  })
+
+  it("disables export button when selected account has no transactions", async () => {
+    mockAccountTransactionsData = []
+    render(<AccountsTab enabled />)
+    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
+    fireEvent.click(transactionsTab)
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeDisabled()
+    })
+  })
+
+  it("calls export endpoint for selected account", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(["transaction_date,ticker\n2026-03-12,MSFT\n"], { type: "text/csv" }),
+      headers: {
+        get: () => 'attachment; filename="transactions_20260312.csv"',
+      },
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<AccountsTab enabled />)
+    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
+    fireEvent.click(transactionsTab)
+    fireEvent.click(await screen.findByRole("button", { name: "transactions.export_button" }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/transactions/export-csv?account_id=1",
+        expect.objectContaining({ headers: expect.any(Object) }),
+      )
     })
   })
 

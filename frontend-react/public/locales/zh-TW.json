@@ -1754,6 +1754,8 @@
     "caption": "所有部位變動都透過交易流轉。可記錄買入、賣出、股息、存入與調整。",
     "record_button": "新增交易",
     "import_button": "匯入 CSV",
+    "export_button": "匯出 CSV",
+    "export_error": "匯出失敗。",
     "record_from_holding": "記錄交易",
     "filter": {
       "ticker": "Ticker 篩選",

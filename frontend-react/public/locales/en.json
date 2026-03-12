@@ -1754,6 +1754,8 @@
     "caption": "All position changes flow through transactions. Log buys, sells, dividends, deposits, and adjustments.",
     "record_button": "Record Transaction",
     "import_button": "Import CSV",
+    "export_button": "Export CSV",
+    "export_error": "Export failed.",
     "record_from_holding": "Record",
     "filter": {
       "ticker": "Ticker Filter",

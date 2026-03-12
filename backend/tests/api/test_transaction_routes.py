@@ -1,5 +1,8 @@
 """Contract tests for transaction CRUD endpoints."""
 
+import csv
+import io
+
 from fastapi.testclient import TestClient
 
 
@@ -555,3 +558,96 @@ def test_import_transactions_with_account_id_should_apply_to_all_items(
     txns = client.get("/transactions", params={"account_id": account_id}).json()
     assert len(txns) >= 2
     assert all(txn["account_id"] == account_id for txn in txns[:2])
+
+
+def test_export_transactions_csv_should_return_csv_with_headers(client: TestClient):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id, amount=1000.0)
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-12",
+        },
+    )
+    assert buy_resp.status_code == 201
+
+    resp = client.get("/transactions/export-csv", params={"account_id": account_id})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=" in resp.headers.get("content-disposition", "")
+
+    rows = list(csv.DictReader(io.StringIO(resp.text)))
+    assert len(rows) >= 2
+    assert {
+        "transaction_date",
+        "ticker",
+        "transaction_type",
+        "quantity",
+        "price",
+        "total_amount",
+        "currency",
+        "fx_rate",
+        "fee",
+        "note",
+        "account_name",
+    }.issubset(set(rows[0].keys()))
+
+
+def test_export_transactions_csv_should_respect_account_filter(client: TestClient):
+    account_a = _create_account(client)
+    account_b_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Second",
+            "broker": "Second",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_b_resp.status_code == 201
+    account_b = account_b_resp.json()["id"]
+
+    _deposit_cash(client, account_a, amount=1000.0)
+    _deposit_cash(client, account_b, amount=2000.0)
+    a_buy = client.post(
+        "/transactions",
+        json={
+            "account_id": account_a,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-12",
+        },
+    )
+    assert a_buy.status_code == 201
+    b_buy = client.post(
+        "/transactions",
+        json={
+            "account_id": account_b,
+            "ticker": "MSFT",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 200.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-12",
+        },
+    )
+    assert b_buy.status_code == 201
+
+    resp = client.get("/transactions/export-csv", params={"account_id": account_a})
+    assert resp.status_code == 200
+    rows = list(csv.DictReader(io.StringIO(resp.text)))
+    tickers = {row["ticker"] for row in rows}
+    assert "AAPL" in tickers
+    assert "MSFT" not in tickers

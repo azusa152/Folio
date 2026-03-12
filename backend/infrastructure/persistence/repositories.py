@@ -1428,7 +1428,7 @@ def find_all_transactions(
     holding_id: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
-    limit: int = 500,
+    limit: int | None = 500,
 ) -> list[Transaction]:
     """查詢交易紀錄（支援篩選）。"""
     stmt = select(Transaction).order_by(Transaction.transaction_date.desc())
@@ -1442,7 +1442,8 @@ def find_all_transactions(
         stmt = stmt.where(Transaction.transaction_date >= start_date)
     if end_date is not None:
         stmt = stmt.where(Transaction.transaction_date <= end_date)
-    stmt = stmt.limit(limit)
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(session.exec(stmt).all())
 
 

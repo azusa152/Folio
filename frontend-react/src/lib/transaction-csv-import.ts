@@ -48,6 +48,7 @@ const TYPE_ALIASES: Record<string, TransactionType> = {
   sell: "SELL",
   dividend: "DIVIDEND",
   deposit: "DEPOSIT",
+  cash: "DEPOSIT",
   cashin: "DEPOSIT",
   withdrawal: "WITHDRAWAL",
   withdraw: "WITHDRAWAL",
@@ -55,13 +56,13 @@ const TYPE_ALIASES: Record<string, TransactionType> = {
 }
 
 const COLUMN_ALIASES: Record<string, string[]> = {
-  transaction_date: ["date", "transaction date", "trade date", "executed date"],
+  transaction_date: ["date", "transaction date", "trade date", "executed date", "executed at", "settled date"],
   transaction_type: ["type", "action", "side", "transaction type"],
   ticker: ["ticker", "symbol", "stock"],
-  quantity: ["quantity", "shares", "qty"],
+  quantity: ["quantity", "shares", "qty", "number of shares", "amount of shares", "units"],
   price: ["price", "unit price"],
-  total_amount: ["total", "amount", "total amount", "total_amount"],
-  currency: ["currency", "ccy"],
+  total_amount: ["total", "amount", "total amount", "total_amount", "total value", "market value", "cost", "proceeds"],
+  currency: ["currency", "ccy", "currency type", "currency code"],
   fx_rate: ["fx rate", "fx_rate", "exchange rate", "rate"],
   fee: ["fee", "commission"],
   note: ["note", "memo", "remarks"],
@@ -109,6 +110,23 @@ function normalizeDate(raw: string | undefined): string {
   if (isoLikeMatch) {
     const [, year, month, day] = isoLikeMatch
     return `${year}-${month}-${day}`
+  }
+
+  const dayMonthYearWithOptionalTime = value.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/,
+  )
+  if (dayMonthYearWithOptionalTime) {
+    const [, partA, partB, year] = dayMonthYearWithOptionalTime
+    const a = Number(partA)
+    const b = Number(partB)
+    if (a >= 1 && a <= 31 && b >= 1 && b <= 31) {
+      const assumeDayFirst = a > 12 || b <= 12
+      const day = assumeDayFirst ? a : b
+      const month = assumeDayFirst ? b : a
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      }
+    }
   }
 
   const parsed = new Date(value)

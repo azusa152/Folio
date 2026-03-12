@@ -1754,6 +1754,8 @@
     "caption": "すべてのポジションの変化は取引から反映されます。買付、売却、配当、入出金、調整を記録します。",
     "record_button": "取引を記録",
     "import_button": "CSVインポート",
+    "export_button": "CSVエクスポート",
+    "export_error": "エクスポートに失敗しました。",
     "record_from_holding": "記録",
     "filter": {
       "ticker": "ティッカーフィルター",

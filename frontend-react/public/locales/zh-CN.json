@@ -1754,6 +1754,8 @@
     "caption": "所有仓位变动都通过交易流转。可记录买入、卖出、股息、存入与调整。",
     "record_button": "新增交易",
     "import_button": "导入 CSV",
+    "export_button": "导出 CSV",
+    "export_error": "导出失败。",
     "record_from_holding": "记录交易",
     "filter": {
       "ticker": "Ticker 筛选",

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useAccounts } from "@/api/hooks/useAccounts"
@@ -25,12 +25,13 @@ import {
 interface Props {
   open: boolean
   onClose: () => void
+  defaultAccountId?: number | null
 }
 
 type Step = "select" | "map" | "preview"
 const SKIP = "__skip__"
 
-export function TransactionCsvImportDialog({ open, onClose }: Props) {
+export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: Props) {
   const { t } = useTranslation()
   const { data: accounts } = useAccounts(open, true)
   const importMutation = useImportTransactions()
@@ -46,6 +47,12 @@ export function TransactionCsvImportDialog({ open, onClose }: Props) {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<CsvParseWarning[]>([])
+
+  useEffect(() => {
+    if (open) {
+      setSelectedAccountId(defaultAccountId ?? null)
+    }
+  }, [defaultAccountId, open])
 
   const items = useMemo(
     () => transformTransactionRows(rows, mapping),
