@@ -225,6 +225,26 @@ class TestComputePortfolioResonance:
         result = compute_portfolio_resonance(db_session)
         assert result[0]["overlap_count"] == 0
 
+    def test_force_refresh_should_recompute_cached_resonance(self, db_session: Session):
+        from application.guru.resonance_service import compute_portfolio_resonance
+
+        guru = _make_guru(db_session, cik="0001000009", display_name="Refresh Guru")
+        filing = _make_filing(db_session, guru.id, accession="ACC-R008")
+        _make_holding(db_session, filing.id, guru.id, "AAPL")
+        _make_holding(db_session, filing.id, guru.id, "MSFT")
+        _add_watchlist_stock(db_session, "AAPL")
+
+        first = compute_portfolio_resonance(db_session)
+        assert first[0]["overlap_count"] == 1
+
+        _add_watchlist_stock(db_session, "MSFT")
+
+        stale = compute_portfolio_resonance(db_session)
+        assert stale[0]["overlap_count"] == 1
+
+        refreshed = compute_portfolio_resonance(db_session, force_refresh=True)
+        assert refreshed[0]["overlap_count"] == 2
+
 
 # ===========================================================================
 # TestGetResonanceForTicker

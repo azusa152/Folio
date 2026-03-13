@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CATEGORY_COLOR_FALLBACK, CATEGORY_COLOR_MAP, CATEGORY_ICON_SHORT } from "@/lib/constants"
-import type { HoldingDetail, RebalanceResponse } from "@/api/types/dashboard"
+import type { RebalanceResponse } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 8
 
@@ -35,20 +35,28 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
 
   const allRows = useMemo<RowItem[]>(() => {
     const holdings = rebalance?.holdings_detail ?? []
-    const sorted = [...holdings]
-      .map((holding: HoldingDetail) => {
-        const weightPct = normalizeHoldingWeight(holding.weight_pct)
-        return {
-          label: holding.ticker,
-          category: holding.category,
-          weightPct,
-          color: getCategoryColor(holding.category),
-        }
-      })
-      .filter((holding) => holding.weightPct > 0)
-      .sort((a, b) => b.weightPct - a.weightPct)
+    const grouped = new Map<string, RowItem>()
 
-    return sorted
+    for (const holding of holdings) {
+      const weightPct = normalizeHoldingWeight(holding.weight_pct)
+      if (weightPct <= 0) continue
+
+      const key = holding.ticker.toUpperCase()
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.weightPct += weightPct
+        continue
+      }
+
+      grouped.set(key, {
+        label: holding.ticker,
+        category: holding.category,
+        weightPct,
+        color: getCategoryColor(holding.category),
+      })
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => b.weightPct - a.weightPct)
   }, [rebalance?.holdings_detail])
 
   const hasMore = allRows.length > TOP_LIMIT

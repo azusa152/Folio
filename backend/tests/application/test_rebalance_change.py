@@ -7,8 +7,24 @@ import pytest
 from sqlmodel import Session
 
 from application.portfolio.rebalance_service import calculate_rebalance
-from domain.entities import Holding, UserInvestmentProfile, UserPreferences
+from domain.constants import DEFAULT_USER_ID
+from domain.entities import Account, Holding, UserInvestmentProfile, UserPreferences
 from domain.enums import StockCategory
+
+
+def _seed_active_account(db_session: Session, name: str = "Test Account") -> Account:
+    account = Account(
+        user_id=DEFAULT_USER_ID,
+        name=name,
+        broker="Test Broker",
+        account_type="brokerage",
+        currency="USD",
+        is_active=True,
+    )
+    db_session.add(account)
+    db_session.commit()
+    db_session.refresh(account)
+    return account
 
 
 class TestRebalancePortfolioChange:
@@ -45,6 +61,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Total Change Account")
 
         holding = Holding(
             user_id="default",
@@ -54,6 +71,7 @@ class TestRebalancePortfolioChange:
             cost_basis=100.0,
             currency="USD",
             is_cash=False,
+            account_id=account.id,
         )
         db_session.add(holding)
         db_session.commit()
@@ -115,6 +133,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Holding Change Account")
 
         holding = Holding(
             user_id="default",
@@ -124,6 +143,7 @@ class TestRebalancePortfolioChange:
             cost_basis=150.0,
             currency="USD",
             is_cash=False,
+            account_id=account.id,
         )
         db_session.add(holding)
         db_session.commit()
@@ -182,6 +202,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Missing Previous Close Account")
 
         holding = Holding(
             user_id="default",
@@ -191,6 +212,7 @@ class TestRebalancePortfolioChange:
             cost_basis=50.0,
             currency="USD",
             is_cash=False,
+            account_id=account.id,
         )
         db_session.add(holding)
         db_session.commit()
@@ -224,6 +246,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Cash Only Account")
 
         holding = Holding(
             user_id="default",
@@ -232,6 +255,7 @@ class TestRebalancePortfolioChange:
             quantity=1000.0,
             currency="USD",
             is_cash=True,
+            account_id=account.id,
         )
         db_session.add(holding)
         db_session.commit()
@@ -279,6 +303,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Aggregate Change Account")
 
         holding1 = Holding(
             user_id="default",
@@ -288,6 +313,7 @@ class TestRebalancePortfolioChange:
             cost_basis=100.0,
             currency="USD",
             is_cash=False,
+            account_id=account.id,
         )
         db_session.add(holding1)
 
@@ -299,6 +325,7 @@ class TestRebalancePortfolioChange:
             cost_basis=150.0,
             currency="USD",
             is_cash=False,
+            account_id=account.id,
         )
         db_session.add(holding2)
         db_session.commit()
@@ -375,6 +402,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Warm Signals Account")
         db_session.add(
             Holding(
                 user_id="default",
@@ -384,6 +412,7 @@ class TestRebalancePortfolioChange:
                 cost_basis=100.0,
                 currency="USD",
                 is_cash=False,
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -431,6 +460,7 @@ class TestRebalancePortfolioChange:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Missing Price Account")
         db_session.add(
             Holding(
                 user_id="default",
@@ -440,6 +470,7 @@ class TestRebalancePortfolioChange:
                 cost_basis=None,
                 currency="USD",
                 is_cash=False,
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -453,6 +484,110 @@ class TestRebalancePortfolioChange:
         assert result["previous_total_value"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change_pct"] is None
+
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
+    def test_calculate_rebalance_should_exclude_inactive_and_unlinked_holdings(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        _mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 100}),
+            is_active=True,
+        )
+        db_session.add(profile)
+
+        active_account = Account(
+            user_id=DEFAULT_USER_ID,
+            name="Active Account",
+            broker="Active Broker",
+            account_type="brokerage",
+            currency="USD",
+            is_active=True,
+        )
+        inactive_account = Account(
+            user_id=DEFAULT_USER_ID,
+            name="Inactive Account",
+            broker="Inactive Broker",
+            account_type="brokerage",
+            currency="USD",
+            is_active=False,
+        )
+        db_session.add(active_account)
+        db_session.add(inactive_account)
+        db_session.commit()
+        db_session.refresh(active_account)
+        db_session.refresh(inactive_account)
+
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                quantity=2.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+                account_id=active_account.id,
+            )
+        )
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="MSFT",
+                category=StockCategory.GROWTH,
+                quantity=5.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+                account_id=inactive_account.id,
+            )
+        )
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="ORPHAN",
+                category=StockCategory.GROWTH,
+                quantity=10.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+                account_id=None,
+            )
+        )
+        db_session.commit()
+
+        mock_signals.return_value = {
+            "price": 100.0,
+            "previous_close": 100.0,
+            "change_pct": 0.0,
+        }
+        mock_fx.return_value = {"USD": 1.0}
+
+        result = calculate_rebalance(db_session, "USD")
+
+        assert result["total_value"] == pytest.approx(200.0, rel=0.01)
+        assert len(result["holdings_detail"]) == 1
+        assert result["holdings_detail"][0]["ticker"] == "AAPL"
 
 
 class TestRebalanceAdviceTranslation:
@@ -490,6 +625,7 @@ class TestRebalanceAdviceTranslation:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Balanced Advice Account")
         for ticker, category in [
             ("NVDA", StockCategory.GROWTH),
             ("BND", StockCategory.BOND),
@@ -503,6 +639,7 @@ class TestRebalanceAdviceTranslation:
                     cost_basis=100.0,
                     currency="USD",
                     is_cash=False,
+                    account_id=account.id,
                 )
             )
         db_session.commit()
@@ -558,6 +695,7 @@ class TestRebalanceAdviceTranslation:
             is_active=True,
         )
         db_session.add(profile)
+        account = _seed_active_account(db_session, "Overweight Advice Account")
         db_session.add(
             Holding(
                 user_id="default",
@@ -567,6 +705,7 @@ class TestRebalanceAdviceTranslation:
                 cost_basis=1.0,
                 currency="USD",
                 is_cash=False,
+                account_id=account.id,
             )
         )
         db_session.add(
@@ -578,6 +717,7 @@ class TestRebalanceAdviceTranslation:
                 cost_basis=1.0,
                 currency="USD",
                 is_cash=False,
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -600,3 +740,62 @@ class TestRebalanceAdviceTranslation:
             f"Expected list[str], got: {advice}"
         )
         assert any("overweight" in a.lower() for a in advice)
+
+
+class TestRebalanceCacheRefresh:
+    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.rebalance_service.get_exchange_rates")
+    @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_top_holdings",
+        return_value=None,
+    )
+    @patch(
+        "application.portfolio.rebalance_service.get_etf_sector_weights",
+        return_value=None,
+    )
+    def test_force_refresh_should_recompute_cached_rebalance(
+        self,
+        _mock_etf_weights,
+        _mock_etf,
+        _mock_etf_sector_prewarm,
+        _mock_etf_prewarm,
+        _mock_prewarm,
+        mock_fx,
+        mock_signals,
+        db_session: Session,
+    ):
+        profile = UserInvestmentProfile(
+            user_id="default",
+            config=json.dumps({"Growth": 100}),
+            is_active=True,
+        )
+        db_session.add(profile)
+        account = _seed_active_account(db_session, "Cache Refresh Account")
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="NVDA",
+                category=StockCategory.GROWTH,
+                quantity=10.0,
+                cost_basis=100.0,
+                currency="USD",
+                is_cash=False,
+                account_id=account.id,
+            )
+        )
+        db_session.commit()
+
+        mock_fx.return_value = {"USD": 1.0}
+        mock_signals.side_effect = [
+            {"price": 120.0, "previous_close": 110.0, "change_pct": 9.09},
+            {"price": 130.0, "previous_close": 120.0, "change_pct": 8.33},
+        ]
+
+        first = calculate_rebalance(db_session, "USD")
+        refreshed = calculate_rebalance(db_session, "USD", force_refresh=True)
+
+        assert first["total_value"] == pytest.approx(1200.0, rel=0.01)
+        assert refreshed["total_value"] == pytest.approx(1300.0, rel=0.01)

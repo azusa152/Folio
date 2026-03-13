@@ -79,6 +79,7 @@
     "display_order_updated": "✅ Updated display order for {count} stocks.",
     "thesis_updated": "✅ {ticker} thesis updated to version {version}.",
     "added": "✅ Added {ticker} to {category} category.",
+    "auto_thesis": "Auto-tracked via transaction",
     "import_missing_ticker": "Missing ticker field",
     "import_invalid_category": "{ticker}: invalid category {category}",
     "import_complete": "✅ Import complete: {created} added, {updated} updated, {errors} errors.",
@@ -285,9 +286,6 @@
     "digest_started": "Weekly digest started, results will be sent via Telegram.",
     "holding_not_found": "Holding not found.",
     "holding_deleted": "Holding {ticker} deleted.",
-    "net_worth_item_not_found": "Net worth item not found.",
-    "net_worth_item_deleted": "Net worth item '{name}' deleted.",
-    "net_worth_seed_no_cash_holdings": "No cash holdings found to import.",
     "import_item_failed": "Import item {index} failed",
     "import_done": "Import complete: {count} successful.",
     "xray_done": "X-Ray analysis complete, {count} warnings sent.",
@@ -361,7 +359,9 @@
     "created": "Transaction recorded",
     "deleted": "Transaction deleted",
     "insufficient_balance": "Insufficient cash balance for this transaction",
-    "cash_holding_not_found": "No cash balance found for the selected account and currency"
+    "cash_holding_not_found": "No cash balance found for the selected account and currency",
+    "stock_holding_not_found": "No stock position found for this ticker in the selected account.",
+    "insufficient_shares": "Insufficient shares. Available: {{available}}, Required: {{required}}."
   },
   "account": {
     "not_found": "Account not found",

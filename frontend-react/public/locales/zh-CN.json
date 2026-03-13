@@ -65,10 +65,8 @@
     "chart_price_trend": "所选股票的价格趋势图",
     "chart_fx_rate": "汇率趋势图",
     "chart_heatmap": "按行业分类的股票热力图，显示每日涨跌",
-    "chart_net_worth": "净资产历史图表，显示资产与负债随时间的变化",
     "chart_portfolio_sparkline": "30 日投资组合价值趋势",
     "chart_stock_sparkline": "股票短期趋势迷你图",
-    "chart_net_worth_sparkline": "30 日净资产趋势",
     "chart_drawdown": "投资组合回撤走势，显示峰值到谷底的跌幅",
     "chart_risk_metrics": "投资组合风险指标，包括夏普比率、波动率和回撤"
   },
@@ -125,11 +123,34 @@
       "2months": "2 个月",
       "3months": "3 个月"
     },
-    "account_type": {
+    "cash_subtype": {
       "savings": "活存",
       "fixed_deposit": "定存",
       "money_market": "货币市场基金",
       "other": "其他"
+    },
+    "account_type": {
+      "brokerage": "证券账户",
+      "retirement": "退休账户（IRA/401k）",
+      "savings": "储蓄账户",
+      "crypto": "加密货币交易所",
+      "bank": "银行账户",
+      "wallet": "加密钱包",
+      "cash_wallet": "现金／电子钱包",
+      "insurance": "保险",
+      "loan": "贷款",
+      "other": "其他"
+    },
+    "transaction_type": {
+      "BUY": "买入",
+      "SELL": "卖出",
+      "DIVIDEND": "股息",
+      "DEPOSIT": "存入",
+      "WITHDRAWAL": "提领",
+      "OPENING_BALANCE": "期初余额",
+      "ADJUSTMENT": "调整",
+      "TRANSFER_IN": "转入",
+      "TRANSFER_OUT": "转出"
     },
     "priority": {
       "rebalance": "🔄 再平衡",
@@ -196,7 +217,7 @@
     "title": "📊 投资组合总览",
     "sop": {
       "title": "📖 投资组合总览：使用说明书",
-      "content": "### 页面总览\n\n本页面是你的**投资仪表板首页**，提供一眼式的投资组合健康状态总览。所有数据来自系统即时计算，无需手动操作。\n\n---\n\n### 🕐 数据更新时间\n\n页面顶部显示两个时间戳：\n\n- **💰 价格数据更新** — 最近一次通过 yfinance 获取即时股价的时间。对应再平衡分析中的市值计算\n- **🔍 上次扫描** — 最近一次执行三层漏斗扫描的时间。扫描每 15 分钟自动执行一次\n\n> 若两者时间差距过大，可前往「投资雷达」页面手动触发扫描。\n\n---\n\n### 📊 投资组合脉搏（主视觉卡片 — 三栏）\n\n主视觉卡片显示最重要的三项数据，无需滚动：\n\n- **左栏（宽）：总市值** — 持仓以选定币别计算的市值，含日涨跌幅（▲/▼ 百分比与金额）。隐私模式遮蔽金额。\n- **中栏：恐惧与贪婪仪表板** — 显示综合恐惧与贪婪指数（0–100）的紧凑半圆仪表板。数据来源优先顺序：CNN 恐惧与贪婪指数 → VIX 备援。下方显示 VIX 值与 CNN 分数。\n- **右栏：市场情绪 / 健康分数 / 追踪持仓** — 三个堆叠指标：\n  - *市场情绪*：基于风向球股票与 60 日均线的关系\n  - *健康分数*：追踪股票中信号为 NORMAL 的比例（≥80% 绿色、≥50% 黄色、<50% 红色）\n  - *追踪 / 持仓*：雷达追踪股票数 vs 持仓笔数\n\n**恐惧与贪婪色带：**\n\n| 分数 | 颜色 | 等级 |\n|------|------|------|\n| 0–25 | 🟥 深红 | 极度恐惧 |\n| 25–45 | 🟧 橘色 | 恐惧 |\n| 45–55 | 🟨 黄色 | 中性 |\n| 55–75 | 🟩 浅绿 | 贪婪 |\n| 75–100 | 🟢 深绿 | 极度贪婪 |\n\n---\n\n### ⚠️ 信号警报（需要关注）\n\n显示在配置图表**之前** — 这些事项需要优先处理。\n\n以表格列出所有**信号非 NORMAL** 的追踪股票（图示、股票代号、分类、信号名称）：\n\n| 信号 | 图示 | 含义 |\n|------|------|------|\n| 投资逻辑有风险 | 🚨 | 护城河受损（毛利率大幅衰退），基本面转差 |\n| 低估机会 | 💎 | 检测到显著低估 |\n| 急跌信号 | 📉 | RSI 超卖 |\n| 反弹起点 | 🟢 | RSI 偏低且股价低于 MA60，可能是选择性布局机会 |\n| 接近入场区 | 🎯 | 接近积累区，RSI 进入买入范围 |\n| 过热风险 | 🔥 | 乖离率与 RSI 偏高且成交放量，股价短期过热风险升高 |\n| 风险偏高 | ⚠️ | 需要提高注意 |\n| 动能转弱 | 🔻 | 动能转弱 |\n\n若有警报，**再平衡建议**会内嵌显示在警报列表下方（自动生成的加减码建议）。若所有股票均为 NORMAL，显示绿色成功横幅。\n\n---\n\n### 🎯 配置概览（左右并排）\n\n两张图并排显示在同一个卡片内：\n\n- **左 — 双甜甜圈（目标 vs 实际）**：使用相同分类颜色的两个圆饼图。左图 = 投资人格中设定的目标配置；右图 = 当前持仓的市值比例。鼠标悬停可查看精确百分比。\n- **右 — 偏移度长条图**：每个分类的实际与目标差距（百分点）。正值 = 超配；负值 = 低配。橘色虚线标示 ±5% 警戒线，超过时长条变红色。\n\n---\n\n### 🏆 前 10 大持仓\n\n依**权重（占总市值比例）**排序的前 10 大持仓，以彩色表格显示：\n\n- **日涨跌** — 正值以绿色（▲）显示，负值以红色（▼）显示，数据来自 yfinance 历史数据\n- **隐私模式** — 市值栏位遮蔽为 `***`，日涨跌百分比仍然显示\n\n> 💡 若单一持仓权重超过 15%，建议留意集中度风险。可前往「个人资产配置」页的 X-Ray 穿透分析查看更详细的曝险。\n>\n> ⚠️ **注意**：日涨跌数据需要至少 2 天的历史数据。新加入的股票或数据不足时会显示 `N/A`。\n\n---\n\n### 🏦 大师足迹共鸣\n\n显示你的观察名单／持仓与顶尖机构投资人 13F 季报持仓的重叠情况。\n\n- **三项 KPI 指标常驻显示**：重叠股票数、持有大师数、最强共鸣信号\n- **展开「📋 前 5 名共鸣明细」** 可查看每只股票的大师明细卡片（默认收起，节省版面）\n- **「查看大师足迹」按钮** 位于区块标题旁，直接跳转至完整大师足迹页面\n\n> ⚠️ 数据来源为季度 13F 快照，非即时数据。\n\n---\n\n### 🙈 隐私模式（跨设备同步）\n\n标题栏的隐私模式开关会遮蔽所有**金额相关数字**（总市值、持仓市值），仅保留百分比与分类结构。设定会储存至数据库，跨设备、跨 session 同步生效。在「个人资产配置」页面也可切换，两页面同步。\n\n---\n\n### 📊 持仓比例\n\n**持仓比例**卡片以可视化方式呈现每个持仓的权重比例。顶部的堆叠长条图提供一眼式总览，下方依权重由大到小列出各持仓，并附有比例进度条。点击**显示全部持仓**可展开前 8 大以外的所有持仓。\n\n### 🎓 新手引导\n\n首次使用者会看到引导设置横幅：先在雷达新增股票，再到资产配置新增持仓。两步完成后横幅自动消失。"
+      "content": "### 页面总览\\n\\n此仪表板基于**账本推导仓位**与账户余额，汇总显示投资组合状态。\\n\\n---\\n\\n### 优先查看\\n\\n- 价格更新时间与最近扫描时间\\n- 信号警报与配置偏移\\n- 账户与仓位健康度\\n\\n---\\n\\n### 仓位模型\\n\\n- 总市值与图表均来自交易推导出的仓位。\\n- 在 Allocation 记录交易，会同时更新现金与股票仓位。\\n- 页面若仍显示 **Holding Breakdown** 标签，可保留；其含义是当前仓位视图。\\n\\n---\\n\\n### 新手引导\\n\\n先在 Radar 添加股票，再到 Allocation 创建账户并记录交易。"
     },
     "currency_selector": "显示币别",
     "price_updated": "💰 价格资料更新：{{timestamp}}",
@@ -212,8 +233,8 @@
       "market_sentiment": "市场情绪",
       "total_value": "总市值",
       "health_score": "健康分数",
-      "tracking_holdings": "追踪 / 持仓",
-      "tracking_holdings_value": "{{stocks}} 档 / {{holdings}} 笔"
+      "tracking_holdings": "追踪 / 仓位",
+      "tracking_holdings_value": "{{stocks}} 档 / {{holdings}} 仓位"
     },
     "chart": {
       "target": "🎯 目标配置",
@@ -226,16 +247,14 @@
     "button_setup_persona": "💼 前往设定投资人格",
     "button_track_stock": "📡 前往追踪股票",
     "button_goto_radar": "📡 前往投资雷达新增股票",
-    "button_add_holdings": "💼 前往新增持仓",
+    "button_add_holdings": "🧾 记录交易",
     "market_sentiment": "市场情绪",
     "total_market_value": "总市值",
-    "net_worth_title": "净资产",
-    "net_worth_manage": "前往配置管理",
     "health_score": "健康分数",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目标 vs 实际配置",
     "drift_title": "📊 偏移度 Drift",
-    "no_allocation_data": "📭 尚无配置资料。请先设定投资人格并新增持仓。",
+    "no_allocation_data": "📭 尚无配置资料。请先设定投资人格、创建账户并记录交易。",
     "signal_alerts_title": "⚠️ 讯号警报",
     "signal_buy_title": "🟢 买入机会",
     "signal_risk_title": "🚨 风险警示",
@@ -250,13 +269,13 @@
     "no_tracking_stocks_title": "目前没有信号",
     "no_tracking_stocks_description": "在投资雷达中新增追踪股票，Folio 会自动监控信号。",
     "onboarding_title": "两步骤启动你的投资组合",
-    "onboarding_description": "先到投资雷达新增第一支股票，再到资产配置新增持仓，即可解锁完整分析。",
+    "onboarding_description": "先到投资雷达新增第一支股票，再到资产配置创建账户并记录交易，即可开始追踪投资组合。",
     "onboarding_goto_radar": "前往雷达",
-    "onboarding_goto_allocation": "新增持仓",
+    "onboarding_goto_allocation": "前往资产配置",
     "section_market_pulse": "市场脉搏",
     "section_portfolio_overview": "投资组合概览",
     "section_deep_dive": "深入分析",
-    "top_holdings_title": "🏆 前 {{limit}} 大持仓",
+    "top_holdings_title": "🏆 前 {{limit}} 大仓位",
     "holdings_table": {
       "ticker": "股票",
       "category": "分类",
@@ -289,7 +308,7 @@
       "dividend_converted": "换汇后"
     },
     "no_holdings": "无持仓资料。",
-    "no_holdings_data": "📭 尚无持仓资料。请先新增持仓以查看分析。",
+    "no_holdings_data": "📭 暂无仓位数据。请先记录交易来构建投资组合。",
     "resonance": {
       "title": "🏆 大师足迹共鸣",
       "caption": "⚠️ 基于季报快照，非即时资料。",
@@ -341,11 +360,28 @@
     "performance_backfill_complete": "基准数据已加载 — 图表已更新",
     "performance_backfill_timeout": "回填时间较长，请稍后刷新页面",
     "holding_breakdown": {
-      "title": "持仓比例",
+      "title": "仓位比例",
       "other": "其他",
-      "show_all": "显示全部持仓",
+      "show_all": "显示全部仓位",
       "show_less": "收起",
-      "stacked_bar_aria": "投资组合持仓比例分布"
+      "stacked_bar_aria": "投资组合仓位比例分布"
+    },
+    "accounts_overview": {
+      "title": "账户总览",
+      "view_all": "查看全部账户",
+      "positions_count": "{{count}} 个仓位",
+      "cash_label": "现金",
+      "no_cash": "无现金",
+      "cash_missing_fx_hint": "部分现金币种（{{currencies}}）因缺少汇率数据，暂未计入总额。",
+      "total_label": "总计",
+      "deposit": "入金",
+      "trade": "交易",
+      "empty_title": "尚未创建账户",
+      "empty_description": "先创建账户即可开始追踪你的投资。",
+      "empty_cta": "创建账户",
+      "error_title": "无法加载账户摘要",
+      "error_description": "请刷新后重试。",
+      "stacked_bar_aria": "各账户投资组合金额分布"
     },
     "show_advanced": "显示深入分析",
     "hide_advanced": "隐藏深入分析"
@@ -634,70 +670,17 @@
   },
   "allocation": {
     "title": "💼 个人资产配置",
-    "caption": "持仓记录 · 再平衡分析 · Telegram 通知",
+    "caption": "仓位管理 · 再平衡分析 · Telegram 通知",
     "sop": {
       "title": "📖 个人资产配置：使用说明书",
-      "content": "### 页面总览\n\n本页面负责**个人资产持仓管理**与**投资组合再平衡分析**。通过左侧导航栏从投资雷达切换至此页面。\n\n### 🙈 隐私模式（跨设备同步）\n\n页面右上角提供**隐私模式开关**。开启后，所有敏感的金额数字（总市值、持仓数量、现价、平均成本、市值等）会以 `***` 遮蔽，仅保留百分比与分类结构。适合屏幕分享或截图时使用，不影响后端数据。**隐私模式设定会储存至数据库**，跨设备、跨浏览器 session 同步生效。在「投资组合总览」页面也可切换，两页面同步。\n\n---\n\n### 侧边栏 — 新增持仓（四种模式）\n\n通过「资产类型」切换，可新增四种持仓：\n\n- **📈 股票**：选择市场（🇺🇸 美股 / 🇹🇼 台股 / 🇯🇵 日股 / 🇭🇰 港股），输入股票代号（系统自动加上市场后缀如 `.TW`、`.T`），选择分类，输入股数、平均成本与券商\n- **🛡️ 债券**：输入债券代号（如 TLT、BND），选择币别，输入股数、平均成本与券商\n- **💵 现金**：选择币别与金额，可选填银行、账户类型（活存/定存/货币市场基金）及备注\n- **₿ 加密货币**：可按名称或代号搜索币种，选择后自动带入 ticker 与 CoinGecko ID，再输入数量、平均成本与币别（USD）\n\n#### 雷达自动同步\n\n- 若输入的股票代号**已在雷达追踪**中，分类栏位会自动带入雷达中的分类（锁定不可修改）\n- 若输入的是**全新股票**，新增持仓后系统会自动将其加入雷达追踪，可选填投资观点作为初始记录\n\n侧边栏也提供**导出 / 导入持仓**功能（JSON 格式），以及导入范本下载。\n\n---\n\n### Step 1 — 设定目标配置（可收合）\n\n- 从 6 种预设**投资人格范本**中选择（退休防御、标准型、积极进攻、杠铃策略、狙击手、自定义）\n- 每种范本预设六大分类的目标配置比例\n- 可随时**微调**各分类百分比（合计需等于 100%）\n- 已选定范本后，可点击**「🔄 切换风格」**更换为其他范本\n- 已设定配置后，此区段会自动收合，点击可展开重新编辑\n\n---\n\n### Step 2 — 持仓管理\n\n- 持仓表格支持**即时编辑**：直接点击储存格即可修改数量、平均成本、券商、分类\n- 编辑完成后按下「💾 储存变更」即可批次更新\n- 可通过下拉选单选择持仓并按「🗑️ 删除」移除\n- 新增持仓请使用左侧面板\n\n---\n\n### 分析功能（顶层分页：再平衡 / 汇率曝险 / 聪明提款 / 压力测试）\n\n完成 Step 1 与 Step 2 后，页面顶部的四个分析分页（📊 再平衡、💱 汇率曝险、💰 聪明提款、🧪 压力测试）即可使用。「⚙️ 设定」分页底部有共用的**显示币别选择器**与**🔄 重新整理**按钮，切换币别或刷新数据会套用到所有分析分页。\n\n#### 📊 再平衡分析\n\n- **加载指示器**：加载再平衡数据时显示「📊 加载再平衡分析中...」状态动画，完成后自动收合为「✅ 再平衡分析加载完成」\n- **数据更新时间**：显示数据获取时间（🕐），自动侦测浏览器时区并以本地时间显示\n- **即时汇率**：系统通过 yfinance 获取即时汇率（缓存 1 小时），确保跨币别资产正确换算\n- **双饼图**：目标配置 vs 实际配置\n- **Drift 长条图**：各分类的偏移程度（红色超配 / 绿色低配）\n- **个股持仓明细**：显示各股原始币别、数量、现价、平均成本、换算后市值与占比；非美元持仓额外显示 **本币收益**（本地股价涨跌 + 汇率影响）与 **汇率收益**（买入汇率快照 vs 当前汇率）\n- **再平衡建议**：自动提示偏移超过 5% 的分类，建议加码或减码\n- **🔬 穿透式 X-Ray**：自动解析 ETF 前 10 大成分股，计算「直接持仓 + ETF 间接曝险」的真实比例。堆叠长条图直观显示集中度风险，超过 15% 门槛时以橘色警告提示，亦可一键发送 Telegram 警告\n\n> 💡 定期（如每季）检视资产配置，是最重要但最常被忽略的投资纪律。\n\n#### 💱 汇率曝险监控\n\n- **本币设定**：右上角可直接切换本币（如 TWD → USD），系统会以此作为汇率曝险计算的基准\n- **双分页检视**：\n  - **💵 现金币别曝险**（默认）：仅分析现金部位的币别分布，汇率风险对现金的影响最直接\n  - **📊 全资产币别曝险**：分析整体投资组合（含股票、债券、现金）的币别分布\n- **币别分布饼图**：以甜甜圈图显示各币别的市值比例\n- **风险等级**：根据汇率变动警报严重程度自动判定\n  - 🟢 低风险：无显著汇率警报\n  - 🟡 中风险：侦测到短期（5 日）波段变动\n  - 🔴 高风险：侦测到单日剧烈波动\n- **近期汇率变动**：显示各外币对本币的近 5 日汇率变动百分比，以 📈📉 标示方向\n- **汇率变动警报**：三层级侦测（🔴 单日 >1.5% / 🟡 5日 >2% / 🔵 3月 >8%），以色彩标签分级显示\n- **智慧建议**：系统会特别标示现金部位受汇率影响的金额，帮助您聚焦最需要关注的部分\n- **Telegram 警报**：当汇率变动超过三层门槛时发送 Telegram 通知（含现金曝险金额）。系统每 6 小时自动检查，亦可手动点击「📨 发送汇率曝险警报至 Telegram」\n\n#### 💰 聪明提款\n\n当你需要从投资组合中提取现金时，系统会通过 **Liquidity Waterfall** 三层优先算法，自动建议最佳卖出方案：\n\n1. **🔄 再平衡**（Priority 1）：优先卖出超配资产，顺便回归目标配置\n2. **📉 节税**（Priority 2）：卖出账面亏损持仓，进行 Tax-Loss Harvesting\n3. **💧 流动性**（Priority 3）：按流动性顺序（现金 → 债券 → 成长 → 护城河 → 风向球）卖出\n\n- 输入**提款金额**与**币别**，点击「💰 计算提款建议」\n- 系统会显示卖出建议表格（标的、数量、金额、原因）与摘要指标（目标金额、可卖出总额、缺口）\n- 若投资组合市值不足，会显示**缺口金额**警告\n- 可选择开启「📡 发送 Telegram 通知」，将建议同步至 Telegram\n\n> 💡 聪明提款的核心理念：先卖该卖的（超配），再卖能省税的（亏损），最后才动用流动性高的资产，保护你的复利核心持仓。\n\n#### 🧪 压力测试\n\n模拟大盘崩盘情境，检视你的组合能承受多大冲击。基于线性 CAPM 模型（β 值）估算各持仓在市场大跌时的预期损失。\n\n- **崩盘情境滑杆**：选择市场下跌幅度（-50% 到 0%），模拟大盘（如 S&P 500）崩跌时的组合表现\n- **组合加权 Beta**：计算整体 Beta 值（Beta > 1.0 表示比大盘波动更大，Beta < 1.0 较稳健）\n- **预期蒸发金额**：显示在此情境下组合预期损失的金额与百分比\n- **痛苦等级分类**：\n  - 🟢 微风轻拂（< 10% 损失）\n  - 🟡 有感修正（10-20% 损失）\n  - 🟠 伤筋动骨（20-30% 损失）\n  - 🔴 睡不着觉（≥ 30% 损失）\n- **持仓明细表**：各标的预期损失明细，按影响程度排序\n- **智能建议**：达到「睡不着觉」等级时，系统提供风险管理建议（检视 Beta、紧急备用金、杠杆风险等）\n- **隐私模式**：支持金额隐藏，仅显示百分比与等级\n\n> 💡 压力测试帮助你评估组合抗跌能力，提前了解极端市场情境下的风险暴露。定期检视 Beta 值与损失预期，是风险管理的重要环节。\n\n---\n\n### Telegram 通知设定（双模式）\n\n- **系统默认 Bot**：使用 `.env` 中的 `TELEGRAM_BOT_TOKEN`，无需额外设定\n- **自定义 Bot**：输入自定义 Bot Token 与 Chat ID，开启「使用自定义 Bot」开关\n- 启用自定义 Bot 后，所有扫描通知、价格警报、每周摘要都会通过自定义 Bot 发送\n- 未设定或关闭自定义 Bot 时，自动回退使用系统默认 Bot\n- **测试按钮**：储存设定后可点击「📨 发送测试消息」验证设定是否正确\n- **每周摘要**：点击「📬 发送每周摘要」可手动触发每周投资组合健康报告（后台执行，结果通过 Telegram 发送）\n\n---\n\n### 🌍 地理与资产类别视图\n\n配置页面包含**地理配置**（按地区：US/TW/JP/HK）和**资产类别**（股票/固定收益/另类/现金）分页，提供多维度的投资组合视图。\n\n### 📊 分析分页\n\n- **回撤**: 峰值至谷底下跌追踪，含反转面积图\n- **风险指标**: Sharpe ratio、Sortino ratio、Calmar ratio、年化波动率\n- **贡献 vs 增长**: 堆叠面积图显示累计存入 vs 市场增值\n\n### 📝 术语模式\n\n在设置中切换**专家模式**（完整金融术语）和**简化模式**（通俗易懂的标签）。显示模式适用于所有页面。"
+      "content": "### 页面总览\\n\\n资产配置页面已改为**账本驱动（Ledger-driven）**：交易是唯一事实来源，持仓表是计算后的仓位视图。\\n\\n---\\n\\n### 核心流程\\n\\n1. 设定目标配置\\n2. 创建或选择账户\\n3. 记录交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n仓位会根据交易自动计算。\\n\\n---\\n\\n### 仓位创建与调整\\n\\n- 新增初始仓位会创建 **OPENING_BALANCE** 交易。\\n- 持仓表为**只读仓位视图**。\\n- 需要调整数量或现金时，请使用**记录交易**。\\n\\n---\\n\\n### 分析分页\\n\\n再平衡、汇率曝险、提款、压力测试均基于账本推导出的仓位。\\n\\n### CSV 导入\\n\\nCSV/TSV 导入会按行创建 `OPENING_BALANCE` 交易，再从账本重建仓位。"
     },
-    "sop_csv_note": "现在也支持 CSV/TSV 导入持仓，可先进行字段映射与预览，再确认导入。",
-    "sidebar": {
-      "header": "💰 资产管理",
-      "add_holding": "➕ 新增持仓",
-      "asset_type": "资产类型",
-      "asset_stock": "📈 股票",
-      "asset_bond": "🛡️ 债券",
-      "asset_cash": "💵 现金",
-      "asset_crypto": "₿ 加密货币",
-      "market": "市场",
-      "currency": "币别：{{currency}}",
-      "stock_ticker": "股票代号",
-      "crypto_search": "搜索加密货币",
-      "crypto_search_placeholder": "例如 Bitcoin、Ethereum",
-      "crypto_select_required": "⚠️ 请先选择加密货币。",
-      "crypto_quantity": "数量（最多 8 位小数）",
-      "in_radar": "📋 已在雷达中，自动同步分类：{{category}}",
-      "not_in_radar": "📌 此股票尚未在雷达中，新增后将自动加入追踪。",
-      "bond_in_radar": "📋 已在雷达中，将沿用既有分类。",
-      "thesis_optional": "投资观点（选填）",
-      "thesis_placeholder": "新增至雷达时的初始观点...",
-      "category": "分类",
-      "quantity": "股数",
-      "avg_cost": "平均成本",
-      "broker_optional": "券商（选填）",
-      "broker_placeholder": "例如 永丰金、Firstrade",
-      "add_button": "新增",
-      "error_ticker": "⚠️ 请输入股票代号。",
-      "error_quantity": "⚠️ 请输入股数。",
-      "error_avg_cost": "⚠️ 平均成本不能为负数。",
-      "added": "✅ 已新增 {{ticker}}",
-      "auto_radar": "📡 已自动加入雷达追踪",
-      "bond_ticker": "债券代号",
-      "currency_label": "币别",
-      "error_bond_ticker": "⚠️ 请输入债券代号。",
-      "cash_amount": "金额",
-      "cash_bank": "银行 / 券商（选填）",
-      "cash_bank_placeholder": "例如 台湾银行、中信银行",
-      "cash_account_type": "账户类型（选填）",
-      "not_specified": "（不指定）",
-      "cash_notes": "备注（选填）",
-      "cash_notes_placeholder": "例如 紧急预备金、旅游基金...",
-      "error_cash_amount": "⚠️ 请输入金额。",
-      "cash_added": "✅ 已新增 {{label}} {{amount}}",
-      "export_title": "📥 导出持仓",
-      "download_json": "📥 下载 JSON",
-      "export_count": "共 {{count}} 笔持仓",
-      "no_export": "目前无持仓可导出。",
-      "import_title": "📤 导入持仓",
-      "import_hint": "JSON 可直接导入；CSV/TSV 支持字段映射与预览检查。",
-      "upload_json": "上传 JSON 档案",
-      "upload_csv": "上传 CSV 档案",
-      "import_detected": "侦测到 {{count}} 笔资料。",
-      "import_confirm": "📤 确认导入",
-      "import_success": "✅ 导入完成",
-      "import_error_format": "⚠️ JSON 格式错误，预期为数组。",
-      "import_error_json": "❌ 无法解析 JSON 档案。",
-      "download_template": "📋 下载导入范本",
-      "refresh": "🔄 重新整理画面"
+    "sop_csv_note": "CSV/TSV 导入会为每一行创建 OPENING_BALANCE 交易，支持字段映射与预览后再导入。",
+    "quick_start": {
+      "title": "快速上手：3 步完成开户到下单",
+      "step1": "在“账户”分页创建券商账户。",
+      "step2": "使用账户卡片的“存入资金”或在交易分页用 DEPOSIT 存入现金。",
+      "step3": "使用同一账户记录 BUY 交易，系统会自动更新现金与股票仓位。"
     },
     "csv_import": {
       "title": "CSV 导入",
@@ -741,12 +724,22 @@
       "no_rows_to_import": "没有可导入的数据行，请检查 CSV 与字段映射设置。",
       "confirm_replace_all_required": "导入前请先确认将覆盖所有现有持仓。",
       "replace_all_confirm": "我了解这次导入会覆盖所有现有持仓。",
+      "account": "账户",
+      "account_optional": "不选择账户",
+      "import_mode": "导入模式",
+      "mode_replace_all": "覆盖全部持仓",
+      "mode_replace_account": "仅覆盖所选账户持仓",
+      "mode_append": "追加（不删除现有数据）",
+      "select_account_for_replace": "使用“覆盖账户”模式前请先选择账户。",
+      "confirm_destructive_required": "使用覆盖模式导入前，请先勾选确认框。",
+      "confirm_replace_all": "我了解此操作将删除所有现有持仓并替换。",
+      "confirm_replace_account": "我了解此操作将删除所选账户的所有持仓并替换。",
       "parse_warnings": "解析警告：{{count}}",
       "parse_warnings_title": "CSV 解析警告",
       "parse_warning_item": "第 {{row}} 行（{{code}}）：{{message}}"
     },
     "error_loading": "❌ 资产配置载入失败：{{error}}",
-    "setup_required": "⚠️ 请先至「⚙️ 设定」分页完成 Step 1（目标配置）与 Step 2（新增持仓）。",
+    "setup_required": "⚠️ 请先完成 Step 1（目标配置），再通过记录交易建立仓位。",
     "tab": {
       "setup": "⚙️ 设定",
       "rebalance": "📊 再平衡",
@@ -757,10 +750,8 @@
       "portfolio": "📊 投资组合",
       "risk": "🛡️ 风险分析",
       "actions": "💡 操作建议",
-      "transactions": "🧾 交易记录",
       "accounts": "🏦 账户",
-      "settings": "⚙️ 设定",
-      "net_worth": "💎 净资产"
+      "settings": "⚙️ 设定"
     },
     "tab_teaser": {
       "risk_desc": "分析货币敞口，并对投资组合进行市场崩盘压力测试。",
@@ -769,7 +760,7 @@
       "hide_details": "隐藏详情"
     },
     "step1_title": "🎯 Step 1 — 设定目标配置",
-    "step2_title": "💼 Step 2 — 持仓管理",
+    "step2_title": "🧾 Step 2 — 记录交易",
     "display_currency": "显示币别",
     "refresh_button": "🔄 重新整理",
     "error_setup": "❌ 设定载入失败：{{error}}",
@@ -818,6 +809,7 @@
       "save_notif": "💾 保存通知偏好"
     },
     "loading": "📊 加载投资组合数据中...",
+    "refreshing": "正在更新投资组合数据...",
     "loaded": "✅ 投资组合数据已加载",
     "error_loading_label": "❌ 投资组合数据加载失败",
     "health": {
@@ -844,6 +836,7 @@
     },
     "col": {
       "ticker": "代号",
+      "account": "账户",
       "category": "类别",
       "qty": "数量",
       "value": "市值",
@@ -851,7 +844,8 @@
       "cost": "成本",
       "change_pct": "涨跌%",
       "home_return": "本币: {{pct}}",
-      "fx_return": "汇率: {{pct}}"
+      "fx_return": "汇率: {{pct}}",
+      "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
     },
     "crypto": {
       "volatility_warning": "高波动",
@@ -862,12 +856,13 @@
       "title": "持仓明细",
       "empty": "无持仓数据。"
     },
+    "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“账户”页签中选择账户后进行买入、卖出或仓位调整。",
     "xray": {
       "title": "🔬 X-Ray 重叠分析",
       "empty": "无 ETF 重叠数据。",
       "subtitle": "显示你的真实个股敞口，包含 ETF 内隐藏的重叠持股。",
       "coverage_label": "数据覆盖率",
-      "coverage": "当前覆盖投资组合 {{pct}}%",
+      "coverage": "当前覆盖股票敞口 {{pct}}%（不含现金与债券）",
       "low_coverage": "当前 X-Ray 覆盖率偏低，结果可能遗漏重要敞口。",
       "show_table": "仍然显示表格",
       "hide_table": "隐藏表格",
@@ -1323,7 +1318,7 @@
         "cash": "💵 现金币别曝险",
         "total": "📊 全资产币别曝险"
       },
-      "no_cash": "尚无现金部位，请先在 Step 2 输入现金持仓。",
+      "no_cash": "暂无现金仓位，请先记录一笔 DEPOSIT 交易。",
       "cash_total": "💰 现金总额（{{currency}}）",
       "cash_non_home_pct": "🌍 现金非本币占比",
       "risk_level": "风险等级",
@@ -1399,7 +1394,7 @@
       }
     },
     "holdings": {
-      "no_data": "目前无持仓资料，请透过左侧面板新增股票、债券或现金。",
+      "no_data": "暂无仓位。请先记录一笔交易来创建第一个仓位。",
       "col": {
         "ticker": "代号",
         "category": "分类",
@@ -1410,7 +1405,6 @@
         "account_type": "账户类型",
         "is_cash": "现金"
       },
-      "privacy_hint": "🔒 隐私模式已开启，关闭后可编辑持仓。",
       "save_button": "💾 保存变更",
       "save_success": "✅ 已更新 {{count}} 笔持仓",
       "save_error": "❌ 更新失败：{{tickers}}",
@@ -1440,7 +1434,7 @@
       "description": "**模拟大盘崩盘情境，检视你的组合能承受多大冲击。**\n\n基于线性 CAPM 模型（β 值）估算各持仓在市场大跌时的预期损失。\n此工具帮助你评估：\n- 组合整体抗跌能力\n- 高 Beta 持仓的风险暴露\n- 现金与债券的缓冲效果",
       "slider_label": "🌊 大盘崩盘情境 (Market Crash Scenario)",
       "slider_help": "模拟大盘（如 S&P 500）下跌的百分比。例如 -20% 代表大盘跌 20%。",
-      "no_data": "⚠️ 尚未输入任何持仓，或无法取得压力测试资料。请先在 Step 2 新增持仓。",
+      "no_data": "⚠️ 暂无仓位或压力测试资料。请先记录交易。",
       "beta_label": "组合加权 Beta",
       "beta_help": "组合整体 Beta 值。Beta > 1.0 表示比大盘波动更大，Beta < 1.0 表示较稳健。",
       "loss_label": "预期蒸发金额",
@@ -1711,8 +1705,11 @@
   },
   "transactions": {
     "title": "交易记录",
-    "caption": "集中记录买入、卖出、股息与资金流动。",
+    "caption": "所有仓位变动都通过交易流转。可记录买入、卖出、股息、存入与调整。",
     "record_button": "新增交易",
+    "import_button": "导入 CSV",
+    "export_button": "导出 CSV",
+    "export_error": "导出失败。",
     "record_from_holding": "记录交易",
     "filter": {
       "ticker": "Ticker 筛选",
@@ -1736,17 +1733,27 @@
       "sell": "卖出",
       "dividend": "股息",
       "deposit": "存入",
-      "withdrawal": "提领"
+      "withdrawal": "提领",
+      "opening_balance": "期初余额",
+      "adjustment": "调整",
+      "transfer_in": "转入",
+      "transfer_out": "转出"
     },
     "empty": {
       "title": "目前尚无交易记录",
       "description": "先新增第一笔交易，建立清楚的投资历史。"
+    },
+    "empty_state": {
+      "title": "请先创建账户",
+      "description": "在记录交易前，请先创建券商或银行账户。只需几秒钟即可完成。",
+      "create_account": "创建账户"
     },
     "form": {
       "title": "新增交易记录",
       "type": "交易类型",
       "account": "券商账户",
       "account_optional": "选填（不绑定账户）",
+      "account_required": "请选择账户",
       "account_empty_hint": "当前还没有券商账户。",
       "create_account": "前往账户分页创建账户",
       "available_cash": "可用现金（{{currency}}）：{{amount}}",
@@ -1754,9 +1761,13 @@
       "insufficient_balance": "余额不足（{{currency}}）。可用：{{available}}，需求：{{required}}。",
       "deposit_cash": "先存入现金",
       "ticker": "Ticker",
+      "thesis": "投资观点",
+      "thesis_hint": "选填 - 可填写投资理由。未填写时默认使用“通过交易自动追踪”。",
+      "category": "类别",
       "quantity": "数量",
       "price": "每单位价格",
       "price_hint": "若此交易没有单价可留空。",
+      "deposit_amount": "金额",
       "total_amount": "总金额",
       "total_auto": "会依数量与单价自动计算，仍可手动调整。",
       "total_manual": "目前使用手动总金额。",
@@ -1778,20 +1789,78 @@
       "error_total_amount": "请输入大于 0 的总金额。",
       "error_date": "请选择交易日期。",
       "error_fx_rate": "汇率必须大于 0。",
-      "error_fee": "手续费不可小于 0。"
+      "error_fee": "手续费不可小于 0。",
+      "deposit_success_trade": "资金已入账，要立即记录买入吗？",
+      "buy_no_account_banner": "请先创建券商账户，才能追踪交易与现金结算。",
+      "buy_no_balance_hint": "该账户当前没有可用资金，请先存入现金。"
     },
     "toast": {
       "created": "已新增交易记录。",
       "deleted": "已删除交易记录。"
+    },
+    "import": {
+      "title": "交易 CSV 导入",
+      "description": "上传历史交易文件，完成字段映射并预览后再导入。",
+      "step_select": "1. 选择文件",
+      "step_map": "2. 字段映射",
+      "step_preview": "3. 预览并导入",
+      "select_file": "选择交易 CSV",
+      "account": "账户",
+      "account_optional": "不选择账户",
+      "import_mode": "导入模式",
+      "mode_append": "追加（保留已有数据）",
+      "mode_replace_account": "覆盖所选账户的全部交易",
+      "select_account_for_replace": "请先选择账户再使用覆盖模式。",
+      "confirm_destructive_required": "使用覆盖模式导入前，请先勾选确认。",
+      "confirm_replace_account": "我已了解这将删除所选账户中的所有交易，并用本次导入内容替换。",
+      "mapping_date": "日期",
+      "mapping_type": "类型",
+      "mapping_ticker": "Ticker",
+      "mapping_quantity": "数量",
+      "mapping_price": "价格",
+      "mapping_total_amount": "总金额",
+      "mapping_currency": "币别",
+      "mapping_fx_rate": "汇率",
+      "mapping_fee": "手续费",
+      "mapping_note": "备注",
+      "skip_column": "跳过",
+      "preview_title": "预览",
+      "total_rows": "总条数：{{count}}",
+      "error_rows": "错误条数：{{count}}",
+      "status": "状态",
+      "valid": "有效",
+      "parse_warnings_title": "CSV 解析警告",
+      "parse_warning_item": "第 {{row}} 行（{{code}}）：{{message}}",
+      "missing_headers": "文件中未检测到表头。",
+      "parse_error": "无法解析 CSV 文件。",
+      "missing_required_mapping_date": "请先映射交易日期字段。",
+      "missing_required_mapping_type": "请先映射交易类型字段。",
+      "missing_required_mapping_total": "请先映射总金额字段。",
+      "missing_required_mapping_total_or_price_qty": "请映射总金额，或同时映射价格和数量字段。",
+      "total_amount_auto_hint": "将按价格 x 数量自动计算。",
+      "error_missing_date": "交易日期为必填项。",
+      "error_missing_ticker_cash": "现金交易必须填写币种 ticker。",
+      "error_missing_ticker_non_cash": "BUY/SELL/DIVIDEND 交易必须填写 ticker。",
+      "error_invalid_type": "交易类型必须是 BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL。",
+      "error_invalid_quantity": "数量必须大于 0。",
+      "error_invalid_total": "总金额必须大于 0。",
+      "error_invalid_currency": "币种必须是 3 位字母代码。",
+      "back": "上一步",
+      "close": "关闭",
+      "next": "下一步",
+      "confirm_import": "导入 {{count}} 条交易",
+      "import_success": "交易 CSV 导入完成。",
+      "import_error": "交易 CSV 导入失败，请检查字段映射和错误行。",
+      "replaced_count": "已覆盖 {{count}} 条现有交易。"
     }
   },
   "accounts": {
     "title": "券商账户",
-    "caption": "创建虚拟券商账户，并按账户追踪股票和现金。",
+    "caption": "账户是管理仓位与交易的中心。每个账户追踪现金余额与股票仓位。",
     "add": "新增账户",
     "empty": {
       "title": "暂无账户",
-      "description": "先创建第一个券商账户，即可按券商查看交易与现金结算。"
+      "description": "先创建第一个账户，开始追踪仓位并记录交易。"
     },
     "form": {
       "create_title": "新增账户",
@@ -1807,94 +1876,25 @@
     },
     "toast": {
       "created": "账户已创建。",
+      "created_deposit": "账户创建完成！先存入资金即可开始交易。",
       "updated": "账户已更新。",
       "deactivated": "账户已停用。"
     },
+    "quick_deposit": "存入资金",
     "summary": {
       "positions": "持仓数：{{count}}",
       "cash": "现金：{{balances}}",
       "no_cash": "无现金余额"
-    }
-  },
-  "net_worth": {
-    "title": "💎 净资产",
-    "caption": "追踪投资组合外的资产与负债",
-    "manage": "前往配置页管理",
-    "summary_formula": "净资产 = 投资资产 + 其他资产 - 负债",
-    "empty": "新增资产与负债后即可看到完整净资产。",
-    "add_item": "新增项目",
-    "items_title": "项目列表",
-    "overview_title": "总览",
-    "kind": {
-      "asset": "资产",
-      "liability": "负债"
     },
-    "categories": {
-      "property": "房产",
-      "savings": "储蓄",
-      "vehicle": "车辆",
-      "other_asset": "其他资产",
-      "mortgage": "房贷",
-      "loan": "贷款",
-      "credit_card": "信用卡",
-      "other_liability": "其他负债"
-    },
-    "fields": {
-      "name": "名称",
-      "kind": "类型",
+    "detail": {
+      "positions": "持仓",
+      "transactions": "交易",
+      "summary": "摘要",
+      "empty_positions": "该账户当前暂无持仓。",
       "category": "分类",
-      "value": "金额",
-      "outstanding_balance": "未偿余额",
-      "currency": "币别",
-      "interest_rate": "利率 (%)",
-      "apr": "APR (%)",
-      "minimum_payment": "每月最低还款",
-      "note": "备注"
-    },
-    "validation": {
-      "name_required": "请输入名称。",
-      "value_invalid": "请输入有效的数值。",
-      "value_positive": "金额必须大于 0。"
-    },
-    "stale_col": "状态",
-    "stale_warning": "此项目已 {{days}} 天未更新，建议重新确认数值。",
-    "last_updated_days": "{{days}} 天前更新",
-    "segment_investments": "投资",
-    "segment_assets": "资产",
-    "segment_liabilities": "负债",
-    "history_title": "净资产趋势",
-    "history_empty": "持续记录快照后即可查看净资产趋势。",
-    "timeframe": {
-      "1m": "1个月",
-      "3m": "3个月",
-      "6m": "6个月",
-      "1y": "1年",
-      "max": "全部"
-    },
-    "preset": {
-      "mortgage": "房贷",
-      "mortgage_subtitle": "住房贷款",
-      "loan": "贷款",
-      "loan_subtitle": "每月固定还款",
-      "credit_card": "信用卡",
-      "credit_card_subtitle": "循环余额",
-      "other_liability": "其他负债"
-    },
-    "annual_interest_hint": "年利息约 ~{{amount}}",
-    "sop_what": "净资产 = 投资 + 其他资产 - 负债，帮助你看清整体财务状况。",
-    "sop_steps": "使用步骤：1) 添加资产 2) 添加负债 3) 每月更新一次金额。",
-    "sop_tips": "建议：房产估值每几个月更新一次；信用卡余额在账单出来后更新。",
-    "stale_banner": "有 {{count}} 个项目超过 90 天未更新，点击查看。",
-    "onboarding_title": "开始追踪完整净资产",
-    "onboarding_desc": "添加资产与负债后，即可看到趋势与负债影响。",
-    "onboarding_add_asset": "新增资产",
-    "onboarding_add_liability": "新增负债",
-    "seed_preview_title": "我们在你的投资组合中发现了可用数据",
-    "seed_preview_investment": "投资组合: {{value}}",
-    "seed_preview_cash": "现金头寸: 共 {{count}} 种货币，合计 {{value}}",
-    "seed_import_btn": "将现金导入为储蓄资产",
-    "seed_success": "已导入 {{count}} 条现金头寸为储蓄资产",
-    "seed_already_done": "现金头寸已导入"
+      "cost_basis": "成本",
+      "cash_position": "现金"
+    }
   },
   "analytics": {
     "drawdown_title": "回撤分析",
@@ -1940,6 +1940,10 @@
     "moderate_drawdown": "投资组合从峰值下跌了{{drawdown_pct}}% — 在正常范围内。",
     "strong_risk_adjusted": "夏普比率{{sharpe}}表明风险调整后收益优异。",
     "negative_risk_adjusted": "夏普比率{{sharpe}}表明收益未能补偿所承担的风险。"
+  },
+  "transaction": {
+    "stock_holding_not_found": "所选账户中未找到该股票代码的持仓。",
+    "insufficient_shares": "持股数量不足。可用: {{available}}，需要: {{required}}。"
   },
   "simple": {
     "twr": "投资组合回报",

@@ -65,10 +65,8 @@
     "chart_price_trend": "Price trend chart for selected stock",
     "chart_fx_rate": "Exchange rate trend chart",
     "chart_heatmap": "Stock heatmap grouped by sector showing daily changes",
-    "chart_net_worth": "Net worth history chart showing assets and liabilities over time",
     "chart_portfolio_sparkline": "30-day portfolio value trend",
     "chart_stock_sparkline": "Short-term stock trend sparkline",
-    "chart_net_worth_sparkline": "30-day net worth trend",
     "chart_drawdown": "Portfolio drawdown over time showing peak-to-trough declines",
     "chart_risk_metrics": "Portfolio risk metrics including Sharpe ratio, volatility, and drawdown"
   },
@@ -125,11 +123,34 @@
       "2months": "2 Months",
       "3months": "3 Months"
     },
-    "account_type": {
+    "cash_subtype": {
       "savings": "Checking/Savings",
       "fixed_deposit": "Fixed Deposit",
       "money_market": "Money Market Fund",
       "other": "Other"
+    },
+    "account_type": {
+      "brokerage": "Brokerage",
+      "retirement": "Retirement (IRA/401k)",
+      "savings": "Savings",
+      "crypto": "Crypto Exchange",
+      "bank": "Bank Account",
+      "wallet": "Crypto Wallet",
+      "cash_wallet": "Cash / E-Wallet",
+      "insurance": "Insurance",
+      "loan": "Loan",
+      "other": "Other"
+    },
+    "transaction_type": {
+      "BUY": "Buy",
+      "SELL": "Sell",
+      "DIVIDEND": "Dividend",
+      "DEPOSIT": "Deposit",
+      "WITHDRAWAL": "Withdrawal",
+      "OPENING_BALANCE": "Opening Balance",
+      "ADJUSTMENT": "Adjustment",
+      "TRANSFER_IN": "Transfer In",
+      "TRANSFER_OUT": "Transfer Out"
     },
     "priority": {
       "rebalance": "🔄 Rebalance",
@@ -196,7 +217,7 @@
     "title": "📊 Portfolio Overview",
     "sop": {
       "title": "📖 Portfolio Overview: User Manual",
-      "content": "### Page Overview\n\nThis is your **investment dashboard home page**, providing an at-a-glance portfolio health overview. All data is calculated in real-time by the system — no manual action required.\n\n---\n\n### 🕐 Data Update Times\n\nTwo timestamps appear at the top of the page:\n\n- **💰 Price Data Updated** — Last time stock prices were fetched via yfinance. Corresponds to market values in rebalance analysis\n- **🔍 Last Scan** — Last time the three-layer funnel scan was executed. Scans run automatically every 15 minutes\n\n> If there's a significant time gap between the two, you can trigger a manual scan from the \"Investment Radar\" page.\n\n---\n\n### 📊 Portfolio Pulse (Hero Section — 3 Columns)\n\nThe hero card shows the three most critical numbers without scrolling:\n\n- **Left (wide): Total Portfolio Value** — Holdings market value in selected currency, with daily P&L (▲/▼ percentage and amount). Privacy mode masks the amount.\n- **Center: Fear & Greed Gauge** — Compact semi-circle showing the composite Fear & Greed Index (0–100). Data source priority: CNN Fear & Greed Index → VIX fallback. VIX value and CNN score shown as caption below.\n- **Right: Market Sentiment / Health Score / Tracking** — Three stacked metrics:\n  - *Market Sentiment*: Based on Trend Setter stocks vs their 60-day MA\n  - *Health Score*: % of tracked stocks with NORMAL signal (≥80% green, ≥50% yellow, <50% red)\n  - *Tracking / Holdings*: Radar-tracked count vs holdings count\n\n**Fear & Greed color bands:**\n\n| Score | Color | Level |\n|-------|-------|-------|\n| 0–25 | 🟥 Deep Red | Extreme Fear |\n| 25–45 | 🟧 Orange | Fear |\n| 45–55 | 🟨 Yellow | Neutral |\n| 55–75 | 🟩 Light Green | Greed |\n| 75–100 | 🟢 Dark Green | Extreme Greed |\n\n---\n\n### ⚠️ Signal Alerts (Action Required)\n\nShown **before** allocation — these require your attention first.\n\nLists all tracked stocks with **non-NORMAL signals** as a table with icon, ticker, category, and signal name:\n\n| Signal | Icon | Meaning |\n|--------|------|---------|\n| Thesis At Risk | 🚨 | Moat compromised (gross margin declining significantly) |\n| Undervalued Opportunity | 💎 | Significant undervaluation detected |\n| Heavy Selloff | 📉 | RSI oversold |\n| Early Rebound Setup | 🟢 | Low RSI with price below MA60 — possible selective entry opportunity |\n| Near Entry Zone | 🎯 | Entering accumulation zone — RSI approaching buy range |\n| Overheating Risk | 🔥 | High bias + high RSI with volume surge — short-term overheating risk |\n| Elevated Risk | ⚠️ | Elevated caution |\n| Momentum Weakening | 🔻 | Momentum weakening |\n\nIf alerts exist, **rebalance suggestions** appear inline below the alert list (auto-generated add/reduce advice). If all stocks are NORMAL, a green success banner appears instead.\n\n---\n\n### 🎯 Allocation at a Glance (Side by Side)\n\nTwo charts displayed side by side inside a bordered card:\n\n- **Left — Dual Donut (Target vs Actual)**: Two donut charts with the same category colors. Left donut = target allocation from your investor profile; right donut = current holdings by market value. Hover for exact percentages.\n- **Right — Drift Bar Chart**: Gap between actual and target for each category (percentage points). Positive = overweight; negative = underweight. Orange dashed lines mark ±5% threshold; bars turn red when exceeded.\n\n---\n\n### 🏆 Top 10 Holdings\n\nTop 10 holdings ranked by **weight (% of total market value)**, displayed as a styled table with color-coded daily change:\n\n- **Daily Change** — Green (▲) for positive, red (▼) for negative, from yfinance historical data\n- **Privacy Mode** — Market value column is masked as `***`; daily change percentage still shows\n\n> 💡 If a single holding exceeds 15% weight, watch for concentration risk. Visit the Asset Allocation page's X-Ray analysis for detailed exposure.\n>\n> ⚠️ **Note**: Daily change requires at least 2 days of history. Newly added stocks show `N/A`.\n\n---\n\n### 🏦 Smart Money Resonance\n\nShows which of your watchlist/holdings overlap with top institutional investors' 13F filings.\n\n- **3 KPI metrics always visible**: Overlapping stock count, number of gurus with overlap, strongest resonance signal\n- **Expand \"📋 Top 5 Resonance Details\"** to see per-stock guru cards (collapsed by default to save space)\n- **\"View Smart Money\" button** in the section header links directly to the full Smart Money page\n\n> ⚠️ Based on quarterly 13F snapshots — not real-time data.\n\n---\n\n### 🙈 Privacy Mode (Cross-Device Sync)\n\nThe privacy toggle in the title row masks all **monetary amounts** (total value, holding values), keeping only percentages and category structure. The setting is saved to the database and syncs across devices and sessions. Can also be toggled from the Asset Allocation page — both pages stay in sync.\n\n---\n\n### 📊 Holding Breakdown\n\nThe **Holding Breakdown** card shows a visual summary of each holding's percentage weight. A stacked bar gives an at-a-glance overview; below it, individual holdings are listed from largest to smallest with inline progress bars. Click **Show all holdings** to expand beyond the default top 8.\n\n### 🎓 Onboarding\n\nFirst-time users see a guided setup banner: add a stock in Radar, then add holdings in Allocation. The banner disappears automatically once both steps are completed."
+      "content": "### Page Overview\\n\\nThis dashboard summarizes your portfolio from **ledger-derived positions** and account balances.\\n\\n---\\n\\n### What To Check First\\n\\n- Price update time and last scan time\\n- Signal alerts and rebalance drift\\n- Account and position health\\n\\n---\\n\\n### Position Model\\n\\n- Portfolio value and charts are based on positions derived from transactions.\\n- Record transactions in Allocation to update both cash and stock positions.\\n- Keep the UI label **Holding Breakdown** if shown in the page; it represents the current position view.\\n\\n---\\n\\n### Onboarding\\n\\nStart by adding a stock in Radar, then create an account and record transactions in Allocation."
     },
     "currency_selector": "Display Currency",
     "price_updated": "💰 Price updated: {{timestamp}}",
@@ -212,8 +233,8 @@
       "market_sentiment": "Market Sentiment",
       "total_value": "Total Market Value",
       "health_score": "Health Score",
-      "tracking_holdings": "Tracking / Holdings",
-      "tracking_holdings_value": "{{stocks}} stocks / {{holdings}} holdings"
+      "tracking_holdings": "Tracking / Positions",
+      "tracking_holdings_value": "{{stocks}} stocks / {{holdings}} positions"
     },
     "chart": {
       "target": "🎯 Target Allocation",
@@ -226,16 +247,14 @@
     "button_setup_persona": "💼 Set Up Investment Persona",
     "button_track_stock": "📡 Track Stocks",
     "button_goto_radar": "📡 Go to Radar to Add Stocks",
-    "button_add_holdings": "💼 Add Holdings",
+    "button_add_holdings": "🧾 Record Transactions",
     "market_sentiment": "Market Sentiment",
     "total_market_value": "Total Market Value",
-    "net_worth_title": "Net Worth",
-    "net_worth_manage": "Manage in Allocation",
     "health_score": "Health Score",
     "health_delta": "{{normal}}/{{total}} Normal",
     "allocation_title": "🎯 Target vs Actual Allocation",
     "drift_title": "📊 Drift Analysis",
-    "no_allocation_data": "📭 No allocation data. Please set up your persona and add holdings first.",
+    "no_allocation_data": "📭 No allocation data. Please set up your persona, create an account, and record transactions first.",
     "signal_alerts_title": "⚠️ Signal Alerts",
     "signal_buy_title": "🟢 Buy Opportunities",
     "signal_risk_title": "🚨 Risk Warnings",
@@ -250,13 +269,13 @@
     "no_tracking_stocks_title": "No signals to show",
     "no_tracking_stocks_description": "Add stocks to your watchlist in Radar so Folio can monitor signals for you.",
     "onboarding_title": "Start your portfolio in 2 steps",
-    "onboarding_description": "Add your first stock in Radar, then add holdings in Allocation to unlock portfolio analysis.",
+    "onboarding_description": "Add your first stock in Radar, then create an account and record transactions in Allocation to track your portfolio.",
     "onboarding_goto_radar": "Go to Radar",
-    "onboarding_goto_allocation": "Add Holdings",
+    "onboarding_goto_allocation": "Go to Allocation",
     "section_market_pulse": "Market Pulse",
     "section_portfolio_overview": "Portfolio Overview",
     "section_deep_dive": "Deep Dive",
-    "top_holdings_title": "🏆 Top {{limit}} Holdings",
+    "top_holdings_title": "🏆 Top {{limit}} Positions",
     "holdings_table": {
       "ticker": "Ticker",
       "category": "Category",
@@ -289,7 +308,7 @@
       "dividend_converted": "Converted"
     },
     "no_holdings": "No holdings data.",
-    "no_holdings_data": "📭 No holdings data. Please add holdings first.",
+    "no_holdings_data": "📭 No position data yet. Record transactions to build your portfolio.",
     "resonance": {
       "title": "🏆 Smart Money Resonance",
       "caption": "⚠️ Based on quarterly 13F snapshots, not real-time.",
@@ -341,11 +360,28 @@
     "performance_backfill_complete": "Benchmark data loaded — chart updated",
     "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page",
     "holding_breakdown": {
-      "title": "Holding Breakdown",
+      "title": "Position Breakdown",
       "other": "Other",
-      "show_all": "Show all holdings",
+      "show_all": "Show all positions",
       "show_less": "Show fewer",
-      "stacked_bar_aria": "Portfolio holding percentage breakdown"
+      "stacked_bar_aria": "Portfolio position percentage breakdown"
+    },
+    "accounts_overview": {
+      "title": "Accounts",
+      "view_all": "View all accounts",
+      "positions_count": "{{count}} positions",
+      "cash_label": "Cash",
+      "no_cash": "No cash",
+      "cash_missing_fx_hint": "Some cash currencies ({{currencies}}) are excluded from total until FX data is available.",
+      "total_label": "Total",
+      "deposit": "Deposit",
+      "trade": "Trade",
+      "empty_title": "No accounts yet",
+      "empty_description": "Create an account to start tracking your investments.",
+      "empty_cta": "Create Account",
+      "error_title": "Unable to load account summary",
+      "error_description": "Please refresh and try again.",
+      "stacked_bar_aria": "Portfolio value distribution across accounts"
     },
     "show_advanced": "Show deep dive",
     "hide_advanced": "Hide deep dive"
@@ -634,70 +670,17 @@
   },
   "allocation": {
     "title": "💼 Asset Allocation",
-    "caption": "Holdings · Rebalance · Telegram Notifications",
+    "caption": "Positions · Rebalance · Telegram Notifications",
     "sop": {
       "title": "📖 Asset Allocation: User Manual",
-      "content": "### Page Overview\n\nThis page handles **personal asset holdings management** and **portfolio rebalance analysis**. Switch from Investment Radar via the sidebar navigation.\n\n### 🙈 Privacy Mode (Cross-Device Sync)\n\nThe **privacy mode toggle** in the top-right corner masks all sensitive monetary figures (total value, holding quantities, prices, cost basis, market value) with `***`, keeping only percentages and category structure. Ideal for screen sharing or screenshots — backend data is not affected. **Privacy mode is saved to the database** and syncs across devices and browser sessions. Can also be toggled from the Portfolio Overview page — both pages stay in sync.\n\n---\n\n### Sidebar — Add Holdings (Four Modes)\n\nSwitch between four holding types via \"Asset Type\":\n\n- **📈 Stock**: Select market (🇺🇸 US / 🇹🇼 TW / 🇯🇵 JP / 🇭🇰 HK), enter ticker (system auto-appends suffix like `.TW`, `.T`), select category, enter shares, cost basis, and broker\n- **🛡️ Bond**: Enter bond ticker (e.g., TLT, BND), select currency, enter shares, cost basis, and broker\n- **💵 Cash**: Select currency and amount, optionally add bank, account type (savings/time deposit/money market fund), and notes\n- **₿ Crypto**: Search coin name/symbol, select a result to auto-fill ticker and CoinGecko ID, then enter quantity, average cost, and currency (USD)\n\n#### Radar Auto-Sync\n\n- If the ticker is **already tracked in Radar**, the category field auto-populates from Radar (locked, not editable)\n- If it's a **new ticker**, the system automatically adds it to Radar tracking after creating the holding — you can optionally add an initial thesis\n\nThe sidebar also provides **Export / Import holdings** (JSON format) and import template download.\n\n---\n\n### Step 1 — Set Target Allocation (Collapsible)\n\n- Choose from 6 preset **investor profile templates** (Retirement Defense, Standard, Aggressive, Barbell, Sniper, Custom)\n- Each template has default target ratios for six categories\n- **Fine-tune** category percentages anytime (must total 100%)\n- After selecting a template, click **\"🔄 Switch Style\"** to change to another\n- Once set, this section auto-collapses — click to expand and edit\n\n---\n\n### Step 2 — Holdings Management\n\n- Holdings table supports **inline editing**: click cells to modify quantity, cost basis, broker, category\n- Click \"💾 Save Changes\" to batch-update after editing\n- Select a holding from the dropdown and click \"🗑️ Delete\" to remove\n- Add new holdings via the sidebar\n\n---\n\n### Analysis Tabs (Rebalance / Currency Exposure / Smart Withdrawal / Stress Test)\n\nAfter completing Steps 1 & 2, the four analysis tabs (📊 Rebalance, 💱 Currency Exposure, 💰 Smart Withdrawal, 🧪 Stress Test) become available. The \"⚙️ Settings\" tab has a shared **display currency selector** and **🔄 Refresh** button — switching currency or refreshing applies to all analysis tabs.\n\n#### 📊 Rebalance Analysis\n\n- **Loading Indicator**: Shows \"📊 Loading rebalance analysis...\" animation while loading, auto-collapses to \"✅ Rebalance analysis loaded\"\n- **Data Update Time**: Shows data fetch time (🕐), auto-detects browser timezone for local time display\n- **Live Exchange Rates**: System fetches real-time rates via yfinance (1-hour cache) for accurate cross-currency conversion\n- **Dual Pie Charts**: Target allocation vs actual allocation\n- **Drift Bar Chart**: Deviation per category (red = overweight / green = underweight)\n- **Holdings Detail**: Shows each stock's original currency, quantity, price, cost basis, converted market value, and weight; non-USD holdings additionally display **Home Return** (local price return + FX impact) and **FX Return** (purchase FX rate snapshot vs current rate)\n- **Rebalance Suggestions**: Auto-flags categories drifting >5%, with add/reduce recommendations\n- **🔬 X-Ray Analysis**: Auto-parses ETF top 10 holdings, calculates \"direct holdings + indirect ETF exposure\" true ratios. Stacked bar chart shows concentration risk; orange warnings at >15% threshold; one-click Telegram alert\n\n> 💡 Periodically (e.g., quarterly) reviewing asset allocation is the most important — yet most neglected — investment discipline.\n\n#### 💱 Currency Exposure Monitor\n\n- **Home Currency Setting**: Switch home currency in the top-right (e.g., TWD → USD) — used as the FX exposure baseline\n- **Dual Tabs**:\n  - **💵 Cash Currency Exposure** (default): Analyzes only cash position currency distribution — FX risk impacts cash most directly\n  - **📊 Full Asset Currency Exposure**: Analyzes entire portfolio (stocks, bonds, cash) currency distribution\n- **Currency Distribution Pie**: Donut chart showing market value proportion per currency\n- **Risk Level**: Auto-determined by FX alert severity\n  - 🟢 Low Risk: No significant FX alerts\n  - 🟡 Medium Risk: Short-term (5-day) swing detected\n  - 🔴 High Risk: Single-day extreme movement detected\n- **Recent FX Changes**: Shows 5-day FX rate change for each foreign currency vs home currency, with 📈📉 direction indicators\n- **FX Alerts**: Three-tier detection (🔴 1-day >1.5% / 🟡 5-day >2% / 🔵 3-month >8%), color-coded\n- **Smart Advice**: System highlights cash position exposure amounts needing attention\n- **Telegram Alerts**: Sent when FX changes exceed thresholds (including cash exposure amounts). Auto-checks every 6 hours; manual trigger via \"📨 Send FX Exposure Alert to Telegram\"\n\n#### 💰 Smart Withdrawal\n\nWhen you need to withdraw cash from your portfolio, the system uses a **Liquidity Waterfall** three-tier priority algorithm to suggest the optimal sell plan:\n\n1. **🔄 Rebalance** (Priority 1): Sell overweight assets first — simultaneously returning to target allocation\n2. **📉 Tax Harvesting** (Priority 2): Sell positions at a loss for Tax-Loss Harvesting\n3. **💧 Liquidity** (Priority 3): Sell by liquidity order (Cash → Bond → Growth → Moat → Trend Setter)\n\n- Enter **withdrawal amount** and **currency**, click \"💰 Calculate Withdrawal Plan\"\n- System shows sell recommendations table (ticker, quantity, amount, reason) and summary metrics (target, sellable total, shortfall)\n- If portfolio value is insufficient, a **shortfall warning** appears\n- Optionally enable \"📡 Send Telegram Notification\" to sync recommendations to Telegram\n\n> 💡 Smart Withdrawal's core principle: sell what should be sold first (overweight), then what saves taxes (losses), and only then tap liquid assets — protecting your compounding core holdings.\n\n#### 🧪 Stress Test\n\nSimulates market crash scenarios to test your portfolio's resilience. Based on linear CAPM model (β values) to estimate expected losses during market downturns.\n\n- **Crash Scenario Slider**: Select market decline (-50% to 0%) to simulate S&P 500-like crashes\n- **Portfolio Weighted Beta**: Overall Beta value (Beta > 1.0 = more volatile than market; Beta < 1.0 = more stable)\n- **Expected Loss Amount**: Shows projected portfolio loss amount and percentage under the scenario\n- **Pain Levels**:\n  - 🟢 Gentle Breeze (< 10% loss)\n  - 🟡 Noticeable Correction (10–20% loss)\n  - 🟠 Significant Damage (20–30% loss)\n  - 🔴 Sleepless Nights (≥ 30% loss)\n- **Holdings Breakdown**: Per-stock expected loss detail, sorted by impact\n- **Smart Advice**: At \"Sleepless Nights\" level, system provides risk management suggestions (review Beta, emergency fund, leverage risk, etc.)\n- **Privacy Mode**: Supports amount masking — only percentages and levels shown\n\n> 💡 Stress testing helps you assess portfolio resilience and understand extreme-scenario risk exposure. Regularly reviewing Beta and expected losses is a key part of risk management.\n\n---\n\n### Telegram Settings (Dual Mode)\n\n- **System Default Bot**: Uses `TELEGRAM_BOT_TOKEN` from `.env` — no additional setup needed\n- **Custom Bot**: Enter custom Bot Token and Chat ID, toggle \"Use Custom Bot\"\n- With custom bot enabled, all scan notifications, price alerts, and weekly digests go through your custom bot\n- When custom bot is disabled/not set, automatically falls back to system default bot\n- **Test Button**: After saving, click \"📨 Send Test Message\" to verify the setup\n- **Weekly Digest**: Click \"📬 Send Weekly Digest\" to manually trigger the portfolio health report (runs in background, results sent via Telegram)\n\n---\n\n### 🌍 Geographic & Asset Class Views\n\nThe allocation page includes **Geographic Allocation** (breakdown by region: US/TW/JP/HK) and **Asset Class** (Equity/Fixed Income/Alternatives/Cash) tabs, giving you a multi-dimensional view of your portfolio.\n\n### 📊 Analytics Tabs\n\n- **Drawdown**: Peak-to-trough decline tracking with inverted area chart\n- **Risk Metrics**: Sharpe ratio, Sortino ratio, Calmar ratio, annualized volatility\n- **Contribution vs Growth**: Stacked area showing cumulative deposits versus market appreciation\n\n### 📝 Terminology Mode\n\nSwitch between **Expert** (full financial terminology) and **Simplified** (plain-language labels) in Settings. The display mode applies across all pages."
+      "content": "### Page Overview\\n\\nAsset Allocation is now **ledger-driven**: transactions are the source of truth, and holdings are a materialized position view.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nPositions are computed from those transactions automatically.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only position view**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all operate on the ledger-derived positions.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds positions from the ledger."
     },
-    "sop_csv_note": "You can now import holdings from CSV/TSV with auto column mapping and preview before import.",
-    "sidebar": {
-      "header": "💰 Asset Management",
-      "add_holding": "➕ Add Holding",
-      "asset_type": "Asset Type",
-      "asset_stock": "📈 Stock",
-      "asset_bond": "🛡️ Bond",
-      "asset_cash": "💵 Cash",
-      "asset_crypto": "₿ Crypto",
-      "market": "Market",
-      "currency": "Currency: {{currency}}",
-      "stock_ticker": "Stock Ticker",
-      "crypto_search": "Search Cryptocurrency",
-      "crypto_search_placeholder": "e.g. Bitcoin, Ethereum",
-      "crypto_select_required": "⚠️ Please select a cryptocurrency.",
-      "crypto_quantity": "Quantity (up to 8 decimals)",
-      "in_radar": "📋 Already in radar, auto-synced category: {{category}}",
-      "not_in_radar": "📌 This stock is not in radar; it will be added to tracking after creation.",
-      "bond_in_radar": "📋 Already in radar, will use existing category.",
-      "thesis_optional": "Investment Thesis (optional)",
-      "thesis_placeholder": "Initial thesis when adding to radar...",
-      "category": "Category",
-      "quantity": "Quantity",
-      "avg_cost": "Avg Cost",
-      "broker_optional": "Broker (optional)",
-      "broker_placeholder": "e.g. Firstrade, Interactive Brokers",
-      "add_button": "Add",
-      "error_ticker": "⚠️ Please enter stock ticker.",
-      "error_quantity": "⚠️ Please enter quantity.",
-      "error_avg_cost": "⚠️ Avg cost cannot be negative.",
-      "added": "✅ Added {{ticker}}",
-      "auto_radar": "📡 Auto-added to radar tracking",
-      "bond_ticker": "Bond Ticker",
-      "currency_label": "Currency",
-      "error_bond_ticker": "⚠️ Please enter bond ticker.",
-      "cash_amount": "Amount",
-      "cash_bank": "Bank / Broker (optional)",
-      "cash_bank_placeholder": "e.g. Chase, Bank of Taiwan",
-      "cash_account_type": "Account Type (optional)",
-      "not_specified": "(Not specified)",
-      "cash_notes": "Notes (optional)",
-      "cash_notes_placeholder": "e.g. Emergency fund, Travel fund...",
-      "error_cash_amount": "⚠️ Please enter amount.",
-      "cash_added": "✅ Added {{label}} {{amount}}",
-      "export_title": "📥 Export Holdings",
-      "download_json": "📥 Download JSON",
-      "export_count": "Total {{count}} holdings",
-      "no_export": "No holdings to export.",
-      "import_title": "📤 Import Holdings",
-      "import_hint": "JSON import is direct. CSV/TSV import supports column mapping and preview.",
-      "upload_json": "Upload JSON file",
-      "upload_csv": "Upload CSV file",
-      "import_detected": "Detected {{count}} entries.",
-      "import_confirm": "📤 Confirm Import",
-      "import_success": "✅ Import complete",
-      "import_error_format": "⚠️ JSON format error, expected array.",
-      "import_error_json": "❌ Unable to parse JSON file.",
-      "download_template": "📋 Download Template",
-      "refresh": "🔄 Refresh"
+    "sop_csv_note": "CSV/TSV import creates OPENING_BALANCE transactions per row, with column mapping and preview before import.",
+    "quick_start": {
+      "title": "Quick Start: Account to Trade in 3 Steps",
+      "step1": "Create a brokerage account in the Accounts tab.",
+      "step2": "Deposit cash with the account-level Deposit button or from Transactions as DEPOSIT.",
+      "step3": "Record a BUY transaction with the same account; both cash and stock positions settle automatically."
     },
     "csv_import": {
       "title": "CSV Import",
@@ -741,12 +724,22 @@
       "no_rows_to_import": "No rows to import. Please check your CSV and mappings.",
       "confirm_replace_all_required": "Please confirm replacing all existing holdings before import.",
       "replace_all_confirm": "I understand this import will replace all existing holdings.",
+      "account": "Account",
+      "account_optional": "No account selected",
+      "import_mode": "Import mode",
+      "mode_replace_all": "Replace all holdings",
+      "mode_replace_account": "Replace holdings in selected account",
+      "mode_append": "Append (add without removing)",
+      "select_account_for_replace": "Select an account to use replace-account mode.",
+      "confirm_destructive_required": "Please check the confirmation box before importing in a destructive mode.",
+      "confirm_replace_all": "I understand this will delete ALL existing holdings and replace them.",
+      "confirm_replace_account": "I understand this will delete all holdings in the selected account and replace them.",
       "parse_warnings": "Parser warnings: {{count}}",
       "parse_warnings_title": "CSV parser warnings",
       "parse_warning_item": "Row {{row}} ({{code}}): {{message}}"
     },
     "error_loading": "❌ Failed to load asset allocation: {{error}}",
-    "setup_required": "⚠️ Please complete Step 1 (Target Allocation) and Step 2 (Add Holdings) in the ⚙️ Settings tab first.",
+    "setup_required": "⚠️ Please complete Step 1 (Target Allocation), then record transactions to build positions.",
     "tab": {
       "setup": "⚙️ Settings",
       "rebalance": "📊 Rebalance",
@@ -757,10 +750,8 @@
       "portfolio": "📊 Portfolio",
       "risk": "🛡️ Risk",
       "actions": "💡 Actions",
-      "transactions": "🧾 Transactions",
       "accounts": "🏦 Accounts",
-      "settings": "⚙️ Settings",
-      "net_worth": "💎 Net Worth"
+      "settings": "⚙️ Settings"
     },
     "tab_teaser": {
       "risk_desc": "Analyze currency exposure and stress test your portfolio against market crashes.",
@@ -769,7 +760,7 @@
       "hide_details": "Hide details"
     },
     "step1_title": "🎯 Step 1 — Set Target Allocation",
-    "step2_title": "💼 Step 2 — Holdings Management",
+    "step2_title": "🧾 Step 2 — Record Transactions",
     "display_currency": "Display Currency",
     "refresh_button": "🔄 Refresh",
     "error_setup": "❌ Failed to load settings: {{error}}",
@@ -818,6 +809,7 @@
       "save_notif": "💾 Save Notification Preferences"
     },
     "loading": "📊 Loading portfolio data...",
+    "refreshing": "Updating portfolio data...",
     "loaded": "✅ Portfolio data loaded",
     "error_loading_label": "❌ Failed to load portfolio data",
     "health": {
@@ -844,6 +836,7 @@
     },
     "col": {
       "ticker": "Ticker",
+      "account": "Account",
       "category": "Category",
       "qty": "Qty",
       "value": "Value",
@@ -851,7 +844,8 @@
       "cost": "Cost",
       "change_pct": "Chg%",
       "home_return": "Home: {{pct}}",
-      "fx_return": "FX: {{pct}}"
+      "fx_return": "FX: {{pct}}",
+      "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
     },
     "crypto": {
       "volatility_warning": "High volatility",
@@ -862,12 +856,13 @@
       "title": "Holdings Detail",
       "empty": "No holdings data."
     },
+    "holdings_read_only_hint": "Holdings are now computed from transactions. Use the Accounts tab to buy, sell, or adjust positions.",
     "xray": {
       "title": "🔬 X-Ray Overlap Analysis",
       "empty": "No ETF overlap data.",
       "subtitle": "Shows your true stock exposure, including overlap hidden inside ETFs.",
       "coverage_label": "Data coverage",
-      "coverage": "Covers {{pct}}% of portfolio",
+      "coverage": "Covers {{pct}}% of equity exposure (cash and bonds excluded)",
       "low_coverage": "X-Ray coverage is currently low, so this view may miss meaningful exposures.",
       "show_table": "Show table anyway",
       "hide_table": "Hide table",
@@ -1323,7 +1318,7 @@
         "cash": "💵 Cash FX Exposure",
         "total": "📊 Total Asset FX Exposure"
       },
-      "no_cash": "No cash holdings. Add cash in Step 2.",
+      "no_cash": "No cash position yet. Record a DEPOSIT transaction first.",
       "cash_total": "💰 Cash Total ({{currency}})",
       "cash_non_home_pct": "🌍 Cash Non-Home %",
       "risk_level": "Risk Level",
@@ -1399,7 +1394,7 @@
       }
     },
     "holdings": {
-      "no_data": "No holdings. Add stocks, bonds, or cash via the sidebar.",
+      "no_data": "No positions yet. Record a transaction to create your first position.",
       "col": {
         "ticker": "Ticker",
         "category": "Category",
@@ -1410,7 +1405,6 @@
         "account_type": "Account Type",
         "is_cash": "Cash"
       },
-      "privacy_hint": "🔒 Privacy mode on. Turn off to edit holdings.",
       "save_button": "💾 Save Changes",
       "save_success": "✅ Updated {{count}} holdings",
       "save_error": "❌ Update failed: {{tickers}}",
@@ -1440,7 +1434,7 @@
       "description": "**Simulate a market crash to see how your portfolio holds up.**\n\nUses linear CAPM (β) to estimate expected loss per holding.\nThis tool helps you:\n- Assess portfolio resilience\n- Identify high-Beta exposure\n- See cash & bond buffer effect",
       "slider_label": "🌊 Market Crash Scenario",
       "slider_help": "Simulate market (e.g. S&P 500) drop %. E.g. -20% = 20% crash.",
-      "no_data": "⚠️ No holdings or stress data. Add holdings in Step 2 first.",
+      "no_data": "⚠️ No position or stress data yet. Record transactions first.",
       "beta_label": "Portfolio Weighted Beta",
       "beta_help": "Overall Beta. >1.0 = more volatile than market, <1.0 = more stable.",
       "loss_label": "Expected Loss",
@@ -1711,8 +1705,11 @@
   },
   "transactions": {
     "title": "Transaction Records",
-    "caption": "Log buys, sells, dividends, and cash movements in one place.",
+    "caption": "All position changes flow through transactions. Log buys, sells, dividends, deposits, and adjustments.",
     "record_button": "Record Transaction",
+    "import_button": "Import CSV",
+    "export_button": "Export CSV",
+    "export_error": "Export failed.",
     "record_from_holding": "Record",
     "filter": {
       "ticker": "Ticker Filter",
@@ -1736,17 +1733,27 @@
       "sell": "Sell",
       "dividend": "Dividend",
       "deposit": "Deposit",
-      "withdrawal": "Withdrawal"
+      "withdrawal": "Withdrawal",
+      "opening_balance": "Opening Balance",
+      "adjustment": "Adjustment",
+      "transfer_in": "Transfer In",
+      "transfer_out": "Transfer Out"
     },
     "empty": {
       "title": "No transactions yet",
       "description": "Record your first transaction to build a clear portfolio history."
+    },
+    "empty_state": {
+      "title": "Create an account first",
+      "description": "You need a brokerage or bank account before recording transactions. It only takes a few seconds.",
+      "create_account": "Create Account"
     },
     "form": {
       "title": "Record Transaction",
       "type": "Transaction Type",
       "account": "Brokerage account",
       "account_optional": "Optional (no account)",
+      "account_required": "Select an account",
       "account_empty_hint": "No brokerage accounts yet.",
       "create_account": "Create an account in the Accounts tab",
       "available_cash": "Available cash ({{currency}}): {{amount}}",
@@ -1754,9 +1761,13 @@
       "insufficient_balance": "Insufficient balance ({{currency}}). Available: {{available}}, Required: {{required}}.",
       "deposit_cash": "Deposit cash",
       "ticker": "Ticker",
+      "thesis": "Investment Thesis",
+      "thesis_hint": "Optional - why you are investing. Default: auto-tracked via transaction.",
+      "category": "Category",
       "quantity": "Quantity",
       "price": "Price per unit",
       "price_hint": "Leave blank if this transaction has no unit price.",
+      "deposit_amount": "Amount",
       "total_amount": "Total amount",
       "total_auto": "Auto-calculated from quantity and price. You can edit it.",
       "total_manual": "Manual total is enabled.",
@@ -1778,20 +1789,78 @@
       "error_total_amount": "Please enter a total amount greater than 0.",
       "error_date": "Please select a transaction date.",
       "error_fx_rate": "FX rate must be greater than 0.",
-      "error_fee": "Fee must be 0 or greater."
+      "error_fee": "Fee must be 0 or greater.",
+      "deposit_success_trade": "Funds added. Record a trade?",
+      "buy_no_account_banner": "Create a brokerage account to track trades and cash settlement.",
+      "buy_no_balance_hint": "No funds yet. Deposit cash to this account first."
     },
     "toast": {
       "created": "Transaction recorded.",
       "deleted": "Transaction deleted."
+    },
+    "import": {
+      "title": "Transaction CSV Import",
+      "description": "Upload historical transaction files, map columns, then preview before import.",
+      "step_select": "1. Select File",
+      "step_map": "2. Map Columns",
+      "step_preview": "3. Preview & Import",
+      "select_file": "Select transaction CSV",
+      "account": "Account",
+      "account_optional": "No account selected",
+      "import_mode": "Import mode",
+      "mode_append": "Append (add without removing)",
+      "mode_replace_account": "Replace all transactions in selected account",
+      "select_account_for_replace": "Select an account to use replace mode.",
+      "confirm_destructive_required": "Please check the confirmation box before importing in replace mode.",
+      "confirm_replace_account": "I understand this will delete all transactions in the selected account and replace them.",
+      "mapping_date": "Date",
+      "mapping_type": "Type",
+      "mapping_ticker": "Ticker",
+      "mapping_quantity": "Quantity",
+      "mapping_price": "Price",
+      "mapping_total_amount": "Total amount",
+      "mapping_currency": "Currency",
+      "mapping_fx_rate": "FX rate",
+      "mapping_fee": "Fee",
+      "mapping_note": "Note",
+      "skip_column": "Skip",
+      "preview_title": "Preview",
+      "total_rows": "Total rows: {{count}}",
+      "error_rows": "Rows with errors: {{count}}",
+      "status": "Status",
+      "valid": "Valid",
+      "parse_warnings_title": "CSV parser warnings",
+      "parse_warning_item": "Row {{row}} ({{code}}): {{message}}",
+      "missing_headers": "No header row detected in file.",
+      "parse_error": "Unable to parse CSV file.",
+      "missing_required_mapping_date": "Please map the transaction date column.",
+      "missing_required_mapping_type": "Please map the transaction type column.",
+      "missing_required_mapping_total": "Please map the total amount column.",
+      "missing_required_mapping_total_or_price_qty": "Please map Total amount, or map both Price and Quantity.",
+      "total_amount_auto_hint": "Auto-calculated from Price x Quantity.",
+      "error_missing_date": "Transaction date is required.",
+      "error_missing_ticker_cash": "Currency ticker is required for cash movements.",
+      "error_missing_ticker_non_cash": "Ticker is required for BUY/SELL/DIVIDEND.",
+      "error_invalid_type": "Transaction type must be BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL.",
+      "error_invalid_quantity": "Quantity must be greater than 0.",
+      "error_invalid_total": "Total amount must be greater than 0.",
+      "error_invalid_currency": "Currency must be a 3-letter code.",
+      "back": "Back",
+      "close": "Close",
+      "next": "Next",
+      "confirm_import": "Import {{count}} transactions",
+      "import_success": "Transaction CSV import completed.",
+      "import_error": "Transaction CSV import failed. Please review mappings and row errors.",
+      "replaced_count": "Replaced {{count}} existing transactions."
     }
   },
   "accounts": {
     "title": "Brokerage Accounts",
-    "caption": "Create virtual broker accounts and track stock + cash positions by account.",
+    "caption": "Accounts are the central hub for managing positions and transactions. Each account tracks cash balances and stock positions.",
     "add": "Add Account",
     "empty": {
       "title": "No accounts yet",
-      "description": "Create your first brokerage account to track trades and cash settlement by broker."
+      "description": "Create your first account to start tracking positions and recording transactions."
     },
     "form": {
       "create_title": "Create account",
@@ -1807,94 +1876,25 @@
     },
     "toast": {
       "created": "Account created.",
+      "created_deposit": "Account created! Deposit funds to start trading.",
       "updated": "Account updated.",
       "deactivated": "Account deactivated."
     },
+    "quick_deposit": "Deposit",
     "summary": {
       "positions": "Positions: {{count}}",
       "cash": "Cash: {{balances}}",
       "no_cash": "No cash balance"
-    }
-  },
-  "net_worth": {
-    "title": "💎 Net Worth",
-    "caption": "Track all assets and liabilities beyond your portfolio",
-    "manage": "Manage in Allocation",
-    "summary_formula": "Net Worth = Investments + Other Assets - Liabilities",
-    "empty": "Add your assets and liabilities to see your full net worth.",
-    "add_item": "Add Item",
-    "items_title": "Items",
-    "overview_title": "Overview",
-    "kind": {
-      "asset": "Asset",
-      "liability": "Liability"
     },
-    "categories": {
-      "property": "Property",
-      "savings": "Savings",
-      "vehicle": "Vehicle",
-      "other_asset": "Other Asset",
-      "mortgage": "Mortgage",
-      "loan": "Loan",
-      "credit_card": "Credit Card",
-      "other_liability": "Other Liability"
-    },
-    "fields": {
-      "name": "Name",
-      "kind": "Type",
+    "detail": {
+      "positions": "Positions",
+      "transactions": "Transactions",
+      "summary": "Summary",
+      "empty_positions": "No positions in this account yet.",
       "category": "Category",
-      "value": "Value",
-      "outstanding_balance": "Outstanding Balance",
-      "currency": "Currency",
-      "interest_rate": "Interest Rate (%)",
-      "apr": "APR (%)",
-      "minimum_payment": "Minimum Payment / Month",
-      "note": "Note"
-    },
-    "validation": {
-      "name_required": "Please enter a name.",
-      "value_invalid": "Please enter a valid numeric value.",
-      "value_positive": "Value must be greater than zero."
-    },
-    "stale_col": "Status",
-    "stale_warning": "Last updated {{days}} days ago. Consider reviewing this value.",
-    "last_updated_days": "Updated {{days}}d ago",
-    "segment_investments": "Investments",
-    "segment_assets": "Assets",
-    "segment_liabilities": "Debt",
-    "history_title": "Net Worth Trend",
-    "history_empty": "Take snapshots regularly to see your net worth trend.",
-    "timeframe": {
-      "1m": "1M",
-      "3m": "3M",
-      "6m": "6M",
-      "1y": "1Y",
-      "max": "Max"
-    },
-    "preset": {
-      "mortgage": "Mortgage",
-      "mortgage_subtitle": "Home loan",
-      "loan": "Loan",
-      "loan_subtitle": "Fixed monthly payment",
-      "credit_card": "Credit Card",
-      "credit_card_subtitle": "Revolving balance",
-      "other_liability": "Other Liability"
-    },
-    "annual_interest_hint": "~{{amount}} / yr interest",
-    "sop_what": "Net worth helps you see your full financial picture: investments + other assets - liabilities.",
-    "sop_steps": "How to use: 1) Add your assets, 2) Add your liabilities, 3) Review and update values monthly.",
-    "sop_tips": "Tips: Update property values every few months; update credit card balances after each statement.",
-    "stale_banner": "{{count}} items haven't been updated in 90+ days. Tap to review.",
-    "onboarding_title": "Start tracking your full net worth",
-    "onboarding_desc": "Add assets and liabilities to view your trend and debt impact over time.",
-    "onboarding_add_asset": "Add an Asset",
-    "onboarding_add_liability": "Add a Liability",
-    "seed_preview_title": "We found data in your portfolio",
-    "seed_preview_investment": "Investment portfolio: {{value}}",
-    "seed_preview_cash": "Cash positions: {{value}} across {{count}} currencies",
-    "seed_import_btn": "Import cash as savings",
-    "seed_success": "Imported {{count}} cash positions as savings items",
-    "seed_already_done": "Cash positions already imported"
+      "cost_basis": "Cost Basis",
+      "cash_position": "Cash"
+    }
   },
   "analytics": {
     "drawdown_title": "Drawdown Analysis",
@@ -1940,6 +1940,10 @@
     "moderate_drawdown": "Your portfolio has declined {{drawdown_pct}}% from its peak — within normal range.",
     "strong_risk_adjusted": "Your Sharpe ratio of {{sharpe}} indicates strong risk-adjusted returns.",
     "negative_risk_adjusted": "Your Sharpe ratio of {{sharpe}} suggests returns haven't compensated for risk."
+  },
+  "transaction": {
+    "stock_holding_not_found": "No stock position found for this ticker in the selected account.",
+    "insufficient_shares": "Insufficient shares. Available: {{available}}, Required: {{required}}."
   },
   "simple": {
     "twr": "Portfolio Return",

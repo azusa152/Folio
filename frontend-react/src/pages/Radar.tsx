@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { cn, formatLocalTime } from "@/lib/utils"
+import { HOLDING_QUANTITY_EPSILON } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { useLastScan, useHoldings } from "@/api/hooks/useDashboard"
@@ -68,7 +69,12 @@ export default function Radar() {
 
   // Build held tickers set from non-cash portfolio holdings for O(1) lookup per card
   const heldTickers = useMemo(
-    () => new Set((holdings ?? []).filter((h) => !h.is_cash).map((h) => h.ticker.toUpperCase())),
+    () =>
+      new Set(
+        (holdings ?? [])
+          .filter((h) => !h.is_cash && h.quantity > HOLDING_QUANTITY_EPSILON)
+          .map((h) => h.ticker.toUpperCase()),
+      ),
     [holdings],
   )
 

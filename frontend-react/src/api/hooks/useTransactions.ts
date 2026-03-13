@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import type { components } from "@/api/types/generated"
 import type { TransactionRequest, TransactionResponse } from "@/api/types/transaction"
 
 interface UseTransactionsOptions {
@@ -8,6 +9,29 @@ interface UseTransactionsOptions {
   holdingId?: number
   limit?: number
   enabled?: boolean
+}
+
+const TRANSACTION_INVALIDATION_KEYS = [
+  ["transactions"],
+  ["holdings"],
+  ["rebalance"],
+  ["drawdown"],
+  ["risk-metrics"],
+  ["currency-exposure"],
+  ["stress-test"],
+  ["snapshots"],
+  ["account-cash-balances"],
+  ["accounts"],
+  ["account-summary"],
+  ["account-positions"],
+  ["account-transactions"],
+  ["stocks"],
+] as const
+
+function invalidateTransactionDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  TRANSACTION_INVALIDATION_KEYS.forEach((queryKey) => {
+    queryClient.invalidateQueries({ queryKey: [...queryKey], refetchType: "all" })
+  })
 }
 
 export function useTransactions({
@@ -47,13 +71,7 @@ export function useAddTransaction() {
       if (error) throw error
       return data as unknown as TransactionResponse
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-    },
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
 }
 
@@ -67,12 +85,18 @@ export function useDeleteTransaction() {
       })
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-      queryClient.invalidateQueries({ queryKey: ["account-cash-balances"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
+  })
+}
+
+export function useImportTransactions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: components["schemas"]["TransactionImportRequest"]) => {
+      const { data, error } = await client.POST("/transactions/import", { body: payload })
+      if (error) throw error
+      return data
     },
+    onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
 }

@@ -5,7 +5,6 @@ Application — Stock Service：股票 CRUD、匯入匯出、護城河查詢。
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from cachetools import TTLCache
 from sqlmodel import Session
 
 from domain.analysis import determine_scan_signal
@@ -23,6 +22,8 @@ from domain.entities import RemovalLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, ScanSignal, StockCategory
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
+from infrastructure.cache import SWRCache
+from infrastructure.database import engine
 from infrastructure.market_data import (
     analyze_moat_trend,
     detect_is_etf,
@@ -179,6 +180,95 @@ def create_stock(
 
     logger.info("股票 %s 已成功新增至追蹤清單。", ticker_upper)
     return stock
+
+
+def ensure_stock_on_radar(
+    session: Session,
+    ticker: str,
+    thesis: str | None = None,
+    category: StockCategory | str | None = None,
+) -> tuple[Stock, bool]:
+    """
+    Ensure ticker exists in radar stock list without committing.
+
+    Returns (stock, created):
+    - created=False when stock already exists
+    - created=True when a new stock + initial thesis log are added to session
+    """
+    ticker_upper = ticker.upper()
+    resolved_category: StockCategory | None = None
+    if category is not None:
+        if isinstance(category, StockCategory):
+            resolved_category = category
+        else:
+            normalized_category = category.strip()
+            if not normalized_category:
+                raise ValueError("category must not be empty")
+            resolved_category = StockCategory(normalized_category)
+
+    existing = repo.find_stock_by_ticker(session, ticker_upper)
+    if existing:
+        if existing.is_active:
+            if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+                existing.is_etf = True
+                repo.update_stock(session, existing)
+            return existing, False
+
+        has_custom_thesis = bool(thesis and thesis.strip())
+        final_thesis = thesis.strip() if has_custom_thesis and thesis else ""
+        existing.is_active = True
+        if resolved_category is not None:
+            existing.category = resolved_category
+        if has_custom_thesis:
+            existing.current_thesis = final_thesis
+            existing.current_tags = ""
+        existing.last_scan_signal = ScanSignal.NORMAL.value
+        existing.signal_since = None
+        if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+            existing.is_etf = True
+        repo.update_stock(session, existing)
+        if has_custom_thesis:
+            _append_thesis_log(session, ticker_upper, final_thesis, tags="")
+        else:
+            _append_thesis_log(
+                session,
+                ticker_upper,
+                t("stock.reactivated_log", lang="zh-TW"),
+                tags=existing.current_tags,
+            )
+        return existing, True
+
+    is_etf = detect_is_etf(ticker_upper)
+    resolved_category = (
+        resolved_category
+        if resolved_category is not None
+        else (StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH)
+    )
+    lang = get_user_language(session)
+    final_thesis = (
+        thesis.strip()
+        if thesis and thesis.strip()
+        else t("stock.auto_thesis", lang=lang)
+    )
+
+    stock = Stock(
+        ticker=ticker_upper,
+        category=resolved_category,
+        current_thesis=final_thesis,
+        current_tags="",
+        is_active=True,
+        is_etf=is_etf,
+    )
+    session.add(stock)
+
+    thesis_log = ThesisLog(
+        stock_ticker=ticker_upper,
+        content=final_thesis,
+        tags="",
+        version=1,
+    )
+    repo.create_thesis_log(session, thesis_log)
+    return stock, True
 
 
 def list_active_stocks(session: Session) -> list[dict]:
@@ -573,9 +663,12 @@ def get_moat_for_ticker(session: Session, ticker: str) -> dict:
 # Batch Enriched Stocks（一次回傳所有股票 + 訊號 / 財報 / 股息）
 # ---------------------------------------------------------------------------
 
-# 短效快取，避免同一時間多個前端請求（Dashboard 多個元件）重複執行完整 yfinance 呼叫。
-_enriched_cache: TTLCache = TTLCache(
-    maxsize=ENRICHED_CACHE_MAXSIZE, ttl=ENRICHED_CACHE_TTL
+# SWR 快取：fresh 視窗後仍可短暫回傳 stale 資料，避免使用者遇到冷啟動等待。
+_ENRICHED_STALE_TTL = ENRICHED_CACHE_TTL * 3
+_enriched_cache: SWRCache[str, list[dict]] = SWRCache(
+    maxsize=ENRICHED_CACHE_MAXSIZE,
+    fresh_ttl=ENRICHED_CACHE_TTL,
+    stale_ttl=_ENRICHED_STALE_TTL,
 )
 _enriched_cache_lock = threading.Lock()
 # 防止 thundering herd：快取未命中時，後續並行請求等待第一個請求完成後共享結果。
@@ -592,21 +685,23 @@ def invalidate_enriched_cache() -> None:
         _enriched_in_progress = None
 
 
-def get_enriched_stocks(session: Session) -> list[dict]:
+def get_enriched_stocks(session: Session, force_refresh: bool = False) -> list[dict]:
     """
     取得所有啟用中股票，並行附加技術訊號、最近財報日與股息資訊。
     前端可一次取得所有資料，避免逐卡 N+1 API 呼叫。
-    結果透過 TTL 快取，在快取窗口內重複請求直接回傳快取值。
-    並行 cache miss 時，後續請求等待第一個計算完成，避免 thundering herd。
+    結果透過 SWR 快取，在 fresh/stale 視窗內重複請求可快速回應；
+    stale 狀態會背景 revalidate。force_refresh=True 可強制同步重算。
+    並行 cache miss/force refresh 時，後續請求等待第一個計算完成，避免 thundering herd。
     """
     global _enriched_in_progress
     _cache_key = "enriched"
 
     while True:
         with _enriched_cache_lock:
-            cached = _enriched_cache.get(_cache_key)
-            if cached is not None:
-                logger.debug("豐富資料快取命中")
+            refresh_fn = None if force_refresh else _refresh_enriched_cache_background
+            cached, cache_state = _enriched_cache.get(_cache_key, refresh_fn=refresh_fn)
+            if cached is not None and not force_refresh:
+                logger.debug("豐富資料快取命中（%s）", cache_state)
                 return cached
 
             # First request after a miss: set an in-progress event; others will wait
@@ -650,11 +745,20 @@ def get_enriched_stocks(session: Session) -> list[dict]:
         raise
 
     with _enriched_cache_lock:
-        _enriched_cache[_cache_key] = result
+        _enriched_cache.set(_cache_key, result)
         if _enriched_in_progress is not None:
             _enriched_in_progress.set()
         _enriched_in_progress = None
     return result
+
+
+def _refresh_enriched_cache_background() -> list[dict]:
+    """Background revalidate path for stale enriched cache entries."""
+    with Session(engine) as bg_session:
+        stocks = repo.find_active_stocks(bg_session)
+        if not stocks:
+            return []
+        return _compute_enriched_stocks(stocks)
 
 
 def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:

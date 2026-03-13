@@ -5,6 +5,8 @@ All infrastructure.market_data calls are mocked — no network I/O.
 
 from unittest.mock import patch
 
+import pytest
+
 STOCK_MODULE = "application.stock.stock_service"
 
 
@@ -244,6 +246,211 @@ class TestImportStocks:
 
 
 # ===========================================================================
+# ensure_stock_on_radar
+# ===========================================================================
+
+
+class TestEnsureStockOnRadar:
+    def test_creates_new_stock_with_thesis_and_etf_category(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf", return_value=True):
+            stock, created = ensure_stock_on_radar(
+                db_session, "vti", thesis=" Core ETF thesis "
+            )
+
+        history = repo.find_thesis_history(db_session, "VTI")
+        assert created is True
+        assert stock.ticker == "VTI"
+        assert stock.category == StockCategory.TREND_SETTER
+        assert stock.is_etf is True
+        assert stock.current_thesis == "Core ETF thesis"
+        assert len(history) == 1
+        assert history[0].content == "Core ETF thesis"
+
+    def test_uses_default_thesis_when_input_is_blank(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.enums import StockCategory
+
+        with (
+            patch(f"{STOCK_MODULE}.detect_is_etf", return_value=False),
+            patch(f"{STOCK_MODULE}.t", return_value="Auto-tracked via transaction"),
+        ):
+            stock, created = ensure_stock_on_radar(db_session, "msft", thesis="   ")
+
+        assert created is True
+        assert stock.ticker == "MSFT"
+        assert stock.category == StockCategory.GROWTH
+        assert stock.current_thesis == "Auto-tracked via transaction"
+
+    def test_returns_existing_stock_without_creating_new_thesis_log(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        existing = repo.save_stock(
+            db_session,
+            Stock(
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                current_thesis="Original thesis",
+                current_tags="",
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+
+        stock, created = ensure_stock_on_radar(
+            db_session, "AAPL", thesis="Should not overwrite"
+        )
+        history = repo.find_thesis_history(db_session, "AAPL")
+
+        assert created is False
+        assert stock.ticker == existing.ticker
+        assert stock.current_thesis == "Original thesis"
+        assert history == []
+
+    def test_repairs_existing_active_stock_is_etf_when_detected(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0050.TW",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy thesis",
+                current_tags="",
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf", return_value=True):
+            stock, created = ensure_stock_on_radar(db_session, "0050.TW")
+
+        assert created is False
+        assert stock.is_etf is True
+
+    def test_reactivates_inactive_stock_and_marks_as_created(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="QQQ",
+                category=StockCategory.TREND_SETTER,
+                current_thesis="Old thesis",
+                current_tags="legacy",
+                is_active=False,
+                is_etf=True,
+                last_scan_signal="THESIS_BROKEN",
+            ),
+        )
+
+        stock, created = ensure_stock_on_radar(
+            db_session, "QQQ", thesis="Reactivated thesis"
+        )
+        history = repo.find_thesis_history(db_session, "QQQ")
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.category == StockCategory.TREND_SETTER
+        assert stock.current_thesis == "Reactivated thesis"
+        assert stock.current_tags == ""
+        assert stock.last_scan_signal == "NORMAL"
+        assert len(history) == 1
+        assert history[0].content == "Reactivated thesis"
+
+    def test_reactivate_with_blank_thesis_preserves_existing_thesis_and_tags(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="META",
+                category=StockCategory.GROWTH,
+                current_thesis="Original thesis",
+                current_tags="ai,ads",
+                is_active=False,
+                is_etf=False,
+                last_scan_signal="THESIS_BROKEN",
+            ),
+        )
+
+        stock, created = ensure_stock_on_radar(db_session, "META", thesis="   ")
+        history = repo.find_thesis_history(db_session, "META")
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.current_thesis == "Original thesis"
+        assert stock.current_tags == "ai,ads"
+        assert stock.last_scan_signal == "NORMAL"
+        assert len(history) == 1
+        assert isinstance(history[0].content, str)
+        assert len(history[0].content) > 0
+
+    def test_reactivate_with_category_updates_stock_category(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="CSCO",
+                category=StockCategory.GROWTH,
+                current_thesis="Old thesis",
+                current_tags="legacy",
+                is_active=False,
+                is_etf=False,
+                last_scan_signal="THESIS_BROKEN",
+            ),
+        )
+
+        stock, created = ensure_stock_on_radar(
+            db_session, "CSCO", thesis="Reactivated", category="Moat"
+        )
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.category == StockCategory.MOAT
+        assert stock.current_thesis == "Reactivated"
+
+    def test_invalid_category_should_raise_value_error(self, db_session) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+
+        with (
+            patch(f"{STOCK_MODULE}.detect_is_etf", return_value=False),
+            pytest.raises(ValueError, match="Invalid_Category"),
+        ):
+            ensure_stock_on_radar(
+                db_session,
+                "AAPL",
+                thesis="Any thesis",
+                category="Invalid_Category",
+            )
+
+
+# ===========================================================================
 # get_moat_for_ticker
 # ===========================================================================
 
@@ -350,6 +557,37 @@ class TestGetEnrichedStocks:
         assert result[0]["fundamentals"] == mock_fundamentals
         assert result[0]["market_cap"] == 123456789
         assert result[0]["trailing_pe"] == 18.2
+
+    def test_force_refresh_should_recompute_cached_enriched_data(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category=StockCategory.MOAT))
+
+        with (
+            patch(
+                f"{STOCK_MODULE}.get_technical_signals",
+                side_effect=[
+                    {"rsi": 50.0, "bias": 1.0, "price": 100.0},
+                    {"rsi": 60.0, "bias": 2.0, "price": 110.0},
+                ],
+            ) as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            first = get_enriched_stocks(db_session)
+            refreshed = get_enriched_stocks(db_session, force_refresh=True)
+
+        assert first[0]["price"] == 100.0
+        assert refreshed[0]["price"] == 110.0
+        assert mock_signals.call_count == 2
 
     def test_sector_field_included_in_enriched_response(self, db_session) -> None:
         """sector field from yfinance cache should be present in each enriched stock dict."""

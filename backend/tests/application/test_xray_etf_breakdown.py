@@ -25,10 +25,10 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
 from unittest.mock import patch  # noqa: E402
 
 import pytest  # noqa: E402
-from sqlmodel import Session  # noqa: E402
+from sqlmodel import Session, select  # noqa: E402
 
 from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Holding, Stock, UserInvestmentProfile  # noqa: E402
+from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # noqa: E402
 from domain.enums import StockCategory  # noqa: E402
 
 _MODULE = "application.portfolio.rebalance_service"
@@ -55,6 +55,19 @@ _BASE_PATCHES = [
 ]
 
 
+def _seed_account(session: Session) -> Account:
+    account = Account(
+        user_id="default",
+        name="Test",
+        broker="Test",
+        account_type="brokerage",
+        currency="USD",
+    )
+    session.add(account)
+    session.flush()
+    return account
+
+
 def _add_profile(session: Session) -> None:
     session.add(
         UserInvestmentProfile(
@@ -70,6 +83,9 @@ def _add_holding(
     ticker: str,
     quantity: float = 10.0,
     category: StockCategory = StockCategory.GROWTH,
+    is_cash: bool = False,
+    *,
+    account_id: int | None = None,
 ) -> None:
     session.add(
         Holding(
@@ -79,7 +95,8 @@ def _add_holding(
             quantity=quantity,
             cost_basis=100.0,
             currency="USD",
-            is_cash=False,
+            is_cash=is_cash,
+            account_id=account_id,
         )
     )
 
@@ -110,8 +127,9 @@ class TestXRayEtfBreakdown:
     ):
         """Happy path: ETF with valid holdings breaks down into indirect exposure."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "SOXX", quantity=10.0)
+        _add_holding(db_session, "SOXX", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "SOXX", is_etf=True)
         db_session.commit()
 
@@ -162,8 +180,9 @@ class TestXRayEtfBreakdown:
     ):
         """Known ETF with unavailable holdings is excluded — not treated as a stock."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "SOXX", quantity=10.0)
+        _add_holding(db_session, "SOXX", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "SOXX", is_etf=True)
         db_session.commit()
 
@@ -200,8 +219,9 @@ class TestXRayEtfBreakdown:
     ):
         """Non-ETF stock should still appear as direct exposure when holdings returns None."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_holding(db_session, "NVDA", quantity=5.0, account_id=acct.id)
         # NVDA is NOT in Stock table as is_etf=True
         db_session.commit()
 
@@ -225,6 +245,103 @@ class TestXRayEtfBreakdown:
         assert xray["NVDA"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.01)
         assert xray["NVDA"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
 
+    def test_non_etf_flagged_stock_can_self_heal_and_decompose(
+        self, db_session: Session
+    ):
+        """Stock with stale is_etf=False should be detected as ETF and decomposed."""
+        acct = _seed_account(db_session)
+        _add_profile(db_session)
+        _add_holding(db_session, "0050.TW", quantity=10.0, account_id=acct.id)
+        _add_stock(db_session, "0050.TW", is_etf=False)
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"0050.TW": 100.0}.get(ticker, 100.0),
+            }
+
+        def _holdings_side_effect(ticker: str, **kwargs):
+            assert kwargs.get("is_known_etf") is True
+            if ticker == "0050.TW":
+                return [{"symbol": "TSM", "name": "TSMC", "weight": 0.6}]
+            return None
+
+        with (
+            patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
+            patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
+            patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
+            patch(f"{_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_MODULE}.get_etf_sector_weights", return_value=None),
+            patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(f"{_MODULE}.detect_is_etf", side_effect=lambda t: t == "0050.TW"),
+            patch(f"{_MODULE}.get_etf_top_holdings", side_effect=_holdings_side_effect),
+        ):
+            result = calculate_rebalance(db_session, "USD")
+
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "0050.TW" not in xray
+        assert "TSM" in xray
+        assert xray["TSM"]["indirect_weight_pct"] == pytest.approx(60.0, rel=0.01)
+
+        repaired = db_session.exec(
+            select(Stock).where(Stock.ticker == "0050.TW")
+        ).first()
+        assert repaired is not None
+        assert repaired.is_etf is True
+
+    @patch(f"{_MODULE}.get_etf_top_holdings")
+    @patch(f"{_MODULE}.get_exchange_rates")
+    @patch(f"{_MODULE}.get_technical_signals")
+    def test_xray_coverage_should_exclude_cash_from_denominator(
+        self,
+        mock_signals,
+        mock_fx,
+        mock_etf_holdings,
+        db_session: Session,
+    ):
+        """Cash should not dilute X-Ray coverage percentage."""
+        acct = _seed_account(db_session)
+        _add_profile(db_session)
+        _add_holding(db_session, "AAPL", quantity=10.0, account_id=acct.id)
+        _add_holding(
+            db_session,
+            "USD",
+            quantity=90000.0,
+            category=StockCategory.CASH,
+            is_cash=True,
+            account_id=acct.id,
+        )
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"AAPL": 100.0, "USD": 1.0}.get(ticker, 100.0),
+            }
+
+        mock_signals.side_effect = _signals_side_effect
+        mock_fx.return_value = {"USD": 1.0}
+        mock_etf_holdings.return_value = None
+
+        patchers = [patch(p, return_value=None) for p in _BASE_PATCHES]
+        for p in patchers:
+            p.start()
+
+        try:
+            result = calculate_rebalance(db_session, "USD")
+        finally:
+            for p in patchers:
+                p.stop()
+
+        assert result["xray_coverage_pct"] == pytest.approx(100.0, rel=0.001)
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "AAPL" in xray
+        assert xray["AAPL"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.001)
+        assert xray["AAPL"]["total_weight_pct"] == pytest.approx(100.0, rel=0.001)
+
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
     @patch(f"{_MODULE}.get_technical_signals")
@@ -237,9 +354,10 @@ class TestXRayEtfBreakdown:
     ):
         """Mixed portfolio: ETF decomposed + direct stock both appear correctly."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "SOXX", quantity=10.0)
-        _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_holding(db_session, "SOXX", quantity=10.0, account_id=acct.id)
+        _add_holding(db_session, "NVDA", quantity=5.0, account_id=acct.id)
         _add_stock(db_session, "SOXX", is_etf=True)
         db_session.commit()
 
@@ -295,9 +413,10 @@ class TestXRayEtfBreakdown:
     ):
         """Only known ETFs should trigger ETF prewarm/fetch calls during X-Ray."""
         # Arrange: one known ETF + one non-ETF stock
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "SOXX", quantity=10.0)
-        _add_holding(db_session, "AAPL", quantity=5.0)
+        _add_holding(db_session, "SOXX", quantity=10.0, account_id=acct.id)
+        _add_holding(db_session, "AAPL", quantity=5.0, account_id=acct.id)
         _add_stock(db_session, "SOXX", is_etf=True)
         _add_stock(db_session, "AAPL", is_etf=False)
         db_session.commit()
@@ -330,6 +449,7 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(f"{_MODULE}.detect_is_etf", return_value=False),
             patch(
                 f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}
             ) as mock_prewarm_holdings,
@@ -370,8 +490,9 @@ class TestXRayEtfBreakdown:
         self, db_session: Session
     ):
         """Ticker missing from Stock table should not probe ETF lookthrough paths."""
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "AAPL", quantity=5.0)
+        _add_holding(db_session, "AAPL", quantity=5.0, account_id=acct.id)
         db_session.commit()
 
         def _signals_side_effect(ticker: str, *a, **kw):

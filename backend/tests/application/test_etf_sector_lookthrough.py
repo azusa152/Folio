@@ -28,7 +28,7 @@ import pytest  # noqa: E402
 from sqlmodel import Session  # noqa: E402
 
 from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Holding, Stock, UserInvestmentProfile  # noqa: E402
+from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # noqa: E402
 from domain.enums import StockCategory  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -55,6 +55,19 @@ _BASE_PATCHES = [
 ]
 
 
+def _seed_account(session: Session) -> Account:
+    account = Account(
+        user_id="default",
+        name="Test",
+        broker="Test",
+        account_type="brokerage",
+        currency="USD",
+    )
+    session.add(account)
+    session.flush()
+    return account
+
+
 def _add_profile(session: Session) -> None:
     session.add(
         UserInvestmentProfile(
@@ -65,7 +78,13 @@ def _add_profile(session: Session) -> None:
     )
 
 
-def _add_holding(session: Session, ticker: str, quantity: float = 10.0) -> None:
+def _add_holding(
+    session: Session,
+    ticker: str,
+    quantity: float = 10.0,
+    *,
+    account_id: int | None = None,
+) -> None:
     session.add(
         Holding(
             user_id="default",
@@ -75,6 +94,7 @@ def _add_holding(session: Session, ticker: str, quantity: float = 10.0) -> None:
             cost_basis=100.0,
             currency="USD",
             is_cash=False,
+            account_id=account_id,
         )
     )
 
@@ -119,8 +139,9 @@ class TestEtfSectorLookthrough:
     ):
         """Approach B: ETF with sector_weightings distributes MV proportionally."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "VTI", quantity=10.0)
+        _add_holding(db_session, "VTI", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
@@ -179,8 +200,9 @@ class TestEtfSectorLookthrough:
     ):
         """Regression: Approach B should run even when ETF top holdings are unavailable."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "VTI", quantity=10.0)
+        _add_holding(db_session, "VTI", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
@@ -230,8 +252,9 @@ class TestEtfSectorLookthrough:
     ):
         """Approach A fallback: when sector_weightings unavailable, use top-N constituents."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "VTI", quantity=10.0)
+        _add_holding(db_session, "VTI", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
@@ -285,8 +308,9 @@ class TestEtfSectorLookthrough:
     ):
         """Approach A: unattributed residual MV is distributed proportionally, not dumped to Unknown."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "VTI", quantity=10.0)
+        _add_holding(db_session, "VTI", quantity=10.0, account_id=acct.id)
         _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 
@@ -336,8 +360,9 @@ class TestEtfSectorLookthrough:
     ):
         """Non-ETF direct holdings still use get_ticker_sector (no regression)."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_holding(db_session, "NVDA", quantity=5.0, account_id=acct.id)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 120.0}
@@ -379,9 +404,10 @@ class TestEtfSectorLookthrough:
     ):
         """Known ETF with unavailable A/B data should be labeled ETF, not Unknown."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
         _add_stock(db_session, "VOO", is_etf=True)
-        _add_holding(db_session, "VOO", quantity=10.0)
+        _add_holding(db_session, "VOO", quantity=10.0, account_id=acct.id)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 200.0}
@@ -423,8 +449,9 @@ class TestEtfSectorLookthrough:
     ):
         """ETF not in Stock table but detected at runtime should be labeled ETF."""
         # Arrange — no Stock row for ARKK, so it is NOT in known_etf_tickers
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "ARKK", quantity=10.0)
+        _add_holding(db_session, "ARKK", quantity=10.0, account_id=acct.id)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 100.0}
@@ -467,8 +494,9 @@ class TestEtfSectorLookthrough:
     ):
         """Non-ETF ticker without sector data should still be labeled Unknown."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "XYZ", quantity=5.0)
+        _add_holding(db_session, "XYZ", quantity=5.0, account_id=acct.id)
         db_session.commit()
 
         mock_signals.return_value = {**_MOCK_SIGNALS, "price": 50.0}
@@ -511,9 +539,10 @@ class TestEtfSectorLookthrough:
     ):
         """Mixed portfolio: ETF (Approach B) + direct stock combine sector values correctly."""
         # Arrange
+        acct = _seed_account(db_session)
         _add_profile(db_session)
-        _add_holding(db_session, "VTI", quantity=10.0)
-        _add_holding(db_session, "NVDA", quantity=5.0)
+        _add_holding(db_session, "VTI", quantity=10.0, account_id=acct.id)
+        _add_holding(db_session, "NVDA", quantity=5.0, account_id=acct.id)
         _add_stock(db_session, "VTI", is_etf=True)
         db_session.commit()
 

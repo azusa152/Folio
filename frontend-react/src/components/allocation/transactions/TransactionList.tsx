@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import type { AccountResponse } from "@/api/types/account"
 import { useDeleteTransaction } from "@/api/hooks/useTransactions"
 import type { TransactionResponse } from "@/api/types/transaction"
+import { formatCurrency, formatQuantity } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -20,14 +21,6 @@ function typeBadgeClass(type: string): string {
   if (type === "DIVIDEND") return "bg-sky-600/15 text-sky-700 dark:text-sky-300"
   if (type === "DEPOSIT") return "bg-violet-600/15 text-violet-700 dark:text-violet-300"
   return "bg-amber-600/15 text-amber-700 dark:text-amber-300"
-}
-
-function fmtAmount(value: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: currency || "USD",
-    maximumFractionDigits: 2,
-  }).format(value)
 }
 
 export function TransactionList({ transactions, accounts, isLoading }: Props) {
@@ -77,11 +70,15 @@ export function TransactionList({ transactions, accounts, isLoading }: Props) {
                   {t(`transactions.type.${transaction.transaction_type.toLowerCase()}`)}
                 </Badge>
               </td>
-              <td className="py-1.5 pr-2 text-right">{transaction.quantity}</td>
+              <td className="py-1.5 pr-2 text-right">{formatQuantity(transaction.quantity)}</td>
               <td className="py-1.5 pr-2 text-right">
-                {transaction.price != null ? fmtAmount(transaction.price, transaction.currency) : "—"}
+                {transaction.price != null
+                  ? formatCurrency(transaction.price, transaction.currency || "USD")
+                  : "—"}
               </td>
-              <td className="py-1.5 pr-2 text-right">{fmtAmount(transaction.total_amount, transaction.currency)}</td>
+              <td className="py-1.5 pr-2 text-right">
+                {formatCurrency(transaction.total_amount, transaction.currency || "USD")}
+              </td>
               <td className="py-1.5 text-right whitespace-nowrap">
                 {pendingDeleteId === transaction.id ? (
                   <div className="inline-flex items-center gap-1">

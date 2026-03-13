@@ -240,6 +240,8 @@ class TestCollectTickers:
         assert "AAPL" in result["all"]
         assert "NVDA" in result["beta"]
         assert "AAPL" in result["beta"]
+        assert "AAPL" in result["signals_held"]
+        assert "NVDA" in result["signals_held"]
 
     def test_should_exclude_cash_holdings(self, db_session: Session):
         # Arrange — cash holding should be excluded
@@ -626,4 +628,32 @@ class TestBatchPrewarmSignals:
 
         # Assert — nothing called at all
         mock_batch_dl.assert_not_called()
+        mock_fallback.assert_not_called()
+
+    @patch("application.scan.prewarm_service.prewarm_signals_batch")
+    @patch("application.scan.prewarm_service.prime_signals_cache_batch")
+    @patch("application.scan.prewarm_service.batch_download_history")
+    def test_should_prewarm_held_tickers_first(
+        self, mock_batch_dl, mock_prime, mock_fallback
+    ):
+        # Arrange
+        mock_batch_dl.side_effect = [
+            {"AAPL": MagicMock(), "SPY": MagicMock()},
+            {"MSFT": MagicMock()},
+        ]
+        mock_prime.side_effect = [1, 1]
+        mock_fallback.return_value = {}
+
+        # Act
+        _batch_prewarm_signals(
+            ["AAPL", "MSFT"],
+            held_signal_tickers=["AAPL"],
+        )
+
+        # Assert — first batch downloads held ticker + SPY
+        first_download = mock_batch_dl.call_args_list[0].args[0]
+        second_download = mock_batch_dl.call_args_list[1].args[0]
+        assert first_download == ["AAPL", "SPY"]
+        assert second_download == ["MSFT"]
+        # No fallback because both groups hit
         mock_fallback.assert_not_called()

@@ -16,6 +16,7 @@ from domain.constants import (
     EQUITY_CATEGORIES,
     FG_SPY_TICKER,
     GURU_BACKFILL_YEARS,
+    PREWARM_REFRESH_INTERVAL,
     SCAN_THREAD_POOL_SIZE,
     SKIP_MOAT_CATEGORIES,
     SKIP_PRICE_FETCH_CATEGORIES,
@@ -46,6 +47,8 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 _prewarm_ready = False
 _prewarm_lock = threading.Lock()
+_periodic_refresh_started = False
+_periodic_refresh_lock = threading.Lock()
 
 
 def is_prewarm_ready() -> bool:
@@ -104,7 +107,10 @@ def prewarm_all_caches() -> None:
     def _run_signals_phase() -> None:
         nonlocal hist_batch
         try:
-            local_hist_batch = _batch_prewarm_signals(tickers["signals"])
+            local_hist_batch = _batch_prewarm_signals(
+                tickers["signals"],
+                held_signal_tickers=tickers["signals_held"],
+            )
             with hist_batch_lock:
                 hist_batch = local_hist_batch
         finally:
@@ -164,6 +170,7 @@ def prewarm_all_caches() -> None:
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
     _set_prewarm_ready(True)
     _prewarm_phase("scanlog_backfill", _run_scanlog_backfill)
+    _start_periodic_refresh_loop()
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +219,7 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map
         or stock_map[t].category.value not in SKIP_PRICE_FETCH_CATEGORIES
     ]
+    signals_held_tickers = [t for t in signals_tickers if t in holding_tickers]
 
     # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）。
     # known_etf_tickers 包含 watchlist 中 is_etf=True 的標的，即使它們同時出現在持倉中也予以排除。
@@ -256,6 +264,7 @@ def _collect_tickers() -> dict[str, list[str]]:
     return {
         "all": sorted(all_tickers),
         "signals": sorted(signals_tickers),
+        "signals_held": sorted(signals_held_tickers),
         "moat": sorted(moat_tickers),
         "etf": sorted(etf_tickers),
         "beta": sorted(beta_tickers),
@@ -275,7 +284,11 @@ def _collect_tickers() -> dict[str, list[str]]:
     }
 
 
-def _batch_prewarm_signals(signal_tickers: list[str]) -> dict:
+def _batch_prewarm_signals(
+    signal_tickers: list[str],
+    *,
+    held_signal_tickers: list[str] | None = None,
+) -> dict:
     """批次下載所有標的歷史資料（一次 HTTP 請求），再並行計算訊號填充快取。
     若批次下載失敗或部分標的缺資料，回退至逐一呼叫。
 
@@ -286,36 +299,53 @@ def _batch_prewarm_signals(signal_tickers: list[str]) -> dict:
     if not signal_tickers:
         return {}
 
-    # 包含 SPY 以供 Beta 計算使用（若已在 signal_tickers 中則不重複）
-    download_tickers = (
-        signal_tickers
-        if FG_SPY_TICKER in signal_tickers
-        else [*signal_tickers, FG_SPY_TICKER]
-    )
+    held = sorted(set(held_signal_tickers or []))
+    held_set = set(held)
+    remaining = sorted([t for t in signal_tickers if t not in held_set])
 
-    hist_batch = batch_download_history(download_tickers)
-    if hist_batch:
-        # 僅對 signal_tickers 進行訊號預熱（SPY 不在 watchlist，跳過訊號計算）
-        signal_hist = {t: hist_batch[t] for t in signal_tickers if t in hist_batch}
-        primed = prime_signals_cache_batch(signal_hist)
-        logger.info(
-            "快取預熱 [signals] 批次預熱 %d/%d 檔。", primed, len(signal_tickers)
-        )
-        # 回退：批次下載中缺失的標的（非 US 市場、資料不足等）
-        missed = [t for t in signal_tickers if t not in hist_batch]
-        if missed:
+    def _prewarm_signal_group(
+        group_tickers: list[str],
+        *,
+        include_spy: bool = False,
+    ) -> dict:
+        if not group_tickers:
+            return {}
+        download_tickers = list(group_tickers)
+        if include_spy and FG_SPY_TICKER not in download_tickers:
+            download_tickers.append(FG_SPY_TICKER)
+
+        hist = batch_download_history(download_tickers)
+        if hist:
+            signal_hist = {t: hist[t] for t in group_tickers if t in hist}
+            primed = prime_signals_cache_batch(signal_hist)
             logger.info(
-                "快取預熱 [signals] 回退至個別呼叫：%d 檔（%s）。",
-                len(missed),
-                ", ".join(missed),
+                "快取預熱 [signals] 批次預熱 %d/%d 檔（held_first=%s）。",
+                primed,
+                len(group_tickers),
+                bool(held_set and set(group_tickers).issubset(held_set)),
             )
-            prewarm_signals_batch(missed)
-    else:
-        # 批次下載完全失敗，回退至個別呼叫
-        logger.warning("快取預熱 [signals] 批次下載失敗，回退至個別呼叫。")
-        prewarm_signals_batch(signal_tickers)
+            missed = [t for t in group_tickers if t not in hist]
+            if missed:
+                logger.info(
+                    "快取預熱 [signals] 回退至個別呼叫：%d 檔（%s）。",
+                    len(missed),
+                    ", ".join(missed),
+                )
+                prewarm_signals_batch(missed)
+        else:
+            logger.warning("快取預熱 [signals] 批次下載失敗，回退至個別呼叫。")
+            prewarm_signals_batch(group_tickers)
+        return hist
 
-    return hist_batch
+    combined_hist_batch: dict = {}
+    held_hist = _prewarm_signal_group(held, include_spy=True)
+    remaining_hist = _prewarm_signal_group(
+        remaining,
+        include_spy=not bool(held),
+    )
+    combined_hist_batch.update(held_hist)
+    combined_hist_batch.update(remaining_hist)
+    return combined_hist_batch
 
 
 def _backfill_all_gurus() -> None:
@@ -424,3 +454,35 @@ def _prewarm_phase(name: str, fn) -> None:
         logger.info("快取預熱 [%s] 完成，耗時 %.1f 秒。", name, elapsed)
     except Exception as exc:
         logger.warning("快取預熱 [%s] 失敗（非致命）：%s", name, exc, exc_info=True)
+
+
+def _start_periodic_refresh_loop() -> None:
+    """Ensure only one periodic refresh loop is running."""
+    global _periodic_refresh_started
+    with _periodic_refresh_lock:
+        if _periodic_refresh_started:
+            return
+        _periodic_refresh_started = True
+    threading.Thread(target=_periodic_refresh_loop, daemon=True).start()
+    logger.info(
+        "快取預熱 [periodic] 週期刷新已啟動（每 %d 秒）。", PREWARM_REFRESH_INTERVAL
+    )
+
+
+def _periodic_refresh_loop() -> None:
+    while True:
+        time.sleep(PREWARM_REFRESH_INTERVAL)
+        _prewarm_phase("periodic_dashboard_hot_paths", _refresh_dashboard_hot_paths)
+
+
+def _refresh_dashboard_hot_paths() -> None:
+    """Refresh dashboard hot-path caches to avoid cold-start latency."""
+    from application.guru.resonance_service import get_great_minds_list
+    from application.portfolio.rebalance_service import calculate_rebalance
+    from application.stock.stock_service import get_enriched_stocks
+
+    with Session(engine) as session:
+        _ = get_enriched_stocks(session, force_refresh=True)
+        _ = calculate_rebalance(session, "USD", force_refresh=True)
+        _ = get_fear_greed_index()
+        _ = get_great_minds_list(session, force_refresh=True)

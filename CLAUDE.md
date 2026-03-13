@@ -101,9 +101,11 @@ Folio exposes an agent-friendly webhook entrypoint at `POST /webhook`.
 
 Layer dependency direction: `domain/` (core, analysis, portfolio) → `application/` (stock, scan, portfolio, guru, messaging, settings) → `infrastructure/` (market_data, persistence, external) → `api/` (routes, schemas)
 
-New services: `transaction_service`, `account_service`, `analytics_service`, `insight_service` in `application/portfolio/`.
+New services: `transaction_service`, `settlement_service` (extended for stock settlement), `account_service`, `analytics_service`, `insight_service` in `application/portfolio/`.
 New domain modules: `domain/portfolio/allocation.py`, `domain/portfolio/insights.py`, `domain/analysis/drawdown.py`, `domain/analysis/risk_metrics.py`.
-New webhook actions: `transactions`, `add_transaction`, `accounts`, `analytics`, `insights`.
+New scripts: `backend/scripts/migrate_ledger.py` for ledger data migration.
+New transaction types: `OPENING_BALANCE`, `ADJUSTMENT`, `TRANSFER_IN`, `TRANSFER_OUT`.
+New webhook actions: `transactions`, `add_transaction`, `accounts`, `analytics`, `insights` (`add_transaction` supports the new transaction types above).
 
 - **`api/routes/`** MUST delegate to `application/<domain>/` services. Only `infrastructure.database` (`get_session`, `engine`) is allowed in `api/`.
 - **`domain/`** must not import from any outer layer.

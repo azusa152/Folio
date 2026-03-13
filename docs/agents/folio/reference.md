@@ -189,11 +189,7 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
-| `GET` | `/holdings` | All holdings |
-| `POST` | `/holdings` | Add holding (body: `ticker`, `quantity`, `cost`, `currency`; auto-snapshots FX rate) |
-| `POST` | `/holdings/cash` | Add cash holding |
-| `GET` | `/holdings/export` | Export holdings (JSON) |
-| `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
+| `GET` | `/holdings` | All holdings (materialized position cache derived from transactions) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
 | `POST` | `/rebalance/xray-alert` | Telegram alert for stocks with true exposure > 15% |
 | `GET` | `/stress-test` | Stress test (`?scenario_drop_pct=-20&display_currency=USD`); returns Beta, expected loss, pain level |
@@ -228,7 +224,7 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/docs` | Swagger UI |
 | `GET` | `/openapi.json` | OpenAPI spec |
 
-> CSV files are imported through the frontend UI. The browser parses CSV/TSV, maps columns to `HoldingImportItem[]`, then submits to `POST /holdings/import`.
+> Position bootstrap/import is transaction-first. Use transaction CSV import via the Accounts tab (`POST /transactions/import`) so holdings remain a derived cache from ledger entries.
 
 ---
 
@@ -247,9 +243,8 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 ### Portfolio
 
 - `HOLDING_NOT_FOUND`
-- `NET_WORTH_ITEM_NOT_FOUND`
+- `INSUFFICIENT_BALANCE`
 - `PROFILE_NOT_FOUND`
-- `NET_WORTH_SEED_NO_CASH_HOLDINGS`
 - `INVALID_SCENARIO_DROP`
 
 ### Guru
@@ -281,7 +276,8 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `ticker` | string | Yes (via params or ticker) | Asset symbol |
-| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL |
+| `account_id` | integer | Yes | Account identifier for ledger settlement |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT |
 | `quantity` | float | Yes | Number of shares/units |
 | `price` | float | No | Per-unit price |
 | `total_amount` | float | Yes | Total transaction value |
@@ -324,6 +320,8 @@ Array of insight objects:
 | `PUT` | `/accounts/{id}` | Update account |
 | `DELETE` | `/accounts/{id}` | Delete (deactivate) account |
 | `GET` | `/accounts/summary` | Account summary with holdings count |
+| `GET` | `/accounts/{id}/positions` | Holdings scoped to a specific account (position cache) |
+| `GET` | `/accounts/{id}/transactions` | Paginated transactions for a specific account |
 | `GET` | `/analytics/drawdown` | Drawdown time series |
 | `GET` | `/analytics/risk-metrics` | Sharpe, Sortino, max drawdown, volatility |
 | `GET` | `/analytics/contribution-growth` | Cumulative contributions vs market growth |

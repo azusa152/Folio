@@ -5,7 +5,6 @@ Application — Holding Service。
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
@@ -13,21 +12,11 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
-from domain.constants import (
-    DEFAULT_USER_ID,
-    ERROR_HOLDING_NOT_FOUND,
-    ERROR_INVALID_INPUT,
-    GENERIC_VALIDATION_ERROR,
-)
-from domain.entities import Holding
-from domain.enums import StockCategory
+    from domain.entities import Holding
+
+from domain.constants import ERROR_ACCOUNT_NOT_FOUND
 from i18n import t
 from infrastructure import repositories as repo
-from infrastructure.market_data import get_exchange_rate
-from logging_config import get_logger
-
-logger = get_logger(__name__)
-
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -52,48 +41,15 @@ def _holding_to_dict(h: Holding) -> dict:
     }
 
 
-def _normalize_coingecko_id(raw_value: str | None) -> str | None:
-    if raw_value is None:
-        return None
-    value = raw_value.strip().lower()
-    return value or None
-
-
-def _validate_crypto_payload(
-    *,
-    category: StockCategory,
-    currency: str,
-    coingecko_id: str | None,
-    lang: str,
-) -> tuple[str, float, str | None]:
-    if category != StockCategory.CRYPTO:
-        purchase_fx_rate = (
-            get_exchange_rate("USD", currency) if currency != "USD" else 1.0
-        )
-        return currency, purchase_fx_rate, None
-
-    if currency != "USD":
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error_code": ERROR_INVALID_INPUT,
-                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
-            },
-        )
-    return "USD", 1.0, _normalize_coingecko_id(coingecko_id)
-
-
-def _get_holding_or_raise(session: Session, holding_id: int, lang: str) -> Holding:
-    holding = repo.find_holding_by_id(session, holding_id)
-    if not holding:
+def _ensure_account_exists(session: Session, account_id: int, lang: str) -> None:
+    if repo.find_account_by_id(session, account_id) is None:
         raise HTTPException(
             status_code=404,
             detail={
-                "error_code": ERROR_HOLDING_NOT_FOUND,
-                "detail": t("api.holding_not_found", lang=lang),
+                "error_code": ERROR_ACCOUNT_NOT_FOUND,
+                "detail": t("account.not_found", lang=lang),
             },
         )
-    return holding
 
 
 # ---------------------------------------------------------------------------
@@ -103,201 +59,12 @@ def _get_holding_or_raise(session: Session, holding_id: int, lang: str) -> Holdi
 
 def list_holdings(session: Session) -> list[dict]:
     """Return all holdings as dicts, ordered by id."""
-    holdings = repo.find_all_holdings(session)
+    holdings = repo.find_holdings_for_active_accounts(session, include_unlinked=False)
     return [_holding_to_dict(h) for h in holdings]
 
 
-def create_holding(session: Session, payload: dict, lang: str) -> dict:
-    """Create a new holding. Returns the created holding dict."""
-    input_category = payload["category"]
-    category = (
-        input_category
-        if isinstance(input_category, StockCategory)
-        else StockCategory(str(input_category))
-    )
-    input_currency = payload["currency"].strip().upper()
-    currency, purchase_fx_rate, coingecko_id = _validate_crypto_payload(
-        category=category,
-        currency=input_currency,
-        coingecko_id=payload.get("coingecko_id"),
-        lang=lang,
-    )
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=payload["ticker"].strip().upper(),
-        coingecko_id=coingecko_id,
-        category=category,
-        quantity=payload["quantity"],
-        cost_basis=payload.get("cost_basis"),
-        broker=payload.get("broker"),
-        account_id=payload.get("account_id"),
-        currency=currency,
-        account_type=payload.get("account_type"),
-        is_cash=payload.get("is_cash", False),
-        purchase_fx_rate=purchase_fx_rate,
-    )
-    saved = repo.save_holding(session, holding)
-    logger.info("新增持倉：%s（%s）", saved.ticker, saved.category)
-    return _holding_to_dict(saved)
-
-
-def create_cash_holding(session: Session, payload: dict, lang: str) -> dict:
-    """Create a cash holding. Returns the created holding dict."""
-    currency_upper = payload["currency"].strip().upper()
-    purchase_fx_rate = (
-        get_exchange_rate("USD", currency_upper) if currency_upper != "USD" else 1.0
-    )
-    holding = Holding(
-        user_id=DEFAULT_USER_ID,
-        ticker=currency_upper,
-        category=StockCategory.CASH,
-        quantity=payload["amount"],
-        cost_basis=1.0,
-        broker=payload.get("broker"),
-        account_id=payload.get("account_id"),
-        currency=currency_upper,
-        account_type=payload.get("account_type"),
-        is_cash=True,
-        purchase_fx_rate=purchase_fx_rate,
-    )
-    saved = repo.save_holding(session, holding)
-    logger.info("新增現金持倉：%s %.2f", saved.ticker, saved.quantity)
-    return _holding_to_dict(saved)
-
-
-def update_holding(session: Session, holding_id: int, payload: dict, lang: str) -> dict:
-    """Partially update an existing holding. Only provided fields are overwritten.
-
-    Raises HTTPException 404 if not found.
-    """
-    holding = _get_holding_or_raise(session, holding_id, lang)
-    if "ticker" in payload:
-        holding.ticker = payload["ticker"].strip().upper()
-    if "category" in payload:
-        input_category = payload["category"]
-        holding.category = (
-            input_category
-            if isinstance(input_category, StockCategory)
-            else StockCategory(str(input_category))
-        )
-    if "quantity" in payload:
-        holding.quantity = payload["quantity"]
-    if "cost_basis" in payload:
-        holding.cost_basis = payload["cost_basis"]
-    if "broker" in payload:
-        holding.broker = payload["broker"]
-    if "account_id" in payload:
-        holding.account_id = payload["account_id"]
-    if "currency" in payload:
-        holding.currency = payload["currency"].strip().upper()
-    if "account_type" in payload:
-        holding.account_type = payload["account_type"]
-    if "is_cash" in payload:
-        holding.is_cash = payload["is_cash"]
-
-    if "coingecko_id" in payload:
-        holding.coingecko_id = _normalize_coingecko_id(payload["coingecko_id"])
-
-    currency, purchase_fx_rate, normalized_coingecko_id = _validate_crypto_payload(
-        category=holding.category,
-        currency=holding.currency,
-        coingecko_id=holding.coingecko_id,
-        lang=lang,
-    )
-    holding.currency = currency
-    holding.purchase_fx_rate = purchase_fx_rate
-    holding.coingecko_id = normalized_coingecko_id
-
-    holding.updated_at = datetime.now(UTC)
-    saved = repo.save_holding(session, holding)
-    return _holding_to_dict(saved)
-
-
-def delete_holding(session: Session, holding_id: int, lang: str) -> dict:
-    """Delete a holding. Raises HTTPException 404 if not found."""
-    holding = _get_holding_or_raise(session, holding_id, lang)
-    ticker = holding.ticker
-    repo.delete_holding(session, holding)
-    logger.info("刪除持倉：%s", ticker)
-    return {"message": t("api.holding_deleted", lang=lang, ticker=ticker)}
-
-
-def export_holdings(session: Session) -> list[dict]:
-    """Export all holdings as import-compatible dicts."""
-    holdings = repo.find_all_holdings(session)
-    return [
-        {
-            "ticker": h.ticker,
-            "coingecko_id": h.coingecko_id,
-            "category": h.category.value
-            if hasattr(h.category, "value")
-            else h.category,
-            "quantity": h.quantity,
-            "cost_basis": h.cost_basis,
-            "broker": h.broker,
-            "account_id": h.account_id,
-            "currency": h.currency,
-            "account_type": h.account_type,
-            "is_cash": h.is_cash,
-        }
-        for h in holdings
-    ]
-
-
-def import_holdings(session: Session, data: list[dict], lang: str) -> dict:
-    """Bulk import holdings (replace all). Returns {imported, errors}."""
-    if len(data) > 1000:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error_code": ERROR_INVALID_INPUT,
-                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
-            },
-        )
-
-    repo.delete_all_holdings(session)
-
-    count = 0
-    errors: list[str] = []
-    for i, item in enumerate(data):
-        try:
-            holding = Holding(
-                user_id=DEFAULT_USER_ID,
-                ticker=item["ticker"].strip().upper(),
-                coingecko_id=None,
-                category=(
-                    item["category"]
-                    if isinstance(item["category"], StockCategory)
-                    else StockCategory(str(item["category"]))
-                ),
-                quantity=item["quantity"],
-                cost_basis=item.get("cost_basis"),
-                broker=item.get("broker"),
-                account_id=item.get("account_id"),
-                currency=item["currency"].strip().upper(),
-                account_type=item.get("account_type"),
-                is_cash=item.get("is_cash", False),
-            )
-            (
-                holding.currency,
-                holding.purchase_fx_rate,
-                holding.coingecko_id,
-            ) = _validate_crypto_payload(
-                category=holding.category,
-                currency=holding.currency,
-                coingecko_id=item.get("coingecko_id"),
-                lang=lang,
-            )
-            session.add(holding)
-            count += 1
-        except Exception as e:
-            logger.warning("持倉匯入第 %d 筆失敗：%s", i + 1, e)
-            errors.append(t("api.import_item_failed", lang=lang, index=i + 1))
-
-    session.commit()
-    logger.info("匯入持倉完成：%d 筆成功，%d 筆失敗。", count, len(errors))
-    return {
-        "message": t("api.import_done", lang=lang, count=count),
-        "imported": count,
-        "errors": errors,
-    }
+def get_holdings_by_account(session: Session, account_id: int, lang: str) -> list[dict]:
+    """Return enriched holdings for a specific account."""
+    _ensure_account_exists(session, account_id, lang)
+    holdings = repo.find_holdings_by_account(session, account_id)
+    return [_holding_to_dict(h) for h in holdings]

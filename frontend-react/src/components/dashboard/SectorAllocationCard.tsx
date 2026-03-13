@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import type { SectorExposureItem } from "@/api/types/allocation"
 import { CHART_COLOR_PALETTE } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Props {
-  sectorExposure: Array<{ sector: string; value: number; weight_pct: number }>
+  sectorExposure: SectorExposureItem[]
 }
 
 const MAX_SECTORS = 8
@@ -30,12 +31,12 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
   const chartData = top.map((s) => ({
     name: localizeSector(s.sector, t),
     value: s.value,
-    pct: s.weight_pct,
+    pct: s.equity_pct,
   }))
 
   if (rest.length > 0) {
     const otherValue = rest.reduce((sum, s) => sum + s.value, 0)
-    const otherPct = rest.reduce((sum, s) => sum + s.weight_pct, 0)
+    const otherPct = rest.reduce((sum, s) => sum + s.equity_pct, 0)
     chartData.push({ name: t("allocation.sector_standalone.other"), value: otherValue, pct: otherPct })
   }
 

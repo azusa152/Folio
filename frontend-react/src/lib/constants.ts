@@ -77,15 +77,19 @@ export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30
 
-export const ACCOUNT_TYPES = ["savings", "time_deposit", "money_market", "other"] as const
-export const NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"] as const
-export const NET_WORTH_LIABILITY_CATEGORIES = [
-  "mortgage",
+export const ACCOUNT_TYPES = [
+  "brokerage",
+  "retirement",
+  "savings",
+  "crypto",
+  "bank",
+  "wallet",
+  "cash_wallet",
+  "insurance",
   "loan",
-  "credit_card",
-  "other_liability",
+  "other",
 ] as const
-export const NET_WORTH_STALE_DAYS = 90
+export const HOLDING_QUANTITY_EPSILON = 1e-8
 
 export const CURRENCY_TO_REGION: Record<string, string> = {
   USD: "US",

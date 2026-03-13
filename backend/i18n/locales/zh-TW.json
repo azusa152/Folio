@@ -79,6 +79,7 @@
     "display_order_updated": "✅ 已更新 {count} 檔股票的顯示順位。",
     "thesis_updated": "✅ {ticker} 觀點已更新至第 {version} 版。",
     "added": "✅ 已新增 {ticker} 到 {category} 分類。",
+    "auto_thesis": "透過交易自動追蹤",
     "import_missing_ticker": "缺少 ticker 欄位",
     "import_invalid_category": "{ticker}: 無效分類 {category}",
     "import_complete": "✅ 匯入完成：新增 {created}，更新 {updated}，錯誤 {errors}。",
@@ -285,9 +286,6 @@
     "digest_started": "每週摘要已啟動，結果將透過 Telegram 通知。",
     "holding_not_found": "持倉不存在。",
     "holding_deleted": "持倉 {ticker} 已刪除。",
-    "net_worth_item_not_found": "淨資產項目不存在。",
-    "net_worth_item_deleted": "淨資產項目「{name}」已刪除。",
-    "net_worth_seed_no_cash_holdings": "找不到可匯入的現金持倉。",
     "import_item_failed": "第 {index} 筆匯入失敗",
     "import_done": "匯入完成：{count} 筆成功。",
     "xray_done": "X-Ray 分析完成，{count} 筆警告已發送。",
@@ -361,7 +359,9 @@
     "created": "交易已記錄",
     "deleted": "交易已刪除",
     "insufficient_balance": "此交易的帳戶現金餘額不足",
-    "cash_holding_not_found": "找不到所選帳戶與幣別的現金餘額"
+    "cash_holding_not_found": "找不到所選帳戶與幣別的現金餘額",
+    "stock_holding_not_found": "所選帳戶中找不到此股票代號的持倉。",
+    "insufficient_shares": "持股數量不足。可用: {{available}}，需要: {{required}}。"
   },
   "account": {
     "not_found": "找不到帳戶",

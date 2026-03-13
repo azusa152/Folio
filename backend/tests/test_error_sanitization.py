@@ -16,6 +16,20 @@ from domain.constants import (
 from i18n import t
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def test_webhook_exception_sanitized(client):
     """Webhook endpoint returns generic error on exception (no leak)."""
     # Patch handle_webhook where it's imported in stock_routes
@@ -159,33 +173,6 @@ def test_stock_import_partial_failure_no_leak(client):
     assert "errors" in data
     # Even if there are errors, they should be generic/user-friendly
     # (implementation-specific behavior)
-
-
-def test_holding_import_partial_failure_no_leak(client):
-    """Holding import with partial failures logs but doesn't leak to response."""
-    # First add a stock to avoid StockNotFoundError
-    client.post(
-        "/ticker",
-        json={
-            "ticker": "AAPL",
-            "category": "Growth",
-            "thesis": "Test",
-        },
-    )
-
-    payload = [
-        {
-            "ticker": "AAPL",
-            "category": "Growth",
-            "quantity": 10.0,
-        },
-    ]
-    response = client.post("/holdings/import", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    # Should report success count and errors list
-    assert "imported" in data
-    assert "errors" in data
 
 
 def test_telegram_settings_token_masking(client):

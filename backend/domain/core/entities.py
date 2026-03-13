@@ -160,6 +160,16 @@ class Account(SQLModel, table=True):
 class Holding(SQLModel, table=True):
     """使用者的實際持倉（用於資產配置計算）。"""
 
+    __table_args__ = (
+        Index("ix_holding_account_ticker", "account_id", "ticker"),
+        Index(
+            "ix_holding_account_cash_currency",
+            "account_id",
+            "is_cash",
+            "currency",
+        ),
+    )
+
     id: int | None = Field(default=None, primary_key=True)
     user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
     ticker: str = Field(description="資產代號（股票代號或幣別如 USD）")
@@ -188,11 +198,14 @@ class Holding(SQLModel, table=True):
 
 
 class Transaction(SQLModel, table=True):
-    """持倉交易紀錄（買入 / 賣出 / 股息 / 存入 / 提取）。"""
+    """持倉交易紀錄（含買賣、股息、入出金與對帳調整類型）。"""
 
     __table_args__ = (
         Index("ix_transaction_user_date", "user_id", "transaction_date"),
         Index("ix_transaction_holding_date", "holding_id", "transaction_date"),
+        Index("ix_transaction_account_ticker", "account_id", "ticker"),
+        Index("ix_transaction_account_date", "account_id", "transaction_date"),
+        Index("ix_transaction_date", "transaction_date"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -205,7 +218,10 @@ class Transaction(SQLModel, table=True):
     )
     ticker: str = Field(description="資產代號")
     transaction_type: TransactionType = Field(
-        description="交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)"
+        description=(
+            "交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/"
+            "OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)"
+        )
     )
     quantity: float = Field(description="交易數量")
     price: float | None = Field(default=None, description="每單位成交價格")
@@ -384,58 +400,6 @@ class PortfolioSnapshot(SQLModel, table=True):
     geographic_values: str = Field(
         default="{}",
         description='依地理區域市值 JSON，如 {"US": 50000, "TW": 20000, "JP": 10000}',
-    )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="建立時間",
-    )
-
-
-class NetWorthItem(SQLModel, table=True):
-    """淨資產追蹤項目（資產 / 負債）。"""
-
-    id: int | None = Field(default=None, primary_key=True)
-    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
-    name: str = Field(description="項目名稱（如：自住房、房貸）")
-    kind: str = Field(description="項目類型：asset / liability")
-    category: str = Field(description="子分類（如 property, mortgage）")
-    value: float = Field(description="項目金額（正數）")
-    currency: str = Field(default="USD", description="項目幣別")
-    fx_rate_to_usd: float | None = Field(
-        default=None, description="1 單位項目幣別 = ? 單位 USD（手動提供，可選）"
-    )
-    interest_rate: float | None = Field(default=None, description="年利率（負債可選）")
-    minimum_payment: float | None = Field(
-        default=None, description="每月最低還款金額（負債可選）"
-    )
-    source: str = Field(default="manual", description="來源：manual / portfolio_cash")
-    note: str = Field(default="", description="備註")
-    is_active: bool = Field(default=True, description="是否啟用（軟刪除）")
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="建立時間",
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="更新時間",
-    )
-
-
-class NetWorthSnapshot(SQLModel, table=True):
-    """每日淨資產快照（供 Dashboard 趨勢圖使用）。"""
-
-    id: int | None = Field(default=None, primary_key=True)
-    snapshot_date: date = Field(
-        index=True, unique=True, description="快照日期（每日唯一）"
-    )
-    investment_value: float = Field(description="投資資產總額")
-    other_assets_value: float = Field(description="非投資資產總額")
-    liabilities_value: float = Field(description="負債總額")
-    net_worth: float = Field(description="淨資產 = 投資 + 資產 - 負債")
-    display_currency: str = Field(default="USD", description="顯示幣別")
-    breakdown: str = Field(
-        default="{}",
-        description='分類明細 JSON，如 {"asset":{"property":1000},"liability":{"mortgage":500}}',
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),

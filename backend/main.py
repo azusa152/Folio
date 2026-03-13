@@ -29,7 +29,6 @@ from api.routes.fx_watch_routes import router as fx_watch_router
 from api.routes.guru_routes import resonance_router
 from api.routes.guru_routes import router as guru_router
 from api.routes.holding_routes import router as holding_router
-from api.routes.networth_routes import router as networth_router
 from api.routes.persona_routes import router as persona_router
 from api.routes.preferences_routes import router as preferences_router
 from api.routes.scan_routes import router as scan_router
@@ -63,10 +62,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 種入系統預設大師（冪等）
     from application.guru.guru_service import seed_default_gurus
+    from application.portfolio.account_service import ensure_default_account
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
+        ensure_default_account(_session)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.scan.prewarm_service import prewarm_all_caches
@@ -167,7 +168,6 @@ app.include_router(backtest_router, dependencies=auth_deps)
 app.include_router(crypto_router, dependencies=auth_deps)
 app.include_router(persona_router, dependencies=auth_deps)
 app.include_router(holding_router, dependencies=auth_deps)
-app.include_router(networth_router, dependencies=auth_deps)
 app.include_router(telegram_router, dependencies=auth_deps)
 app.include_router(preferences_router, dependencies=auth_deps)
 app.include_router(forex_router, dependencies=auth_deps)

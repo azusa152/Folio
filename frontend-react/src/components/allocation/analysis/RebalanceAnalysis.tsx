@@ -23,7 +23,6 @@ interface Props {
   displayCurrency: string
   privacyMode: boolean
   enabled: boolean
-  onRecordTransaction?: (ticker: string) => void
 }
 
 type DrillSource = "category" | "geo" | "asset_class"
@@ -50,10 +49,10 @@ function filterHoldingsByDrill(
   }
 }
 
-export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRecordTransaction }: Props) {
+export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
-  const { data, isLoading } = useAllocRebalance(displayCurrency, enabled)
+  const { data, isLoading, isFetching } = useAllocRebalance(displayCurrency, enabled)
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>(365)
   const [drill, setDrill] = useState<{ source: DrillSource; value: string } | null>(null)
 
@@ -109,6 +108,11 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
 
   return (
     <div className="space-y-6">
+      <div className="min-h-[16px]">
+        {isFetching && !isLoading ? (
+          <p className="text-xs text-muted-foreground">{t("allocation.refreshing")}</p>
+        ) : null}
+      </div>
       {/* Health score */}
       <HealthScore
         score={data.health_score}
@@ -149,7 +153,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
             holdings={filterHoldingsByDrill(data.holdings_detail, drill.source, drill.value)}
             privacyMode={privacyMode}
             displayCurrency={displayCurrency}
-            onRecordTransaction={onRecordTransaction}
           />
         </div>
       )}
@@ -191,7 +194,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
                 holdings={filterHoldingsByDrill(data.holdings_detail, drill.source, drill.value)}
                 privacyMode={privacyMode}
                 displayCurrency={displayCurrency}
-                onRecordTransaction={onRecordTransaction}
               />
             </div>
           )}
@@ -210,7 +212,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled, onRec
         holdings={data.holdings_detail}
         privacyMode={privacyMode}
         displayCurrency={displayCurrency}
-        onRecordTransaction={onRecordTransaction}
       />
 
       <hr className="border-border" />

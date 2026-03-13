@@ -61,7 +61,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
         <span>{icon}</span>
         <span className="font-semibold text-sm">{stock.ticker}</span>
         <span className="text-xs text-muted-foreground">
-          {catIcon} {stock.category}
+          {catIcon} {t(`config.category.${stock.category.toLowerCase()}`, stock.category)}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
           <TooltipProvider>

@@ -629,6 +629,154 @@
         }
       }
     },
+    "/accounts/{account_id}/positions": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Positions",
+        "description": "Return all holdings (positions) for a given account.",
+        "operationId": "get_account_positions_accounts__account_id__positions_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HoldingResponse"
+                  },
+                  "title": "Response Get Account Positions Accounts  Account Id  Positions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}/transactions": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Transactions",
+        "description": "Return paginated transactions for a given account.",
+        "operationId": "get_account_transactions_accounts__account_id__transactions_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  },
+                  "title": "Response Get Account Transactions Accounts  Account Id  Transactions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/accounts/{account_id}": {
       "put": {
         "tags": [
@@ -3351,351 +3499,6 @@
             }
           }
         }
-      },
-      "post": {
-        "summary": "Add a holding",
-        "description": "\u65b0\u589e\u6301\u5009\u3002",
-        "operationId": "create_holding_holdings_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HoldingRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldingResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/holdings/cash": {
-      "post": {
-        "summary": "Add a cash holding",
-        "description": "\u65b0\u589e\u73fe\u91d1\u6301\u5009\uff08\u7c21\u5316\u5165\u53e3\uff09\u3002",
-        "operationId": "create_cash_holding_holdings_cash_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CashHoldingRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldingResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/holdings/{holding_id}": {
-      "put": {
-        "summary": "Update a holding",
-        "description": "\u66f4\u65b0\u6301\u5009\uff08\u90e8\u5206\u66f4\u65b0\uff09\u3002",
-        "operationId": "update_holding_holdings__holding_id__put",
-        "parameters": [
-          {
-            "name": "holding_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Holding Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateHoldingRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldingResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete a holding",
-        "description": "\u522a\u9664\u6301\u5009\u3002",
-        "operationId": "delete_holding_holdings__holding_id__delete",
-        "parameters": [
-          {
-            "name": "holding_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Holding Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/holdings/export": {
-      "get": {
-        "summary": "Export all holdings as JSON",
-        "description": "\u532f\u51fa\u6240\u6709\u6301\u5009\uff08JSON \u683c\u5f0f\uff09\u3002",
-        "operationId": "export_holdings_holdings_export_get",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
-                  "title": "Response Export Holdings Holdings Export Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/holdings/import": {
-      "post": {
-        "summary": "Bulk import holdings (replace)",
-        "description": "\u6279\u6b21\u532f\u5165\u6301\u5009\uff08\u6e05\u9664\u820a\u8cc7\u6599\u5f8c\u91cd\u65b0\u532f\u5165\uff09\u3002\n\n\u9650\u5236\uff1a\n- \u6700\u591a\u4e00\u6b21\u532f\u5165 1000 \u7b46\n- ticker \u9577\u5ea6\u9650\u5236 20 \u5b57\u5143\n- quantity \u5fc5\u9808\u5927\u65bc 0",
-        "operationId": "import_holdings_holdings_import_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/HoldingImportItem"
-                },
-                "title": "Data"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/rebalance": {
@@ -4013,524 +3816,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StressTestResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth": {
-      "get": {
-        "summary": "Get net worth summary",
-        "operationId": "get_net_worth_net_worth_get",
-        "parameters": [
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSummaryResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/items": {
-      "get": {
-        "summary": "List net worth items",
-        "operationId": "list_net_worth_items_net_worth_items_get",
-        "parameters": [
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NetWorthItemResponse"
-                  },
-                  "title": "Response List Net Worth Items Net Worth Items Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create net worth item",
-        "operationId": "create_net_worth_item_net_worth_items_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NetWorthItemRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthItemResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/items/{item_id}": {
-      "put": {
-        "summary": "Update net worth item",
-        "operationId": "update_net_worth_item_net_worth_items__item_id__put",
-        "parameters": [
-          {
-            "name": "item_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Item Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateNetWorthItemRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthItemResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete net worth item",
-        "operationId": "delete_net_worth_item_net_worth_items__item_id__delete",
-        "parameters": [
-          {
-            "name": "item_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Item Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/seed-preview": {
-      "get": {
-        "summary": "Get seed preview from portfolio cash holdings",
-        "operationId": "get_net_worth_seed_preview_net_worth_seed_preview_get",
-        "parameters": [
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSeedPreviewResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/seed": {
-      "post": {
-        "summary": "Seed net worth items from portfolio cash holdings",
-        "operationId": "seed_net_worth_from_portfolio_net_worth_seed_post",
-        "parameters": [
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSeedResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/history": {
-      "get": {
-        "summary": "Get net worth history",
-        "operationId": "get_net_worth_history_net_worth_history_get",
-        "parameters": [
-          {
-            "name": "days",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 730,
-              "minimum": 1,
-              "default": 30,
-              "title": "Days"
-            }
-          },
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NetWorthSnapshotResponse"
-                  },
-                  "title": "Response Get Net Worth History Net Worth History Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/net-worth/snapshot": {
-      "post": {
-        "summary": "Take net worth snapshot",
-        "operationId": "take_net_worth_snapshot_net_worth_snapshot_post",
-        "parameters": [
-          {
-            "name": "display_currency",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "USD",
-              "title": "Display Currency"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetWorthSnapshotResponse"
                 }
               }
             }
@@ -6903,6 +6188,199 @@
         }
       }
     },
+    "/transactions/import": {
+      "post": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Import transactions in bulk",
+        "operationId": "add_transactions_import_transactions_import_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/export-csv": {
+      "get": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Export transactions as CSV",
+        "operationId": "export_transactions_csv_transactions_export_csv_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV export",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/transactions/{txn_id}": {
       "get": {
         "tags": [
@@ -7497,58 +6975,6 @@
         "type": "object",
         "title": "CNNFearGreedData",
         "description": "CNN Fear & Greed Index \u8cc7\u6599\u3002"
-      },
-      "CashHoldingRequest": {
-        "properties": {
-          "currency": {
-            "type": "string",
-            "title": "Currency"
-          },
-          "amount": {
-            "type": "number",
-            "title": "Amount"
-          },
-          "broker": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Broker"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "account_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Type"
-          }
-        },
-        "type": "object",
-        "required": [
-          "currency",
-          "amount"
-        ],
-        "title": "CashHoldingRequest",
-        "description": "POST /holdings/cash \u8acb\u6c42 Body\u3002"
       },
       "CategoryAllocation": {
         "properties": {
@@ -9641,6 +9067,28 @@
       },
       "HoldingDetail": {
         "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
           "ticker": {
             "type": "string",
             "title": "Ticker"
@@ -9742,195 +9190,7 @@
           "weight_pct"
         ],
         "title": "HoldingDetail",
-        "description": "\u518d\u5e73\u8861\u5206\u6790\u4e2d\u7684\u500b\u80a1\u660e\u7d30\uff08\u540c ticker \u8de8\u5238\u5546\u5408\u4f75\uff09\u3002"
-      },
-      "HoldingImportItem": {
-        "properties": {
-          "ticker": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Ticker"
-          },
-          "coingecko_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coingecko Id"
-          },
-          "category": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Category"
-          },
-          "quantity": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Quantity"
-          },
-          "cost_basis": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Basis"
-          },
-          "broker": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Broker"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "currency": {
-            "type": "string",
-            "maxLength": 3,
-            "minLength": 3,
-            "title": "Currency",
-            "default": "USD"
-          },
-          "account_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Type"
-          },
-          "is_cash": {
-            "type": "boolean",
-            "title": "Is Cash",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "ticker",
-          "category",
-          "quantity"
-        ],
-        "title": "HoldingImportItem",
-        "description": "POST /holdings/import \u55ae\u7b46\u532f\u5165\u8cc7\u6599\u3002"
-      },
-      "HoldingRequest": {
-        "properties": {
-          "ticker": {
-            "type": "string",
-            "title": "Ticker"
-          },
-          "coingecko_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coingecko Id"
-          },
-          "category": {
-            "$ref": "#/components/schemas/StockCategory"
-          },
-          "quantity": {
-            "type": "number",
-            "title": "Quantity"
-          },
-          "cost_basis": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Basis"
-          },
-          "broker": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Broker"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "USD"
-          },
-          "account_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Type"
-          },
-          "is_cash": {
-            "type": "boolean",
-            "title": "Is Cash",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "ticker",
-          "category",
-          "quantity"
-        ],
-        "title": "HoldingRequest",
-        "description": "POST /holdings \u8acb\u6c42 Body\u3002"
+        "description": "\u518d\u5e73\u8861\u5206\u6790\u4e2d\u7684\u6301\u5009\u660e\u7d30\uff08account+ticker\uff09\u3002"
       },
       "HoldingResponse": {
         "properties": {
@@ -10050,6 +9310,11 @@
           "imported": {
             "type": "integer",
             "title": "Imported"
+          },
+          "deleted": {
+            "type": "integer",
+            "title": "Deleted",
+            "default": 0
           },
           "errors": {
             "items": {
@@ -10182,405 +9447,6 @@
         ],
         "title": "MessageResponse",
         "description": "\u901a\u7528\u64cd\u4f5c\u7d50\u679c\u56de\u61c9\uff08\u522a\u9664\u3001\u505c\u7528\u3001\u91cd\u65b0\u555f\u7528\u3001\u532f\u5165\u7b49\uff09\u3002"
-      },
-      "NetWorthItemRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "kind": {
-            "type": "string",
-            "pattern": "^(asset|liability)$",
-            "title": "Kind"
-          },
-          "category": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Category"
-          },
-          "value": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Value"
-          },
-          "currency": {
-            "type": "string",
-            "maxLength": 3,
-            "minLength": 3,
-            "title": "Currency",
-            "default": "USD"
-          },
-          "fx_rate_to_usd": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fx Rate To Usd"
-          },
-          "interest_rate": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Interest Rate"
-          },
-          "minimum_payment": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Payment"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "kind",
-          "category",
-          "value"
-        ],
-        "title": "NetWorthItemRequest",
-        "description": "POST /net-worth/items request."
-      },
-      "NetWorthItemResponse": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "kind": {
-            "type": "string",
-            "title": "Kind"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "value": {
-            "type": "number",
-            "title": "Value"
-          },
-          "value_display": {
-            "type": "number",
-            "title": "Value Display"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency"
-          },
-          "fx_rate_to_usd": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fx Rate To Usd"
-          },
-          "interest_rate": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Interest Rate"
-          },
-          "minimum_payment": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Payment"
-          },
-          "source": {
-            "type": "string",
-            "title": "Source",
-            "default": "manual"
-          },
-          "note": {
-            "type": "string",
-            "title": "Note",
-            "default": ""
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
-          },
-          "is_stale": {
-            "type": "boolean",
-            "title": "Is Stale"
-          },
-          "days_since_update": {
-            "type": "integer",
-            "title": "Days Since Update"
-          },
-          "created_at": {
-            "type": "string",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "category",
-          "value",
-          "value_display",
-          "currency",
-          "is_active",
-          "is_stale",
-          "days_since_update",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "NetWorthItemResponse",
-        "description": "Single net worth item response."
-      },
-      "NetWorthSeedCashPosition": {
-        "properties": {
-          "currency": {
-            "type": "string",
-            "title": "Currency"
-          },
-          "amount": {
-            "type": "number",
-            "title": "Amount"
-          }
-        },
-        "type": "object",
-        "required": [
-          "currency",
-          "amount"
-        ],
-        "title": "NetWorthSeedCashPosition"
-      },
-      "NetWorthSeedPreviewResponse": {
-        "properties": {
-          "has_holdings": {
-            "type": "boolean",
-            "title": "Has Holdings"
-          },
-          "investment_value": {
-            "type": "number",
-            "title": "Investment Value"
-          },
-          "cash_positions": {
-            "items": {
-              "$ref": "#/components/schemas/NetWorthSeedCashPosition"
-            },
-            "type": "array",
-            "title": "Cash Positions"
-          },
-          "cash_value": {
-            "type": "number",
-            "title": "Cash Value"
-          },
-          "existing_item_count": {
-            "type": "integer",
-            "title": "Existing Item Count"
-          },
-          "display_currency": {
-            "type": "string",
-            "title": "Display Currency",
-            "default": "USD"
-          }
-        },
-        "type": "object",
-        "required": [
-          "has_holdings",
-          "investment_value",
-          "cash_positions",
-          "cash_value",
-          "existing_item_count"
-        ],
-        "title": "NetWorthSeedPreviewResponse"
-      },
-      "NetWorthSeedResponse": {
-        "properties": {
-          "created_items": {
-            "items": {
-              "$ref": "#/components/schemas/NetWorthItemResponse"
-            },
-            "type": "array",
-            "title": "Created Items"
-          },
-          "skipped_currencies": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Skipped Currencies"
-          }
-        },
-        "type": "object",
-        "required": [
-          "created_items",
-          "skipped_currencies"
-        ],
-        "title": "NetWorthSeedResponse"
-      },
-      "NetWorthSnapshotResponse": {
-        "properties": {
-          "snapshot_date": {
-            "type": "string",
-            "title": "Snapshot Date"
-          },
-          "investment_value": {
-            "type": "number",
-            "title": "Investment Value"
-          },
-          "other_assets_value": {
-            "type": "number",
-            "title": "Other Assets Value"
-          },
-          "liabilities_value": {
-            "type": "number",
-            "title": "Liabilities Value"
-          },
-          "net_worth": {
-            "type": "number",
-            "title": "Net Worth"
-          },
-          "display_currency": {
-            "type": "string",
-            "title": "Display Currency",
-            "default": "USD"
-          },
-          "breakdown": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "number"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Breakdown",
-            "default": {}
-          }
-        },
-        "type": "object",
-        "required": [
-          "snapshot_date",
-          "investment_value",
-          "other_assets_value",
-          "liabilities_value",
-          "net_worth"
-        ],
-        "title": "NetWorthSnapshotResponse",
-        "description": "GET /net-worth/history entry."
-      },
-      "NetWorthSummaryResponse": {
-        "properties": {
-          "display_currency": {
-            "type": "string",
-            "title": "Display Currency",
-            "default": "USD"
-          },
-          "investment_value": {
-            "type": "number",
-            "title": "Investment Value"
-          },
-          "other_assets_value": {
-            "type": "number",
-            "title": "Other Assets Value"
-          },
-          "liabilities_value": {
-            "type": "number",
-            "title": "Liabilities Value"
-          },
-          "net_worth": {
-            "type": "number",
-            "title": "Net Worth"
-          },
-          "breakdown": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "number"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Breakdown"
-          },
-          "stale_count": {
-            "type": "integer",
-            "title": "Stale Count",
-            "default": 0
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/NetWorthItemResponse"
-            },
-            "type": "array",
-            "title": "Items",
-            "default": []
-          },
-          "calculated_at": {
-            "type": "string",
-            "title": "Calculated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "investment_value",
-          "other_assets_value",
-          "liabilities_value",
-          "net_worth",
-          "breakdown",
-          "calculated_at"
-        ],
-        "title": "NetWorthSummaryResponse",
-        "description": "GET /net-worth summary response."
       },
       "PersonaTemplateResponse": {
         "properties": {
@@ -11169,6 +10035,7 @@
           "xray_coverage_pct": {
             "type": "number",
             "title": "Xray Coverage Pct",
+            "description": "X-Ray coverage over equity exposure (cash/bond excluded)",
             "default": 0.0
           },
           "xray_skipped_etfs": {
@@ -12335,7 +11202,7 @@
         "title": "TickerCreateRequest",
         "description": "POST /ticker \u8acb\u6c42 Body\u3002"
       },
-      "TransactionRequest": {
+      "TransactionImportItem": {
         "properties": {
           "account_id": {
             "anyOf": [
@@ -12348,17 +11215,6 @@
             ],
             "title": "Account Id"
           },
-          "holding_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Holding Id"
-          },
           "ticker": {
             "type": "string",
             "maxLength": 20,
@@ -12368,7 +11224,7 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
@@ -12428,6 +11284,163 @@
         },
         "type": "object",
         "required": [
+          "ticker",
+          "transaction_type",
+          "quantity",
+          "total_amount",
+          "transaction_date"
+        ],
+        "title": "TransactionImportItem"
+      },
+      "TransactionImportRequest": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "append",
+              "replace_account"
+            ],
+            "title": "Mode",
+            "default": "append"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionImportItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "TransactionImportRequest"
+      },
+      "TransactionRequest": {
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id",
+            "description": "\u5e33\u6236 ID\uff08\u5fc5\u586b\uff09"
+          },
+          "holding_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Id"
+          },
+          "ticker": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Ticker"
+          },
+          "transaction_type": {
+            "type": "string",
+            "title": "Transaction Type",
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount",
+            "description": "Total transaction amount"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Currency",
+            "default": "USD"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
+          },
+          "fee": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fee",
+            "default": 0.0
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          },
+          "thesis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis",
+            "description": "Thesis used when auto-adding a new ticker to radar"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category",
+            "description": "Stock category used when auto-adding a new ticker to radar"
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transaction Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
           "ticker",
           "transaction_type",
           "quantity",
@@ -12526,6 +11539,11 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "auto_radar": {
+            "type": "boolean",
+            "title": "Auto Radar",
+            "default": false
           }
         },
         "type": "object",
@@ -12591,198 +11609,6 @@
         ],
         "title": "TwrResponse",
         "description": "GET /snapshots/twr \u56de\u50b3\u7684\u6642\u9593\u52a0\u6b0a\u5831\u916c\u7387\u3002"
-      },
-      "UpdateHoldingRequest": {
-        "properties": {
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quantity"
-          },
-          "cost_basis": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Basis"
-          },
-          "broker": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Broker"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/StockCategory"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "coingecko_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coingecko Id"
-          }
-        },
-        "type": "object",
-        "title": "UpdateHoldingRequest",
-        "description": "PUT /holdings/{id} \u8acb\u6c42 Body \u2014 \u6240\u6709\u6b04\u4f4d\u5747\u70ba\u9078\u586b\uff0c\u50c5\u66f4\u65b0\u63d0\u4f9b\u7684\u6b04\u4f4d\u3002"
-      },
-      "UpdateNetWorthItemRequest": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 120,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(asset|liability)$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "value": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Value"
-          },
-          "currency": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 3,
-                "minLength": 3
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Currency"
-          },
-          "fx_rate_to_usd": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fx Rate To Usd"
-          },
-          "interest_rate": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Interest Rate"
-          },
-          "minimum_payment": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Payment"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          }
-        },
-        "type": "object",
-        "title": "UpdateNetWorthItemRequest",
-        "description": "PUT /net-worth/items/{item_id} request (partial update)."
       },
       "VIXData": {
         "properties": {

@@ -59,7 +59,35 @@ def test_account_summary_with_holdings(client: TestClient):
     assert len(data) >= 1
     assert data[0]["account"]["name"] == "SBI Japan"
     assert data[0]["holdings_count"] == 0
-    assert data[0]["cash_balances"] == []
+    assert data[0]["tickers"] == []
+    assert data[0]["cash_balances"] == [{"currency": "USD", "balance": 0.0}]
+
+
+def test_account_create_should_initialize_zero_cash_balance(client: TestClient):
+    acct_resp = client.post(
+        "/accounts",
+        json={"name": "Zero Cash", "broker": "Demo Broker", "currency": "USD"},
+    )
+    assert acct_resp.status_code == 201
+    account_id = acct_resp.json()["id"]
+
+    balances_resp = client.get(f"/accounts/{account_id}/cash-balances")
+    assert balances_resp.status_code == 200
+    assert balances_resp.json() == [{"currency": "USD", "balance": 0.0}]
+
+    summary_resp = client.get("/accounts/summary")
+    assert summary_resp.status_code == 200
+    account_row = next(
+        (
+            item
+            for item in summary_resp.json()
+            if item.get("account", {}).get("id") == account_id
+        ),
+        None,
+    )
+    assert account_row is not None
+    assert account_row["holdings_count"] == 0
+    assert account_row["tickers"] == []
 
 
 def test_account_create_validation(client: TestClient):
@@ -125,3 +153,188 @@ def test_accounts_include_inactive_query(client: TestClient):
     with_inactive = client.get("/accounts?include_inactive=true")
     assert with_inactive.status_code == 200
     assert any(account["id"] == account_id for account in with_inactive.json())
+
+
+def test_account_positions_should_return_holdings_for_selected_account(
+    client: TestClient,
+):
+    account_a = client.post(
+        "/accounts",
+        json={
+            "name": "Primary",
+            "broker": "IBKR",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    account_b = client.post(
+        "/accounts",
+        json={
+            "name": "Secondary",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_a.status_code == 201
+    assert account_b.status_code == 201
+    account_a_id = account_a.json()["id"]
+    account_b_id = account_b.json()["id"]
+
+    for account_id, ticker, quantity, price in (
+        (account_a_id, "AAPL", 2, 190.0),
+        (account_b_id, "TSLA", 1, 230.0),
+    ):
+        deposit_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 5000.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": ticker,
+                "transaction_type": "BUY",
+                "quantity": quantity,
+                "price": price,
+                "total_amount": quantity * price,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        assert deposit_resp.status_code == 201
+        assert buy_resp.status_code == 201
+
+    resp = client.get(f"/accounts/{account_a_id}/positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert any(item["ticker"] == "AAPL" for item in payload)
+    assert all(item["account_id"] == account_a_id for item in payload)
+
+
+def test_account_transactions_should_return_paginated_transactions(client: TestClient):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Txn Account",
+            "broker": "IBKR",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    for amount, txn_date in ((1000.0, "2026-03-10"), (2000.0, "2026-03-11")):
+        txn_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": amount,
+                "currency": "USD",
+                "transaction_date": txn_date,
+            },
+        )
+        assert txn_resp.status_code == 201
+
+    first_page_resp = client.get(
+        f"/accounts/{account_id}/transactions?limit=1&offset=0"
+    )
+    assert first_page_resp.status_code == 200
+    first_page = first_page_resp.json()
+    assert len(first_page) == 1
+    assert first_page[0]["account_id"] == account_id
+
+    second_page_resp = client.get(
+        f"/accounts/{account_id}/transactions?limit=1&offset=1"
+    )
+    assert second_page_resp.status_code == 200
+    second_page = second_page_resp.json()
+    assert len(second_page) == 1
+    assert second_page[0]["account_id"] == account_id
+    assert first_page[0]["id"] != second_page[0]["id"]
+
+
+def test_account_positions_and_transactions_should_return_404_for_unknown_account(
+    client: TestClient,
+):
+    positions_resp = client.get("/accounts/99999/positions")
+    assert positions_resp.status_code == 404
+
+    transactions_resp = client.get("/accounts/99999/transactions")
+    assert transactions_resp.status_code == 404
+
+
+def test_deactivate_all_accounts_should_hide_positions_from_holdings_and_rebalance(
+    client: TestClient,
+):
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "IB Main",
+            "broker": "Interactive Brokers",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert buy_resp.status_code == 201
+    profile_resp = client.post(
+        "/profiles",
+        json={"config": {"Growth": 100}, "home_currency": "USD"},
+    )
+    assert profile_resp.status_code in (200, 201)
+
+    rebalance_before = client.get("/rebalance")
+    assert rebalance_before.status_code == 200
+    assert len(rebalance_before.json()["holdings_detail"]) >= 1
+
+    deactivate_resp = client.delete(f"/accounts/{account_id}")
+    assert deactivate_resp.status_code == 200
+
+    holdings_resp = client.get("/holdings")
+    assert holdings_resp.status_code == 200
+    assert holdings_resp.json() == []
+
+    rebalance_after = client.get("/rebalance")
+    assert rebalance_after.status_code == 404

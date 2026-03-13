@@ -6,17 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
 from api.schemas import (
-    CashHoldingRequest,
     CurrencyExposureResponse,
     FXAlertResponse,
-    HoldingImportItem,
-    HoldingRequest,
     HoldingResponse,
-    ImportResponse,
-    MessageResponse,
     RebalanceResponse,
     StressTestResponse,
-    UpdateHoldingRequest,
     WithdrawRequest,
     WithdrawResponse,
     XRayAlertResponse,
@@ -28,8 +22,6 @@ from application.services import (
     calculate_rebalance,
     calculate_stress_test,
     calculate_withdrawal,
-    invalidate_insight_cache,
-    invalidate_rebalance_cache,
     send_fx_alerts,
     send_xray_warnings,
 )
@@ -43,121 +35,12 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-# ---------------------------------------------------------------------------
-# Holdings CRUD
-# ---------------------------------------------------------------------------
-
-
 @router.get(
     "/holdings", response_model=list[HoldingResponse], summary="List all holdings"
 )
 def list_holdings(session: Session = Depends(get_session)) -> list[HoldingResponse]:
     """取得所有持倉。"""
     return [HoldingResponse(**h) for h in holding_service.list_holdings(session)]
-
-
-@router.post("/holdings", response_model=HoldingResponse, summary="Add a holding")
-def create_holding(
-    payload: HoldingRequest,
-    session: Session = Depends(get_session),
-) -> HoldingResponse:
-    """新增持倉。"""
-    lang = get_user_language(session)
-    result = HoldingResponse(
-        **holding_service.create_holding(session, payload.model_dump(), lang)
-    )
-    invalidate_rebalance_cache()
-    invalidate_insight_cache()
-    return result
-
-
-@router.post(
-    "/holdings/cash", response_model=HoldingResponse, summary="Add a cash holding"
-)
-def create_cash_holding(
-    payload: CashHoldingRequest,
-    session: Session = Depends(get_session),
-) -> HoldingResponse:
-    """新增現金持倉（簡化入口）。"""
-    lang = get_user_language(session)
-    result = HoldingResponse(
-        **holding_service.create_cash_holding(session, payload.model_dump(), lang)
-    )
-    invalidate_rebalance_cache()
-    invalidate_insight_cache()
-    return result
-
-
-@router.put(
-    "/holdings/{holding_id}", response_model=HoldingResponse, summary="Update a holding"
-)
-def update_holding(
-    holding_id: int,
-    payload: UpdateHoldingRequest,
-    session: Session = Depends(get_session),
-) -> HoldingResponse:
-    """更新持倉（部分更新）。"""
-    lang = get_user_language(session)
-    result = HoldingResponse(
-        **holding_service.update_holding(
-            session, holding_id, payload.model_dump(exclude_unset=True), lang
-        )
-    )
-    invalidate_rebalance_cache()
-    invalidate_insight_cache()
-    return result
-
-
-@router.delete(
-    "/holdings/{holding_id}", response_model=MessageResponse, summary="Delete a holding"
-)
-def delete_holding(
-    holding_id: int,
-    session: Session = Depends(get_session),
-) -> dict:
-    """刪除持倉。"""
-    lang = get_user_language(session)
-    result = holding_service.delete_holding(session, holding_id, lang)
-    invalidate_rebalance_cache()
-    invalidate_insight_cache()
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Holdings Import / Export
-# ---------------------------------------------------------------------------
-
-
-@router.get("/holdings/export", summary="Export all holdings as JSON")
-def export_holdings(session: Session = Depends(get_session)) -> list[dict]:
-    """匯出所有持倉（JSON 格式）。"""
-    return holding_service.export_holdings(session)
-
-
-@router.post(
-    "/holdings/import",
-    response_model=ImportResponse,
-    summary="Bulk import holdings (replace)",
-)
-def import_holdings(
-    data: list[HoldingImportItem],
-    session: Session = Depends(get_session),
-) -> dict:
-    """
-    批次匯入持倉（清除舊資料後重新匯入）。
-
-    限制：
-    - 最多一次匯入 1000 筆
-    - ticker 長度限制 20 字元
-    - quantity 必須大於 0
-    """
-    lang = get_user_language(session)
-    result = holding_service.import_holdings(
-        session, [item.model_dump() for item in data], lang
-    )
-    invalidate_rebalance_cache()
-    invalidate_insight_cache()
-    return result
 
 
 # ---------------------------------------------------------------------------

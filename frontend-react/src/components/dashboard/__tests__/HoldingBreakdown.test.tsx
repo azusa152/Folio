@@ -121,4 +121,19 @@ describe("HoldingBreakdown", () => {
     expect(screen.queryByText("dashboard.holding_breakdown.show_all")).not.toBeInTheDocument()
     expect(screen.queryByText(/dashboard\.holding_breakdown\.other/)).not.toBeInTheDocument()
   })
+
+  it("aggregates duplicate ticker rows into a single position", () => {
+    const rebalance = makeRebalance([
+      makeHolding("VTI", "Trend_Setter", 10),
+      makeHolding("VTI", "Trend_Setter", 20),
+      makeHolding("AAPL", "Moat", 5),
+    ])
+
+    render(<HoldingBreakdown rebalance={rebalance as RebalanceResponse} />)
+
+    expect(screen.getByTitle("VTI: 30.0%")).toBeInTheDocument()
+    expect(screen.queryByTitle("VTI: 10.0%")).not.toBeInTheDocument()
+    expect(screen.queryByTitle("VTI: 20.0%")).not.toBeInTheDocument()
+    expect(screen.getByText("30.0%")).toBeInTheDocument()
+  })
 })

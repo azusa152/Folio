@@ -5,8 +5,24 @@ Tests for POST /withdraw — 聰明提款機 (Smart Withdrawal / Liquidity Water
 from unittest.mock import patch
 
 
+def _create_account(client) -> int:
+    response = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def _setup_profile_and_holdings(client):
     """共用 setup：建立投資人格 + 持倉。"""
+    account_id = _create_account(client)
+
     # 建立投資人格（目標配置）
     client.post(
         "/profiles",
@@ -16,34 +32,58 @@ def _setup_profile_and_holdings(client):
             "home_currency": "USD",
         },
     )
+    # 注入初始現金
+    client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 20_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
     # 新增持倉：Growth（有獲利）
     client.post(
-        "/holdings",
+        "/transactions",
         json={
+            "account_id": account_id,
             "ticker": "NVDA",
-            "category": "Growth",
+            "transaction_type": "BUY",
             "quantity": 10,
-            "cost_basis": 80.0,
+            "price": 80.0,
+            "total_amount": 800.0,
             "currency": "USD",
+            "transaction_date": "2026-03-11",
         },
     )
     # 新增持倉：Bond
     client.post(
-        "/holdings",
+        "/transactions",
         json={
+            "account_id": account_id,
             "ticker": "SGOV",
-            "category": "Bond",
+            "transaction_type": "BUY",
             "quantity": 50,
-            "cost_basis": 100.0,
+            "price": 100.0,
+            "total_amount": 5000.0,
             "currency": "USD",
+            "transaction_date": "2026-03-11",
         },
     )
-    # 新增現金持倉
+    # 補一筆額外現金
     client.post(
-        "/holdings/cash",
+        "/transactions",
         json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 5000.0,
             "currency": "USD",
-            "amount": 5000.0,
+            "transaction_date": "2026-03-12",
         },
     )
 

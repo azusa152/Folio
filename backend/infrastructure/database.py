@@ -65,6 +65,8 @@ def _run_migrations() -> None:
         "ALTER TABLE holding ADD COLUMN broker VARCHAR;",
         # Holding: 新增幣別欄位
         "ALTER TABLE holding ADD COLUMN currency VARCHAR DEFAULT 'USD';",
+        # Holding: 一次性正規化 ticker（避免查詢大小寫回退掃描）
+        "UPDATE holding SET ticker = UPPER(TRIM(ticker)) WHERE ticker IS NOT NULL;",
         # Holding: 根據 ticker 後綴回填幣別
         "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
         "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
@@ -119,12 +121,6 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
         # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
         "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
-        # NetWorthItem: optional manual FX rate for zero-external-call conversion
-        "ALTER TABLE networthitem ADD COLUMN fx_rate_to_usd REAL;",
-        # NetWorthItem: optional minimum monthly payment for liabilities
-        "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
-        # NetWorthItem: source tracking for seeded portfolio cash
-        "ALTER TABLE networthitem ADD COLUMN source TEXT DEFAULT 'manual';",
         # UserPreferences: terminology display mode (Phase 7)
         "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
     ]
@@ -271,6 +267,28 @@ def _run_backtest_migrations() -> None:
                 conn.rollback()
 
 
+def _run_ledger_indexes() -> None:
+    """Ledger 索引遷移（補充 account+ticker 查詢效能所需 index）。"""
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+
+    migrations = [
+        "CREATE INDEX IF NOT EXISTS ix_holding_account_ticker ON holding (account_id, ticker);",
+        "CREATE INDEX IF NOT EXISTS ix_holding_account_cash_currency ON holding (account_id, is_cash, currency);",
+        'CREATE INDEX IF NOT EXISTS ix_transaction_account_ticker ON "transaction" (account_id, ticker);',
+        'CREATE INDEX IF NOT EXISTS ix_transaction_date ON "transaction" (transaction_date);',
+    ]
+
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                logger.debug("Ledger 索引遷移成功：%s", sql.strip())
+            except OperationalError:
+                conn.rollback()
+
+
 def _backfill_signal_since() -> None:
     """
     回填 Stock.signal_since：對已有非 NORMAL 訊號但 signal_since 為 NULL 的股票，
@@ -329,6 +347,7 @@ def create_db_and_tables() -> None:
     _run_migrations()
     _run_smart_money_migrations()
     _run_backtest_migrations()
+    _run_ledger_indexes()
 
     logger.info("載入系統人格範本...")
     _load_system_personas()

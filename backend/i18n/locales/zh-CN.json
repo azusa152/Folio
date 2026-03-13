@@ -79,6 +79,7 @@
     "display_order_updated": "✅ 已更新 {count} 档股票的显示顺位。",
     "thesis_updated": "✅ {ticker} 观点已更新至第 {version} 版。",
     "added": "✅ 已新增 {ticker} 到 {category} 分类。",
+    "auto_thesis": "通过交易自动追踪",
     "import_missing_ticker": "缺少 ticker 栏位",
     "import_invalid_category": "{ticker}: 无效分类 {category}",
     "import_complete": "✅ 导入完成：新增 {created}，更新 {updated}，错误 {errors}。",
@@ -285,9 +286,6 @@
     "digest_started": "每周摘要已启动，结果将通过 Telegram 通知。",
     "holding_not_found": "持仓不存在。",
     "holding_deleted": "持仓 {ticker} 已删除。",
-    "net_worth_item_not_found": "净资产项目不存在。",
-    "net_worth_item_deleted": "净资产项目“{name}”已删除。",
-    "net_worth_seed_no_cash_holdings": "未找到可导入的现金持仓。",
     "import_item_failed": "第 {index} 笔导入失败",
     "import_done": "导入完成：{count} 笔成功。",
     "xray_done": "X-Ray 分析完成，{count} 笔警告已发送。",
@@ -361,7 +359,9 @@
     "created": "交易已记录",
     "deleted": "交易已删除",
     "insufficient_balance": "该交易的账户现金余额不足",
-    "cash_holding_not_found": "未找到所选账户与币种的现金余额"
+    "cash_holding_not_found": "未找到所选账户与币种的现金余额",
+    "stock_holding_not_found": "所选账户中未找到该股票代码的持仓。",
+    "insufficient_shares": "持股数量不足。可用: {{available}}，需要: {{required}}。"
   },
   "account": {
     "not_found": "找不到账户",

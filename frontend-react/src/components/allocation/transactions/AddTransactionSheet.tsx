@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react"
+import { Building2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
 import { useHoldings } from "@/api/hooks/useDashboard"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { useRadarStocks } from "@/api/hooks/useRadar"
+import { CATEGORY_ICON_SHORT, DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -16,12 +19,17 @@ interface Props {
   defaultTicker?: string
   defaultHoldingId?: number
   defaultAccountId?: number
+  defaultTransactionType?: TransactionType
+  defaultCurrency?: string
+  onOpenBuyForAccount?: (accountId: number, currency: string) => void
   onOpenAccounts?: () => void
 }
 
-type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
+export type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
+type StockCategory = (typeof STOCK_CATEGORIES)[number]
 
 interface FieldErrors {
+  account?: string
   ticker?: string
   quantity?: string
   price?: string
@@ -45,16 +53,22 @@ export function AddTransactionSheet({
   defaultTicker,
   defaultHoldingId,
   defaultAccountId,
+  defaultTransactionType,
+  defaultCurrency,
+  onOpenBuyForAccount,
   onOpenAccounts,
 }: Props) {
   const { t } = useTranslation()
   const addTransactionMutation = useAddTransaction()
   const { data: holdings } = useHoldings()
+  const { data: radarStocks, isLoading: isRadarStocksLoading } = useRadarStocks()
   const { data: accounts } = useAccounts(open)
 
   const initialTicker = defaultTicker?.toUpperCase() ?? ""
+  const initialTransactionType = defaultTransactionType ?? "BUY"
+  const initialCurrency = defaultCurrency?.toUpperCase() ?? "USD"
 
-  const [transactionType, setTransactionType] = useState<TransactionType>("BUY")
+  const [transactionType, setTransactionType] = useState<TransactionType>(initialTransactionType)
   const [accountId, setAccountId] = useState(defaultAccountId != null ? String(defaultAccountId) : "")
   const [ticker, setTicker] = useState(initialTicker)
   const [holdingId, setHoldingId] = useState<string>(() => {
@@ -66,10 +80,12 @@ export function AddTransactionSheet({
   const [quantity, setQuantity] = useState("")
   const [price, setPrice] = useState("")
   const [totalAmount, setTotalAmount] = useState("")
-  const [currency, setCurrency] = useState("USD")
+  const [currency, setCurrency] = useState(initialCurrency)
   const [fxRate, setFxRate] = useState("")
   const [fee, setFee] = useState("0")
   const [note, setNote] = useState("")
+  const [thesis, setThesis] = useState("")
+  const [category, setCategory] = useState<StockCategory>("Growth")
   const [transactionDate, setTransactionDate] = useState(todayISO())
   const [manualTotal, setManualTotal] = useState(false)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
@@ -81,6 +97,16 @@ export function AddTransactionSheet({
   const selectedCurrencyCashBalance =
     (cashBalances ?? []).find((balance) => balance.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
+  const hasNoAccounts = (accounts ?? []).length === 0
+  const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
+  const isNewToRadar = useMemo(() => {
+    if (isRadarStocksLoading) return false
+    if (isCashMovement) return false
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) return false
+    return !(radarStocks ?? []).some((stock) => stock.ticker.toUpperCase() === normalizedTicker)
+  }, [isCashMovement, isRadarStocksLoading, radarStocks, ticker])
+  const requiresAccount = true
 
   const holdingOptions = useMemo(
     () =>
@@ -96,7 +122,7 @@ export function AddTransactionSheet({
   }, [defaultHoldingId, holdingOptions, initialTicker])
 
   const resetForm = (options?: { keepDefaultTicker?: boolean; keepDefaultHoldingId?: boolean }) => {
-    setTransactionType("BUY")
+    setTransactionType(initialTransactionType)
     setAccountId(defaultAccountId != null ? String(defaultAccountId) : "")
     setTicker(options?.keepDefaultTicker ? initialTicker : "")
     setHoldingId(
@@ -107,15 +133,24 @@ export function AddTransactionSheet({
     setQuantity("")
     setPrice("")
     setTotalAmount("")
-    setCurrency("USD")
+    setCurrency(initialCurrency)
     setFxRate("")
     setFee("0")
     setNote("")
+    setThesis("")
+    setCategory("Growth")
     setTransactionDate(todayISO())
     setManualTotal(false)
     setMoreOptionsOpen(false)
     setFieldErrors({})
     setInsufficientBalance(null)
+  }
+
+  const applyCashMovementDefaults = (nextCurrency: string) => {
+    setTicker(nextCurrency.toUpperCase())
+    setQuantity("1")
+    setPrice("")
+    setManualTotal(true)
   }
 
   const computeTotalAmount = (nextQuantity: string, nextPrice: string): string => {
@@ -135,11 +170,14 @@ export function AddTransactionSheet({
     const fxRateNum = Number(fxRate)
     const feeNum = Number(fee)
 
-    if (!ticker.trim()) nextErrors.ticker = t("transactions.form.error_ticker")
-    if (!quantity || Number.isNaN(quantityNum) || quantityNum <= 0) {
+    if (requiresAccount && !accountId) {
+      nextErrors.account = t("transactions.form.account_required")
+    }
+    if (!isCashMovement && !ticker.trim()) nextErrors.ticker = t("transactions.form.error_ticker")
+    if (!isCashMovement && (!quantity || Number.isNaN(quantityNum) || quantityNum <= 0)) {
       nextErrors.quantity = t("transactions.form.error_quantity")
     }
-    if (price && (Number.isNaN(priceNum) || priceNum < 0)) {
+    if (!isCashMovement && price && (Number.isNaN(priceNum) || priceNum < 0)) {
       nextErrors.price = t("transactions.form.error_price")
     }
     if (!totalAmount || Number.isNaN(totalAmountNum) || totalAmountNum <= 0) {
@@ -184,7 +222,23 @@ export function AddTransactionSheet({
           <SheetTitle className="text-sm">{t("transactions.form.title")}</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-4 space-y-4">
+        {hasNoAccounts ? (
+          <div className="mt-4 flex flex-col items-center justify-center gap-4 px-4 py-12 text-center">
+            <div className="rounded-full bg-muted p-4">
+              <Building2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{t("transactions.empty_state.title")}</p>
+              <p className="text-xs text-muted-foreground">{t("transactions.empty_state.description")}</p>
+            </div>
+            {onOpenAccounts ? (
+              <Button size="sm" onClick={onOpenAccounts}>
+                {t("transactions.empty_state.create_account")}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("transactions.form.account")}</p>
             <select
@@ -192,28 +246,52 @@ export function AddTransactionSheet({
               value={accountId}
               onChange={(event) => {
                 setAccountId(event.target.value)
+                const nextAccountId = Number(event.target.value)
+                const account = (accounts ?? []).find((item) => item.id === nextAccountId)
+                if (account?.currency) {
+                  const accountCurrency = account.currency.toUpperCase()
+                  setCurrency(accountCurrency)
+                  if (isCashMovement) applyCashMovementDefaults(accountCurrency)
+                }
                 setInsufficientBalance(null)
+                setFieldErrors((prev) => ({ ...prev, account: undefined }))
               }}
               className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
             >
-              <option value="">{t("transactions.form.account_optional")}</option>
+              <option value="">{t("transactions.form.account_required")}</option>
               {(accounts ?? []).map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name} ({account.broker})
                 </option>
               ))}
             </select>
-            {selectedAccountId != null && selectedCurrencyCashBalance != null ? (
+            {selectedAccountId != null ? (
               <p className="text-[11px] text-muted-foreground">
                 {t("transactions.form.available_cash", {
                   currency,
-                  amount: selectedCurrencyCashBalance.toLocaleString(undefined, {
+                  amount: (selectedCurrencyCashBalance ?? 0).toLocaleString(undefined, {
                     maximumFractionDigits: 2,
                   }),
                 })}
               </p>
             ) : null}
-            {(accounts ?? []).length === 0 ? (
+            {transactionType === "BUY" && hasNoAccounts ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-2 space-y-1">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  {t("transactions.form.buy_no_account_banner")}
+                </p>
+                {onOpenAccounts ? (
+                  <button
+                    type="button"
+                    className="text-[11px] text-primary hover:underline"
+                    onClick={onOpenAccounts}
+                  >
+                    {t("transactions.form.create_account")}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {transactionType !== "BUY" && hasNoAccounts ? (
               <div className="text-[11px] text-muted-foreground">
                 <p>{t("transactions.form.account_empty_hint")}</p>
                 {onOpenAccounts ? (
@@ -227,10 +305,14 @@ export function AddTransactionSheet({
                 ) : null}
               </div>
             ) : null}
+            {fieldErrors.account ? <p className="text-xs text-destructive">{fieldErrors.account}</p> : null}
+            {transactionType === "BUY" && selectedAccountId != null && (selectedCurrencyCashBalance ?? 0) <= 0 ? (
+              <p className="text-[11px] text-muted-foreground">{t("transactions.form.buy_no_balance_hint")}</p>
+            ) : null}
             {selectedAccountId != null && (transactionType === "SELL" || transactionType === "DIVIDEND") ? (
               <p className="text-[11px] text-muted-foreground">
                 {t("transactions.form.proceeds_hint", {
-                  account: selectedAccount?.name ?? t("transactions.form.account_optional"),
+                  account: selectedAccount?.name ?? t("transactions.form.account_required"),
                 })}
               </p>
             ) : null}
@@ -269,7 +351,14 @@ export function AddTransactionSheet({
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setTransactionType(type)}
+                  onClick={() => {
+                    setTransactionType(type)
+                    setInsufficientBalance(null)
+                    setFieldErrors({})
+                    if (type === "DEPOSIT" || type === "WITHDRAWAL") {
+                      applyCashMovementDefaults(currency)
+                    }
+                  }}
                   className={`text-xs py-1.5 rounded border transition-colors ${
                     transactionType === type
                       ? "bg-primary text-primary-foreground border-primary"
@@ -282,61 +371,93 @@ export function AddTransactionSheet({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
-            <Input
-              value={ticker}
-              aria-label={t("transactions.form.ticker")}
-              onChange={(event) => {
-                setTicker(event.target.value.toUpperCase())
-                setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
-              }}
-              placeholder="e.g. AAPL"
-              className="text-xs"
-            />
-            {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
+          {!isCashMovement ? (
             <div className="space-y-1">
-              <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+              <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
               <Input
-                type="number"
-                step="any"
-                aria-label={t("transactions.form.quantity")}
-                value={quantity}
+                value={ticker}
+                aria-label={t("transactions.form.ticker")}
                 onChange={(event) => {
-                  const nextQuantity = event.target.value
-                  setQuantity(nextQuantity)
-                  if (!manualTotal) setTotalAmount(computeTotalAmount(nextQuantity, price))
-                  setFieldErrors((prev) => ({ ...prev, quantity: undefined }))
+                  setTicker(event.target.value.toUpperCase())
+                  setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
                 }}
+                placeholder="e.g. AAPL"
                 className="text-xs"
               />
-              {fieldErrors.quantity ? <p className="text-xs text-destructive">{fieldErrors.quantity}</p> : null}
+              {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
             </div>
+          ) : null}
+
+          {!isCashMovement && isNewToRadar ? (
             <div className="space-y-1">
-              <p className="text-xs font-medium">{t("transactions.form.price")}</p>
+              <p className="text-xs font-medium">{t("transactions.form.thesis")}</p>
               <Input
-                type="number"
-                step="any"
-                aria-label={t("transactions.form.price")}
-                value={price}
-                onChange={(event) => {
-                  const nextPrice = event.target.value
-                  setPrice(nextPrice)
-                  if (!manualTotal) setTotalAmount(computeTotalAmount(quantity, nextPrice))
-                  setFieldErrors((prev) => ({ ...prev, price: undefined }))
-                }}
+                value={thesis}
+                aria-label={t("transactions.form.thesis")}
+                onChange={(event) => setThesis(event.target.value)}
+                placeholder={t("transactions.form.thesis_hint")}
                 className="text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">{t("transactions.form.price_hint")}</p>
-              {fieldErrors.price ? <p className="text-xs text-destructive">{fieldErrors.price}</p> : null}
+              <p className="text-xs font-medium pt-2">{t("transactions.form.category")}</p>
+              <Select value={category} onValueChange={(value) => setCategory(value as StockCategory)}>
+                <SelectTrigger aria-label={t("transactions.form.category")} className="text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STOCK_CATEGORIES.map((item) => (
+                    <SelectItem key={item} value={item} className="text-xs">
+                      {CATEGORY_ICON_SHORT[item] ?? ""} {t(`config.category.${item.toLowerCase()}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          ) : null}
+
+          {!isCashMovement ? (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+                <Input
+                  type="number"
+                  step="any"
+                  aria-label={t("transactions.form.quantity")}
+                  value={quantity}
+                  onChange={(event) => {
+                    const nextQuantity = event.target.value
+                    setQuantity(nextQuantity)
+                    if (!manualTotal) setTotalAmount(computeTotalAmount(nextQuantity, price))
+                    setFieldErrors((prev) => ({ ...prev, quantity: undefined }))
+                  }}
+                  className="text-xs"
+                />
+                {fieldErrors.quantity ? <p className="text-xs text-destructive">{fieldErrors.quantity}</p> : null}
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium">{t("transactions.form.price")}</p>
+                <Input
+                  type="number"
+                  step="any"
+                  aria-label={t("transactions.form.price")}
+                  value={price}
+                  onChange={(event) => {
+                    const nextPrice = event.target.value
+                    setPrice(nextPrice)
+                    if (!manualTotal) setTotalAmount(computeTotalAmount(quantity, nextPrice))
+                    setFieldErrors((prev) => ({ ...prev, price: undefined }))
+                  }}
+                  className="text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">{t("transactions.form.price_hint")}</p>
+                {fieldErrors.price ? <p className="text-xs text-destructive">{fieldErrors.price}</p> : null}
+              </div>
+            </div>
+          ) : null}
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">{t("transactions.form.total_amount")}</p>
+            <p className="text-xs font-medium">
+              {isCashMovement ? t("transactions.form.deposit_amount") : t("transactions.form.total_amount")}
+            </p>
             <Input
               type="number"
               step="any"
@@ -349,25 +470,49 @@ export function AddTransactionSheet({
               }}
               className="text-xs"
             />
-            <div className="flex items-center justify-between gap-2">
-              {!manualTotal ? (
-                <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_auto")}</p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_manual")}</p>
-              )}
-              <button
-                type="button"
-                className="text-[11px] text-primary hover:underline"
-                onClick={() => {
-                  setManualTotal(false)
-                  setTotalAmount(computeTotalAmount(quantity, price))
-                }}
-              >
-                {t("transactions.form.use_auto_total")}
-              </button>
-            </div>
+            {!isCashMovement ? (
+              <div className="flex items-center justify-between gap-2">
+                {!manualTotal ? (
+                  <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_auto")}</p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_manual")}</p>
+                )}
+                <button
+                  type="button"
+                  className="text-[11px] text-primary hover:underline"
+                  onClick={() => {
+                    setManualTotal(false)
+                    setTotalAmount(computeTotalAmount(quantity, price))
+                  }}
+                >
+                  {t("transactions.form.use_auto_total")}
+                </button>
+              </div>
+            ) : null}
             {fieldErrors.totalAmount ? <p className="text-xs text-destructive">{fieldErrors.totalAmount}</p> : null}
           </div>
+
+          {isCashMovement ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium">{t("transactions.form.currency")}</p>
+              <select
+                aria-label={t("transactions.form.currency")}
+                value={currency}
+                onChange={(event) => {
+                  const nextCurrency = event.target.value
+                  setCurrency(nextCurrency)
+                  applyCashMovementDefaults(nextCurrency)
+                }}
+                className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
+              >
+                {DISPLAY_CURRENCIES.map((displayCurrency) => (
+                  <option key={displayCurrency} value={displayCurrency}>
+                    {displayCurrency}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("transactions.form.date")}</p>
@@ -416,21 +561,25 @@ export function AddTransactionSheet({
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-xs font-medium">{t("transactions.form.currency")}</p>
-                  <select
-                    aria-label={t("transactions.form.currency")}
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value)}
-                    className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-                  >
-                    {DISPLAY_CURRENCIES.map((displayCurrency) => (
-                      <option key={displayCurrency} value={displayCurrency}>
-                        {displayCurrency}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {!isCashMovement ? (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">{t("transactions.form.currency")}</p>
+                    <select
+                      aria-label={t("transactions.form.currency")}
+                      value={currency}
+                      onChange={(event) => {
+                        setCurrency(event.target.value)
+                      }}
+                      className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
+                    >
+                      {DISPLAY_CURRENCIES.map((displayCurrency) => (
+                        <option key={displayCurrency} value={displayCurrency}>
+                          {displayCurrency}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
@@ -482,28 +631,60 @@ export function AddTransactionSheet({
           <Button
             className="w-full"
             size="sm"
-            disabled={addTransactionMutation.isPending}
+            disabled={addTransactionMutation.isPending || (requiresAccount && selectedAccountId == null)}
             onClick={() => {
               if (!validate()) return
 
+              const requiredAmount = Number(totalAmount) + Number(fee || "0")
+              const availableAmount = selectedCurrencyCashBalance ?? 0
+              if (
+                transactionType === "BUY" &&
+                selectedAccountId != null &&
+                requiredAmount > availableAmount
+              ) {
+                setInsufficientBalance({
+                  available: availableAmount,
+                  required: requiredAmount,
+                })
+                return
+              }
+
               addTransactionMutation.mutate(
                 {
-                  account_id: accountId ? Number(accountId) : undefined,
+                  account_id: Number(accountId),
                   holding_id: holdingId ? Number(holdingId) : undefined,
-                  ticker: ticker.trim(),
+                  ticker: isCashMovement ? currency.toUpperCase() : ticker.trim(),
                   transaction_type: transactionType,
-                  quantity: Number(quantity),
-                  price: price ? Number(price) : undefined,
+                  quantity: isCashMovement ? 1 : Number(quantity),
+                  price: !isCashMovement && price ? Number(price) : undefined,
                   total_amount: Number(totalAmount),
                   currency,
                   fx_rate: fxRate ? Number(fxRate) : undefined,
                   fee: fee ? Number(fee) : 0,
                   note: note.trim(),
+                  thesis: thesis.trim() || undefined,
+                  category: isNewToRadar ? category : undefined,
                   transaction_date: transactionDate,
                 },
                 {
-                  onSuccess: () => {
-                    toast.success(t("transactions.toast.created"))
+                  onSuccess: (data) => {
+                    const selectedId = accountId ? Number(accountId) : null
+                    if (transactionType === "DEPOSIT" && selectedId != null) {
+                      toast.success(t("transactions.toast.created"), {
+                        description: t("transactions.form.deposit_success_trade"),
+                        action: onOpenBuyForAccount
+                          ? {
+                              label: t("transactions.type.buy"),
+                              onClick: () => onOpenBuyForAccount(selectedId, currency),
+                            }
+                          : undefined,
+                      })
+                    } else {
+                      toast.success(t("transactions.toast.created"))
+                    }
+                    if (data.auto_radar) {
+                      toast.info(t("holding.auto_radar"))
+                    }
                     resetForm({ keepDefaultTicker: true, keepDefaultHoldingId: true })
                     onClose()
                   },
@@ -518,7 +699,8 @@ export function AddTransactionSheet({
           >
             {t("transactions.form.submit")}
           </Button>
-        </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   )

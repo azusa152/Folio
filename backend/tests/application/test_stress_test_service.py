@@ -7,7 +7,8 @@ from sqlmodel import Session
 
 from application.portfolio.stress_test_service import calculate_stress_test
 from application.stock.stock_service import StockNotFoundError
-from domain.entities import Holding
+from domain.constants import DEFAULT_USER_ID
+from domain.entities import Account, Holding
 from domain.enums import StockCategory
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ def _mock_compute_holding_market_values(holdings, fx_rates):
     currency_values = {}
     cash_currency_values = {}
     ticker_agg = {}
+    account_ticker_agg = {}
 
     for h in holdings:
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
@@ -81,8 +83,40 @@ def _mock_compute_holding_market_values(holdings, fx_rates):
         ticker_agg[key]["qty"] += h.quantity
         ticker_agg[key]["mv"] += market_value
         ticker_agg[key]["prev_mv"] += market_value
+        account_key = (h.account_id, h.ticker)
+        if account_key not in account_ticker_agg:
+            account_ticker_agg[account_key] = {
+                "category": cat,
+                "currency": h.currency,
+                "qty": 0.0,
+                "mv": 0.0,
+                "prev_mv": 0.0,
+                "cost_sum": 0.0,
+                "cost_qty": 0.0,
+                "price": price,
+                "fx": fx,
+                "has_prev_close": False,
+            }
+        account_ticker_agg[account_key]["qty"] += h.quantity
+        account_ticker_agg[account_key]["mv"] += market_value
+        account_ticker_agg[account_key]["prev_mv"] += market_value
 
-    return currency_values, cash_currency_values, ticker_agg
+    return currency_values, cash_currency_values, ticker_agg, account_ticker_agg
+
+
+def _seed_account(db_session: Session, name: str = "Stress Test Account") -> Account:
+    account = Account(
+        user_id=DEFAULT_USER_ID,
+        name=name,
+        broker="Test Broker",
+        account_type="brokerage",
+        currency="USD",
+        is_active=True,
+    )
+    db_session.add(account)
+    db_session.commit()
+    db_session.refresh(account)
+    return account
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +140,7 @@ class TestCalculateStressTestHappyPath:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="NVDA",
@@ -113,6 +148,7 @@ class TestCalculateStressTestHappyPath:
                 quantity=100,
                 cost_basis=150.0,  # Will be used as price
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -151,6 +187,7 @@ class TestCalculateStressTestHappyPath:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="NVDA",
@@ -158,6 +195,7 @@ class TestCalculateStressTestHappyPath:
                 quantity=100,
                 cost_basis=150.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.add(
@@ -167,6 +205,7 @@ class TestCalculateStressTestHappyPath:
                 quantity=1000,
                 cost_basis=600.0,
                 currency="TWD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -214,6 +253,7 @@ class TestCalculateStressTestHappyPath:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="USD",
@@ -221,6 +261,7 @@ class TestCalculateStressTestHappyPath:
                 quantity=50000,
                 currency="USD",
                 is_cash=True,
+                account_id=account.id,
             )
         )
         db_session.add(
@@ -230,6 +271,7 @@ class TestCalculateStressTestHappyPath:
                 quantity=100,
                 cost_basis=150.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -277,6 +319,7 @@ class TestBetaFallback:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="BTC-USD",  # Crypto may not have beta
@@ -284,6 +327,7 @@ class TestBetaFallback:
                 quantity=1,
                 cost_basis=60000.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -331,6 +375,7 @@ class TestStressTestErrorHandling:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="UNLISTED",
@@ -338,6 +383,7 @@ class TestStressTestErrorHandling:
                 quantity=100,
                 cost_basis=50.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -378,6 +424,7 @@ class TestStressTestPrivacy:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="NVDA",
@@ -385,6 +432,7 @@ class TestStressTestPrivacy:
                 quantity=100,
                 cost_basis=150.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -430,6 +478,7 @@ class TestStressTestEdgeCases:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="USD",
@@ -437,6 +486,7 @@ class TestStressTestEdgeCases:
                 quantity=100000,
                 currency="USD",
                 is_cash=True,
+                account_id=account.id,
             )
         )
         db_session.commit()
@@ -467,6 +517,7 @@ class TestStressTestEdgeCases:
         db_session: Session,
     ):
         # Arrange
+        account = _seed_account(db_session)
         db_session.add(
             Holding(
                 ticker="TQQQ",  # 3x leveraged
@@ -474,6 +525,7 @@ class TestStressTestEdgeCases:
                 quantity=100,
                 cost_basis=60.0,
                 currency="USD",
+                account_id=account.id,
             )
         )
         db_session.commit()

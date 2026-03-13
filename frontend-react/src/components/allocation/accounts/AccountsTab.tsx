@@ -1,24 +1,40 @@
 import { useMemo, useState } from "react"
+import { Download, Upload } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
   useAccounts,
+  useAccountPositions,
   useAccountSummary,
+  useAccountTransactions,
   useCreateAccount,
   useDeactivateAccount,
   useUpdateAccount,
 } from "@/api/hooks/useAccounts"
+import { TransactionList } from "@/components/allocation/transactions/TransactionList"
+import { TransactionCsvImportDialog } from "@/components/allocation/transactions/TransactionCsvImportDialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTransactions } from "@/api/hooks/useTransactions"
+import { ACCOUNT_TYPES } from "@/lib/constants"
+import { formatPrice, formatQuantity } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
-
-const ACCOUNT_TYPES = ["brokerage", "retirement", "savings", "crypto", "other"] as const
 
 interface Props {
   enabled: boolean
+  onDepositToAccount?: (accountId: number, currency: string) => void
+  onRecordTransaction?: (accountId: number, currency: string) => void
 }
 
-export function AccountsTab({ enabled }: Props) {
+type AccountDetailView = "positions" | "transactions" | "summary"
+
+export function AccountsTab({
+  enabled,
+  onDepositToAccount,
+  onRecordTransaction,
+}: Props) {
   const { t } = useTranslation()
   const { data: accounts, isLoading } = useAccounts(enabled)
   const { data: accountSummary } = useAccountSummary(enabled)
@@ -34,6 +50,11 @@ export function AccountsTab({ enabled }: Props) {
   const [currency, setCurrency] = useState("USD")
   const [institution, setInstitution] = useState("")
   const [note, setNote] = useState("")
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [detailView, setDetailView] = useState<AccountDetailView>("positions")
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
+  const [exportScope, setExportScope] = useState<"selected" | "all">("selected")
 
   const sortedAccounts = useMemo(
     () => [...(accounts ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -50,6 +71,33 @@ export function AccountsTab({ enabled }: Props) {
     }
     return map
   }, [accountSummary])
+  const activeAccountId = useMemo(() => {
+    if (sortedAccounts.length === 0) return null
+    if (selectedAccountId == null) return sortedAccounts[0].id
+    return sortedAccounts.some((account) => account.id === selectedAccountId)
+      ? selectedAccountId
+      : sortedAccounts[0].id
+  }, [sortedAccounts, selectedAccountId])
+
+  const selectedAccount = useMemo(
+    () => sortedAccounts.find((account) => account.id === activeAccountId) ?? null,
+    [sortedAccounts, activeAccountId],
+  )
+  const { data: selectedAccountPositions, isLoading: isPositionsLoading } = useAccountPositions(
+    selectedAccount?.id ?? null,
+    enabled && selectedAccount != null,
+  )
+  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } = useAccountTransactions(
+    selectedAccount?.id ?? null,
+    enabled && selectedAccount != null,
+  )
+  const { data: allTransactions } = useTransactions({ enabled, limit: 1 })
+  const effectiveExportScope = exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
+  const selectedScopeHasTransactions = (selectedAccountTransactions?.length ?? 0) > 0
+  const allScopeHasTransactions = (allTransactions?.length ?? 0) > 0
+  const exportDisabled = exportingCsv || (effectiveExportScope === "selected"
+    ? !selectedScopeHasTransactions
+    : !allScopeHasTransactions)
 
   const resetForm = () => {
     setEditingId(null)
@@ -106,8 +154,16 @@ export function AccountsTab({ enabled }: Props) {
 
     if (editingId == null) {
       createAccount.mutate(payload, {
-        onSuccess: () => {
-          toast.success(t("accounts.toast.created"))
+        onSuccess: (createdAccount) => {
+          toast.success(t("accounts.toast.created"), {
+            description: t("accounts.toast.created_deposit"),
+            action: onDepositToAccount
+              ? {
+                  label: t("accounts.quick_deposit"),
+                  onClick: () => onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
+                }
+              : undefined,
+          })
           setFormOpen(false)
           resetForm()
         },
@@ -133,6 +189,41 @@ export function AccountsTab({ enabled }: Props) {
     )
   }
 
+  const handleExportCsv = async () => {
+    setExportingCsv(true)
+    try {
+      const headers: HeadersInit = {}
+      const apiKey = import.meta.env.VITE_API_KEY
+      if (apiKey) headers["X-API-Key"] = apiKey
+
+      const params = new URLSearchParams()
+      if (effectiveExportScope === "selected" && selectedAccount?.id != null) {
+        params.set("account_id", String(selectedAccount.id))
+      }
+      const requestUrl = params.toString()
+        ? `/api/transactions/export-csv?${params.toString()}`
+        : "/api/transactions/export-csv"
+      const response = await fetch(requestUrl, {
+        headers,
+      })
+      if (!response.ok) throw new Error(response.statusText)
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const contentDisposition = response.headers.get("Content-Disposition") || ""
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+      link.download = filenameMatch?.[1] || "transactions.csv"
+      link.href = url
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(t("transactions.export_error"))
+    } finally {
+      setExportingCsv(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -140,9 +231,41 @@ export function AccountsTab({ enabled }: Props) {
           <p className="text-sm font-semibold">{t("accounts.title")}</p>
           <p className="text-xs text-muted-foreground">{t("accounts.caption")}</p>
         </div>
-        <Button className="text-xs min-h-[44px]" onClick={openCreate}>
-          {t("accounts.add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label={t("transactions.filter.account")}
+            value={exportScope}
+            onChange={(event) => setExportScope(event.target.value as "selected" | "all")}
+            className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+          >
+            <option value="selected" disabled={selectedAccount == null}>
+              {selectedAccount?.name ?? t("transactions.filter.account")}
+            </option>
+            <option value="all">{t("transactions.filter.all_accounts")}</option>
+          </select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs min-h-[44px]"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="mr-1 h-3.5 w-3.5" />
+            {t("transactions.import_button")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs min-h-[44px]"
+            onClick={handleExportCsv}
+            disabled={exportDisabled}
+          >
+            <Download className="mr-1 h-3.5 w-3.5" />
+            {t("transactions.export_button")}
+          </Button>
+          <Button className="text-xs min-h-[44px]" onClick={openCreate}>
+            {t("accounts.add")}
+          </Button>
+        </div>
       </div>
 
       {formOpen ? (
@@ -173,7 +296,7 @@ export function AccountsTab({ enabled }: Props) {
             >
               {ACCOUNT_TYPES.map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {t(`config.account_type.${value}`)}
                 </option>
               ))}
             </select>
@@ -232,12 +355,23 @@ export function AccountsTab({ enabled }: Props) {
 
       <div className="space-y-2">
         {sortedAccounts.map((account) => (
-          <div key={account.id} className="rounded-md border border-border p-3">
+          <div
+            key={account.id}
+            className={`rounded-md border p-3 transition-colors ${
+              activeAccountId === account.id
+                ? "border-primary bg-primary/5"
+                : "border-border"
+            }`}
+          >
             <div className="flex items-center justify-between gap-2">
-              <div>
+              <button
+                type="button"
+                className="text-left flex-1"
+                onClick={() => setSelectedAccountId(account.id)}
+              >
                 <p className="text-sm font-semibold">{account.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {account.broker} · {account.account_type} · {account.currency}
+                  {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {t("accounts.summary.positions", {
@@ -252,8 +386,28 @@ export function AccountsTab({ enabled }: Props) {
                         .join(" / ") || t("accounts.summary.no_cash"),
                   })}
                 </p>
-              </div>
+              </button>
               <div className="flex gap-2">
+                {onDepositToAccount ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => onDepositToAccount(account.id, account.currency || "USD")}
+                  >
+                    {t("accounts.quick_deposit")}
+                  </Button>
+                ) : null}
+                {onRecordTransaction ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => onRecordTransaction(account.id, account.currency || "USD")}
+                  >
+                    {t("transactions.record_button")}
+                  </Button>
+                ) : null}
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(account)}>
                   {t("common.edit")}
                 </Button>
@@ -275,6 +429,118 @@ export function AccountsTab({ enabled }: Props) {
           </div>
         ))}
       </div>
+
+      {selectedAccount ? (
+        <div className="rounded-md border border-border p-3 space-y-3">
+          <div>
+            <p className="text-sm font-semibold">{selectedAccount.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)} · {selectedAccount.currency}
+            </p>
+          </div>
+
+          <Tabs value={detailView} onValueChange={(value) => setDetailView(value as AccountDetailView)}>
+            <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
+              <TabsTrigger value="positions" className="min-h-[44px]">
+                {t("accounts.detail.positions")}
+              </TabsTrigger>
+              <TabsTrigger value="transactions" className="min-h-[44px]">
+                {t("accounts.detail.transactions")}
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="min-h-[44px]">
+                {t("accounts.detail.summary")}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="positions" className="mt-3">
+              {isPositionsLoading ? (
+                <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+              ) : (selectedAccountPositions?.length ?? 0) === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
+                  <p className="text-xs text-muted-foreground">{t("accounts.detail.empty_positions")}</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground border-b border-border">
+                        <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
+                        <th className="text-left py-1.5 pr-2">{t("accounts.detail.category")}</th>
+                        <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
+                        <th className="text-right py-1.5 pr-2">{t("accounts.detail.cost_basis")}</th>
+                        <th className="text-left py-1.5 pr-2">{t("transactions.form.currency")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedAccountPositions ?? []).map((position) => (
+                        <tr key={position.id} className="border-b border-border/50">
+                          <td className="py-1.5 pr-2 font-medium">{position.ticker}</td>
+                          <td className="py-1.5 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[11px]">
+                                {t(`config.category.${String(position.category).toLowerCase()}`)}
+                              </Badge>
+                              {position.is_cash ? (
+                                <Badge variant="outline" className="text-[11px]">
+                                  {t("accounts.detail.cash_position")}
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="py-1.5 pr-2 text-right">
+                            {formatQuantity(position.quantity, {
+                              category: position.category,
+                              ticker: position.ticker,
+                            })}
+                          </td>
+                          <td className="py-1.5 pr-2 text-right">
+                            {position.cost_basis != null
+                              ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
+                              : "—"}
+                          </td>
+                          <td className="py-1.5 pr-2">{position.currency}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="transactions" className="mt-3">
+              <TransactionList
+                transactions={selectedAccountTransactions ?? []}
+                accounts={selectedAccount ? [selectedAccount] : []}
+                isLoading={isTransactionsLoading}
+              />
+            </TabsContent>
+
+            <TabsContent value="summary" className="mt-3 space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {t("accounts.summary.positions", {
+                  count: summaryByAccountId.get(selectedAccount.id)?.holdings_count ?? 0,
+                })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("accounts.summary.cash", {
+                  balances:
+                    (summaryByAccountId.get(selectedAccount.id)?.cash_balances ?? [])
+                      .map(
+                        (item) =>
+                          `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                      )
+                      .join(" / ") || t("accounts.summary.no_cash"),
+                })}
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : null}
+      <TransactionCsvImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        defaultAccountId={selectedAccount?.id ?? null}
+      />
     </div>
   )
 }

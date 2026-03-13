@@ -32,12 +32,100 @@ _STOCK_HOLDING = {
     "is_cash": False,
 }
 
+_CASH_HOLDING = {
+    "ticker": "USD",
+    "category": "Cash",
+    "quantity": 1_000_000,
+    "cost_basis": 1.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": True,
+}
+
+_CASH_TW_HOLDING = {
+    "ticker": "USD.TW",
+    "category": "Cash",
+    "quantity": 1_000_000,
+    "cost_basis": 1.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": True,
+}
+
+_BOND_TW_HOLDING = {
+    "ticker": "BND.TW",
+    "category": "Bond",
+    "quantity": 100,
+    "cost_basis": 100.0,
+    "broker": "Firstrade",
+    "currency": "USD",
+    "account_type": "US",
+    "is_cash": False,
+}
+
 
 def _setup_portfolio(client: TestClient, holdings: list[dict] | None = None):
-    """Create holdings and an investment profile."""
+    """Create holdings via transactions and an investment profile."""
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Default",
+            "broker": "Default",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    seed_cash = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 10_000_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert seed_cash.status_code == 201
+
     for h in holdings or [_STOCK_HOLDING]:
-        resp = client.post("/holdings", json=h)
-        assert resp.status_code == 200
+        is_cash = bool(h.get("is_cash")) or str(h.get("category", "")).lower() == "cash"
+        if is_cash:
+            resp = client.post(
+                "/transactions",
+                json={
+                    "account_id": account_id,
+                    "ticker": h.get("currency", "USD"),
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": float(h["quantity"]),
+                    "currency": h.get("currency", "USD"),
+                    "transaction_date": "2026-03-11",
+                },
+            )
+        else:
+            price = float(h.get("cost_basis", 0.0))
+            quantity = float(h["quantity"])
+            resp = client.post(
+                "/transactions",
+                json={
+                    "account_id": account_id,
+                    "ticker": h["ticker"],
+                    "transaction_type": "BUY",
+                    "quantity": quantity,
+                    "price": price,
+                    "total_amount": price * quantity,
+                    "currency": h.get("currency", "USD"),
+                    "transaction_date": "2026-03-11",
+                },
+            )
+        assert resp.status_code == 201
     resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
     assert resp.status_code in (200, 201)
 
@@ -146,6 +234,20 @@ class TestXRayCoverageMath:
         data = resp.json()
         assert data["xray_coverage_pct"] >= 99.0
 
+    def test_direct_stock_row_percentages_should_exclude_cash_denominator(self, client):
+        """AAPL + large cash should still report 100% equity xray row weights."""
+        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_HOLDING])
+
+        resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["xray_coverage_pct"] == 100
+        xray_by_symbol = {entry["symbol"]: entry for entry in data["xray"]}
+        assert "AAPL" in xray_by_symbol
+        assert xray_by_symbol["AAPL"]["direct_weight_pct"] == 100
+        assert xray_by_symbol["AAPL"]["total_weight_pct"] == 100
+
 
 class TestXRaySkippedEtfs:
     """Verify skipped ETFs are reported when constituents are unavailable."""
@@ -196,6 +298,31 @@ class TestXRaySkippedEtfs:
         data = resp.json()
         assert data["xray_skipped_etfs"] == []
 
+    def test_skipped_etf_weight_should_exclude_cash_denominator(self, client):
+        """Skipped ETF with large cash still uses equity-only denominator."""
+        _setup_portfolio(client, [_ETF_HOLDING, _CASH_HOLDING])
+        _mark_etf(client, "VTI")
+
+        with (
+            patch(
+                "application.portfolio.rebalance_service.get_etf_top_holdings",
+                return_value=None,
+            ),
+            patch(
+                "application.portfolio.rebalance_service.get_etf_sector_weights",
+                return_value=None,
+            ),
+        ):
+            resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        skipped = data["xray_skipped_etfs"]
+        skipped_tickers = [e["ticker"] for e in skipped]
+        assert "VTI" in skipped_tickers
+        vti_entry = next(e for e in skipped if e["ticker"] == "VTI")
+        assert vti_entry["weight_pct"] == 100
+
 
 class TestXRayResponseContract:
     """Verify the rebalance response always includes X-Ray fields."""
@@ -221,3 +348,21 @@ class TestXRayResponseContract:
         resp = client.get("/rebalance")
 
         assert resp.status_code == 404
+
+    def test_sector_equity_pct_and_geo_should_exclude_cash(self, client):
+        """Sector equity pct and geographic allocation should not be diluted by cash."""
+        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_TW_HOLDING, _BOND_TW_HOLDING])
+
+        resp = client.get("/rebalance")
+
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert len(data["sector_exposure"]) >= 1
+        total_equity_pct = sum(item["equity_pct"] for item in data["sector_exposure"])
+        assert total_equity_pct == 100
+        assert all(item["weight_pct"] < 100 for item in data["sector_exposure"])
+
+        assert set(data["geographic_allocation"].keys()) == {"US", "TW"}
+        assert data["geographic_allocation"]["US"] > 0
+        assert data["geographic_allocation"]["TW"] > 0

@@ -80,15 +80,6 @@ from api.schemas.guru_analytics import (  # noqa: F401
     HeatmapResponse,
     QuarterResult,
 )
-from api.schemas.networth import (  # noqa: F401
-    NetWorthItemRequest,
-    NetWorthItemResponse,
-    NetWorthSeedPreviewResponse,
-    NetWorthSeedResponse,
-    NetWorthSnapshotResponse,
-    NetWorthSummaryResponse,
-    UpdateNetWorthItemRequest,
-)
 from api.schemas.notification import (  # noqa: F401
     PersonaTemplateResponse,
     PreferencesRequest,
@@ -104,7 +95,6 @@ from api.schemas.notification import (  # noqa: F401
     WebhookResponse,
 )
 from api.schemas.portfolio import (  # noqa: F401
-    CashHoldingRequest,
     CategoryAllocation,
     CurrencyBreakdown,
     CurrencyExposureResponse,
@@ -112,9 +102,6 @@ from api.schemas.portfolio import (  # noqa: F401
     FXMovement,
     FXRateAlertItem,
     HoldingDetail,
-    HoldingExportItem,
-    HoldingImportItem,
-    HoldingRequest,
     HoldingResponse,
     RebalanceResponse,
     SectorExposureItem,
@@ -122,7 +109,6 @@ from api.schemas.portfolio import (  # noqa: F401
     StressTestHoldingBreakdown,
     StressTestPainLevel,
     StressTestResponse,
-    UpdateHoldingRequest,
     WithdrawRequest,
     WithdrawResponse,
     XRayAlertResponse,
@@ -163,6 +149,8 @@ from api.schemas.stock import (  # noqa: F401
     TickerCreateRequest,
 )
 from api.schemas.transaction import (  # noqa: F401
+    TransactionImportItem,
+    TransactionImportRequest,
     TransactionRequest,
     TransactionResponse,
 )

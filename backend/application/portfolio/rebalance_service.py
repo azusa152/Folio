@@ -4,9 +4,9 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 
 import json as _json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
-from cachetools import TTLCache
 from sqlmodel import Session, select
 
 from application.stock.stock_service import StockNotFoundError
@@ -19,7 +19,7 @@ from domain.constants import (
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Holding, Stock, UserInvestmentProfile
+from domain.entities import Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL, StockCategory
 from domain.fx_analysis import (
     FXRateAlert,
@@ -37,6 +37,8 @@ from domain.rebalance import (
     compute_portfolio_health_score,
 )
 from i18n import get_user_language, t
+from infrastructure.cache import SWRCache
+from infrastructure.database import engine
 from infrastructure.market_data import (
     are_all_signals_in_l1,
     detect_is_etf,
@@ -59,15 +61,22 @@ from infrastructure.notification import (
     is_within_rate_limit,
     send_telegram_message_dual,
 )
-from infrastructure.repositories import log_notification_sent
+from infrastructure.repositories import (
+    find_all_accounts,
+    find_holdings_for_active_accounts,
+    log_notification_sent,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# 再平衡計算結果的短效快取（key = (display_currency, lang)）。
-# 避免同一時間多個前端請求（Dashboard + Allocation + 快照觸發）重複執行完整計算。
-_rebalance_cache: TTLCache = TTLCache(
-    maxsize=REBALANCE_CACHE_MAXSIZE, ttl=REBALANCE_CACHE_TTL
+# 再平衡計算結果的 SWR 快取（key = (display_currency, lang)）。
+# stale 視窗可在背景刷新前先回傳舊值，避免前端冷啟動長時間 skeleton。
+_REBALANCE_STALE_TTL = REBALANCE_CACHE_TTL * 3
+_rebalance_cache: SWRCache[tuple, dict] = SWRCache(
+    maxsize=REBALANCE_CACHE_MAXSIZE,
+    fresh_ttl=REBALANCE_CACHE_TTL,
+    stale_ttl=_REBALANCE_STALE_TTL,
 )
 _rebalance_cache_lock = threading.Lock()
 
@@ -91,10 +100,11 @@ def invalidate_rebalance_cache() -> None:
 def _compute_holding_market_values(
     holdings: list,
     fx_rates: dict[str, float],
-) -> tuple[dict[str, float], dict[str, float], dict[str, dict]]:
+    account_name_by_id: dict[int, str] | None = None,
+) -> tuple[dict[str, float], dict[str, float], dict[str, dict], dict[tuple, dict]]:
     """
     共用邏輯：計算所有持倉的當前與前一交易日市值（已換算目標幣別）。
-    回傳 (currency_values, cash_currency_values, ticker_agg)。
+    回傳 (currency_values, cash_currency_values, ticker_agg, account_ticker_agg)。
 
     - currency_values: {幣別: 總市值} — 全部持倉（當前）
     - cash_currency_values: {幣別: 現金市值} — 僅現金部位
@@ -104,6 +114,7 @@ def _compute_holding_market_values(
     currency_values: dict[str, float] = {}
     cash_currency_values: dict[str, float] = {}
     ticker_agg: dict[str, dict] = {}
+    account_ticker_agg: dict[tuple, dict] = {}
 
     for h in holdings:
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
@@ -201,8 +212,38 @@ def _compute_holding_market_values(
         if h.cost_basis is not None:
             ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
             ticker_agg[key]["cost_qty"] += h.quantity
+        account_key = (h.account_id, h.ticker)
+        if account_key not in account_ticker_agg:
+            account_ticker_agg[account_key] = {
+                "account_id": h.account_id,
+                "account_name": (
+                    account_name_by_id.get(h.account_id)
+                    if (account_name_by_id is not None and h.account_id is not None)
+                    else None
+                ),
+                "ticker": h.ticker,
+                "category": cat,
+                "currency": h.currency,
+                "qty": 0.0,
+                "mv": 0.0,
+                "prev_mv": 0.0,
+                "cost_sum": 0.0,
+                "cost_qty": 0.0,
+                "price": price,
+                "fx": fx,
+                "has_prev_close": False,
+                "purchase_fx_rate": getattr(h, "purchase_fx_rate", None),
+            }
+        account_ticker_agg[account_key]["qty"] += h.quantity
+        account_ticker_agg[account_key]["mv"] += market_value
+        account_ticker_agg[account_key]["prev_mv"] += previous_market_value
+        if has_prev_close:
+            account_ticker_agg[account_key]["has_prev_close"] = True
+        if h.cost_basis is not None:
+            account_ticker_agg[account_key]["cost_sum"] += h.cost_basis * h.quantity
+            account_ticker_agg[account_key]["cost_qty"] += h.quantity
 
-    return currency_values, cash_currency_values, ticker_agg
+    return currency_values, cash_currency_values, ticker_agg, account_ticker_agg
 
 
 # ===========================================================================
@@ -210,7 +251,11 @@ def _compute_holding_market_values(
 # ===========================================================================
 
 
-def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict:
+def calculate_rebalance(
+    session: Session,
+    display_currency: str = "USD",
+    force_refresh: bool = False,
+) -> dict:
     """
     計算再平衡分析：比較目標配置與實際持倉。
     1. 讀取啟用中的 UserInvestmentProfile（目標配置）
@@ -219,16 +264,29 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
     4. 對非現金持倉查詢即時價格
     5. 委託 domain.rebalance 純函式計算偏移與建議
 
-    結果以 (display_currency, lang) 為 key 快取 60 秒，避免短時間內重複計算。
+    結果以 (display_currency, lang) 為 key 進行 SWR 快取，避免短時間內重複計算；
+    stale 狀態會背景 revalidate。force_refresh=True 可強制同步重算。
     快取命中時更新 calculated_at 為當前時間，避免回傳過期的計算時間戳。
     """
     lang = get_user_language(session)
     _cache_key = (display_currency, lang)
 
     with _rebalance_cache_lock:
-        cached = _rebalance_cache.get(_cache_key)
-        if cached is not None:
-            logger.debug("再平衡快取命中：%s (%s)", display_currency, lang)
+        refresh_fn = None
+        if not force_refresh:
+
+            def _refresh_fn() -> dict:
+                return _refresh_rebalance_cache_entry(_cache_key)
+
+            refresh_fn = _refresh_fn
+        cached, cache_state = _rebalance_cache.get(_cache_key, refresh_fn=refresh_fn)
+        if cached is not None and not force_refresh:
+            logger.debug(
+                "再平衡快取命中（%s）：%s (%s)",
+                cache_state,
+                display_currency,
+                lang,
+            )
             return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
 
     # In-flight 去重：同一 cache_key 同時只有一個計算在飛行中。
@@ -248,8 +306,8 @@ def calculate_rebalance(session: Session, display_currency: str = "USD") -> dict
             logger.debug("再平衡計算去重等待：%s (%s)", display_currency, lang)
             event.wait()
             with _rebalance_cache_lock:
-                cached = _rebalance_cache.get(_cache_key)
-                if cached is not None:
+                cached, state = _rebalance_cache.get(_cache_key)
+                if cached is not None and state != "expired":
                     return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
             continue
 
@@ -289,10 +347,12 @@ def _do_calculate_rebalance(
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         raise StockNotFoundError(t("rebalance.no_holdings", lang=lang))
@@ -337,10 +397,19 @@ def _do_calculate_rebalance(
         logger.info("並行預熱 %d 檔加密貨幣報價...", len(crypto_ids))
         prewarm_crypto_prices(crypto_ids)
 
+    account_name_by_id = {
+        account.id: account.name
+        for account in find_all_accounts(session)
+        if account.id is not None
+    }
+
     # 4) 使用共用邏輯計算各持倉市值
-    _currency_values, _cash_values, ticker_agg = _compute_holding_market_values(
-        holdings,
-        fx_rates,
+    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+            account_name_by_id,
+        )
     )
 
     # 4.5) 取得每個分類的市值合計
@@ -376,9 +445,9 @@ def _do_calculate_rebalance(
     result["total_value_change"] = round(total_value_change, 2)
     result["total_value_change_pct"] = total_value_change_pct
 
-    # 7) 建立個股明細（含佔比）
+    # 7) 建立個股明細（account+ticker，含佔比）
     holdings_detail = []
-    for ticker, agg in ticker_agg.items():
+    for agg in account_ticker_agg.values():
         avg_cost = (
             round(agg["cost_sum"] / agg["cost_qty"], 2) if agg["cost_qty"] > 0 else None
         )
@@ -399,7 +468,9 @@ def _do_calculate_rebalance(
 
         holdings_detail.append(
             {
-                "ticker": ticker,
+                "account_id": agg["account_id"],
+                "account_name": agg.get("account_name"),
+                "ticker": agg["ticker"],
                 "category": agg["category"],
                 "currency": agg["currency"],
                 "quantity": round(
@@ -430,8 +501,11 @@ def _do_calculate_rebalance(
     # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
     # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
     stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()
+    stock_is_etf_map: dict[str, bool] = {
+        ticker.upper(): bool(is_etf) for ticker, is_etf in stock_rows
+    }
     known_etf_tickers: set[str] = {
-        ticker.upper() for ticker, is_etf in stock_rows if bool(is_etf)
+        ticker for ticker, is_etf in stock_is_etf_map.items() if is_etf
     }
     # 先計算所有符合 X-Ray 條件的股票，再過濾為已知 ETF 進行預熱。
     all_xray_tickers = [
@@ -446,12 +520,27 @@ def _do_calculate_rebalance(
             len(xray_tickers),
             len(all_xray_tickers),
         )
-        prewarm_etf_holdings_batch(xray_tickers)
-        prewarm_etf_sector_weights_batch(xray_tickers)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(prewarm_etf_holdings_batch, xray_tickers),
+                pool.submit(prewarm_etf_sector_weights_batch, xray_tickers),
+            ]
+            for future in futures:
+                future.result()
 
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
     xray_analyzed_value = 0.0
     xray_skipped_etfs: list[dict[str, object]] = []
+    xray_denominator = sum(
+        agg["mv"]
+        for agg in ticker_agg.values()
+        if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
+    )
+    xray_pct = (
+        (lambda val: round((val / xray_denominator) * 100, 2))
+        if xray_denominator > 0
+        else (lambda _val: 0.0)
+    )
 
     for ticker, agg in ticker_agg.items():
         cat = agg["category"]
@@ -461,6 +550,20 @@ def _do_calculate_rebalance(
 
         if ticker in known_etf_tickers:
             # 僅已知 ETF 需要查詢成分股與板塊權重。
+            constituents = get_etf_top_holdings(ticker, is_known_etf=True)
+            etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
+        elif ticker in stock_is_etf_map and detect_is_etf(ticker):
+            # 自我修復：DB 中舊資料可能把 ETF 標成非 ETF（如早期匯入或暫時性偵測失敗）。
+            # 此處做 runtime 偵測，立即啟用 X-Ray 穿透，並回寫本次 session。
+            known_etf_tickers.add(ticker)
+            stock_is_etf_map[ticker] = True
+            stock_row = session.exec(
+                select(Stock).where(Stock.ticker == ticker)
+            ).first()
+            if stock_row and not bool(stock_row.is_etf):
+                stock_row.is_etf = True
+                session.add(stock_row)
+                session.commit()
             constituents = get_etf_top_holdings(ticker, is_known_etf=True)
             etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
         else:
@@ -491,9 +594,7 @@ def _do_calculate_rebalance(
         elif ticker in known_etf_tickers and not etf_sector_weights:
             # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
             # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
-            skipped_weight_pct = (
-                round((mv / total_value) * 100, 2) if total_value > 0 else 0.0
-            )
+            skipped_weight_pct = xray_pct(mv)
             xray_skipped_etfs.append(
                 {"ticker": ticker, "weight_pct": skipped_weight_pct}
             )
@@ -524,15 +625,9 @@ def _do_calculate_rebalance(
         total_val = data["direct"] + data["indirect"]
         if total_val <= 0:
             continue
-        direct_pct = (
-            round((data["direct"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
-        indirect_pct = (
-            round((data["indirect"] / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
-        total_pct = (
-            round((total_val / total_value) * 100, 2) if total_value > 0 else 0.0
-        )
+        direct_pct = xray_pct(data["direct"])
+        indirect_pct = xray_pct(data["indirect"])
+        total_pct = xray_pct(total_val)
         xray_entries.append(
             {
                 "symbol": symbol,
@@ -549,9 +644,7 @@ def _do_calculate_rebalance(
 
     xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
     result["xray"] = xray_entries
-    result["xray_coverage_pct"] = (
-        round((xray_analyzed_value / total_value) * 100, 2) if total_value > 0 else 0.0
-    )
+    result["xray_coverage_pct"] = xray_pct(xray_analyzed_value)
     result["xray_skipped_etfs"] = sorted(
         xray_skipped_etfs,
         key=lambda x: float(x["weight_pct"]),
@@ -697,7 +790,7 @@ def _do_calculate_rebalance(
     holding_market_data = [
         {"ticker": ticker, "market_value": agg["mv"]}
         for ticker, agg in ticker_agg.items()
-        if agg["mv"] > 0
+        if agg["mv"] > 0 and agg["category"] != StockCategory.CASH
     ]
     result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
 
@@ -712,9 +805,15 @@ def _do_calculate_rebalance(
     result["calculated_at"] = datetime.now(UTC).isoformat()
 
     with _rebalance_cache_lock:
-        _rebalance_cache[_cache_key] = result
+        _rebalance_cache.set(_cache_key, result)
 
     return result
+
+
+def _refresh_rebalance_cache_entry(cache_key: tuple) -> dict:
+    display_currency, lang = cache_key
+    with Session(engine) as bg_session:
+        return _do_calculate_rebalance(bg_session, display_currency, lang, cache_key)
 
 
 def send_xray_warnings(
@@ -786,10 +885,12 @@ def calculate_currency_exposure(
         ).first()
         home_currency = profile.home_currency if profile else "TWD"
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         return {
@@ -842,9 +943,11 @@ def calculate_currency_exposure(
         prewarm_crypto_prices(crypto_ids)
 
     # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
-    currency_values, cash_currency_values, _ticker_agg = _compute_holding_market_values(
-        holdings,
-        fx_rates,
+    currency_values, cash_currency_values, _ticker_agg, _account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+        )
     )
 
     total_value_home = sum(currency_values.values())
@@ -1185,10 +1288,12 @@ def calculate_withdrawal(
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
-    # 2) 取得所有持倉
-    holdings = session.exec(
-        select(Holding).where(Holding.user_id == DEFAULT_USER_ID)
-    ).all()
+    # 2) 取得持倉（僅啟用帳戶）
+    holdings = find_holdings_for_active_accounts(
+        session,
+        include_unlinked=False,
+        user_id=DEFAULT_USER_ID,
+    )
 
     if not holdings:
         lang = get_user_language(session)

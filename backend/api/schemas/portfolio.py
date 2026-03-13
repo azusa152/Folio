@@ -2,49 +2,13 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from domain.enums import StockCategory
 
 # ---------------------------------------------------------------------------
 # Request Schemas
 # ---------------------------------------------------------------------------
-
-
-class HoldingRequest(BaseModel):
-    """POST /holdings 請求 Body。"""
-
-    ticker: str
-    coingecko_id: str | None = None
-    category: StockCategory
-    quantity: float
-    cost_basis: float | None = None
-    broker: str | None = None
-    account_id: int | None = None
-    currency: str = "USD"
-    account_type: str | None = None
-    is_cash: bool = False
-
-
-class UpdateHoldingRequest(BaseModel):
-    """PUT /holdings/{id} 請求 Body — 所有欄位均為選填，僅更新提供的欄位。"""
-
-    quantity: float | None = Field(default=None, gt=0)
-    cost_basis: float | None = Field(default=None, ge=0)
-    broker: str | None = None
-    account_id: int | None = None
-    category: StockCategory | None = None
-    coingecko_id: str | None = None
-
-
-class CashHoldingRequest(BaseModel):
-    """POST /holdings/cash 請求 Body。"""
-
-    currency: str  # e.g. "USD", "TWD"
-    amount: float
-    broker: str | None = None
-    account_id: int | None = None
-    account_type: str | None = None
 
 
 class WithdrawRequest(BaseModel):
@@ -78,48 +42,6 @@ class HoldingResponse(BaseModel):
     updated_at: str
 
 
-class HoldingImportItem(BaseModel):
-    """POST /holdings/import 單筆匯入資料。"""
-
-    ticker: str = Field(..., min_length=1, max_length=20)
-    coingecko_id: str | None = Field(default=None, max_length=100)
-    category: str = Field(..., min_length=1, max_length=50)
-    quantity: float = Field(..., gt=0)
-    cost_basis: float | None = Field(default=None, ge=0)
-    broker: str | None = Field(default=None, max_length=100)
-    account_id: int | None = None
-    currency: str = Field(default="USD", min_length=3, max_length=3)
-    account_type: str | None = Field(default=None, max_length=100)
-    is_cash: bool = False
-
-    @field_validator("ticker")
-    @classmethod
-    def ticker_must_be_uppercase(cls, v: str) -> str:
-        """Ticker must be uppercase."""
-        return v.upper().strip()
-
-    @field_validator("currency")
-    @classmethod
-    def currency_must_be_uppercase(cls, v: str) -> str:
-        """Currency must be uppercase."""
-        return v.upper().strip()
-
-
-class HoldingExportItem(BaseModel):
-    """匯出持倉單一紀錄。"""
-
-    ticker: str
-    coingecko_id: str | None = None
-    category: str
-    quantity: float
-    cost_basis: float | None = None
-    broker: str | None = None
-    account_id: int | None = None
-    currency: str = "USD"
-    account_type: str | None = None
-    is_cash: bool = False
-
-
 # ---------------------------------------------------------------------------
 # Response Schemas — Rebalance / Portfolio Analysis
 # ---------------------------------------------------------------------------
@@ -135,8 +57,10 @@ class CategoryAllocation(BaseModel):
 
 
 class HoldingDetail(BaseModel):
-    """再平衡分析中的個股明細（同 ticker 跨券商合併）。"""
+    """再平衡分析中的持倉明細（account+ticker）。"""
 
+    account_id: int | None = None
+    account_name: str | None = None
     ticker: str
     category: str
     currency: str = "USD"
@@ -193,7 +117,10 @@ class RebalanceResponse(BaseModel):
     advice: list[str]
     holdings_detail: list[HoldingDetail] = []
     xray: list[XRayEntry] = []
-    xray_coverage_pct: float = 0.0
+    xray_coverage_pct: float = Field(
+        default=0.0,
+        description="X-Ray coverage over equity exposure (cash/bond excluded)",
+    )
     xray_skipped_etfs: list[XRaySkippedETF] = Field(default_factory=list)
     health_score: int = 100
     health_level: str = "healthy"  # "healthy" | "caution" | "alert"

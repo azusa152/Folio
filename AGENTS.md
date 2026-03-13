@@ -1,6 +1,6 @@
 # Folio Agent Guide
 
-Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for watchlists, holdings, FX monitoring, and guru 13F analysis.
+Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for watchlists, ledger-driven positions, FX monitoring, and guru 13F analysis.
 
 ## Run And Verify
 
@@ -26,9 +26,11 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Frontend API contract: `frontend-react/src/api/openapi.json`
 - AI/webhook docs: `docs/agents/`
 - Transaction service: `backend/application/portfolio/transaction_service.py`
+- Settlement service (stock + cash): `backend/application/portfolio/settlement_service.py`
 - Account service: `backend/application/portfolio/account_service.py`
 - Analytics service: `backend/application/portfolio/analytics_service.py`
 - Insight service: `backend/application/portfolio/insight_service.py`
+- Ledger migration: `backend/scripts/migrate_ledger.py`
 - Domain analytics: `backend/domain/analysis/drawdown.py`, `backend/domain/analysis/risk_metrics.py`
 
 ## AI Agent Workflow

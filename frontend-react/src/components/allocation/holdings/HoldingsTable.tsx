@@ -2,28 +2,13 @@ import { useTranslation } from "react-i18next"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatQuantity } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 
 interface Props {
   holdings: HoldingDetail[]
   privacyMode: boolean
   displayCurrency?: string
-  onRecordTransaction?: (ticker: string) => void
-}
-
-function fmt(v: number | null | undefined, decimals = 2): string {
-  if (v == null) return "—"
-  return v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
-
-function fmtQuantity(ticker: string, category: string, quantity: number, privacyMode: boolean): string {
-  if (privacyMode) return "***"
-  if (category !== "Crypto") return fmt(quantity, 2)
-  const max = ticker.startsWith("BTC") ? 8 : ticker.startsWith("ETH") ? 6 : 4
-  return quantity.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: max,
-  })
 }
 
 function fmtPct(v: number, showSign = true): string {
@@ -37,7 +22,7 @@ function computeFxReturn(purchaseFx: number | null | undefined, currentFx: numbe
   return (currentFx / purchaseFx - 1) * 100
 }
 
-export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecordTransaction }: Props) {
+export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
 
@@ -48,27 +33,41 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
   return (
     <div className="space-y-1">
       <p className="text-sm font-semibold">{t("allocation.holdings.title")}</p>
+      <div className="text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2 mb-2">
+        {t("allocation.holdings_read_only_hint")}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-muted-foreground border-b border-border">
               <th className="text-left py-0.5 pr-2">{t("allocation.col.ticker")}</th>
+              <th className="text-left py-0.5 pr-2">{t("allocation.col.account")}</th>
               <th className="text-left py-0.5 pr-2">{t("allocation.col.category")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.qty")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.value")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.weight_pct")}</th>
               <th className="text-right py-0.5 pr-2">{term("cost_basis", t("allocation.col.cost"))}</th>
               <th className="text-right py-0.5">{t("allocation.col.change_pct")}</th>
-              {onRecordTransaction ? (
-                <th className="text-right py-0.5">{t("transactions.table.actions")}</th>
-              ) : null}
             </tr>
           </thead>
           <tbody>
             {holdings.map((h, i) => {
               const isCrypto = h.category === "Crypto"
+              const isCash = h.category === "Cash"
+              const targetCurrency = displayCurrency ?? h.currency
+              const currentFxRate = h.current_fx_rate
               const fxReturn = computeFxReturn(h.purchase_fx_rate, h.current_fx_rate)
-              const showFxBreakdown = h.purchase_fx_rate != null && fxReturn != null && h.currency !== "USD"
+              const showFxBreakdown =
+                !isCash &&
+                h.purchase_fx_rate != null &&
+                fxReturn != null &&
+                h.currency !== targetCurrency
+
+              const showCashFxInfo =
+                isCash &&
+                currentFxRate != null &&
+                Number.isFinite(currentFxRate) &&
+                h.currency !== targetCurrency
 
               // Home return = local price return + FX impact (approximate additive)
               const homeReturn =
@@ -79,8 +78,15 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
               return (
                 <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                  <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
-                  <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">{h.account_name ?? "—"}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">
+                    {t(`config.category.${h.category.toLowerCase()}`)}
+                  </td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {privacyMode
+                      ? "***"
+                      : formatQuantity(h.quantity, { category: h.category, ticker: h.ticker })}
+                  </td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}
                   </td>
@@ -92,13 +98,31 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
                   </td>
                   <td className="py-0.5 text-right">
                     <div
-                      className={h.change_pct != null ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss) : undefined}
+                      className={
+                        !isCash && h.change_pct != null
+                          ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss)
+                          : undefined
+                      }
                     >
-                      {h.change_pct != null ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}` : "—"}
+                      {!isCash && h.change_pct != null
+                        ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}`
+                        : "—"}
                     </div>
                     {isCrypto && h.change_pct != null && Math.abs(h.change_pct) >= 5 && (
                       <div className={`text-[10px] leading-tight mt-0.5 ${FINANCE_TEXT.warning}`}>
                         {t("allocation.crypto.volatility_warning")}
+                      </div>
+                    )}
+                    {showCashFxInfo && (
+                      <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
+                        {t("allocation.col.fx_rate_info", {
+                          from: h.currency,
+                          rate: currentFxRate.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 6,
+                          }),
+                          to: targetCurrency,
+                        })}
                       </div>
                     )}
                     {showFxBreakdown && (
@@ -114,17 +138,6 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency, onRecord
                       </div>
                     )}
                   </td>
-                  {onRecordTransaction ? (
-                    <td className="py-0.5 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => onRecordTransaction(h.ticker)}
-                        className="text-[11px] text-primary hover:underline"
-                      >
-                        {t("transactions.record_from_holding")}
-                      </button>
-                    </td>
-                  ) : null}
                 </tr>
               )
             })}

@@ -23,6 +23,7 @@ export function useStocks() {
       return data as unknown as Stock[]
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -36,6 +37,7 @@ export function useEnrichedStocks({ enabled = true }: { enabled?: boolean } = {}
     },
     staleTime: 5 * 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -49,6 +51,7 @@ export function useLastScan() {
     },
     staleTime: 120 * 1000,
     refetchInterval: 120 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -61,6 +64,7 @@ export function useHoldings() {
       return data as unknown as Holding[]
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -89,6 +93,7 @@ export function useProfile() {
       return data as unknown as ProfileResponse
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -102,6 +107,7 @@ export function useFearGreed({ enabled = true }: { enabled?: boolean } = {}) {
     },
     staleTime: 5 * 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -116,6 +122,7 @@ export function useSnapshots(days = 730) {
       return data as unknown as Snapshot[]
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -128,6 +135,7 @@ export function useTwr() {
       return data as unknown as TwrResponse
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -141,6 +149,7 @@ export function useGreatMinds({ enabled = true }: { enabled?: boolean } = {}) {
     },
     staleTime: 24 * 60 * 60 * 1000,
     enabled,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -153,5 +162,6 @@ export function useSignalActivity() {
       return data as unknown as SignalActivityItem[]
     },
     staleTime: 120 * 1000,
+    placeholderData: keepPreviousData,
   })
 }

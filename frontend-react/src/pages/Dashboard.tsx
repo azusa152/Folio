@@ -19,10 +19,10 @@ import {
   useTwr,
   useGreatMinds,
 } from "@/api/hooks/useDashboard"
+import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
-import { useNetWorthHistory, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import {
   Select,
   SelectContent,
@@ -43,7 +43,7 @@ import { TopHoldings } from "@/components/dashboard/TopHoldings"
 import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
-import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
+import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
 
@@ -74,33 +74,49 @@ export default function Dashboard() {
   const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useStocks()
   const { data: holdings } = useHoldings()
   const { data: lastScan } = useLastScan()
+  const {
+    data: accountSummary,
+    isLoading: accountSummaryLoading,
+    isError: accountSummaryError,
+  } = useAccountSummary()
   const { data: signalActivity } = useSignalActivity()
   const { data: snapshots, isLoading: snapshotsLoading } = useSnapshots(730)
   const { data: twr } = useTwr()
   const { data: profile } = useProfile()
-  const { data: netWorthSummary, isLoading: netWorthLoading } = useNetWorthSummary(displayCurrency)
-  const { data: netWorthHistory } = useNetWorthHistory(30, displayCurrency)
   useScanCompletionEffect()
 
   // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
   // both depend on it. Its response is cached on the backend (60s TTL) so repeat
   // requests are fast; placeholderData keeps old data visible on currency switch.
-  const { data: rebalance, isLoading: rebalanceLoading, isError: rebalanceError } = useRebalance(displayCurrency)
+  const {
+    data: rebalance,
+    isLoading: rebalanceLoading,
+    isFetching: rebalanceFetching,
+    isError: rebalanceError,
+  } = useRebalance(displayCurrency)
 
   // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
-  // requests above can claim FastAPI threadpool workers first. Note: LazySection
-  // below defers *rendering* of below-fold components, but these hooks are still
-  // registered here; data fetching starts as soon as stocksLoading resolves.
+  // requests above can claim FastAPI threadpool workers first.
+  // Fear & Greed full payload only loads in advanced mode; the hero gauge can
+  // already render from /scan/last fallback fields.
   const { data: enrichedStocks, isLoading: enrichedLoading } = useEnrichedStocks({
     enabled: !stocksLoading,
   })
-  const { data: fearGreed } = useFearGreed({ enabled: !stocksLoading })
+  const {
+    data: fearGreed,
+    isFetching: fearGreedFetching,
+    isError: fearGreedError,
+  } = useFearGreed({
+    enabled: !stocksLoading && showAdvanced,
+  })
   const { data: greatMinds, isLoading: greatMindsLoading } = useGreatMinds({
     enabled: !stocksLoading,
   })
 
-  const heroLoading = stocksLoading || rebalanceLoading
-  const heroError = stocksError || rebalanceError
+  const heroLoading = stocksLoading
+  const heroError = stocksError
+  const heroRefreshing = (rebalanceFetching && !rebalanceLoading) || fearGreedFetching
+  const partialDataWarning = rebalanceError || (showAdvanced && fearGreedError)
 
   if (!heroLoading && heroError) {
     return (
@@ -223,6 +239,12 @@ export default function Dashboard() {
         </p>
       )}
 
+      {partialDataWarning && (
+        <p className={`text-xs -mt-2 ${FINANCE_TEXT.warning}`}>
+          {t("common.error_backend")}
+        </p>
+      )}
+
       {/* ── Market Pulse ── */}
       <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_market_pulse")}</h2>
 
@@ -236,6 +258,7 @@ export default function Dashboard() {
         enrichedStocks={enrichedStocks ?? []}
         holdings={holdings ?? []}
         isLoading={heroLoading}
+        isRefreshing={heroRefreshing}
       />
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
@@ -254,10 +277,12 @@ export default function Dashboard() {
       {/* ── Portfolio Overview ── */}
       <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_portfolio_overview")}</h2>
 
-      <NetWorthSummary
-        summary={netWorthSummary}
-        history={netWorthHistory ?? []}
-        isLoading={netWorthLoading}
+      <AccountsOverview
+        accountSummary={accountSummary ?? []}
+        rebalance={rebalance}
+        displayCurrency={displayCurrency}
+        isLoading={accountSummaryLoading && !accountSummary}
+        isError={accountSummaryError}
       />
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
