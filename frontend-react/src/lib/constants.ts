@@ -97,6 +97,7 @@ export const NET_WORTH_LIABILITY_CATEGORIES = [
   "other_liability",
 ] as const
 export const NET_WORTH_STALE_DAYS = 90
+export const HOLDING_QUANTITY_EPSILON = 1e-8
 
 export const CURRENCY_TO_REGION: Record<string, string> = {
   USD: "US",

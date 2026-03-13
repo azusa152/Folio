@@ -11,6 +11,7 @@ from sqlmodel import Session, func, select
 
 from domain.constants import (
     DEFAULT_USER_ID,
+    HOLDING_QUANTITY_EPSILON,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
@@ -1234,9 +1235,14 @@ def find_grand_portfolio(session: Session, style: str | None = None) -> dict:
 # ===========================================================================
 
 
-def find_all_holdings(session: Session) -> list[Holding]:
-    """查詢所有持倉（依 ID 排序）。"""
-    return list(session.exec(select(Holding).order_by(Holding.id)).all())
+def find_all_holdings(
+    session: Session, *, include_zero_quantity: bool = True
+) -> list[Holding]:
+    """查詢所有持倉（依 ID 排序，可選擇是否包含 0/負數數量）。"""
+    stmt = select(Holding).order_by(Holding.id)
+    if not include_zero_quantity:
+        stmt = stmt.where(Holding.quantity > HOLDING_QUANTITY_EPSILON)
+    return list(session.exec(stmt).all())
 
 
 def find_holdings_for_active_accounts(
@@ -1244,8 +1250,9 @@ def find_holdings_for_active_accounts(
     *,
     include_unlinked: bool = True,
     user_id: str | None = None,
+    include_zero_quantity: bool = False,
 ) -> list[Holding]:
-    """查詢啟用帳戶持倉（可選擇是否包含未綁定帳戶的舊資料）。"""
+    """查詢啟用帳戶持倉（可選擇是否含未綁定資料與 0/負數數量）。"""
     stmt = select(Holding).order_by(Holding.id)
     if include_unlinked:
         stmt = stmt.outerjoin(Account, Holding.account_id == Account.id).where(
@@ -1258,14 +1265,23 @@ def find_holdings_for_active_accounts(
         )
     if user_id is not None:
         stmt = stmt.where(Holding.user_id == user_id)
+    if not include_zero_quantity:
+        stmt = stmt.where(Holding.quantity > HOLDING_QUANTITY_EPSILON)
     return list(session.exec(stmt).all())
 
 
-def find_holdings_by_account(session: Session, account_id: int) -> list[Holding]:
-    """查詢指定帳戶的所有持倉（依 ticker 排序）。"""
+def find_holdings_by_account(
+    session: Session,
+    account_id: int,
+    *,
+    include_zero_quantity: bool = False,
+) -> list[Holding]:
+    """查詢指定帳戶的持倉（依 ticker 排序，可排除 0/負數數量）。"""
     stmt = (
         select(Holding).where(Holding.account_id == account_id).order_by(Holding.ticker)
     )
+    if not include_zero_quantity:
+        stmt = stmt.where(Holding.quantity > HOLDING_QUANTITY_EPSILON)
     return list(session.exec(stmt).all())
 
 

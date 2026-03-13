@@ -144,7 +144,60 @@ class TestListHoldings:
         # Assert
         assert resp.status_code == 200
         tickers = {item["ticker"] for item in resp.json()}
-        assert tickers == {"USD", "NVDA"}
+        assert tickers == {"NVDA"}
+
+    def test_list_should_exclude_zero_quantity_stock_positions(self, client):
+        # Arrange
+        account_id = _create_account(client)
+        deposit_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 1000.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 2,
+                "price": 100.0,
+                "total_amount": 200.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        sell_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "SELL",
+                "quantity": 2,
+                "price": 110.0,
+                "total_amount": 220.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        assert deposit_resp.status_code == 201
+        assert buy_resp.status_code == 201
+        assert sell_resp.status_code == 201
+
+        # Act
+        resp = client.get("/holdings")
+
+        # Assert
+        assert resp.status_code == 200
+        tickers = {item["ticker"] for item in resp.json()}
+        assert "AAPL" not in tickers
 
 
 class TestUpdateHolding:
@@ -447,7 +500,7 @@ class TestImportHoldings:
         assert resp.status_code == 200
         holdings = client.get("/holdings").json()
         tickers = {holding["ticker"] for holding in holdings}
-        assert tickers == {"USD", "NVDA", "QQQ"}
+        assert tickers == {"NVDA", "QQQ"}
 
     def test_import_should_return_422_when_missing_account_assignment(self, client):
         # Act
@@ -607,6 +660,138 @@ class TestRebalanceResponse:
             "Secondary Account",
         }
         assert {row["account_id"] for row in details} == {account_a_id, account_b_id}
+
+    def test_holdings_detail_should_exclude_zero_quantity_positions(self, client):
+        # Arrange
+        account_id = _create_account(client)
+        deposit_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 1000.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 100.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        sell_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "SELL",
+                "quantity": 1,
+                "price": 105.0,
+                "total_amount": 105.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
+        assert deposit_resp.status_code == 201
+        assert buy_resp.status_code == 201
+        assert sell_resp.status_code == 201
+        assert profile_resp.status_code in (200, 201)
+
+        # Act
+        rebalance_resp = client.get("/rebalance")
+
+        # Assert
+        assert rebalance_resp.status_code == 200
+        details = rebalance_resp.json()["holdings_detail"]
+        assert not any(row["ticker"] == "AAPL" for row in details)
+
+    def test_should_hide_tiny_float_residue_positions_in_holdings_and_rebalance(
+        self, client
+    ):
+        # Arrange: 0.1 + 0.2 - 0.3 can leave a tiny positive residue in float math
+        account_id = _create_account(client)
+        deposit_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 1000.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_one_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 0.1,
+                "price": 100.0,
+                "total_amount": 10.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_two_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 0.2,
+                "price": 100.0,
+                "total_amount": 20.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        sell_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "AAPL",
+                "transaction_type": "SELL",
+                "quantity": 0.3,
+                "price": 105.0,
+                "total_amount": 31.5,
+                "currency": "USD",
+                "transaction_date": "2026-03-13",
+            },
+        )
+        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
+        assert deposit_resp.status_code == 201
+        assert buy_one_resp.status_code == 201
+        assert buy_two_resp.status_code == 201
+        assert sell_resp.status_code == 201
+        assert profile_resp.status_code in (200, 201)
+
+        # Act
+        holdings_resp = client.get("/holdings")
+        rebalance_resp = client.get("/rebalance")
+
+        # Assert
+        assert holdings_resp.status_code == 200
+        assert rebalance_resp.status_code == 200
+        holdings_tickers = {item["ticker"] for item in holdings_resp.json()}
+        rebalance_tickers = {
+            row["ticker"] for row in rebalance_resp.json()["holdings_detail"]
+        }
+        assert "AAPL" not in holdings_tickers
+        assert "AAPL" not in rebalance_tickers
 
 
 class TestTriggerXrayAlert:

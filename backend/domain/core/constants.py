@@ -556,6 +556,7 @@ ANALYTICS_MIN_DAYS_FOR_RATIOS = 30
 ANALYTICS_MIN_DOWNSIDE_SAMPLES = 10
 DRAWDOWN_PERIOD_THRESHOLD_DEFAULT = -0.05
 DRAWDOWN_EPSILON = 1e-9
+HOLDING_QUANTITY_EPSILON = 1e-8
 
 # ---------------------------------------------------------------------------
 # Notification Preferences — toggleable notification types
