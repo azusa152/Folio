@@ -560,6 +560,128 @@ def test_import_transactions_with_account_id_should_apply_to_all_items(
     assert all(txn["account_id"] == account_id for txn in txns[:2])
 
 
+def test_import_transactions_replace_account_should_delete_existing_transactions(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id, amount=2000.0)
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert buy_resp.status_code == 201
+
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "account_id": account_id,
+            "mode": "replace_account",
+            "items": [
+                {
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": 500.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-12",
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["imported"] == 1
+    assert body["deleted"] >= 2
+    assert body["errors"] == []
+
+    txns = client.get("/transactions", params={"account_id": account_id}).json()
+    assert len(txns) == 1
+    assert txns[0]["ticker"] == "USD"
+    assert txns[0]["total_amount"] == 500.0
+
+
+def test_import_transactions_replace_account_without_account_id_should_return_400(
+    client: TestClient,
+):
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "mode": "replace_account",
+            "items": [
+                {
+                    "ticker": "USD",
+                    "transaction_type": "DEPOSIT",
+                    "quantity": 1,
+                    "total_amount": 100.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-12",
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 400
+
+
+def test_import_transactions_replace_account_should_rollback_when_any_row_fails(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    _deposit_cash(client, account_id, amount=1000.0)
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert buy_resp.status_code == 201
+
+    before = client.get("/transactions", params={"account_id": account_id}).json()
+    assert len(before) == 2
+
+    # Invalid in replacement baseline: SELL without prior position in imported set.
+    resp = client.post(
+        "/transactions/import",
+        json={
+            "account_id": account_id,
+            "mode": "replace_account",
+            "items": [
+                {
+                    "ticker": "AAPL",
+                    "transaction_type": "SELL",
+                    "quantity": 1,
+                    "price": 100.0,
+                    "total_amount": 100.0,
+                    "currency": "USD",
+                    "transaction_date": "2026-03-12",
+                }
+            ],
+        },
+    )
+    assert resp.status_code == 422
+
+    after = client.get("/transactions", params={"account_id": account_id}).json()
+    assert len(after) == 2
+    tickers = {txn["ticker"] for txn in after}
+    assert "USD" in tickers
+    assert "AAPL" in tickers
+
+
 def test_export_transactions_csv_should_return_csv_with_headers(client: TestClient):
     account_id = _create_account(client)
     _deposit_cash(client, account_id, amount=1000.0)

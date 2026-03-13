@@ -1854,6 +1854,12 @@
       "select_file": "Select transaction CSV",
       "account": "Account",
       "account_optional": "No account selected",
+      "import_mode": "Import mode",
+      "mode_append": "Append (add without removing)",
+      "mode_replace_account": "Replace all transactions in selected account",
+      "select_account_for_replace": "Select an account to use replace mode.",
+      "confirm_destructive_required": "Please check the confirmation box before importing in replace mode.",
+      "confirm_replace_account": "I understand this will delete all transactions in the selected account and replace them.",
       "mapping_date": "Date",
       "mapping_type": "Type",
       "mapping_ticker": "Ticker",
@@ -1891,7 +1897,8 @@
       "next": "Next",
       "confirm_import": "Import {{count}} transactions",
       "import_success": "Transaction CSV import completed.",
-      "import_error": "Transaction CSV import failed. Please review mappings and row errors."
+      "import_error": "Transaction CSV import failed. Please review mappings and row errors.",
+      "replaced_count": "Replaced {{count}} existing transactions."
     }
   },
   "accounts": {

@@ -184,6 +184,7 @@ describe("TransactionCsvImportDialog", () => {
     const [payload] = mutateMock.mock.calls[0]
     expect(payload).toHaveProperty("items")
     expect(payload).toHaveProperty("account_id", null)
+    expect(payload).toHaveProperty("mode", "append")
     expect(payload.items).toHaveLength(1)
     expect(payload.items[0]).toHaveProperty("ticker", "AAPL")
     expect(payload.items[0]).toHaveProperty("transaction_type", "BUY")
@@ -212,6 +213,74 @@ describe("TransactionCsvImportDialog", () => {
     expect(mutateMock).toHaveBeenCalledTimes(1)
     const [payload] = mutateMock.mock.calls[0]
     expect(payload.account_id).toBe(1)
+    expect(payload.mode).toBe("append")
+  })
+
+  it("requires account selection before enabling replace mode", async () => {
+    renderDialog()
+    uploadFile()
+
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_map")).toBeInTheDocument(),
+    )
+
+    const replaceRadio = screen.getByRole("radio", {
+      name: "transactions.import.mode_replace_account",
+    })
+    expect(replaceRadio).toBeDisabled()
+
+    const accountSelect = screen.getByLabelText("transactions.import.account")
+    fireEvent.change(accountSelect, { target: { value: "1" } })
+
+    expect(replaceRadio).not.toBeDisabled()
+  })
+
+  it("requires destructive confirmation and includes replace mode in payload", async () => {
+    renderDialog()
+    uploadFile()
+
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_map")).toBeInTheDocument(),
+    )
+
+    const accountSelect = screen.getByLabelText("transactions.import.account")
+    fireEvent.change(accountSelect, { target: { value: "1" } })
+
+    fireEvent.click(
+      screen.getByRole("radio", { name: "transactions.import.mode_replace_account" }),
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.next" }))
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "transactions.import.confirm_import:1" }),
+    )
+    expect(mutateMock).not.toHaveBeenCalled()
+    expect(
+      screen.getByText("transactions.import.confirm_destructive_required"),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.back" }))
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_map")).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.next" }))
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
+    )
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "transactions.import.confirm_import:1" }),
+    )
+
+    expect(mutateMock).toHaveBeenCalledTimes(1)
+    const [payload] = mutateMock.mock.calls[0]
+    expect(payload.account_id).toBe(1)
+    expect(payload.mode).toBe("replace_account")
   })
 
   it("disables import when all rows have errors", async () => {

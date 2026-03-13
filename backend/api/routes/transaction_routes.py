@@ -82,6 +82,7 @@ def add_transactions_import(
         [item.model_dump() for item in body.items],
         lang,
         account_id=body.account_id,
+        mode=body.mode,
     )
 
 

@@ -29,6 +29,7 @@ interface Props {
 }
 
 type Step = "select" | "map" | "preview"
+type ImportMode = "append" | "replace_account"
 const SKIP = "__skip__"
 
 export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: Props) {
@@ -45,6 +46,8 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
     currencyDefault: "USD",
   })
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [importMode, setImportMode] = useState<ImportMode>("append")
+  const [destructiveConfirmed, setDestructiveConfirmed] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<CsvParseWarning[]>([])
 
@@ -68,6 +71,8 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
     setRows([])
     setMapping({ transactionTypeDefault: "BUY", currencyDefault: "USD" })
     setSelectedAccountId(null)
+    setImportMode("append")
+    setDestructiveConfirmed(false)
     setFeedback(null)
     setParseWarnings([])
   }
@@ -116,19 +121,44 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
       setFeedback(t("transactions.import.missing_required_mapping_total_or_price_qty"))
       return false
     }
+    if (importMode === "replace_account" && selectedAccountId == null) {
+      setFeedback(t("transactions.import.select_account_for_replace"))
+      return false
+    }
     return true
   }
 
   const handleImport = () => {
     if (hasBlockingErrors || hasNoRowsToImport) return
+    if (importMode === "replace_account") {
+      if (selectedAccountId == null) {
+        setFeedback(t("transactions.import.select_account_for_replace"))
+        return
+      }
+      if (!destructiveConfirmed) {
+        setFeedback(t("transactions.import.confirm_destructive_required"))
+        return
+      }
+    }
     importMutation.mutate(
       {
         account_id: selectedAccountId,
+        mode: importMode,
         items,
       },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           toast.success(t("transactions.import.import_success"))
+          const deleted =
+            typeof result === "object" &&
+            result !== null &&
+            "deleted" in result &&
+            typeof result.deleted === "number"
+              ? result.deleted
+              : 0
+          if (deleted > 0) {
+            toast.info(t("transactions.import.replaced_count", { count: deleted }))
+          }
           handleClose()
         },
         onError: () => {
@@ -176,7 +206,12 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
                   value={selectedAccountId ?? ""}
                   onChange={(event) => {
                     const value = event.target.value
-                    setSelectedAccountId(value ? Number(value) : null)
+                    const nextAccountId = value ? Number(value) : null
+                    setSelectedAccountId(nextAccountId)
+                    if (nextAccountId == null && importMode === "replace_account") {
+                      setImportMode("append")
+                      setDestructiveConfirmed(false)
+                    }
                   }}
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm"
                 >
@@ -187,6 +222,46 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-sm font-medium">{t("transactions.import.import_mode")}</p>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="transaction-import-mode"
+                    value="append"
+                    checked={importMode === "append"}
+                    onChange={() => {
+                      setImportMode("append")
+                      setDestructiveConfirmed(false)
+                    }}
+                  />
+                  {t("transactions.import.mode_append")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="transaction-import-mode"
+                    value="replace_account"
+                    checked={importMode === "replace_account"}
+                    disabled={selectedAccountId == null}
+                    onChange={() => {
+                      setImportMode("replace_account")
+                      setDestructiveConfirmed(false)
+                    }}
+                  />
+                  {t("transactions.import.mode_replace_account")}
+                </label>
+                {importMode === "replace_account" ? (
+                  <label className="mt-2 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50/70 p-2 text-sm text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                    <input
+                      type="checkbox"
+                      checked={destructiveConfirmed}
+                      onChange={(event) => setDestructiveConfirmed(event.target.checked)}
+                    />
+                    {t("transactions.import.confirm_replace_account")}
+                  </label>
+                ) : null}
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {(

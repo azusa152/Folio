@@ -1,6 +1,7 @@
 """交易紀錄 CRUD 與聚合服務。"""
 
 from datetime import date
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlmodel import Session
@@ -70,7 +71,9 @@ def list_transactions_by_account(
     return [_to_dict(txn) for txn in txns]
 
 
-def create_transaction(session: Session, data: dict, lang: str) -> dict:
+def create_transaction(
+    session: Session, data: dict, lang: str, *, autocommit: bool = True
+) -> dict:
     raw_type = data.get("transaction_type", "")
     try:
         data["transaction_type"] = TransactionType(str(raw_type).upper())
@@ -106,7 +109,7 @@ def create_transaction(session: Session, data: dict, lang: str) -> dict:
             _, auto_radar = ensure_stock_on_radar(
                 session, ticker, thesis=thesis, category=category
             )
-        saved = settle_transaction(session, data, lang)
+        saved = settle_transaction(session, data, lang, autocommit=autocommit)
     except Exception:
         # import_transactions continues on per-item failures; clear pending state
         # so later successful items cannot accidentally flush previous changes.
@@ -160,6 +163,7 @@ def import_transactions(
     lang: str,
     *,
     account_id: int | None = None,
+    mode: Literal["append", "replace_account"] = "append",
 ) -> dict:
     if len(data) > 1000:
         raise HTTPException(
@@ -170,6 +174,24 @@ def import_transactions(
             },
         )
 
+    if mode == "replace_account" and account_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        )
+
+    if mode == "replace_account" and account_id is not None:
+        return _replace_account_and_import(
+            session=session,
+            data=data,
+            lang=lang,
+            account_id=account_id,
+        )
+
+    deleted = 0
     imported = 0
     errors: list[str] = []
     for index, item in enumerate(data):
@@ -186,6 +208,7 @@ def import_transactions(
     return {
         "message": t("api.import_done", lang=lang, count=imported),
         "imported": imported,
+        "deleted": deleted,
         "errors": errors,
     }
 
@@ -254,4 +277,46 @@ def _to_dict(txn: Transaction, *, auto_radar: bool = False) -> dict:
         "transaction_date": txn.transaction_date.isoformat(),
         "created_at": txn.created_at.isoformat(),
         "auto_radar": auto_radar,
+    }
+
+
+def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
+    existing_transactions = repo.find_all_transactions(
+        session,
+        account_id=account_id,
+        limit=None,
+    )
+    # Reverse in deterministic LIFO order to avoid non-deterministic same-date behavior.
+    existing_transactions_sorted = sorted(
+        existing_transactions,
+        key=lambda txn: (txn.transaction_date, txn.created_at, txn.id or 0),
+        reverse=True,
+    )
+    for txn in existing_transactions_sorted:
+        reverse_settlement(session, txn, lang)
+    return repo.delete_transactions_by_account(session, account_id)
+
+
+def _replace_account_and_import(
+    *,
+    session: Session,
+    data: list[dict],
+    lang: str,
+    account_id: int,
+) -> dict:
+    deleted = _replace_account_transactions(session, account_id, lang)
+
+    imported = 0
+    for item in data:
+        payload = {**item, "account_id": account_id}
+        create_transaction(session, payload, lang, autocommit=False)
+        imported += 1
+
+    # Commit replace + all imported rows atomically.
+    session.commit()
+    return {
+        "message": t("api.import_done", lang=lang, count=imported),
+        "imported": imported,
+        "deleted": deleted,
+        "errors": [],
     }

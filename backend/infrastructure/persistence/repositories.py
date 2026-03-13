@@ -1461,6 +1461,14 @@ def find_transactions_by_account(
     return list(session.exec(stmt).all())
 
 
+def delete_transactions_by_account(session: Session, account_id: int) -> int:
+    """刪除指定帳戶的所有交易紀錄（不 commit）。"""
+    transactions = find_all_transactions(session, account_id=account_id, limit=None)
+    for txn in transactions:
+        session.delete(txn)
+    return len(transactions)
+
+
 def find_transaction_by_id(session: Session, txn_id: int) -> Transaction | None:
     """根據 ID 查詢單一交易紀錄。"""
     return session.get(Transaction, txn_id)

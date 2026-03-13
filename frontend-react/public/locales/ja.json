@@ -1854,6 +1854,12 @@
       "select_file": "取引CSVを選択",
       "account": "口座",
       "account_optional": "口座を選択しない",
+      "import_mode": "インポートモード",
+      "mode_append": "追加（既存データは保持）",
+      "mode_replace_account": "選択口座の全取引を置き換え",
+      "select_account_for_replace": "置き換えモードを使うには口座を選択してください。",
+      "confirm_destructive_required": "置き換えモードでインポートする前に確認チェックを入れてください。",
+      "confirm_replace_account": "選択した口座の全取引が削除され、インポート内容で置き換わることを理解しました。",
       "mapping_date": "日付",
       "mapping_type": "種別",
       "mapping_ticker": "ティッカー",
@@ -1891,7 +1897,8 @@
       "next": "次へ",
       "confirm_import": "{{count}}件の取引をインポート",
       "import_success": "取引CSVのインポートが完了しました。",
-      "import_error": "取引CSVのインポートに失敗しました。列マッピングとエラー行を確認してください。"
+      "import_error": "取引CSVのインポートに失敗しました。列マッピングとエラー行を確認してください。",
+      "replaced_count": "既存の{{count}}件の取引を置き換えました。"
     }
   },
   "accounts": {

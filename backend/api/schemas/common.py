@@ -16,6 +16,7 @@ class ImportResponse(BaseModel):
 
     message: str
     imported: int
+    deleted: int = 0
     errors: list[str] = []
 
 

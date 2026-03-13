@@ -52,7 +52,13 @@ SKIP_CASH_FOR_STOCK_TYPES = {
 }
 
 
-def settle_transaction(session: Session, txn_data: dict, lang: str) -> Transaction:
+def settle_transaction(
+    session: Session,
+    txn_data: dict,
+    lang: str,
+    *,
+    autocommit: bool = True,
+) -> Transaction:
     """Apply settlement and persist transaction atomically."""
     account_id = txn_data.get("account_id")
     if account_id is None:
@@ -183,7 +189,10 @@ def settle_transaction(session: Session, txn_data: dict, lang: str) -> Transacti
 
     txn = Transaction(**txn_data)
     session.add(txn)
-    session.commit()
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
     session.refresh(txn)
     return txn
 

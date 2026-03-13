@@ -140,6 +140,7 @@ describe("useTransactions", () => {
 
     await act(async () => {
       await result.current.mutateAsync({
+        mode: "append",
         items: [],
       })
     })

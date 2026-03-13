@@ -1,6 +1,7 @@
 """Transaction API schemas."""
 
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -122,4 +123,5 @@ class TransactionImportItem(BaseModel):
 
 class TransactionImportRequest(BaseModel):
     account_id: int | None = None
+    mode: Literal["append", "replace_account"] = "append"
     items: list[TransactionImportItem]

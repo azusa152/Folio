@@ -10438,6 +10438,11 @@
             "type": "integer",
             "title": "Imported"
           },
+          "deleted": {
+            "type": "integer",
+            "title": "Deleted",
+            "default": 0
+          },
           "errors": {
             "items": {
               "type": "string"
@@ -12825,6 +12830,15 @@
               }
             ],
             "title": "Account Id"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "append",
+              "replace_account"
+            ],
+            "title": "Mode",
+            "default": "append"
           },
           "items": {
             "items": {

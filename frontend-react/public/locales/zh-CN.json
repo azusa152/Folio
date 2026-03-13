@@ -1854,6 +1854,12 @@
       "select_file": "选择交易 CSV",
       "account": "账户",
       "account_optional": "不选择账户",
+      "import_mode": "导入模式",
+      "mode_append": "追加（保留已有数据）",
+      "mode_replace_account": "覆盖所选账户的全部交易",
+      "select_account_for_replace": "请先选择账户再使用覆盖模式。",
+      "confirm_destructive_required": "使用覆盖模式导入前，请先勾选确认。",
+      "confirm_replace_account": "我已了解这将删除所选账户中的所有交易，并用本次导入内容替换。",
       "mapping_date": "日期",
       "mapping_type": "类型",
       "mapping_ticker": "Ticker",
@@ -1891,7 +1897,8 @@
       "next": "下一步",
       "confirm_import": "导入 {{count}} 条交易",
       "import_success": "交易 CSV 导入完成。",
-      "import_error": "交易 CSV 导入失败，请检查字段映射和错误行。"
+      "import_error": "交易 CSV 导入失败，请检查字段映射和错误行。",
+      "replaced_count": "已覆盖 {{count}} 条现有交易。"
     }
   },
   "accounts": {
