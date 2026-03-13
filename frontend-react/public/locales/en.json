@@ -889,6 +889,11 @@
       "tw": "Taiwan",
       "jp": "Japan",
       "hk": "Hong Kong",
+      "eu": "Europe",
+      "uk": "United Kingdom",
+      "cn": "China",
+      "sg": "Singapore",
+      "th": "Thailand",
       "other": "Other"
     },
     "asset_class": {

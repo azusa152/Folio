@@ -6,7 +6,11 @@ Constant groups verified:
   - Stock categories:  CATEGORY_DISPLAY_ORDER  ↔  STOCK_CATEGORIES
   - Radar categories:  CATEGORY_DISPLAY_ORDER (no Cash)  ↔  RADAR_CATEGORIES
   - Category icons:    CATEGORY_ICON  ↔  CATEGORY_ICON_SHORT
-  - Supported currencies: SUPPORTED_CURRENCIES  ↔  FX_CURRENCY_OPTIONS
+  - Supported currencies and dropdowns:
+      SUPPORTED_CURRENCIES ↔ FX_CURRENCY_OPTIONS/CASH_CURRENCY_OPTIONS/DISPLAY_CURRENCIES
+  - Currency region maps:
+      CURRENCY_TO_REGION keys ↔ SUPPORTED_CURRENCIES
+      GEOGRAPHIC_COLOR_MAP/GEOGRAPHIC_LABELS keys include all mapped regions + Other
 """
 
 import ast
@@ -160,15 +164,78 @@ def check_category_icons() -> list[str]:
 
 
 def check_currencies() -> list[str]:
-    """Verify SUPPORTED_CURRENCIES matches FX_CURRENCY_OPTIONS."""
+    """Verify currency constants stay aligned across backend/frontend surfaces."""
     errors = []
     backend = extract_python_list(BACKEND_CONSTANTS, "SUPPORTED_CURRENCIES")
-    frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "FX_CURRENCY_OPTIONS"))
-    if sorted(backend) != sorted(frontend):
+    backend_set = set(backend)
+
+    frontend_fx = list(extract_ts_array(FRONTEND_CONSTANTS, "FX_CURRENCY_OPTIONS"))
+    frontend_cash = list(extract_ts_array(FRONTEND_CONSTANTS, "CASH_CURRENCY_OPTIONS"))
+    frontend_display = list(extract_ts_array(FRONTEND_CONSTANTS, "DISPLAY_CURRENCIES"))
+
+    if backend_set != set(frontend_fx):
         errors.append(
-            f"Supported currencies mismatch:\n"
+            f"Supported currencies mismatch (FX):\n"
             f"  backend  SUPPORTED_CURRENCIES: {backend}\n"
-            f"  frontend FX_CURRENCY_OPTIONS:  {frontend}"
+            f"  frontend FX_CURRENCY_OPTIONS:  {frontend_fx}"
+        )
+
+    if backend_set != set(frontend_cash):
+        errors.append(
+            f"Supported currencies mismatch (cash):\n"
+            f"  backend  SUPPORTED_CURRENCIES:  {backend}\n"
+            f"  frontend CASH_CURRENCY_OPTIONS: {frontend_cash}"
+        )
+
+    if backend_set != set(frontend_display):
+        errors.append(
+            f"Supported currencies mismatch (display):\n"
+            f"  backend  SUPPORTED_CURRENCIES: {backend}\n"
+            f"  frontend DISPLAY_CURRENCIES:   {frontend_display}"
+        )
+
+    # Order guardrails: keep a stable, predictable user-facing currency order.
+    if frontend_fx != backend:
+        errors.append(
+            f"Currency order mismatch (FX):\n"
+            f"  backend  SUPPORTED_CURRENCIES order: {backend}\n"
+            f"  frontend FX_CURRENCY_OPTIONS order:  {frontend_fx}"
+        )
+
+    if frontend_cash != frontend_display:
+        errors.append(
+            f"Currency order mismatch (cash/display):\n"
+            f"  frontend CASH_CURRENCY_OPTIONS: {frontend_cash}\n"
+            f"  frontend DISPLAY_CURRENCIES:    {frontend_display}"
+        )
+
+    currency_to_region = extract_ts_record(FRONTEND_CONSTANTS, "CURRENCY_TO_REGION")
+    region_colors = extract_ts_record(FRONTEND_CONSTANTS, "GEOGRAPHIC_COLOR_MAP")
+    region_labels = extract_ts_record(FRONTEND_CONSTANTS, "GEOGRAPHIC_LABELS")
+
+    if backend_set != set(currency_to_region.keys()):
+        errors.append(
+            f"CURRENCY_TO_REGION keys mismatch:\n"
+            f"  expected from SUPPORTED_CURRENCIES: {sorted(backend_set)}\n"
+            f"  actual CURRENCY_TO_REGION keys:     {sorted(currency_to_region.keys())}"
+        )
+
+    expected_regions = set(currency_to_region.values()) | {"Other"}
+    color_keys = set(region_colors.keys())
+    label_keys = set(region_labels.keys())
+
+    if expected_regions != color_keys:
+        errors.append(
+            f"GEOGRAPHIC_COLOR_MAP keys mismatch:\n"
+            f"  expected region keys: {sorted(expected_regions)}\n"
+            f"  actual color keys:    {sorted(color_keys)}"
+        )
+
+    if expected_regions != label_keys:
+        errors.append(
+            f"GEOGRAPHIC_LABELS keys mismatch:\n"
+            f"  expected region keys: {sorted(expected_regions)}\n"
+            f"  actual label keys:    {sorted(label_keys)}"
         )
     return errors
 
