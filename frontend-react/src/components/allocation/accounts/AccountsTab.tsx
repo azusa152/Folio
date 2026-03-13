@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTransactions } from "@/api/hooks/useTransactions"
 import { ACCOUNT_TYPES } from "@/lib/constants"
+import { formatPrice, formatQuantity } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -486,10 +487,15 @@ export function AccountsTab({
                               ) : null}
                             </div>
                           </td>
-                          <td className="py-1.5 pr-2 text-right">{position.quantity}</td>
+                          <td className="py-1.5 pr-2 text-right">
+                            {formatQuantity(position.quantity, {
+                              category: position.category,
+                              ticker: position.ticker,
+                            })}
+                          </td>
                           <td className="py-1.5 pr-2 text-right">
                             {position.cost_basis != null
-                              ? position.cost_basis.toLocaleString(undefined, { maximumFractionDigits: 4 })
+                              ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
                               : "—"}
                           </td>
                           <td className="py-1.5 pr-2">{position.currency}</td>

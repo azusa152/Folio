@@ -49,6 +49,37 @@ export function formatCurrency(
   }).format(value)
 }
 
+export function formatQuantity(
+  quantity: number,
+  opts?: { category?: string; ticker?: string },
+): string {
+  if (opts?.category === "Crypto") {
+    const ticker = opts.ticker ?? ""
+    const max = ticker.startsWith("BTC") ? 8 : ticker.startsWith("ETH") ? 6 : 4
+    return quantity.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: max,
+    })
+  }
+
+  // Preserve non-zero tiny values (e.g. micro-lot crypto imports) so they never
+  // appear as misleading 0.00 in generic tables where category is unavailable.
+  const roundsToZeroAt2dp = quantity !== 0 && Number(quantity.toFixed(2)) === 0
+
+  return quantity.toLocaleString(
+    undefined,
+    roundsToZeroAt2dp
+      ? {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 8,
+        }
+      : {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        },
+  )
+}
+
 export function formatMarketCap(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—"
   return COMPACT_FORMATTER.format(value)

@@ -2,27 +2,13 @@ import { useTranslation } from "react-i18next"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatQuantity } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 
 interface Props {
   holdings: HoldingDetail[]
   privacyMode: boolean
   displayCurrency?: string
-}
-
-function fmt(v: number | null | undefined, decimals = 2): string {
-  if (v == null) return "—"
-  return v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
-
-function fmtQuantity(ticker: string, category: string, quantity: number, privacyMode: boolean): string {
-  if (privacyMode) return "***"
-  if (category !== "Crypto") return fmt(quantity, 2)
-  const max = ticker.startsWith("BTC") ? 8 : ticker.startsWith("ETH") ? 6 : 4
-  return quantity.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: max,
-  })
 }
 
 function fmtPct(v: number, showSign = true): string {
@@ -83,7 +69,11 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
                   <td className="py-0.5 pr-2 text-muted-foreground">
                     {t(`config.category.${h.category.toLowerCase()}`)}
                   </td>
-                  <td className="py-0.5 pr-2 text-right">{fmtQuantity(h.ticker, h.category, h.quantity, privacyMode)}</td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {privacyMode
+                      ? "***"
+                      : formatQuantity(h.quantity, { category: h.category, ticker: h.ticker })}
+                  </td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}
                   </td>

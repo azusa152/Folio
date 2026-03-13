@@ -54,4 +54,67 @@ describe("TransactionList", () => {
     fireEvent.click(screen.getByRole("button", { name: "common.confirm" }))
     expect(mockDeleteMutate).toHaveBeenCalledWith(42, expect.any(Object))
   })
+
+  it("shows non-zero tiny quantities without collapsing to 0.00", () => {
+    render(
+      <TransactionList
+        isLoading={false}
+        accounts={[{ id: 10, name: "IB Main", broker: "IB" } as never]}
+        transactions={[
+          {
+            id: 43,
+            user_id: "default",
+            account_id: 10,
+            ticker: "ETH-USD",
+            transaction_type: "BUY",
+            quantity: 0.00012345,
+            price: 2000,
+            total_amount: 0.2469,
+            currency: "USD",
+            fx_rate: null,
+            fee: 0,
+            note: "",
+            transaction_date: "2026-03-11",
+            created_at: "2026-03-11T00:00:00Z",
+            holding_id: 2,
+            auto_radar: false,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText("0.00012345")).toBeInTheDocument()
+    expect(screen.queryByText("0.00")).not.toBeInTheDocument()
+  })
+
+  it("renders currency symbols for price and total", () => {
+    render(
+      <TransactionList
+        isLoading={false}
+        accounts={[{ id: 10, name: "IB Main", broker: "IB" } as never]}
+        transactions={[
+          {
+            id: 44,
+            user_id: "default",
+            account_id: 10,
+            ticker: "7203.T",
+            transaction_type: "BUY",
+            quantity: 1,
+            price: 1234,
+            total_amount: 1234,
+            currency: "JPY",
+            fx_rate: null,
+            fee: 0,
+            note: "",
+            transaction_date: "2026-03-11",
+            created_at: "2026-03-11T00:00:00Z",
+            holding_id: 3,
+            auto_radar: false,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getAllByText(/¥/).length).toBeGreaterThanOrEqual(2)
+  })
 })
