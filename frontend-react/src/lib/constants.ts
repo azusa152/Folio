@@ -67,9 +67,6 @@ export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
   HK: ["Tech", "Finance", "Property", "Telecom", "Energy", "Consumer"],
 }
 
-// Keep for backward compatibility
-export const DEFAULT_TAG_OPTIONS = MARKET_TAG_OPTIONS.US
-
 export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
 export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
@@ -156,7 +153,6 @@ export const GURU_TIER_STARS: Record<string, number> = {
 }
 export const GURU_BACKTEST_QUARTER_OPTIONS = [2, 4, 8, 12] as const
 export const GURU_BACKTEST_BENCHMARK_OPTIONS = ["SPY", "VT"] as const
-export const GURU_HEATMAP_MIN_GURUS = 1
 
 export const HIGH_CONVICTION_THRESHOLD = 60
 export const DIVERSIFIED_THRESHOLD = 30

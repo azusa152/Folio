@@ -30,9 +30,6 @@ BIAS_OVERSOLD_THRESHOLD = -20
 BIAS_WEAKENING_THRESHOLD = -15
 # Same magnitude as BIAS_WEAKENING but measured against MA200 (not MA60); may diverge independently.
 MA200_DEEP_DEVIATION_THRESHOLD = -15  # buy amplifier: price deeply below MA200
-MA200_HIGH_DEVIATION_THRESHOLD = (
-    20  # legacy constant (sell amplifier disabled in signal engine)
-)
 MOAT_MARGIN_DETERIORATION_THRESHOLD = -2  # percentage points YoY
 
 # Category RSI offset — derived from CATEGORY_FALLBACK_BETA via round((beta - 1.0) * 4)
@@ -855,9 +852,6 @@ CRYPTO_QUANTITY_MAX_DECIMALS = 8
 # ---------------------------------------------------------------------------
 # J-Quants API (optional JP data supplement)
 # ---------------------------------------------------------------------------
-JQUANTS_CACHE_TTL = 86400  # 24 hours (financial data changes quarterly)
-DISK_KEY_JQUANTS_FINANCIALS = "jquants_financials"
-DISK_JQUANTS_FINANCIALS_TTL = 604800  # 7 days
 
 # ---------------------------------------------------------------------------
 # FinMind API (optional TW data supplement)
@@ -873,14 +867,6 @@ FINMIND_LOOKBACK_DAYS = 365
 # ---------------------------------------------------------------------------
 NIKKEI_VI_TICKER = "^JNV"  # Nikkei Volatility Index on yfinance
 
-# Legacy threshold constants (kept for backward compat / test references)
-NIKKEI_VI_EXTREME_FEAR = 35  # Nikkei VI > 35 → 極度恐懼
-NIKKEI_VI_FEAR = 25  # Nikkei VI 25–35 → 恐懼
-NIKKEI_VI_NEUTRAL_HIGH = 25  # Nikkei VI 18–25 → 中性
-NIKKEI_VI_NEUTRAL_LOW = 18
-NIKKEI_VI_GREED = 14  # Nikkei VI 14–18 → 貪婪
-# Nikkei VI < 14 → 極度貪婪
-
 # Continuous linear formula: score = JP_VI_BASE - (nikkei_vi - JP_VI_OFFSET) * JP_VI_SLOPE
 # NKV 12 → ~90, NKV 20 → ~58, NKV 35 → ~10
 JP_VI_BASE: float = 90.0
@@ -891,13 +877,6 @@ JP_VI_SLOPE: float = 3.5
 # TW Market Sentiment (^TWII Realized Volatility)
 # ---------------------------------------------------------------------------
 TWII_TICKER = "^TWII"  # TAIEX Weighted Index on yfinance
-
-# Legacy threshold constants (kept for backward compat / test references)
-TWII_VOL_EXTREME_FEAR = 30  # annualized vol > 30% → 極度恐懼
-TWII_VOL_FEAR = 22  # annualized vol 22–30% → 恐懼
-TWII_VOL_NEUTRAL_LOW = 15  # annualized vol 15–22% → 中性
-TWII_VOL_GREED = 10  # annualized vol 10–15% → 貪婪
-# annualized vol < 10% → 極度貪婪
 
 # Continuous linear formula: score = TW_VOL_BASE - (vol_pct - TW_VOL_OFFSET) * TW_VOL_SLOPE
 # vol 8% → ~90, vol 18% → ~55, vol 30% → ~13

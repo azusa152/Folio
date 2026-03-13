@@ -45,16 +45,3 @@ export type UpdateProfileRequest = components["schemas"]["ProfileUpdateRequest"]
 export type SaveTelegramRequest = components["schemas"]["TelegramSettingsRequest"]
 // privacy_mode is required in backend schema; frontend must always include current value
 export type SavePreferencesRequest = components["schemas"]["PreferencesRequest"]
-
-// ---------------------------------------------------------------------------
-// Hand-written types: backend endpoints return untyped dict for these
-// ---------------------------------------------------------------------------
-
-// post_sell_drifts values are returned as dict in the backend schema;
-// typed here for frontend rendering
-export interface PostSellDrift {
-  target_pct: number
-  current_pct: number
-  drift_pct: number
-  market_value: number
-}

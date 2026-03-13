@@ -225,18 +225,6 @@ new_keys = {
             "ja": "分析可能なトレンドセッター銘柄がありません",
             "zh-CN": "无风向球股票可供分析",
         },
-        "caution_details": {
-            "zh-TW": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
-            "en": "Most trend setters weakening ({below}/{total} below 60MA)",
-            "ja": "大半のトレンドセッターが軟調（{below}/{total} が60MA割れ）",
-            "zh-CN": "多数风向球股价转弱（{below}/{total} 跌破 60MA）",
-        },
-        "positive_details": {
-            "zh-TW": "風向球整體穩健（{below}/{total} 跌破 60MA）",
-            "en": "Trend setters overall healthy ({below}/{total} below 60MA)",
-            "ja": "トレンドセッター全体は堅調（{below}/{total} が60MA割れ）",
-            "zh-CN": "风向球整体稳健（{below}/{total} 跌破 60MA）",
-        },
         "fallback_optimistic": {
             "zh-TW": "無法判斷，預設樂觀",
             "en": "Unable to determine, defaulting to optimistic",

@@ -115,13 +115,13 @@ describe("TransactionCsvImportDialog", () => {
     })
     const originalCreateElement = document.createElement.bind(document)
     const anchorClick = vi.fn()
-    let capturedAnchor: HTMLAnchorElement | null = null
+    const capturedAnchorRef: { current: HTMLAnchorElement | null } = { current: null }
 
     const createElementSpy = vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
       const element = originalCreateElement(tagName) as HTMLElement
       if (tagName.toLowerCase() === "a") {
-        capturedAnchor = element as HTMLAnchorElement
-        ;(capturedAnchor as HTMLAnchorElement).click = anchorClick
+        capturedAnchorRef.current = element as HTMLAnchorElement
+        capturedAnchorRef.current.click = anchorClick
       }
       return element
     })
@@ -130,8 +130,12 @@ describe("TransactionCsvImportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "transactions.import.download_template" }))
 
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
-    expect(capturedAnchor?.download).toBe("folio-transaction-template.csv")
-    expect(capturedAnchor?.href).toContain("blob:template-url")
+    if (!capturedAnchorRef.current) {
+      throw new Error("Expected anchor element to be created")
+    }
+    const anchor = capturedAnchorRef.current
+    expect(anchor.download).toBe("folio-transaction-template.csv")
+    expect(anchor.href).toContain("blob:template-url")
     expect(anchorClick).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:template-url")
 
