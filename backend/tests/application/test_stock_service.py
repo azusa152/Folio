@@ -315,6 +315,32 @@ class TestEnsureStockOnRadar:
         assert stock.current_thesis == "Original thesis"
         assert history == []
 
+    def test_repairs_existing_active_stock_is_etf_when_detected(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0050.TW",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy thesis",
+                current_tags="",
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf", return_value=True):
+            stock, created = ensure_stock_on_radar(db_session, "0050.TW")
+
+        assert created is False
+        assert stock.is_etf is True
+
     def test_reactivates_inactive_stock_and_marks_as_created(self, db_session) -> None:
         from application.stock.stock_service import ensure_stock_on_radar
         from domain.entities import Stock

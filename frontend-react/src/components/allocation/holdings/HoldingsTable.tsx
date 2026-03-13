@@ -53,8 +53,21 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
           <tbody>
             {holdings.map((h, i) => {
               const isCrypto = h.category === "Crypto"
+              const isCash = h.category === "Cash"
+              const targetCurrency = displayCurrency ?? h.currency
+              const currentFxRate = h.current_fx_rate
               const fxReturn = computeFxReturn(h.purchase_fx_rate, h.current_fx_rate)
-              const showFxBreakdown = h.purchase_fx_rate != null && fxReturn != null && h.currency !== "USD"
+              const showFxBreakdown =
+                !isCash &&
+                h.purchase_fx_rate != null &&
+                fxReturn != null &&
+                h.currency !== targetCurrency
+
+              const showCashFxInfo =
+                isCash &&
+                currentFxRate != null &&
+                Number.isFinite(currentFxRate) &&
+                h.currency !== targetCurrency
 
               // Home return = local price return + FX impact (approximate additive)
               const homeReturn =
@@ -85,13 +98,31 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
                   </td>
                   <td className="py-0.5 text-right">
                     <div
-                      className={h.change_pct != null ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss) : undefined}
+                      className={
+                        !isCash && h.change_pct != null
+                          ? (h.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss)
+                          : undefined
+                      }
                     >
-                      {h.change_pct != null ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}` : "—"}
+                      {!isCash && h.change_pct != null
+                        ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}`
+                        : "—"}
                     </div>
                     {isCrypto && h.change_pct != null && Math.abs(h.change_pct) >= 5 && (
                       <div className={`text-[10px] leading-tight mt-0.5 ${FINANCE_TEXT.warning}`}>
                         {t("allocation.crypto.volatility_warning")}
+                      </div>
+                    )}
+                    {showCashFxInfo && (
+                      <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
+                        {t("allocation.col.fx_rate_info", {
+                          from: h.currency,
+                          rate: currentFxRate.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 6,
+                          }),
+                          to: targetCurrency,
+                        })}
                       </div>
                     )}
                     {showFxBreakdown && (

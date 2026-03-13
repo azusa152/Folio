@@ -370,6 +370,23 @@
       "show_less": "折りたたむ",
       "stacked_bar_aria": "ポートフォリオのポジション比率の内訳"
     },
+    "accounts_overview": {
+      "title": "口座",
+      "view_all": "すべての口座を表示",
+      "positions_count": "{{count}} 件のポジション",
+      "cash_label": "現金",
+      "no_cash": "現金なし",
+      "cash_missing_fx_hint": "為替データ未取得の通貨（{{currencies}}）は合計から除外されています。",
+      "total_label": "合計",
+      "deposit": "入金",
+      "trade": "取引",
+      "empty_title": "まだ口座がありません",
+      "empty_description": "口座を作成して投資の追跡を始めましょう。",
+      "empty_cta": "口座を作成",
+      "error_title": "口座サマリーを読み込めませんでした",
+      "error_description": "ページを更新して再試行してください。",
+      "stacked_bar_aria": "口座別のポートフォリオ金額配分"
+    },
     "show_advanced": "詳細分析を表示",
     "hide_advanced": "詳細分析を非表示"
   },
@@ -891,7 +908,8 @@
       "cost": "取得単価",
       "change_pct": "変動%",
       "home_return": "基準通貨: {{pct}}",
-      "fx_return": "為替: {{pct}}"
+      "fx_return": "為替: {{pct}}",
+      "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
     },
     "crypto": {
       "volatility_warning": "高ボラティリティ",

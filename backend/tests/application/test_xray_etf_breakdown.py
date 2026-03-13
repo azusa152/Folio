@@ -25,7 +25,7 @@ domain.constants.DISK_CACHE_DIR = os.path.join(
 from unittest.mock import patch  # noqa: E402
 
 import pytest  # noqa: E402
-from sqlmodel import Session  # noqa: E402
+from sqlmodel import Session, select  # noqa: E402
 
 from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
 from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # noqa: E402
@@ -245,6 +245,53 @@ class TestXRayEtfBreakdown:
         assert xray["NVDA"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.01)
         assert xray["NVDA"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
 
+    def test_non_etf_flagged_stock_can_self_heal_and_decompose(
+        self, db_session: Session
+    ):
+        """Stock with stale is_etf=False should be detected as ETF and decomposed."""
+        acct = _seed_account(db_session)
+        _add_profile(db_session)
+        _add_holding(db_session, "0050.TW", quantity=10.0, account_id=acct.id)
+        _add_stock(db_session, "0050.TW", is_etf=False)
+        db_session.commit()
+
+        def _signals_side_effect(ticker: str, *a, **kw):
+            return {
+                **_MOCK_SIGNALS_BASE,
+                "price": {"0050.TW": 100.0}.get(ticker, 100.0),
+            }
+
+        def _holdings_side_effect(ticker: str, **kwargs):
+            assert kwargs.get("is_known_etf") is True
+            if ticker == "0050.TW":
+                return [{"symbol": "TSM", "name": "TSMC", "weight": 0.6}]
+            return None
+
+        with (
+            patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
+            patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
+            patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
+            patch(f"{_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_MODULE}.get_etf_sector_weights", return_value=None),
+            patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(f"{_MODULE}.detect_is_etf", side_effect=lambda t: t == "0050.TW"),
+            patch(f"{_MODULE}.get_etf_top_holdings", side_effect=_holdings_side_effect),
+        ):
+            result = calculate_rebalance(db_session, "USD")
+
+        xray = {e["symbol"]: e for e in result["xray"]}
+        assert "0050.TW" not in xray
+        assert "TSM" in xray
+        assert xray["TSM"]["indirect_weight_pct"] == pytest.approx(60.0, rel=0.01)
+
+        repaired = db_session.exec(
+            select(Stock).where(Stock.ticker == "0050.TW")
+        ).first()
+        assert repaired is not None
+        assert repaired.is_etf is True
+
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
     @patch(f"{_MODULE}.get_technical_signals")
@@ -402,6 +449,7 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(f"{_MODULE}.detect_is_etf", return_value=False),
             patch(
                 f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}
             ) as mock_prewarm_holdings,

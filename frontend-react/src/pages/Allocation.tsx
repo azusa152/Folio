@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -15,7 +15,7 @@ import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure
 import { StressTest } from "@/components/allocation/tools/StressTest"
 import { SmartWithdrawal } from "@/components/allocation/tools/SmartWithdrawal"
 import { TargetAllocation } from "@/components/allocation/tools/TargetAllocation"
-import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManager"
+import { HoldingsManager } from "../components/allocation/holdings/HoldingsManager"
 import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
 import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
 import { TerminologySettings } from "@/components/allocation/settings/TerminologySettings"
@@ -67,6 +67,7 @@ export default function Allocation() {
   const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionSheetType | undefined>(undefined)
   const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(undefined)
   const netWorthTableRef = useRef<HTMLDivElement>(null)
+  const handledDashboardActionRef = useRef<string | null>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
@@ -109,6 +110,51 @@ export default function Allocation() {
     return () => window.clearInterval(timer)
   }, [])
 
+  const openTransactionSheet = useCallback((options?: {
+    ticker?: string
+    accountId?: number
+    transactionType?: TransactionSheetType
+    currency?: string
+  }) => {
+    setTransactionDefaultTicker(options?.ticker)
+    setTransactionDefaultAccountId(options?.accountId)
+    setTransactionDefaultType(options?.transactionType)
+    setTransactionDefaultCurrency(options?.currency)
+    setTransactionSheetOpen(true)
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== "accounts") return
+
+    const action = searchParams.get("action")
+    const accountIdRaw = searchParams.get("accountId")
+    if (!action || !accountIdRaw) return
+    if (action !== "deposit" && action !== "trade") return
+
+    const accountId = Number(accountIdRaw)
+    if (!Number.isFinite(accountId)) return
+
+    const dedupeKey = `${action}:${accountId}`
+    if (handledDashboardActionRef.current === dedupeKey) return
+    handledDashboardActionRef.current = dedupeKey
+
+    const accountCurrency = accounts?.find((account) => account.id === accountId)?.currency
+    // This effect hydrates one-time dashboard intent from URL params after navigation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    openTransactionSheet({
+      accountId,
+      transactionType: action === "deposit" ? "DEPOSIT" : undefined,
+      currency: accountCurrency,
+    })
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete("action")
+      next.delete("accountId")
+      return next
+    })
+  }, [activeTab, searchParams, accounts, openTransactionSheet, setSearchParams])
+
   if (isLoading) {
     return (
       <div className="p-3 sm:p-6 space-y-4">
@@ -134,19 +180,6 @@ export default function Allocation() {
   const hasSeedableCash = (netWorthSeedPreview?.cash_positions?.length ?? 0) > 0
 
   const formatDisplayCurrency = (value: number) => maskMoney(value, displayCurrency)
-
-  const openTransactionSheet = (options?: {
-    ticker?: string
-    accountId?: number
-    transactionType?: TransactionSheetType
-    currency?: string
-  }) => {
-    setTransactionDefaultTicker(options?.ticker)
-    setTransactionDefaultAccountId(options?.accountId)
-    setTransactionDefaultType(options?.transactionType)
-    setTransactionDefaultCurrency(options?.currency)
-    setTransactionSheetOpen(true)
-  }
 
   return (
     <div className="p-3 sm:p-6 space-y-4">

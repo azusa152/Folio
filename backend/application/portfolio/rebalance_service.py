@@ -500,8 +500,11 @@ def _do_calculate_rebalance(
     # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
     # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
     stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()
+    stock_is_etf_map: dict[str, bool] = {
+        ticker.upper(): bool(is_etf) for ticker, is_etf in stock_rows
+    }
     known_etf_tickers: set[str] = {
-        ticker.upper() for ticker, is_etf in stock_rows if bool(is_etf)
+        ticker for ticker, is_etf in stock_is_etf_map.items() if is_etf
     }
     # 先計算所有符合 X-Ray 條件的股票，再過濾為已知 ETF 進行預熱。
     all_xray_tickers = [
@@ -541,6 +544,20 @@ def _do_calculate_rebalance(
 
         if ticker in known_etf_tickers:
             # 僅已知 ETF 需要查詢成分股與板塊權重。
+            constituents = get_etf_top_holdings(ticker, is_known_etf=True)
+            etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
+        elif ticker in stock_is_etf_map and detect_is_etf(ticker):
+            # 自我修復：DB 中舊資料可能把 ETF 標成非 ETF（如早期匯入或暫時性偵測失敗）。
+            # 此處做 runtime 偵測，立即啟用 X-Ray 穿透，並回寫本次 session。
+            known_etf_tickers.add(ticker)
+            stock_is_etf_map[ticker] = True
+            stock_row = session.exec(
+                select(Stock).where(Stock.ticker == ticker)
+            ).first()
+            if stock_row and not bool(stock_row.is_etf):
+                stock_row.is_etf = True
+                session.add(stock_row)
+                session.commit()
             constituents = get_etf_top_holdings(ticker, is_known_etf=True)
             etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
         else:

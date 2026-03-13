@@ -370,6 +370,23 @@
       "show_less": "Show fewer",
       "stacked_bar_aria": "Portfolio position percentage breakdown"
     },
+    "accounts_overview": {
+      "title": "Accounts",
+      "view_all": "View all accounts",
+      "positions_count": "{{count}} positions",
+      "cash_label": "Cash",
+      "no_cash": "No cash",
+      "cash_missing_fx_hint": "Some cash currencies ({{currencies}}) are excluded from total until FX data is available.",
+      "total_label": "Total",
+      "deposit": "Deposit",
+      "trade": "Trade",
+      "empty_title": "No accounts yet",
+      "empty_description": "Create an account to start tracking your investments.",
+      "empty_cta": "Create Account",
+      "error_title": "Unable to load account summary",
+      "error_description": "Please refresh and try again.",
+      "stacked_bar_aria": "Portfolio value distribution across accounts"
+    },
     "show_advanced": "Show deep dive",
     "hide_advanced": "Hide deep dive"
   },
@@ -891,7 +908,8 @@
       "cost": "Cost",
       "change_pct": "Chg%",
       "home_return": "Home: {{pct}}",
-      "fx_return": "FX: {{pct}}"
+      "fx_return": "FX: {{pct}}",
+      "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
     },
     "crypto": {
       "volatility_warning": "High volatility",

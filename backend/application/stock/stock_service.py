@@ -209,6 +209,9 @@ def ensure_stock_on_radar(
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
         if existing.is_active:
+            if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+                existing.is_etf = True
+                repo.update_stock(session, existing)
             return existing, False
 
         has_custom_thesis = bool(thesis and thesis.strip())
@@ -221,6 +224,8 @@ def ensure_stock_on_radar(
             existing.current_tags = ""
         existing.last_scan_signal = ScanSignal.NORMAL.value
         existing.signal_since = None
+        if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+            existing.is_etf = True
         repo.update_stock(session, existing)
         if has_custom_thesis:
             _append_thesis_log(session, ticker_upper, final_thesis, tags="")

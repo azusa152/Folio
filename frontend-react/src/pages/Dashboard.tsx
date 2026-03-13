@@ -19,6 +19,7 @@ import {
   useTwr,
   useGreatMinds,
 } from "@/api/hooks/useDashboard"
+import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
@@ -44,6 +45,7 @@ import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
+import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
 
@@ -74,6 +76,11 @@ export default function Dashboard() {
   const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useStocks()
   const { data: holdings } = useHoldings()
   const { data: lastScan } = useLastScan()
+  const {
+    data: accountSummary,
+    isLoading: accountSummaryLoading,
+    isError: accountSummaryError,
+  } = useAccountSummary()
   const { data: signalActivity } = useSignalActivity()
   const { data: snapshots, isLoading: snapshotsLoading } = useSnapshots(730)
   const { data: twr } = useTwr()
@@ -278,6 +285,14 @@ export default function Dashboard() {
         summary={netWorthSummary}
         history={netWorthHistory ?? []}
         isLoading={netWorthLoading}
+      />
+
+      <AccountsOverview
+        accountSummary={accountSummary ?? []}
+        rebalance={rebalance}
+        displayCurrency={displayCurrency}
+        isLoading={accountSummaryLoading && !accountSummary}
+        isError={accountSummaryError}
       />
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
