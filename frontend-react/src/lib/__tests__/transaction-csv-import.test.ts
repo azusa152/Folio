@@ -253,6 +253,98 @@ describe("transaction-csv-import", () => {
       expect(item.quantity).toBe(1000)
       expect(item.total_amount).toBe(250500)
     })
+
+    it("infers WITHDRAWAL when CASH type has negative price", () => {
+      const item = transformTransactionRow(
+        {
+          date: "2025-08-06",
+          type: "cash",
+          ticker: "",
+          qty: "",
+          price: "-15000",
+          ccy: "twd",
+          fee: "0",
+        },
+        { ...baseMapping, totalAmountColumn: undefined },
+      )
+
+      expect(item.transaction_type).toBe("WITHDRAWAL")
+      expect(item.total_amount).toBe(15000)
+      expect(item.price).toBe(15000)
+      expect(item.ticker).toBe("TWD")
+    })
+
+    it("infers WITHDRAWAL when DEPOSIT has negative total_amount", () => {
+      const item = transformTransactionRow(
+        {
+          date: "2024-01-01",
+          type: "deposit",
+          qty: "",
+          total: "-5000",
+          ccy: "usd",
+        },
+        { ...baseMapping, tickerColumn: undefined },
+      )
+
+      expect(item.transaction_type).toBe("WITHDRAWAL")
+      expect(item.total_amount).toBe(5000)
+      expect(item.quantity).toBe(1)
+      expect(item.ticker).toBe("USD")
+    })
+
+    it("keeps WITHDRAWAL when total is negative", () => {
+      const item = transformTransactionRow(
+        {
+          date: "2024-01-01",
+          type: "withdrawal",
+          qty: "",
+          total: "-1000",
+          ccy: "usd",
+        },
+        { ...baseMapping, tickerColumn: undefined },
+      )
+
+      expect(item.transaction_type).toBe("WITHDRAWAL")
+      expect(item.total_amount).toBe(1000)
+      expect(item.quantity).toBe(1)
+      expect(item.ticker).toBe("USD")
+    })
+
+    it("infers WITHDRAWAL from negative price even when total is positive", () => {
+      const item = transformTransactionRow(
+        {
+          date: "2024-01-01",
+          type: "cash",
+          qty: "",
+          price: "-500",
+          total: "500",
+          ccy: "usd",
+        },
+        { ...baseMapping, tickerColumn: undefined },
+      )
+
+      expect(item.transaction_type).toBe("WITHDRAWAL")
+      expect(item.total_amount).toBe(500)
+      expect(item.price).toBe(500)
+      expect(item.ticker).toBe("USD")
+    })
+
+    it("does not flip BUY with negative total_amount", () => {
+      const item = transformTransactionRow(
+        {
+          date: "2024-01-01",
+          type: "BUY",
+          ticker: "AAPL",
+          qty: "1",
+          total: "-500",
+          ccy: "USD",
+        },
+        baseMapping,
+      )
+
+      expect(item.transaction_type).toBe("BUY")
+      expect(item.total_amount).toBe(-500)
+    })
   })
 
   describe("transformTransactionRows", () => {

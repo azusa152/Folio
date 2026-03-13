@@ -157,7 +157,7 @@ export function transformTransactionRow(
   row: CsvRow,
   mapping: TransactionColumnMapping,
 ): TransactionImportItem {
-  const transactionType = normalizeType(
+  let transactionType = normalizeType(
     mapping.typeColumn ? row[mapping.typeColumn] : undefined,
     mapping.transactionTypeDefault ?? "BUY",
   )
@@ -171,14 +171,29 @@ export function transformTransactionRow(
   const quantityFromCsv = parseNumber(
     mapping.quantityColumn ? row[mapping.quantityColumn] : undefined,
   )
-  const quantity =
+  let quantity =
     quantityFromCsv ??
     (transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL" ? 1 : 0)
-  const price = parseNumber(mapping.priceColumn ? row[mapping.priceColumn] : undefined)
+  let price = parseNumber(mapping.priceColumn ? row[mapping.priceColumn] : undefined)
   const totalFromCsv = parseNumber(
     mapping.totalAmountColumn ? row[mapping.totalAmountColumn] : undefined,
   )
-  const totalAmount = totalFromCsv ?? (quantity > 0 && price != null ? quantity * price : 0)
+  let totalAmount = totalFromCsv ?? (quantity > 0 && price != null ? quantity * price : 0)
+
+  // Broker exports can represent cash in/out with sign only.
+  // Normalize sign to positive amount and infer withdrawal from negative cash amount.
+  if (CASH_MOVEMENT_TYPES.has(transactionType)) {
+    const hasNegativeCashSignal =
+      (price != null && price < 0) || (totalFromCsv != null && totalFromCsv < 0) || totalAmount < 0
+    if (hasNegativeCashSignal) {
+      transactionType = "WITHDRAWAL"
+    }
+    quantity = Math.abs(quantity)
+    totalAmount = Math.abs(totalAmount)
+    if (price != null) {
+      price = Math.abs(price)
+    }
+  }
   const isCashMovement = CASH_MOVEMENT_TYPES.has(transactionType)
   const rawTicker = mapping.tickerColumn ? row[mapping.tickerColumn]?.trim() : ""
   const ticker = (rawTicker || (isCashMovement ? currency || "USD" : "")).trim()
