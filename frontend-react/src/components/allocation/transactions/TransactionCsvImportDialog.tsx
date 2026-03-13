@@ -34,7 +34,7 @@ const SKIP = "__skip__"
 
 export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: Props) {
   const { t } = useTranslation()
-  const { data: accounts } = useAccounts(open, true)
+  const { data: accounts } = useAccounts(open)
   const importMutation = useImportTransactions()
   const fileRef = useRef<HTMLInputElement>(null)
 

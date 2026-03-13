@@ -38,7 +38,7 @@ const TEMPLATE_URL = "/templates/holdings_csv_template.csv"
 export function CsvImportDialog({ open, onClose }: Props) {
   const { t } = useTranslation()
   const importMutation = useImportHoldings()
-  const { data: accounts } = useAccounts(open, true)
+  const { data: accounts } = useAccounts(open)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>("select")
