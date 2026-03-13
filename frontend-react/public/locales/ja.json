@@ -65,10 +65,8 @@
     "chart_price_trend": "選択銘柄の価格トレンドチャート",
     "chart_fx_rate": "為替レートのトレンドチャート",
     "chart_heatmap": "セクター別の株式ヒートマップ(日次変動)",
-    "chart_net_worth": "資産・負債を含む純資産推移チャート",
     "chart_portfolio_sparkline": "30日間のポートフォリオ価値トレンド",
     "chart_stock_sparkline": "株価短期トレンドスパークライン",
-    "chart_net_worth_sparkline": "30日間の純資産トレンド",
     "chart_drawdown": "ポートフォリオのドローダウン推移(ピークから底までの下落)",
     "chart_risk_metrics": "シャープレシオ、ボラティリティ、ドローダウンなどのポートフォリオリスク指標"
   },
@@ -252,8 +250,6 @@
     "button_add_holdings": "🧾 取引を記録",
     "market_sentiment": "市場センチメント",
     "total_market_value": "ポートフォリオ評価額",
-    "net_worth_title": "純資産",
-    "net_worth_manage": "資産配分ページで管理",
     "health_score": "ヘルススコア",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目標 vs 実際の配分",
@@ -755,8 +751,7 @@
       "risk": "🛡️ リスク分析",
       "actions": "💡 アクション",
       "accounts": "🏦 口座",
-      "settings": "⚙️ 設定",
-      "net_worth": "💎 純資産"
+      "settings": "⚙️ 設定"
     },
     "tab_teaser": {
       "risk_desc": "通貨エクスポージャーを分析し、市場の暴落に対するポートフォリオのストレステストを行います。",
@@ -1900,86 +1895,6 @@
       "cost_basis": "平均取得単価",
       "cash_position": "現金"
     }
-  },
-  "net_worth": {
-    "title": "💎 純資産",
-    "caption": "投資以外の資産と負債を追跡します",
-    "manage": "資産配分ページで管理",
-    "summary_formula": "純資産 = 投資 + その他資産 - 負債",
-    "empty": "資産と負債を追加すると純資産が表示されます。",
-    "add_item": "項目を追加",
-    "items_title": "項目一覧",
-    "overview_title": "概要",
-    "kind": {
-      "asset": "資産",
-      "liability": "負債"
-    },
-    "categories": {
-      "property": "不動産",
-      "savings": "預金",
-      "vehicle": "車両",
-      "other_asset": "その他資産",
-      "mortgage": "住宅ローン",
-      "loan": "ローン",
-      "credit_card": "クレジットカード",
-      "other_liability": "その他負債"
-    },
-    "fields": {
-      "name": "名称",
-      "kind": "種類",
-      "category": "カテゴリ",
-      "value": "金額",
-      "outstanding_balance": "未払残高",
-      "currency": "通貨",
-      "interest_rate": "金利 (%)",
-      "apr": "年利 (%)",
-      "minimum_payment": "毎月の最低返済額",
-      "note": "メモ"
-    },
-    "validation": {
-      "name_required": "名称を入力してください。",
-      "value_invalid": "有効な数値を入力してください。",
-      "value_positive": "金額は0より大きい数値を入力してください。"
-    },
-    "stale_col": "ステータス",
-    "stale_warning": "前回更新から{{days}}日経過しています。金額の確認を推奨します。",
-    "last_updated_days": "{{days}}日前に更新",
-    "segment_investments": "投資",
-    "segment_assets": "資産",
-    "segment_liabilities": "負債",
-    "history_title": "純資産の推移",
-    "history_empty": "定期的に記録を追加して、純資産の推移を確認しましょう。",
-    "timeframe": {
-      "1m": "1ヶ月",
-      "3m": "3ヶ月",
-      "6m": "6ヶ月",
-      "1y": "1年",
-      "max": "全期間"
-    },
-    "preset": {
-      "mortgage": "住宅ローン",
-      "mortgage_subtitle": "住宅購入用ローン",
-      "loan": "ローン",
-      "loan_subtitle": "毎月定額返済",
-      "credit_card": "クレジットカード",
-      "credit_card_subtitle": "リボルビング残高",
-      "other_liability": "その他負債"
-    },
-    "annual_interest_hint": "年間利息の目安 ~{{amount}}",
-    "sop_what": "純資産は「投資 + その他資産 - 負債」で計算され、全体の財務状況を把握できます。",
-    "sop_steps": "使用方法: 1.資産を追加 2.負債を追加 3.毎月金額を更新する",
-    "sop_tips": "ヒント: 不動産の評価額は数ヶ月ごとに、クレジットカード残高は請求確定後に更新してください。",
-    "stale_banner": "{{count}}件が90日以上未更新です。確認してください。",
-    "onboarding_title": "純資産の追跡を開始",
-    "onboarding_desc": "資産と負債を追加して、推移と負債の影響を把握しましょう。",
-    "onboarding_add_asset": "資産を追加",
-    "onboarding_add_liability": "負債を追加",
-    "seed_preview_title": "ポートフォリオのデータを検出しました",
-    "seed_preview_investment": "投資ポートフォリオ: {{value}}",
-    "seed_preview_cash": "現金ポジション: {{count}}通貨 (合計 {{value}})",
-    "seed_import_btn": "現金を預金としてインポート",
-    "seed_success": "{{count}}件の現金ポジションを預金としてインポートしました",
-    "seed_already_done": "現金ポジションはインポート済みです"
   },
   "analytics": {
     "drawdown_title": "ドローダウン分析",

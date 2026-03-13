@@ -233,16 +233,6 @@ DISK_FOREX_TTL = 86400  # 24 hours
 # ---------------------------------------------------------------------------
 SUPPORTED_CURRENCIES = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 
-# Net Worth tracking categories
-NET_WORTH_ASSET_CATEGORIES = ["property", "savings", "vehicle", "other_asset"]
-NET_WORTH_LIABILITY_CATEGORIES = [
-    "mortgage",
-    "loan",
-    "credit_card",
-    "other_liability",
-]
-NET_WORTH_STALE_DAYS = 90
-
 # ---------------------------------------------------------------------------
 # Price History Cache
 # ---------------------------------------------------------------------------
@@ -597,12 +587,10 @@ ERROR_STOCK_ALREADY_ACTIVE = "STOCK_ALREADY_ACTIVE"
 ERROR_CATEGORY_UNCHANGED = "CATEGORY_UNCHANGED"
 ERROR_HOLDING_NOT_FOUND = "HOLDING_NOT_FOUND"
 ERROR_TRANSACTION_NOT_FOUND = "TRANSACTION_NOT_FOUND"
-ERROR_NET_WORTH_ITEM_NOT_FOUND = "NET_WORTH_ITEM_NOT_FOUND"
 ERROR_PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
 ERROR_GURU_NOT_FOUND = "GURU_NOT_FOUND"
 ERROR_BACKTEST_SIGNAL_UNKNOWN = "BACKTEST_SIGNAL_UNKNOWN"
 ERROR_BACKTEST_DATA_NOT_FOUND = "BACKTEST_DATA_NOT_FOUND"
-ERROR_NET_WORTH_SEED_NO_CASH_HOLDINGS = "NET_WORTH_SEED_NO_CASH_HOLDINGS"
 ERROR_INVALID_SCENARIO_DROP = "INVALID_SCENARIO_DROP"
 ERROR_SYNC_IN_PROGRESS = "SYNC_IN_PROGRESS"
 ERROR_GURU_FILING_NOT_FOUND = "GURU_FILING_NOT_FOUND"

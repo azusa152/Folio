@@ -3,6 +3,7 @@
 from datetime import date
 
 import pytest
+from sqlalchemy import inspect, text
 from sqlmodel import Session, select
 
 from domain.constants import DEFAULT_USER_ID
@@ -139,3 +140,39 @@ class TestPurgeLegacyHoldings:
         assert len(aapl_diffs) == 1
         assert aapl_diffs[0]["materialized"] == 10.0
         assert aapl_diffs[0]["computed"] == 0.0
+
+    def test_should_drop_legacy_net_worth_tables(
+        self, db_session: Session, purge_module
+    ) -> None:
+        engine = db_session.get_bind()
+        with engine.begin() as conn:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS networthitem (id INTEGER PRIMARY KEY)")
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS networthsnapshot (id INTEGER PRIMARY KEY)"
+                )
+            )
+
+        assert "networthitem" in inspect(engine).get_table_names()
+
+        stats = purge_module.purge(dry_run=False)
+
+        assert stats["legacy_tables_dropped"] == ["networthitem", "networthsnapshot"]
+        assert "networthitem" not in inspect(engine).get_table_names()
+        assert "networthsnapshot" not in inspect(engine).get_table_names()
+
+    def test_dry_run_should_not_drop_legacy_tables(
+        self, db_session: Session, purge_module
+    ) -> None:
+        engine = db_session.get_bind()
+        with engine.begin() as conn:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS networthitem (id INTEGER PRIMARY KEY)")
+            )
+
+        stats = purge_module.purge(dry_run=True)
+
+        assert stats["legacy_tables_dropped"] == ["networthitem"]
+        assert "networthitem" in inspect(engine).get_table_names()

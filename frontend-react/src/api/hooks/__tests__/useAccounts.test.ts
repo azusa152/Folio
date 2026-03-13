@@ -91,6 +91,5 @@ describe("useAccounts extra hooks", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["rebalance"] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["currency-exposure"] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["stress-test"] })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["net-worth"] })
   })
 })

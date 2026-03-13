@@ -439,9 +439,7 @@ def verify_positions(session: Session) -> list[dict]:
             Transaction.account_id,
             currency_col.label("currency"),
             func.sum(cash_delta_expr).label("expected"),
-        )
-        .where(Transaction.account_id.isnot(None))
-        .group_by(Transaction.account_id, currency_col)
+        ).group_by(Transaction.account_id, currency_col)
     ).all()
     for account_id, currency, expected in cash_rows:
         if account_id is None:
@@ -483,9 +481,7 @@ def verify_positions(session: Session) -> list[dict]:
             Transaction.account_id,
             ticker_col.label("ticker"),
             func.sum(stock_delta_expr).label("expected"),
-        )
-        .where(Transaction.account_id.isnot(None))
-        .group_by(Transaction.account_id, ticker_col)
+        ).group_by(Transaction.account_id, ticker_col)
     ).all()
     for account_id, ticker, expected in stock_rows:
         if account_id is None:
@@ -507,9 +503,7 @@ def verify_positions(session: Session) -> list[dict]:
             holding_key_expr.label("key_ticker"),
             Holding.is_cash,
             func.sum(Holding.quantity).label("actual"),
-        )
-        .where(Holding.account_id.isnot(None))
-        .group_by(Holding.account_id, holding_key_expr, Holding.is_cash)
+        ).group_by(Holding.account_id, holding_key_expr, Holding.is_cash)
     ).all()
 
     for account_id, key_ticker, is_cash, actual in holding_rows:

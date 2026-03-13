@@ -244,9 +244,7 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 
 - `HOLDING_NOT_FOUND`
 - `INSUFFICIENT_BALANCE`
-- `NET_WORTH_ITEM_NOT_FOUND`
 - `PROFILE_NOT_FOUND`
-- `NET_WORTH_SEED_NO_CASH_HOLDINGS`
 - `INVALID_SCENARIO_DROP`
 
 ### Guru

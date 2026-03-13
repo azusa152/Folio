@@ -121,12 +121,6 @@ def _run_migrations() -> None:
         "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
         # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
         "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
-        # NetWorthItem: optional manual FX rate for zero-external-call conversion
-        "ALTER TABLE networthitem ADD COLUMN fx_rate_to_usd REAL;",
-        # NetWorthItem: optional minimum monthly payment for liabilities
-        "ALTER TABLE networthitem ADD COLUMN minimum_payment REAL;",
-        # NetWorthItem: source tracking for seeded portfolio cash
-        "ALTER TABLE networthitem ADD COLUMN source TEXT DEFAULT 'manual';",
         # UserPreferences: terminology display mode (Phase 7)
         "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
     ]

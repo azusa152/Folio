@@ -36,15 +36,6 @@ from application.portfolio.insight_service import (  # noqa: F401
     get_portfolio_insights,
     invalidate_insight_cache,
 )
-from application.portfolio.net_worth_service import (  # noqa: F401
-    calculate_net_worth,
-    create_item,
-    delete_item,
-    get_net_worth_history,
-    list_items,
-    take_net_worth_snapshot,
-    update_item,
-)
 from application.portfolio.rebalance_service import (  # noqa: F401
     _compute_holding_market_values,
     calculate_currency_exposure,
@@ -69,9 +60,3 @@ from application.portfolio.transaction_service import (  # noqa: F401
     list_transactions_by_account,
     remove_transaction,
 )
-
-# Backward-compatible aliases for external imports.
-create_net_worth_item = create_item
-delete_net_worth_item = delete_item
-list_net_worth_items = list_items
-update_net_worth_item = update_item

@@ -1,10 +1,11 @@
 """
-Purge legacy holding data left over from pre-ledger direct-holding management.
+Purge legacy data left over from pre-ledger direct-holding management.
 
 Removes:
   1. Orphan holdings — rows with no account_id (never migrated to an account)
   2. Orphan transactions — rows with no account_id
   3. Stale holdings with zero or negative quantity (float residue / ghost positions)
+  4. Orphaned Net Worth tables — networthitem / networthsnapshot (feature removed)
 
 After purging, runs verify_positions() to report any remaining ledger drift.
 
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
@@ -24,6 +26,8 @@ from domain.constants import HOLDING_QUANTITY_EPSILON
 from domain.entities import Holding, Transaction
 from infrastructure.database import create_db_and_tables, engine
 from logging_config import get_logger
+
+LEGACY_TABLES = ["networthitem", "networthsnapshot"]
 
 logger = get_logger(__name__)
 
@@ -34,6 +38,7 @@ def purge(dry_run: bool = False) -> dict[str, Any]:
         "orphan_holdings_deleted": 0,
         "orphan_transactions_deleted": 0,
         "zero_qty_holdings_deleted": 0,
+        "legacy_tables_dropped": [],
         "discrepancies": [],
     }
 
@@ -89,23 +94,35 @@ def purge(dry_run: bool = False) -> dict[str, Any]:
             session.commit()
             logger.info("Purge committed: %s", stats)
 
-        try:
-            from application.portfolio.settlement_service import verify_positions
-
-            discrepancies = verify_positions(session)
-            stats["discrepancies"] = discrepancies
-            if discrepancies:
-                logger.warning(
-                    "Ledger drift detected after purge (%d positions): %s",
-                    len(discrepancies),
-                    discrepancies,
-                )
+    existing_tables = set(inspect(engine).get_table_names())
+    for table_name in LEGACY_TABLES:
+        if table_name in existing_tables:
+            if dry_run:
+                logger.info("[DRY RUN] Would drop legacy table: %s", table_name)
             else:
-                logger.info("Ledger verification passed — no drift detected.")
-        except Exception:
-            logger.info(
-                "Skipped ledger verification (run inside Docker for full check)."
+                with engine.begin() as conn:
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+                logger.info("Dropped legacy table: %s", table_name)
+            stats["legacy_tables_dropped"].append(table_name)
+        else:
+            logger.info("Legacy table already absent: %s", table_name)
+
+    try:
+        from application.portfolio.settlement_service import verify_positions
+
+        with Session(engine) as session:
+            discrepancies = verify_positions(session)
+        stats["discrepancies"] = discrepancies
+        if discrepancies:
+            logger.warning(
+                "Ledger drift detected after purge (%d positions): %s",
+                len(discrepancies),
+                discrepancies,
             )
+        else:
+            logger.info("Ledger verification passed — no drift detected.")
+    except Exception:
+        logger.info("Skipped ledger verification (run inside Docker for full check).")
 
     return stats
 

@@ -153,7 +153,6 @@ export function useDeactivateAccount() {
       queryClient.invalidateQueries({ queryKey: ["rebalance"] })
       queryClient.invalidateQueries({ queryKey: ["currency-exposure"] })
       queryClient.invalidateQueries({ queryKey: ["stress-test"] })
-      queryClient.invalidateQueries({ queryKey: ["net-worth"] })
     },
   })
 }

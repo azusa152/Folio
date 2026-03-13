@@ -36,7 +36,6 @@ const EXPECTED_INVALIDATION_KEYS = [
   ["risk-metrics"],
   ["currency-exposure"],
   ["stress-test"],
-  ["net-worth"],
   ["snapshots"],
   ["account-cash-balances"],
   ["accounts"],

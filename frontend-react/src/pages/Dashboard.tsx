@@ -23,7 +23,6 @@ import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
-import { useNetWorthHistory, useNetWorthSummary } from "@/api/hooks/useNetWorth"
 import {
   Select,
   SelectContent,
@@ -44,7 +43,6 @@ import { TopHoldings } from "@/components/dashboard/TopHoldings"
 import { DividendIncome } from "@/components/dashboard/DividendIncome"
 import { ResonanceSummary } from "@/components/dashboard/ResonanceSummary"
 import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
-import { NetWorthSummary } from "@/components/dashboard/NetWorthSummary"
 import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
@@ -85,8 +83,6 @@ export default function Dashboard() {
   const { data: snapshots, isLoading: snapshotsLoading } = useSnapshots(730)
   const { data: twr } = useTwr()
   const { data: profile } = useProfile()
-  const { data: netWorthSummary, isLoading: netWorthLoading } = useNetWorthSummary(displayCurrency)
-  const { data: netWorthHistory } = useNetWorthHistory(30, displayCurrency)
   useScanCompletionEffect()
 
   // useRebalance fires immediately (not gated) because heroLoading and PortfolioPulse
@@ -280,12 +276,6 @@ export default function Dashboard() {
 
       {/* ── Portfolio Overview ── */}
       <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_portfolio_overview")}</h2>
-
-      <NetWorthSummary
-        summary={netWorthSummary}
-        history={netWorthHistory ?? []}
-        isLoading={netWorthLoading}
-      />
 
       <AccountsOverview
         accountSummary={accountSummary ?? []}
