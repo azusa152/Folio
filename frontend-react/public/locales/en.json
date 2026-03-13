@@ -856,6 +856,7 @@
       "save_notif": "💾 Save Notification Preferences"
     },
     "loading": "📊 Loading portfolio data...",
+    "refreshing": "Updating portfolio data...",
     "loaded": "✅ Portfolio data loaded",
     "error_loading_label": "❌ Failed to load portfolio data",
     "health": {

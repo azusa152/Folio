@@ -32,6 +32,8 @@ const EXPECTED_INVALIDATION_KEYS = [
   ["transactions"],
   ["holdings"],
   ["rebalance"],
+  ["drawdown"],
+  ["risk-metrics"],
   ["currency-exposure"],
   ["stress-test"],
   ["net-worth"],
@@ -55,7 +57,7 @@ function createWrapper() {
 
 function expectAllInvalidationKeys(invalidateSpy: unknown) {
   EXPECTED_INVALIDATION_KEYS.forEach((queryKey) => {
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey, refetchType: "all" })
   })
 }
 

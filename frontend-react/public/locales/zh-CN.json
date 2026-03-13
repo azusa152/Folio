@@ -856,6 +856,7 @@
       "save_notif": "💾 保存通知偏好"
     },
     "loading": "📊 加载投资组合数据中...",
+    "refreshing": "正在更新投资组合数据...",
     "loaded": "✅ 投资组合数据已加载",
     "error_loading_label": "❌ 投资组合数据加载失败",
     "health": {

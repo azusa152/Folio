@@ -856,6 +856,7 @@
       "save_notif": "💾 儲存通知偏好"
     },
     "loading": "📊 載入投資組合資料中...",
+    "refreshing": "正在更新投資組合資料...",
     "loaded": "✅ 投資組合資料已載入",
     "error_loading_label": "❌ 投資組合資料載入失敗",
     "health": {

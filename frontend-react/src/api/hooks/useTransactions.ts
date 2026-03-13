@@ -15,6 +15,8 @@ const TRANSACTION_INVALIDATION_KEYS = [
   ["transactions"],
   ["holdings"],
   ["rebalance"],
+  ["drawdown"],
+  ["risk-metrics"],
   ["currency-exposure"],
   ["stress-test"],
   ["net-worth"],
@@ -29,7 +31,7 @@ const TRANSACTION_INVALIDATION_KEYS = [
 
 function invalidateTransactionDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
   TRANSACTION_INVALIDATION_KEYS.forEach((queryKey) => {
-    queryClient.invalidateQueries({ queryKey: [...queryKey] })
+    queryClient.invalidateQueries({ queryKey: [...queryKey], refetchType: "all" })
   })
 }
 
