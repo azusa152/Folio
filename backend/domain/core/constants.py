@@ -93,6 +93,7 @@ DISK_MOAT_TTL = 86400  # 24 hours
 DISK_EARNINGS_TTL = 604800  # 7 days
 DISK_DIVIDEND_TTL = 86400  # 24 hours
 DISK_FUNDAMENTALS_TTL = 86400  # 24 hours
+DISK_YF_INFO_TTL = 86400  # 24 hours
 
 # ---------------------------------------------------------------------------
 # Rate Limiter
@@ -128,6 +129,9 @@ MOAT_PERSISTENT_FAILURE_THRESHOLD = (
 )
 DISK_MOAT_PERSISTENT_TTL = (
     86400  # 1 day — sentinel TTL for persistently-failing moat tickers
+)
+DISK_MOAT_FAILURE_TTL = (
+    3600  # 1 hour — short negative cache for transient moat failures
 )
 PRICE_ALERT_COOLDOWN_HOURS = 4
 WEEKLY_DIGEST_LOOKBACK_DAYS = 7
@@ -407,6 +411,7 @@ DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
 DISK_KEY_FUNDAMENTALS = "fundamentals"
+DISK_KEY_YF_INFO = "yf_info"
 DISK_KEY_PRICE_HISTORY = "price_history"
 DISK_KEY_FOREX = "forex"
 DISK_KEY_ETF_HOLDINGS = "etf_holdings"

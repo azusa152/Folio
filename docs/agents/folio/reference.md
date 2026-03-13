@@ -190,12 +190,6 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
 | `GET` | `/holdings` | All holdings (materialized position cache derived from transactions) |
-| `POST` | `/holdings` | Add holding (creates an `OPENING_BALANCE` transaction; position cache updates automatically) |
-| `POST` | `/holdings/cash` | Add cash holding |
-| `PUT` | `/holdings/{id}` | Update holding (creates an `ADJUSTMENT` transaction for quantity changes) |
-| `DELETE` | `/holdings/{id}` | Delete holding (zeros position via `ADJUSTMENT`, then removes cache row) |
-| `GET` | `/holdings/export` | Export holdings (JSON) |
-| `POST` | `/holdings/import` | Bulk import holdings (JSON body, replace-all) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
 | `POST` | `/rebalance/xray-alert` | Telegram alert for stocks with true exposure > 15% |
 | `GET` | `/stress-test` | Stress test (`?scenario_drop_pct=-20&display_currency=USD`); returns Beta, expected loss, pain level |
@@ -230,7 +224,7 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/docs` | Swagger UI |
 | `GET` | `/openapi.json` | OpenAPI spec |
 
-> CSV files are imported through the frontend UI. The browser parses CSV/TSV, maps columns to `HoldingImportItem[]`, then submits to `POST /holdings/import`.
+> Position bootstrap/import is transaction-first. Use transaction CSV import via the Accounts tab (`POST /transactions/import`) so holdings remain a derived cache from ledger entries.
 
 ---
 

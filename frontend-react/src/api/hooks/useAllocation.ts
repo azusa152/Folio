@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
-import type { components } from "@/api/types/generated"
 import type {
   PersonaTemplate,
   AllocRebalanceResponse,
@@ -9,15 +8,11 @@ import type {
   WithdrawResponse,
   TelegramSettings,
   AllocPreferencesResponse,
-  AddHoldingRequest,
-  AddCashRequest,
-  UpdateHoldingRequest,
   WithdrawRequest,
   CreateProfileRequest,
   UpdateProfileRequest,
   SaveTelegramRequest,
   SavePreferencesRequest,
-  Holding,
   ProfileResponse,
 } from "@/api/types/allocation"
 
@@ -136,87 +131,6 @@ export function useUpdateProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] })
       queryClient.invalidateQueries({ queryKey: ["currency-exposure"] })
-    },
-  })
-}
-
-export function useAddHolding() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (payload: AddHoldingRequest) => {
-      const { data, error } = await client.POST("/holdings", {
-        body: { ...payload, is_cash: payload.is_cash ?? false },
-      })
-      if (error) throw error
-      return data as unknown as Holding
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-    },
-  })
-}
-
-export function useAddCashHolding() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (payload: AddCashRequest) => {
-      const { data, error } = await client.POST("/holdings/cash", { body: payload })
-      if (error) throw error
-      return data as unknown as Holding
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-    },
-  })
-}
-
-export function useUpdateHolding() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, payload }: { id: number; payload: UpdateHoldingRequest }) => {
-      const { data, error } = await client.PUT("/holdings/{holding_id}", {
-        params: { path: { holding_id: id } },
-        body: payload,
-      })
-      if (error) throw error
-      return data as unknown as Holding
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-    },
-  })
-}
-
-export function useDeleteHolding() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const { error } = await client.DELETE("/holdings/{holding_id}", {
-        params: { path: { holding_id: id } },
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
-    },
-  })
-}
-
-export function useImportHoldings() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (payload: components["schemas"]["HoldingImportRequest"]) => {
-      const { data, error } = await client.POST("/holdings/import", { body: payload })
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["holdings"] })
-      queryClient.invalidateQueries({ queryKey: ["rebalance"] })
     },
   })
 }

@@ -409,6 +409,23 @@ make restore
 make restore FILE=backups/radar-20260214_153022.db
 ```
 
+#### 清理遺留資料（Ledger Migration Cleanup）
+
+```bash
+# 預覽將清除的資料（不會實際刪除）
+make purge-legacy-dry
+
+# 清除孤立持倉、孤立交易、零數量持倉
+make purge-legacy
+```
+
+清除對象：
+- **孤立持倉**：沒有關聯帳戶（`account_id = NULL`）的舊持倉
+- **孤立交易**：沒有關聯帳戶的舊交易紀錄
+- **零數量持倉**：因浮點誤差殘留的 ghost positions（不含現金）
+
+建議在執行 `make migrate-ledger` 之後使用。
+
 #### 完全重置（清空所有資料）
 
 ```bash
@@ -666,12 +683,6 @@ docker compose up --build -d
 | `PUT` | `/profiles/{id}` | 更新投資組合配置 |
 | `DELETE` | `/profiles/{id}` | 停用投資組合配置 |
 | `GET` | `/holdings` | 取得所有持倉（由交易推導的 materialized position cache） |
-| `POST` | `/holdings` | 新增持倉（建立 `OPENING_BALANCE` 交易並自動更新持倉快取） |
-| `POST` | `/holdings/cash` | 新增現金持倉 |
-| `PUT` | `/holdings/{id}` | 更新持倉（建立 `ADJUSTMENT` 交易調整數量） |
-| `DELETE` | `/holdings/{id}` | 刪除持倉（先以 `ADJUSTMENT` 歸零後移除快取列） |
-| `GET` | `/holdings/export` | 匯出持倉（JSON） |
-| `POST` | `/holdings/import` | 匯入持倉 |
 | `GET` | `/crypto/search` | 搜尋加密貨幣（回傳 `id/symbol/name/thumb/ticker`） |
 | `GET` | `/crypto/price/{ticker}` | 取得加密貨幣即時價格（CoinGecko 主來源，yfinance fallback） |
 | `GET` | `/rebalance` | 再平衡分析（目標 vs 實際 + 建議 + X-Ray 穿透式持倉），支援 `?display_currency=TWD` 指定顯示幣別 |
@@ -799,25 +810,6 @@ curl -s http://localhost:8000/personas/templates | python3 -m json.tool
 curl -X POST http://localhost:8000/profiles \
   -H "Content-Type: application/json" \
   -d '{"name": "標準型", "source_template_id": "balanced", "config": {"Trend_Setter": 25, "Moat": 30, "Growth": 15, "Bond": 20, "Cash": 10}}'
-```
-
-### 新增持倉（建立 OPENING_BALANCE）
-
-```bash
-# 新增美股持倉（`account_id` 必填；會建立 OPENING_BALANCE 交易）
-curl -X POST http://localhost:8000/holdings \
-  -H "Content-Type: application/json" \
-  -d '{"account_id": 1, "ticker": "NVDA", "category": "Moat", "quantity": 50, "cost_basis": 120.0, "broker": "Firstrade", "currency": "USD"}'
-
-# 新增台股持倉（指定 TWD 幣別）
-curl -X POST http://localhost:8000/holdings \
-  -H "Content-Type: application/json" \
-  -d '{"account_id": 2, "ticker": "2330.TW", "category": "Moat", "quantity": 100, "cost_basis": 580.0, "broker": "永豐金", "currency": "TWD"}'
-
-# 新增現金持倉
-curl -X POST http://localhost:8000/holdings/cash \
-  -H "Content-Type: application/json" \
-  -d '{"account_id": 2, "currency": "TWD", "amount": 100000}'
 ```
 
 ### 直接新增交易（OPENING_BALANCE / ADJUSTMENT / TRANSFER）

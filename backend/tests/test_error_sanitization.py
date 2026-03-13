@@ -175,37 +175,6 @@ def test_stock_import_partial_failure_no_leak(client):
     # (implementation-specific behavior)
 
 
-def test_holding_import_partial_failure_no_leak(client):
-    """Holding import with partial failures logs but doesn't leak to response."""
-    # First add a stock to avoid StockNotFoundError
-    client.post(
-        "/ticker",
-        json={
-            "ticker": "AAPL",
-            "category": "Growth",
-            "thesis": "Test",
-        },
-    )
-
-    account_id = _create_account(client)
-    payload = [
-        {
-            "ticker": "AAPL",
-            "category": "Growth",
-            "quantity": 10.0,
-        },
-    ]
-    response = client.post(
-        "/holdings/import",
-        json={"mode": "replace_all", "account_id": account_id, "items": payload},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    # Should report success count and errors list
-    assert "imported" in data
-    assert "errors" in data
-
-
 def test_telegram_settings_token_masking(client):
     """Telegram settings response masks bot token (now encrypted in DB)."""
     # Set custom bot token

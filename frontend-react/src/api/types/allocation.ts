@@ -40,9 +40,6 @@ export type TelegramSettings = components["schemas"]["TelegramSettingsResponse"]
 export type AllocPreferencesResponse = components["schemas"]["PreferencesResponse"]
 
 // Request types
-// is_cash has @default false in backend — frontend never sets it for equity/bond holdings
-export type AddHoldingRequest = Omit<components["schemas"]["HoldingRequest"], "is_cash"> & { is_cash?: boolean }
-export type AddCashRequest = components["schemas"]["CashHoldingRequest"]
 export type CreateProfileRequest = components["schemas"]["ProfileCreateRequest"]
 export type UpdateProfileRequest = components["schemas"]["ProfileUpdateRequest"]
 export type SaveTelegramRequest = components["schemas"]["TelegramSettingsRequest"]
@@ -61,5 +58,3 @@ export interface PostSellDrift {
   drift_pct: number
   market_value: number
 }
-
-export type UpdateHoldingRequest = components["schemas"]["UpdateHoldingRequest"]

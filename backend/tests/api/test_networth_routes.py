@@ -133,10 +133,18 @@ def test_delete_net_worth_item_should_return_404_when_not_found(client) -> None:
 def test_get_net_worth_seed_preview_should_return_cash_positions(client) -> None:
     account_id = _create_account(client)
     cash_resp = client.post(
-        "/holdings/cash",
-        json={"currency": "USD", "amount": 1500.0, "account_id": account_id},
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 1500.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
     )
-    assert cash_resp.status_code == 200
+    assert cash_resp.status_code == 201
 
     resp = client.get("/net-worth/seed-preview", params={"display_currency": "USD"})
     assert resp.status_code == 200
@@ -149,10 +157,18 @@ def test_get_net_worth_seed_preview_should_return_cash_positions(client) -> None
 def test_post_net_worth_seed_should_be_idempotent(client) -> None:
     account_id = _create_account(client)
     cash_resp = client.post(
-        "/holdings/cash",
-        json={"currency": "USD", "amount": 1200.0, "account_id": account_id},
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 1200.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
     )
-    assert cash_resp.status_code == 200
+    assert cash_resp.status_code == 201
 
     first = client.post("/net-worth/seed")
     second = client.post("/net-worth/seed")

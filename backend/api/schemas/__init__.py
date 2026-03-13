@@ -104,7 +104,6 @@ from api.schemas.notification import (  # noqa: F401
     WebhookResponse,
 )
 from api.schemas.portfolio import (  # noqa: F401
-    CashHoldingRequest,
     CategoryAllocation,
     CurrencyBreakdown,
     CurrencyExposureResponse,
@@ -112,10 +111,6 @@ from api.schemas.portfolio import (  # noqa: F401
     FXMovement,
     FXRateAlertItem,
     HoldingDetail,
-    HoldingExportItem,
-    HoldingImportItem,
-    HoldingImportRequest,
-    HoldingRequest,
     HoldingResponse,
     RebalanceResponse,
     SectorExposureItem,
@@ -123,7 +118,6 @@ from api.schemas.portfolio import (  # noqa: F401
     StressTestHoldingBreakdown,
     StressTestPainLevel,
     StressTestResponse,
-    UpdateHoldingRequest,
     WithdrawRequest,
     WithdrawResponse,
     XRayAlertResponse,

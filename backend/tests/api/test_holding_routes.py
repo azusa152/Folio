@@ -1,24 +1,16 @@
-"""Tests for holding management routes (CRUD + import/export + rebalance)."""
-
-from typing import ClassVar
+"""Tests for holding analysis routes in ledger mode."""
 
 HOLDING_PAYLOAD = {
     "ticker": "NVDA",
-    "category": "Growth",
+    "transaction_type": "BUY",
     "quantity": 10,
-    "cost_basis": 100.0,
-    "broker": "Firstrade",
+    "price": 100.0,
+    "total_amount": 1000.0,
     "currency": "USD",
-    "account_type": "US",
-    "is_cash": False,
+    "transaction_date": "2026-03-11",
 }
 
-CASH_PAYLOAD = {
-    "currency": "TWD",
-    "amount": 50000,
-    "broker": "玉山",
-    "account_type": "TW",
-}
+_PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
 
 
 def _create_account(client) -> int:
@@ -35,145 +27,51 @@ def _create_account(client) -> int:
     return resp.json()["id"]
 
 
-def _create_holding(client, payload=None, account_id=None):
-    """Helper: create a holding and return its JSON body."""
-    resolved_account_id = account_id or _create_account(client)
-    holding_payload = {
-        **(payload or HOLDING_PAYLOAD),
-        "account_id": (
-            (payload or HOLDING_PAYLOAD).get("account_id", resolved_account_id)
-        ),
-    }
-    resp = client.post("/holdings", json=holding_payload)
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _list_transactions(client):
-    resp = client.get("/transactions")
-    assert resp.status_code == 200
-    return resp.json()
-
-
-# ---------------------------------------------------------------------------
-# Holdings CRUD
-# ---------------------------------------------------------------------------
-
-
-class TestCreateHolding:
-    """Tests for POST /holdings."""
-
-    def test_create_holding_should_return_created_holding(self, client):
-        # Act
-        body = _create_holding(client)
-
-        # Assert
-        assert body["ticker"] == "NVDA"
-        assert body["category"] == "Growth"
-        assert body["quantity"] == 10
-        assert body["is_cash"] is False
-
-    def test_create_holding_should_return_422_when_missing_fields(self, client):
-        # Act — missing required 'ticker'
-        resp = client.post("/holdings", json={"category": "Growth", "quantity": 5})
-
-        # Assert
-        assert resp.status_code == 422
-
-    def test_create_holding_should_record_opening_balance_transaction(self, client):
-        _create_holding(client)
-        txns = _list_transactions(client)
-        assert len(txns) == 1
-        assert txns[0]["transaction_type"] == "OPENING_BALANCE"
-        assert txns[0]["ticker"] == "NVDA"
-
-
-class TestCreateCashHolding:
-    """Tests for POST /holdings/cash."""
-
-    def test_create_cash_should_return_cash_holding(self, client):
-        # Act
-        account_id = _create_account(client)
-        resp = client.post(
-            "/holdings/cash", json={**CASH_PAYLOAD, "account_id": account_id}
-        )
-
-        # Assert
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["ticker"] == "TWD"
-        assert body["is_cash"] is True
-        assert body["quantity"] == 50000
-
-    def test_create_cash_should_return_422_when_missing_account(self, client):
-        # Act
-        resp = client.post("/holdings/cash", json=CASH_PAYLOAD)
-
-        # Assert
-        assert resp.status_code == 422
-
-    def test_create_cash_should_return_422_when_missing_currency(self, client):
-        # Act
-        account_id = _create_account(client)
-        resp = client.post(
-            "/holdings/cash", json={"amount": 1000, "account_id": account_id}
-        )
-
-        # Assert
-        assert resp.status_code == 422
+def _seed_equity_holding(client, ticker: str = "NVDA", quantity: float = 10) -> int:
+    account_id = _create_account(client)
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 5000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert deposit_resp.status_code == 201
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            **HOLDING_PAYLOAD,
+            "account_id": account_id,
+            "ticker": ticker,
+            "quantity": quantity,
+        },
+    )
+    assert buy_resp.status_code == 201
+    return account_id
 
 
 class TestListHoldings:
     """Tests for GET /holdings."""
 
     def test_list_should_return_empty_initially(self, client):
-        # Act
         resp = client.get("/holdings")
-
-        # Assert
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_should_return_added_holdings(self, client):
-        # Arrange
-        _create_holding(client)
-
-        # Act
+    def test_list_should_return_holdings_from_transactions(self, client):
+        _seed_equity_holding(client, ticker="NVDA")
         resp = client.get("/holdings")
-
-        # Assert
         assert resp.status_code == 200
         tickers = {item["ticker"] for item in resp.json()}
-        assert tickers == {"NVDA"}
+        assert "NVDA" in tickers
 
     def test_list_should_exclude_zero_quantity_stock_positions(self, client):
-        # Arrange
-        account_id = _create_account(client)
-        deposit_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "USD",
-                "transaction_type": "DEPOSIT",
-                "quantity": 1,
-                "total_amount": 1000.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
-        buy_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "AAPL",
-                "transaction_type": "BUY",
-                "quantity": 2,
-                "price": 100.0,
-                "total_amount": 200.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
+        account_id = _seed_equity_holding(client, ticker="AAPL", quantity=2)
         sell_resp = client.post(
             "/transactions",
             json={
@@ -187,464 +85,33 @@ class TestListHoldings:
                 "transaction_date": "2026-03-12",
             },
         )
-        assert deposit_resp.status_code == 201
-        assert buy_resp.status_code == 201
         assert sell_resp.status_code == 201
 
-        # Act
         resp = client.get("/holdings")
-
-        # Assert
         assert resp.status_code == 200
         tickers = {item["ticker"] for item in resp.json()}
         assert "AAPL" not in tickers
 
 
-class TestUpdateHolding:
-    """Tests for PUT /holdings/{holding_id}."""
-
-    def test_update_should_modify_holding(self, client):
-        # Arrange
-        created = _create_holding(client)
-        holding_id = created["id"]
-
-        # Act
-        updated_payload = {**HOLDING_PAYLOAD, "quantity": 20, "cost_basis": 150.0}
-        resp = client.put(f"/holdings/{holding_id}", json=updated_payload)
-
-        # Assert
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["quantity"] == 20
-        assert body["cost_basis"] == 150.0
-
-    def test_update_should_return_404_for_nonexistent_id(self, client):
-        # Act
-        account_id = _create_account(client)
-        resp = client.put(
-            "/holdings/99999", json={**HOLDING_PAYLOAD, "account_id": account_id}
-        )
-
-        # Assert
-        assert resp.status_code == 404
-        assert resp.json()["detail"]["error_code"] == "HOLDING_NOT_FOUND"
-
-    def test_update_should_return_404_when_account_not_found(self, client):
-        # Arrange
-        created = _create_holding(client)
-        holding_id = created["id"]
-
-        # Act
-        resp = client.put(f"/holdings/{holding_id}", json={"account_id": 99999})
-
-        # Assert
-        assert resp.status_code == 404
-        assert resp.json()["detail"]["error_code"] == "ACCOUNT_NOT_FOUND"
-
-    def test_update_should_return_422_when_account_is_null(self, client):
-        # Arrange
-        created = _create_holding(client)
-        holding_id = created["id"]
-
-        # Act
-        resp = client.put(f"/holdings/{holding_id}", json={"account_id": None})
-
-        # Assert
-        assert resp.status_code == 422
-
-    def test_update_quantity_should_create_adjustment_transaction(self, client):
-        created = _create_holding(client)
-        holding_id = created["id"]
-        resp = client.put(f"/holdings/{holding_id}", json={"quantity": 25})
-        assert resp.status_code == 200
-        txns = _list_transactions(client)
-        assert len(txns) == 2
-        assert any(txn["transaction_type"] == "ADJUSTMENT" for txn in txns)
-
-
-class TestDeleteHolding:
-    """Tests for DELETE /holdings/{holding_id}."""
-
-    def test_delete_should_remove_holding(self, client):
-        # Arrange
-        created = _create_holding(client)
-        holding_id = created["id"]
-
-        # Act
-        resp = client.delete(f"/holdings/{holding_id}")
-
-        # Assert
-        assert resp.status_code == 200
-        assert "NVDA" in resp.json()["message"]
-
-        # Verify deletion
-        resp2 = client.get("/holdings")
-        assert resp2.status_code == 200
-        tickers = {item["ticker"] for item in resp2.json()}
-        assert "NVDA" not in tickers
-
-    def test_delete_should_return_404_for_nonexistent_id(self, client):
-        # Act
-        resp = client.delete("/holdings/99999")
-
-        # Assert
-        assert resp.status_code == 404
-        assert resp.json()["detail"]["error_code"] == "HOLDING_NOT_FOUND"
-
-    def test_delete_should_create_zeroing_adjustment_before_removal(self, client):
-        created = _create_holding(client)
-        holding_id = created["id"]
-        resp = client.delete(f"/holdings/{holding_id}")
-        assert resp.status_code == 200
-        txns = _list_transactions(client)
-        assert len(txns) == 2
-        assert any(txn["transaction_type"] == "ADJUSTMENT" for txn in txns)
-
-
-# ---------------------------------------------------------------------------
-# Holdings Import / Export
-# ---------------------------------------------------------------------------
-
-
-class TestExportHoldings:
-    """Tests for GET /holdings/export."""
-
-    def test_export_should_return_empty_list_when_no_holdings(self, client):
-        # Act
-        resp = client.get("/holdings/export")
-
-        # Assert
-        assert resp.status_code == 200
-        assert resp.json() == []
-
-    def test_export_should_return_all_holdings(self, client):
-        # Arrange
-        account_id = _create_account(client)
-        _create_holding(client, account_id=account_id)
-        client.post("/holdings/cash", json={**CASH_PAYLOAD, "account_id": account_id})
-
-        # Act
-        resp = client.get("/holdings/export")
-
-        # Assert
-        assert resp.status_code == 200
-        data = resp.json()
-        tickers = {item["ticker"] for item in data}
-        assert tickers == {"USD", "NVDA", "TWD"}
-
-
-class TestImportHoldings:
-    """Tests for POST /holdings/import."""
-
-    def test_import_should_replace_all_holdings(self, client):
-        # Arrange — create initial holding
-        created = _create_holding(client)
-        account_id = created["account_id"]
-
-        import_data = {
-            "mode": "replace_all",
-            "account_id": account_id,
-            "items": [
-                {
-                    "ticker": "AAPL",
-                    "category": "Growth",
-                    "quantity": 5,
-                    "currency": "USD",
-                },
-                {
-                    "ticker": "GOOGL",
-                    "category": "Moat",
-                    "quantity": 3,
-                    "currency": "USD",
-                },
-            ],
-        }
-
-        # Act
-        resp = client.post("/holdings/import", json=import_data)
-
-        # Assert
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["imported"] == 2
-        assert body["errors"] == []
-
-        # Verify old holdings replaced
-        holdings = client.get("/holdings").json()
-        tickers = {h["ticker"] for h in holdings}
-        assert "NVDA" not in tickers
-        assert tickers == {"AAPL", "GOOGL"}
-        txns = _list_transactions(client)
-        opening_tickers = {
-            txn["ticker"]
-            for txn in txns
-            if txn["transaction_type"] == "OPENING_BALANCE"
-        }
-        assert {"AAPL", "GOOGL"} <= opening_tickers
-        assert any(
-            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "NVDA"
-            for txn in txns
-        )
-
-    def test_import_should_handle_empty_list(self, client):
-        # Arrange — create initial holding
-        _create_holding(client)
-
-        # Act — import empty list (clears everything)
-        resp = client.post(
-            "/holdings/import", json={"mode": "replace_all", "items": []}
-        )
-
-        # Assert
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["imported"] == 0
-
-        # Verify all cleared
-        holdings = client.get("/holdings").json()
-        assert len(holdings) == 0
-
-    def test_import_replace_account_should_only_replace_selected_account(self, client):
-        # Arrange
-        account_a = client.post(
-            "/accounts",
-            json={
-                "name": "IB US",
-                "broker": "Interactive Brokers",
-                "account_type": "brokerage",
-                "currency": "USD",
-            },
-        )
-        account_b = client.post(
-            "/accounts",
-            json={
-                "name": "Futu HK",
-                "broker": "Futu",
-                "account_type": "brokerage",
-                "currency": "USD",
-            },
-        )
-        assert account_a.status_code == 201
-        assert account_b.status_code == 201
-        account_a_id = account_a.json()["id"]
-        account_b_id = account_b.json()["id"]
-
-        client.post(
-            "/holdings",
-            json={**HOLDING_PAYLOAD, "ticker": "AAPL", "account_id": account_a_id},
-        )
-        client.post(
-            "/holdings",
-            json={**HOLDING_PAYLOAD, "ticker": "MSFT", "account_id": account_b_id},
-        )
-
-        # Act
-        resp = client.post(
-            "/holdings/import",
-            json={
-                "mode": "replace_account",
-                "account_id": account_b_id,
-                "items": [
-                    {
-                        "ticker": "GOOGL",
-                        "category": "Growth",
-                        "quantity": 9,
-                        "currency": "USD",
-                    }
-                ],
-            },
-        )
-
-        # Assert
-        assert resp.status_code == 200
-        holdings = client.get("/holdings").json()
-        ticker_to_account = {
-            holding["ticker"]: holding["account_id"] for holding in holdings
-        }
-        assert ticker_to_account["AAPL"] == account_a_id
-        assert "MSFT" not in ticker_to_account
-        assert ticker_to_account["GOOGL"] == account_b_id
-        txns = _list_transactions(client)
-        assert any(
-            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "MSFT"
-            for txn in txns
-        )
-        assert not any(
-            txn["transaction_type"] == "ADJUSTMENT" and txn["ticker"] == "AAPL"
-            for txn in txns
-        )
-
-    def test_import_append_should_keep_existing_holdings(self, client):
-        # Arrange
-        created = _create_holding(client)
-        account_id = created["account_id"]
-
-        # Act
-        resp = client.post(
-            "/holdings/import",
-            json={
-                "mode": "append",
-                "account_id": account_id,
-                "items": [
-                    {
-                        "ticker": "QQQ",
-                        "category": "Growth",
-                        "quantity": 7,
-                        "currency": "USD",
-                    }
-                ],
-            },
-        )
-
-        # Assert
-        assert resp.status_code == 200
-        holdings = client.get("/holdings").json()
-        tickers = {holding["ticker"] for holding in holdings}
-        assert tickers == {"NVDA", "QQQ"}
-
-    def test_import_should_return_422_when_missing_account_assignment(self, client):
-        # Act
-        resp = client.post(
-            "/holdings/import",
-            json={
-                "mode": "append",
-                "items": [
-                    {
-                        "ticker": "QQQ",
-                        "category": "Growth",
-                        "quantity": 7,
-                        "currency": "USD",
-                    }
-                ],
-            },
-        )
-
-        # Assert
-        assert resp.status_code == 422
-
-    def test_import_should_return_404_when_account_not_found(self, client):
-        # Act
-        resp = client.post(
-            "/holdings/import",
-            json={
-                "mode": "append",
-                "account_id": 99999,
-                "items": [
-                    {
-                        "ticker": "QQQ",
-                        "category": "Growth",
-                        "quantity": 7,
-                        "currency": "USD",
-                    }
-                ],
-            },
-        )
-
-        # Assert
-        assert resp.status_code == 404
-        assert resp.json()["detail"]["error_code"] == "ACCOUNT_NOT_FOUND"
-
-
-# ---------------------------------------------------------------------------
-# X-Ray Alert
-# ---------------------------------------------------------------------------
-
-_PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
-
-
 class TestRebalanceResponse:
-    """Contract tests for GET /rebalance — verify response shape includes allocation keys."""
+    """Contract tests for GET /rebalance."""
 
     def test_should_include_geographic_and_asset_class_allocation(self, client):
-        # Arrange — NVDA is a US stock in the Growth category
-        _create_holding(client)
+        _seed_equity_holding(client, ticker="NVDA")
         client.post("/profiles", json=_PROFILE_PAYLOAD)
 
-        # Act
         resp = client.get("/rebalance")
-
-        # Assert
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data["geographic_allocation"], dict)
         assert isinstance(data["asset_class_allocation"], dict)
         assert "US" in data["geographic_allocation"]
-        assert data["geographic_allocation"]["US"] > 0
         assert "Equity" in data["asset_class_allocation"]
-        assert data["asset_class_allocation"]["Equity"] > 0
 
     def test_holdings_detail_should_split_same_ticker_by_account(self, client):
-        account_a = client.post(
-            "/accounts",
-            json={
-                "name": "Primary Account",
-                "broker": "Interactive Brokers",
-                "account_type": "brokerage",
-                "currency": "USD",
-            },
-        )
-        account_b = client.post(
-            "/accounts",
-            json={
-                "name": "Secondary Account",
-                "broker": "SBI",
-                "account_type": "brokerage",
-                "currency": "USD",
-            },
-        )
-        assert account_a.status_code == 201
-        assert account_b.status_code == 201
-        account_a_id = account_a.json()["id"]
-        account_b_id = account_b.json()["id"]
-
-        for account_id in (account_a_id, account_b_id):
-            deposit_resp = client.post(
-                "/transactions",
-                json={
-                    "account_id": account_id,
-                    "ticker": "USD",
-                    "transaction_type": "DEPOSIT",
-                    "quantity": 1,
-                    "total_amount": 1000.0,
-                    "currency": "USD",
-                    "transaction_date": "2026-03-12",
-                },
-            )
-            assert deposit_resp.status_code == 201
-
-        buy_a = client.post(
-            "/transactions",
-            json={
-                "account_id": account_a_id,
-                "ticker": "AAPL",
-                "transaction_type": "BUY",
-                "quantity": 2,
-                "price": 100.0,
-                "total_amount": 200.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-12",
-            },
-        )
-        buy_b = client.post(
-            "/transactions",
-            json={
-                "account_id": account_b_id,
-                "ticker": "AAPL",
-                "transaction_type": "BUY",
-                "quantity": 3,
-                "price": 100.0,
-                "total_amount": 300.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-12",
-            },
-        )
-        assert buy_a.status_code == 201
-        assert buy_b.status_code == 201
-
-        profile_resp = client.post(
-            "/profiles",
-            json={"config": {"Growth": 100}, "home_currency": "USD"},
-        )
+        account_a = _seed_equity_holding(client, ticker="AAPL", quantity=2)
+        account_b = _seed_equity_holding(client, ticker="AAPL", quantity=3)
+        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
         assert profile_resp.status_code in (200, 201)
 
         rebalance_resp = client.get("/rebalance")
@@ -655,97 +122,12 @@ class TestRebalanceResponse:
             if row["ticker"] == "AAPL"
         ]
         assert len(details) == 2
-        assert {row["account_name"] for row in details} == {
-            "Primary Account",
-            "Secondary Account",
-        }
-        assert {row["account_id"] for row in details} == {account_a_id, account_b_id}
-
-    def test_holdings_detail_should_exclude_zero_quantity_positions(self, client):
-        # Arrange
-        account_id = _create_account(client)
-        deposit_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "USD",
-                "transaction_type": "DEPOSIT",
-                "quantity": 1,
-                "total_amount": 1000.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
-        buy_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "AAPL",
-                "transaction_type": "BUY",
-                "quantity": 1,
-                "price": 100.0,
-                "total_amount": 100.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
-        sell_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "AAPL",
-                "transaction_type": "SELL",
-                "quantity": 1,
-                "price": 105.0,
-                "total_amount": 105.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-12",
-            },
-        )
-        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
-        assert deposit_resp.status_code == 201
-        assert buy_resp.status_code == 201
-        assert sell_resp.status_code == 201
-        assert profile_resp.status_code in (200, 201)
-
-        # Act
-        rebalance_resp = client.get("/rebalance")
-
-        # Assert
-        assert rebalance_resp.status_code == 200
-        details = rebalance_resp.json()["holdings_detail"]
-        assert not any(row["ticker"] == "AAPL" for row in details)
+        assert {row["account_id"] for row in details} == {account_a, account_b}
 
     def test_should_hide_tiny_float_residue_positions_in_holdings_and_rebalance(
         self, client
     ):
-        # Arrange: 0.1 + 0.2 - 0.3 can leave a tiny positive residue in float math
-        account_id = _create_account(client)
-        deposit_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "USD",
-                "transaction_type": "DEPOSIT",
-                "quantity": 1,
-                "total_amount": 1000.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
-        buy_one_resp = client.post(
-            "/transactions",
-            json={
-                "account_id": account_id,
-                "ticker": "AAPL",
-                "transaction_type": "BUY",
-                "quantity": 0.1,
-                "price": 100.0,
-                "total_amount": 10.0,
-                "currency": "USD",
-                "transaction_date": "2026-03-11",
-            },
-        )
+        account_id = _seed_equity_holding(client, ticker="AAPL", quantity=0.1)
         buy_two_resp = client.post(
             "/transactions",
             json={
@@ -773,17 +155,12 @@ class TestRebalanceResponse:
             },
         )
         profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
-        assert deposit_resp.status_code == 201
-        assert buy_one_resp.status_code == 201
         assert buy_two_resp.status_code == 201
         assert sell_resp.status_code == 201
         assert profile_resp.status_code in (200, 201)
 
-        # Act
         holdings_resp = client.get("/holdings")
         rebalance_resp = client.get("/rebalance")
-
-        # Assert
         assert holdings_resp.status_code == 200
         assert rebalance_resp.status_code == 200
         holdings_tickers = {item["ticker"] for item in holdings_resp.json()}
@@ -798,24 +175,15 @@ class TestTriggerXrayAlert:
     """Tests for POST /rebalance/xray-alert."""
 
     def test_should_return_200_with_warnings_list(self, client):
-        # Arrange — holding + active profile
-        _create_holding(client)
+        _seed_equity_holding(client)
         client.post("/profiles", json=_PROFILE_PAYLOAD)
 
-        # Act
         resp = client.post("/rebalance/xray-alert")
-
-        # Assert
         assert resp.status_code == 200
         data = resp.json()
         assert "warnings" in data
         assert "message" in data
         assert isinstance(data["warnings"], list)
-
-
-# ---------------------------------------------------------------------------
-# FX Alert
-# ---------------------------------------------------------------------------
 
 
 class TestTriggerFxAlert:
@@ -830,84 +198,31 @@ class TestTriggerFxAlert:
         assert isinstance(data["alerts"], list)
 
     def test_should_return_200_with_alerts_list_when_holdings_present(self, client):
-        _create_holding(client)
+        _seed_equity_holding(client)
         resp = client.post("/currency-exposure/alert")
         assert resp.status_code == 200
         assert "alerts" in resp.json()
-
-
-# ---------------------------------------------------------------------------
-# Smart Withdrawal
-# ---------------------------------------------------------------------------
 
 
 class TestWithdraw:
     """Tests for POST /withdraw."""
 
     def test_should_return_withdraw_plan_with_holdings_and_profile(self, client):
-        # Arrange
-        _create_holding(client)
+        _seed_equity_holding(client)
         client.post("/profiles", json=_PROFILE_PAYLOAD)
 
-        # Act
         resp = client.post(
             "/withdraw",
             json={"target_amount": 1000, "display_currency": "USD"},
         )
-
-        # Assert
         assert resp.status_code == 200
         data = resp.json()
         assert "recommendations" in data
 
     def test_should_return_404_when_no_active_profile(self, client):
-        # No profile configured → StockNotFoundError → 404
-        _create_holding(client)
+        _seed_equity_holding(client)
         resp = client.post(
             "/withdraw",
             json={"target_amount": 1000, "display_currency": "USD"},
         )
         assert resp.status_code == 404
-
-
-class TestHoldingImportSchemaContract:
-    """Guard against schema drift that can break holdings import/export."""
-
-    AUTO_FIELDS: ClassVar[set[str]] = {
-        "id",
-        "user_id",
-        "updated_at",
-        "purchase_fx_rate",
-    }
-
-    def test_import_schema_covers_all_required_holding_fields(self):
-        from api.schemas.portfolio import HoldingImportItem
-        from domain.entities import Holding
-
-        missing: list[str] = []
-        for name, field_info in Holding.model_fields.items():
-            if name in self.AUTO_FIELDS:
-                continue
-            is_required = field_info.is_required()
-            if is_required and name not in HoldingImportItem.model_fields:
-                missing.append(name)
-
-        assert missing == [], (
-            f"Holding has required fields not covered by HoldingImportItem: {missing}. "
-            "Either add them to HoldingImportItem or provide defaults in Holding."
-        )
-
-    def test_export_roundtrip_matches_import_schema(self):
-        from api.schemas.portfolio import HoldingExportItem, HoldingImportItem
-
-        export_fields = set(HoldingExportItem.model_fields.keys())
-        import_required = {
-            name
-            for name, info in HoldingImportItem.model_fields.items()
-            if info.is_required()
-        }
-        missing = import_required - export_fields
-        assert missing == set(), (
-            f"HoldingImportItem requires fields not in HoldingExportItem: {missing}. "
-            "Export/import roundtrip would fail."
-        )

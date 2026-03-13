@@ -4,6 +4,7 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 
 import json as _json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 from sqlmodel import Session, select
@@ -519,8 +520,13 @@ def _do_calculate_rebalance(
             len(xray_tickers),
             len(all_xray_tickers),
         )
-        prewarm_etf_holdings_batch(xray_tickers)
-        prewarm_etf_sector_weights_batch(xray_tickers)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(prewarm_etf_holdings_batch, xray_tickers),
+                pool.submit(prewarm_etf_sector_weights_batch, xray_tickers),
+            ]
+            for future in futures:
+                future.result()
 
     xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
     xray_analyzed_value = 0.0

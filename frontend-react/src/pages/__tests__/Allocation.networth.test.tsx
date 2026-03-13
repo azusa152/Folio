@@ -56,9 +56,6 @@ vi.mock("@/api/hooks/useNetWorth", () => ({
   useSeedNetWorth: () => mockUseSeedNetWorth(),
 }))
 
-vi.mock("@/components/allocation/holdings/AddHoldingSheet", () => ({
-  AddHoldingSheet: () => null,
-}))
 vi.mock("@/components/allocation/networth/AddNetWorthItemSheet", () => ({
   AddNetWorthItemSheet: () => null,
 }))

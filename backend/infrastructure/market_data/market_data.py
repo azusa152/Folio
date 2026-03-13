@@ -88,6 +88,8 @@ from domain.constants import (
     DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
+    DISK_KEY_YF_INFO,
+    DISK_MOAT_FAILURE_TTL,
     DISK_MOAT_PERSISTENT_TTL,
     DISK_MOAT_TTL,
     DISK_PRICE_HISTORY_TTL,
@@ -95,6 +97,7 @@ from domain.constants import (
     DISK_ROGUE_WAVE_TTL,
     DISK_SECTOR_TTL,
     DISK_SIGNALS_TTL,
+    DISK_YF_INFO_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
     EARNINGS_CACHE_MAXSIZE,
@@ -206,6 +209,14 @@ _yf_retry = retry(
 def _is_error_dict(result) -> bool:
     """判斷 fetcher 結果是否為錯誤回應（含 'error' 鍵的 dict）。"""
     return isinstance(result, dict) and "error" in result
+
+
+def _is_yf_info_error(result) -> bool:
+    """判斷 yfinance info 是否為不適合寫入 L2 的不完整結果。"""
+    if not isinstance(result, dict) or not result:
+        return True
+    # quoteType 缺失時常見於暫時性/局部失敗，避免 24h 汙染 L2。
+    return "quoteType" not in result
 
 
 def _is_dividend_error(result) -> bool:
@@ -628,19 +639,23 @@ def _yf_calendar(ticker: str):
 
 
 @_yf_retry
-def _yf_info(ticker: str):
-    """取得 yfinance 股票 info（含重試）。
-    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
-    """
-    cached = _yf_info_cache.get(ticker)
-    if cached is not None:
-        return cached
-
+def _fetch_yf_info_from_yf(ticker: str) -> dict:
+    """實際從 yfinance 取得股票 info（供 _cached_fetch 使用）。"""
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
-    info = stock.info or {}
-    _yf_info_cache[ticker] = info
-    return info
+    return stock.info or {}
+
+
+def _yf_info(ticker: str) -> dict:
+    """取得 yfinance 股票 info（L1 + L2 快取，含重試）。"""
+    return _cached_fetch(
+        _yf_info_cache,
+        ticker,
+        DISK_KEY_YF_INFO,
+        DISK_YF_INFO_TTL,
+        _fetch_yf_info_from_yf,
+        is_error=_is_yf_info_error,
+    )
 
 
 def detect_is_etf(ticker: str) -> bool:
@@ -1312,6 +1327,9 @@ def analyze_moat_trend(ticker: str) -> dict:
                 DISK_MOAT_PERSISTENT_TTL,
             )
     else:
+        fail_key = f"{DISK_KEY_MOAT}:fail:{ticker}"
+        with contextlib.suppress(Exception):
+            _disk_cache.delete(fail_key)
         with _moat_failure_lock:
             _moat_failure_counts.pop(ticker, None)
 
@@ -1328,15 +1346,33 @@ def prewarm_moat_batch(
     """
 
     results: dict[str, dict | None] = {}
+    pending_tickers: list[str] = []
+    for ticker in tickers:
+        fail_key = f"{DISK_KEY_MOAT}:fail:{ticker}"
+        fail_cached = _disk_get(fail_key)
+        if fail_cached is not None and _is_moat_error(fail_cached):
+            _moat_cache[ticker] = fail_cached
+            results[ticker] = fail_cached
+            continue
+        pending_tickers.append(ticker)
+
+    if not pending_tickers:
+        return results
+
     with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(analyze_moat_trend, t): t for t in tickers}
+        futures = {executor.submit(analyze_moat_trend, t): t for t in pending_tickers}
         completed, timed_out = _run_batch_with_timeout(
             futures, executor, label="護城河預熱"
         )
     for future in completed:
         ticker = completed[future]
         try:
-            results[ticker] = future.result()
+            result = future.result()
+            results[ticker] = result
+            if result is not None and _is_moat_error(result):
+                fail_key = f"{DISK_KEY_MOAT}:fail:{ticker}"
+                with contextlib.suppress(Exception):
+                    _disk_cache.set(fail_key, result, expire=DISK_MOAT_FAILURE_TTL)
         except Exception as exc:
             logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
             results[ticker] = None

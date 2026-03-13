@@ -2,51 +2,13 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
-from typing import Literal
-
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 
 from domain.enums import StockCategory
 
 # ---------------------------------------------------------------------------
 # Request Schemas
 # ---------------------------------------------------------------------------
-
-
-class HoldingRequest(BaseModel):
-    """POST /holdings 請求 Body。"""
-
-    ticker: str
-    coingecko_id: str | None = None
-    category: StockCategory
-    quantity: float
-    cost_basis: float | None = None
-    broker: str | None = None
-    account_id: int = Field(..., description="帳戶 ID（必填）")
-    currency: str = "USD"
-    account_type: str | None = None
-    is_cash: bool = False
-
-
-class UpdateHoldingRequest(BaseModel):
-    """PUT /holdings/{id} 請求 Body — 所有欄位均為選填，僅更新提供的欄位。"""
-
-    quantity: float | None = Field(default=None, gt=0)
-    cost_basis: float | None = Field(default=None, ge=0)
-    broker: str | None = None
-    account_id: int | None = None
-    category: StockCategory | None = None
-    coingecko_id: str | None = None
-
-
-class CashHoldingRequest(BaseModel):
-    """POST /holdings/cash 請求 Body。"""
-
-    currency: str  # e.g. "USD", "TWD"
-    amount: float
-    broker: str | None = None
-    account_id: int = Field(..., description="帳戶 ID（必填）")
-    account_type: str | None = None
 
 
 class WithdrawRequest(BaseModel):
@@ -78,68 +40,6 @@ class HoldingResponse(BaseModel):
     is_cash: bool
     purchase_fx_rate: float | None = None
     updated_at: str
-
-
-class HoldingImportItem(BaseModel):
-    """POST /holdings/import 單筆匯入資料。"""
-
-    ticker: str = Field(..., min_length=1, max_length=20)
-    coingecko_id: str | None = Field(default=None, max_length=100)
-    category: str = Field(..., min_length=1, max_length=50)
-    quantity: float = Field(..., gt=0)
-    cost_basis: float | None = Field(default=None, ge=0)
-    broker: str | None = Field(default=None, max_length=100)
-    account_id: int | None = None
-    currency: str = Field(default="USD", min_length=3, max_length=3)
-    account_type: str | None = Field(default=None, max_length=100)
-    is_cash: bool = False
-
-    @field_validator("ticker")
-    @classmethod
-    def ticker_must_be_uppercase(cls, v: str) -> str:
-        """Ticker must be uppercase."""
-        return v.upper().strip()
-
-    @field_validator("currency")
-    @classmethod
-    def currency_must_be_uppercase(cls, v: str) -> str:
-        """Currency must be uppercase."""
-        return v.upper().strip()
-
-
-class HoldingImportRequest(BaseModel):
-    """POST /holdings/import request payload."""
-
-    mode: Literal["replace_all", "replace_account", "append"] = "replace_all"
-    account_id: int | None = None
-    items: list[HoldingImportItem]
-
-    @model_validator(mode="after")
-    def validate_account_for_replace_account(self) -> "HoldingImportRequest":
-        if self.mode == "replace_account" and self.account_id is None:
-            raise ValueError("account_id is required when mode is replace_account")
-        if self.account_id is None and any(
-            item.account_id is None for item in self.items
-        ):
-            raise ValueError(
-                "account_id is required either at request level or on every item"
-            )
-        return self
-
-
-class HoldingExportItem(BaseModel):
-    """匯出持倉單一紀錄。"""
-
-    ticker: str
-    coingecko_id: str | None = None
-    category: str
-    quantity: float
-    cost_basis: float | None = None
-    broker: str | None = None
-    account_id: int | None = None
-    currency: str = "USD"
-    account_type: str | None = None
-    is_cash: bool = False
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ from sqlmodel import Session, select
 from domain.constants import DEFAULT_ACCOUNT_NAME, DEFAULT_USER_ID
 from domain.entities import Account, Holding, Transaction
 from domain.enums import StockCategory, TransactionType
-from infrastructure.database import engine
+from infrastructure.database import create_db_and_tables, engine
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -72,6 +72,7 @@ def _get_or_prepare_default_account(session: Session) -> Account:
 
 
 def migrate(dry_run: bool = False) -> dict[str, int]:
+    create_db_and_tables()
     stats: dict[str, int] = {
         "orphan_holdings": 0,
         "orphan_transactions": 0,

@@ -238,7 +238,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore migrate-ledger migrate-ledger-dry
+.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -259,10 +259,16 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 	echo "Restored from $$file"
 
 migrate-ledger: .venv-check ## Run ledger migration (backfill opening balances)
-	cd $(BACKEND_DIR) && uv run python -m scripts.migrate_ledger
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger
 
 migrate-ledger-dry: .venv-check ## Dry-run ledger migration
-	cd $(BACKEND_DIR) && uv run python -m scripts.migrate_ledger --dry-run
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger --dry-run
+
+purge-legacy: .venv-check ## Purge orphaned/zero-qty legacy holding data (run after ledger migration)
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings
+
+purge-legacy-dry: .venv-check ## Dry-run purge (preview without commit)
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings --dry-run
 
 # ---------------------------------------------------------------------------
 #  Utilities

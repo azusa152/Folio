@@ -181,30 +181,37 @@ def test_account_positions_should_return_holdings_for_selected_account(
     account_a_id = account_a.json()["id"]
     account_b_id = account_b.json()["id"]
 
-    create_a = client.post(
-        "/holdings",
-        json={
-            "ticker": "AAPL",
-            "category": "Growth",
-            "quantity": 2,
-            "cost_basis": 190,
-            "account_id": account_a_id,
-            "currency": "USD",
-        },
-    )
-    create_b = client.post(
-        "/holdings",
-        json={
-            "ticker": "TSLA",
-            "category": "Growth",
-            "quantity": 1,
-            "cost_basis": 230,
-            "account_id": account_b_id,
-            "currency": "USD",
-        },
-    )
-    assert create_a.status_code == 200
-    assert create_b.status_code == 200
+    for account_id, ticker, quantity, price in (
+        (account_a_id, "AAPL", 2, 190.0),
+        (account_b_id, "TSLA", 1, 230.0),
+    ):
+        deposit_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "USD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 5000.0,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        buy_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": ticker,
+                "transaction_type": "BUY",
+                "quantity": quantity,
+                "price": price,
+                "total_amount": quantity * price,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        assert deposit_resp.status_code == 201
+        assert buy_resp.status_code == 201
 
     resp = client.get(f"/accounts/{account_a_id}/positions")
     assert resp.status_code == 200

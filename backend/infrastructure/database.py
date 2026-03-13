@@ -65,6 +65,8 @@ def _run_migrations() -> None:
         "ALTER TABLE holding ADD COLUMN broker VARCHAR;",
         # Holding: 新增幣別欄位
         "ALTER TABLE holding ADD COLUMN currency VARCHAR DEFAULT 'USD';",
+        # Holding: 一次性正規化 ticker（避免查詢大小寫回退掃描）
+        "UPDATE holding SET ticker = UPPER(TRIM(ticker)) WHERE ticker IS NOT NULL;",
         # Holding: 根據 ticker 後綴回填幣別
         "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
         "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
@@ -278,7 +280,9 @@ def _run_ledger_indexes() -> None:
 
     migrations = [
         "CREATE INDEX IF NOT EXISTS ix_holding_account_ticker ON holding (account_id, ticker);",
+        "CREATE INDEX IF NOT EXISTS ix_holding_account_cash_currency ON holding (account_id, is_cash, currency);",
         'CREATE INDEX IF NOT EXISTS ix_transaction_account_ticker ON "transaction" (account_id, ticker);',
+        'CREATE INDEX IF NOT EXISTS ix_transaction_date ON "transaction" (transaction_date);',
     ]
 
     with engine.connect() as conn:

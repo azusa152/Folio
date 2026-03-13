@@ -1308,13 +1308,24 @@ def find_stock_holding_by_account_and_ticker(
 ) -> Holding | None:
     """查詢指定帳戶與代號的非現金持倉。"""
     normalized_ticker = ticker.upper().strip()
-    stmt = (
+    exact_stmt = (
         select(Holding)
         .where(Holding.account_id == account_id)
-        .where(func.upper(Holding.ticker) == normalized_ticker)
+        .where(Holding.ticker == normalized_ticker)
         .where(Holding.is_cash == False)  # noqa: E712
     )
-    return session.exec(stmt).first()
+    exact = session.exec(exact_stmt).first()
+    if exact is not None:
+        return exact
+
+    # Backward-compat fallback for legacy rows that were not normalized to uppercase.
+    nocase_stmt = (
+        select(Holding)
+        .where(Holding.account_id == account_id)
+        .where(Holding.ticker.collate("NOCASE") == normalized_ticker)
+        .where(Holding.is_cash == False)  # noqa: E712
+    )
+    return session.exec(nocase_stmt).first()
 
 
 def save_holding(session: Session, holding: Holding) -> Holding:

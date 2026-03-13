@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
-from sqlmodel import select
+from sqlalchemy import case
+from sqlmodel import func, select
 
 if TYPE_CHECKING:
     from sqlmodel import Session
@@ -389,56 +389,144 @@ def _reverse_cost_basis(
 
 def verify_positions(session: Session) -> list[dict]:
     """Compare materialized holdings with transaction-derived positions."""
-    computed: dict[tuple[int, str, bool], float] = defaultdict(float)
+    computed: dict[tuple[int, str, bool], float] = {}
 
-    transactions = session.exec(select(Transaction)).all()
-    for txn in transactions:
-        if txn.account_id is None:
+    txn_type_col = func.upper(Transaction.transaction_type)
+    ticker_col = func.upper(Transaction.ticker)
+    currency_col = func.upper(Transaction.currency)
+    is_cash_ticker_expr = ticker_col == currency_col
+    is_stock_snapshot_expr = txn_type_col.in_(
+        [
+            TransactionType.OPENING_BALANCE.value,
+            TransactionType.ADJUSTMENT.value,
+        ]
+    )
+    include_cash_expr = (~is_stock_snapshot_expr) | is_cash_ticker_expr
+    net_credit_expr = Transaction.total_amount - Transaction.fee
+    net_debit_expr = Transaction.total_amount + Transaction.fee
+
+    cash_delta_expr = case(
+        (
+            include_cash_expr & (txn_type_col == TransactionType.BUY.value),
+            -net_debit_expr,
+        ),
+        (
+            include_cash_expr
+            & txn_type_col.in_(
+                [
+                    TransactionType.SELL.value,
+                    TransactionType.DIVIDEND.value,
+                    TransactionType.DEPOSIT.value,
+                    TransactionType.OPENING_BALANCE.value,
+                    TransactionType.TRANSFER_IN.value,
+                    TransactionType.ADJUSTMENT.value,
+                ]
+            ),
+            net_credit_expr,
+        ),
+        (
+            include_cash_expr
+            & txn_type_col.in_(
+                [TransactionType.WITHDRAWAL.value, TransactionType.TRANSFER_OUT.value]
+            ),
+            -net_debit_expr,
+        ),
+        else_=0.0,
+    )
+
+    cash_rows = session.exec(
+        select(
+            Transaction.account_id,
+            currency_col.label("currency"),
+            func.sum(cash_delta_expr).label("expected"),
+        )
+        .where(Transaction.account_id.isnot(None))
+        .group_by(Transaction.account_id, currency_col)
+    ).all()
+    for account_id, currency, expected in cash_rows:
+        if account_id is None:
             continue
-        txn_type = TransactionType(txn.transaction_type)
-        ticker = str(txn.ticker).upper().strip()
-        currency = str(txn.currency).upper().strip()
-        is_cash_ticker = _is_cash_ticker(ticker, currency)
-        skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not is_cash_ticker
+        expected_val = float(expected or 0.0)
+        if abs(expected_val) <= 1e-6:
+            continue
+        computed[(int(account_id), str(currency), True)] = expected_val
 
-        if not skip_cash:
-            cash_key = (int(txn.account_id), currency, True)
-            computed[cash_key] += _cash_delta(txn_type, txn.model_dump())
+    stock_delta_expr = case(
+        (
+            (~is_cash_ticker_expr)
+            & txn_type_col.in_(
+                [TransactionType.BUY.value, TransactionType.OPENING_BALANCE.value]
+            ),
+            Transaction.quantity,
+        ),
+        (
+            (~is_cash_ticker_expr) & (txn_type_col == TransactionType.SELL.value),
+            -Transaction.quantity,
+        ),
+        (
+            (~is_cash_ticker_expr)
+            & (txn_type_col == TransactionType.ADJUSTMENT.value)
+            & (Transaction.total_amount >= 0),
+            Transaction.quantity,
+        ),
+        (
+            (~is_cash_ticker_expr)
+            & (txn_type_col == TransactionType.ADJUSTMENT.value)
+            & (Transaction.total_amount < 0),
+            -Transaction.quantity,
+        ),
+        else_=0.0,
+    )
 
-        if txn_type in STOCK_MODIFY_TYPES and not is_cash_ticker:
-            quantity = float(txn.quantity or 0)
-            stock_delta = 0.0
-            if txn_type in (TransactionType.BUY, TransactionType.OPENING_BALANCE):
-                stock_delta = quantity
-            elif txn_type == TransactionType.SELL:
-                stock_delta = -quantity
-            elif txn_type == TransactionType.ADJUSTMENT:
-                stock_delta = (
-                    quantity if float(txn.total_amount or 0) >= 0 else -quantity
-                )
-            stock_key = (int(txn.account_id), ticker, False)
-            computed[stock_key] += stock_delta
+    stock_rows = session.exec(
+        select(
+            Transaction.account_id,
+            ticker_col.label("ticker"),
+            func.sum(stock_delta_expr).label("expected"),
+        )
+        .where(Transaction.account_id.isnot(None))
+        .group_by(Transaction.account_id, ticker_col)
+    ).all()
+    for account_id, ticker, expected in stock_rows:
+        if account_id is None:
+            continue
+        expected_val = float(expected or 0.0)
+        if abs(expected_val) <= 1e-6:
+            continue
+        key = (int(account_id), str(ticker), False)
+        computed[key] = computed.get(key, 0.0) + expected_val
 
     discrepancies: list[dict] = []
-    holdings = session.exec(select(Holding)).all()
-    for holding in holdings:
-        if holding.account_id is None:
+    holding_key_expr = case(
+        (Holding.is_cash == True, func.upper(Holding.currency)),  # noqa: E712
+        else_=func.upper(Holding.ticker),
+    )
+    holding_rows = session.exec(
+        select(
+            Holding.account_id,
+            holding_key_expr.label("key_ticker"),
+            Holding.is_cash,
+            func.sum(Holding.quantity).label("actual"),
+        )
+        .where(Holding.account_id.isnot(None))
+        .group_by(Holding.account_id, holding_key_expr, Holding.is_cash)
+    ).all()
+
+    for account_id, key_ticker, is_cash, actual in holding_rows:
+        if account_id is None:
             continue
-        normalized_ticker = str(holding.ticker).upper().strip()
-        normalized_currency = str(holding.currency).upper().strip()
-        key_ticker = normalized_currency if bool(holding.is_cash) else normalized_ticker
-        key = (int(holding.account_id), key_ticker, bool(holding.is_cash))
+        key = (int(account_id), str(key_ticker), bool(is_cash))
         expected = computed.pop(key, 0.0)
-        actual = float(holding.quantity or 0)
-        if abs(actual - expected) > 1e-6:
+        actual_val = float(actual or 0.0)
+        if abs(actual_val - expected) > 1e-6:
             discrepancies.append(
                 {
-                    "account_id": holding.account_id,
-                    "ticker": holding.ticker,
-                    "is_cash": holding.is_cash,
-                    "materialized": actual,
+                    "account_id": int(account_id),
+                    "ticker": str(key_ticker),
+                    "is_cash": bool(is_cash),
+                    "materialized": actual_val,
                     "computed": expected,
-                    "diff": round(actual - expected, 8),
+                    "diff": round(actual_val - expected, 8),
                 }
             )
 

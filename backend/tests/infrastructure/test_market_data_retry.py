@@ -44,7 +44,9 @@ from infrastructure.market_data.market_data import (  # noqa: E402
     _is_fg_component_in_cooldown,
     _is_moat_error,
     _is_transient_yf_error,
+    _is_yf_info_error,
     _mark_fg_component_failure,
+    _yf_info,
     _yf_retry,
     get_etf_sector_weights,
     get_etf_top_holdings,
@@ -316,6 +318,34 @@ class TestIsErrorDict:
 
     def test_should_return_false_for_empty_dict(self):
         assert _is_error_dict({}) is False
+
+
+class TestIsYfInfoError:
+    """Verify _is_yf_info_error rejects sparse/invalid info payloads."""
+
+    def test_should_return_true_for_empty_or_non_dict(self):
+        assert _is_yf_info_error({}) is True
+        assert _is_yf_info_error(None) is True
+        assert _is_yf_info_error("oops") is True
+
+    def test_should_return_true_when_quote_type_missing(self):
+        assert _is_yf_info_error({"symbol": "AAPL"}) is True
+
+    def test_should_return_false_for_valid_info(self):
+        assert _is_yf_info_error({"quoteType": "EQUITY"}) is False
+
+
+class TestYfInfoCacheWiring:
+    """_yf_info must use _cached_fetch with error-aware callback."""
+
+    @patch("infrastructure.market_data.market_data._cached_fetch", return_value={})
+    def test_yf_info_should_pass_is_error_callback(self, mock_cached_fetch):
+        _yf_info("AAPL")
+        is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
+        assert callable(is_error_cb)
+        assert is_error_cb({}) is True
+        assert is_error_cb({"symbol": "AAPL"}) is True
+        assert is_error_cb({"quoteType": "ETF"}) is False
 
 
 # ---------------------------------------------------------------------------
