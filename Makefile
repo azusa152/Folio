@@ -15,6 +15,7 @@
 #    make backend-dev      Start backend with hot-reload (local development)
 #    make backend-lint     Ruff check + format check
 #    make backend-test     pytest (in-memory SQLite)
+#    make backend-test-quick Fast test run — no coverage, for local iteration
 #    make backend-typecheck pyright static type check
 #    make backend-format   Ruff format
 #    make backend-security pip-audit vulnerability scan
@@ -22,6 +23,7 @@
 #  Frontend (granular):
 #    make frontend-lint    ESLint
 #    make frontend-typecheck TypeScript type check
+#    make frontend-test    Run frontend tests with coverage (Vitest)
 #    make frontend-dev     Start Vite dev server
 #    make frontend-build   Production build (run generate-api first if types are stale)
 #    make frontend-security npm audit (high severity)
@@ -29,6 +31,7 @@
 #  CI Integrity:
 #    make check-api-spec   Verify OpenAPI spec matches backend (mirrors CI api-spec job)
 #    make check-constants  Verify backend/frontend constant sync
+#    make check-i18n       Verify backend/frontend locale key parity
 #    make check-agent-doc-tokens Verify AI agent doc token budgets
 #    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
@@ -48,6 +51,12 @@
 #    make restart-all      Restart all services (down + up, no rebuild)
 #    make rebuild          Rebuild images and restart all services
 #    make logs             Tail backend logs
+#
+#  Database:
+#    make migrate-ledger   Run ledger migration (backfill opening balances)
+#    make migrate-ledger-dry Dry-run ledger migration
+#    make purge-legacy     Purge orphaned/zero-qty legacy data + drop net worth tables
+#    make purge-legacy-dry Dry-run purge (preview without commit)
 #
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
