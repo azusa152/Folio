@@ -1,6 +1,7 @@
 """Tests for the purge_legacy_holdings script."""
 
 from datetime import date
+from typing import Any, cast
 
 import pytest
 from sqlalchemy import inspect, text
@@ -146,10 +147,10 @@ class TestPurgeLegacyHoldings:
     ) -> None:
         engine = db_session.get_bind()
         with engine.begin() as conn:
-            conn.execute(
+            cast("Any", conn).execute(
                 text("CREATE TABLE IF NOT EXISTS networthitem (id INTEGER PRIMARY KEY)")
             )
-            conn.execute(
+            cast("Any", conn).execute(
                 text(
                     "CREATE TABLE IF NOT EXISTS networthsnapshot (id INTEGER PRIMARY KEY)"
                 )
@@ -168,7 +169,7 @@ class TestPurgeLegacyHoldings:
     ) -> None:
         engine = db_session.get_bind()
         with engine.begin() as conn:
-            conn.execute(
+            cast("Any", conn).execute(
                 text("CREATE TABLE IF NOT EXISTS networthitem (id INTEGER PRIMARY KEY)")
             )
 
