@@ -19,7 +19,7 @@ from domain.constants import (
     ERROR_NET_WORTH_ITEM_NOT_FOUND,
     NET_WORTH_STALE_DAYS,
 )
-from domain.entities import Holding, NetWorthItem, NetWorthSnapshot, PortfolioSnapshot
+from domain.entities import Holding, NetWorthItem, NetWorthSnapshot
 from i18n import t
 from infrastructure.market_data import get_exchange_rates
 from infrastructure.repositories import find_holdings_for_active_accounts
@@ -171,12 +171,6 @@ def delete_item(session: Session, item_id: int, lang: str) -> dict:
     return {"message": t("api.net_worth_item_deleted", lang=lang, name=item.name)}
 
 
-def _get_latest_portfolio_snapshot(session: Session) -> PortfolioSnapshot | None:
-    return session.exec(
-        select(PortfolioSnapshot).order_by(desc(PortfolioSnapshot.snapshot_date))
-    ).first()
-
-
 def _list_user_holdings(session: Session) -> list[Holding]:
     return list(
         find_holdings_for_active_accounts(
@@ -185,37 +179,6 @@ def _list_user_holdings(session: Session) -> list[Holding]:
             user_id=DEFAULT_USER_ID,
         )
     )
-
-
-def _calculate_investment_from_holdings(
-    holdings: list[Holding], display_currency: str, include_cash: bool = True
-) -> float:
-    total = 0.0
-    for holding in holdings:
-        if not include_cash and holding.is_cash:
-            continue
-        base_amount = (
-            float(holding.quantity)
-            if holding.is_cash
-            else float(holding.quantity) * float(holding.cost_basis or 0.0)
-        )
-        total += _convert_with_stored_rate(
-            base_amount,
-            holding.currency,
-            display_currency,
-            holding.purchase_fx_rate,
-        )
-    return total
-
-
-def _extract_cash_value_from_snapshot(snapshot: PortfolioSnapshot | None) -> float:
-    if snapshot is None:
-        return 0.0
-    try:
-        category_values = _json.loads(snapshot.category_values or "{}")
-    except (TypeError, ValueError):
-        return 0.0
-    return float(category_values.get("Cash", 0.0))
 
 
 def _group_cash_holdings_by_currency(
@@ -257,10 +220,52 @@ def _has_seeded_cash_items(session: Session) -> bool:
     return session.exec(statement).first() is not None
 
 
+def _fallback_portfolio_values_from_holdings(
+    session: Session, display_currency: str
+) -> tuple[float, float]:
+    holdings = _list_user_holdings(session)
+    cash_by_currency = _group_cash_holdings_by_currency(holdings)
+    cash_value = _calculate_cash_value_from_positions(
+        cash_by_currency, display_currency
+    )
+    non_cash_value = 0.0
+    for holding in holdings:
+        if holding.is_cash:
+            continue
+        non_cash_value += _convert_with_stored_rate(
+            float(holding.quantity) * float(holding.cost_basis or 0.0),
+            holding.currency,
+            display_currency,
+            holding.purchase_fx_rate,
+        )
+    return non_cash_value + cash_value, cash_value
+
+
+def _get_live_portfolio_values(
+    session: Session, display_currency: str
+) -> tuple[float, float]:
+    # Lazy import avoids circular dependency (net_worth_service <-> rebalance_service)
+    from application.portfolio.rebalance_service import calculate_rebalance
+    from application.stock.stock_service import StockNotFoundError
+
+    try:
+        rebalance = calculate_rebalance(session, display_currency=display_currency)
+    except StockNotFoundError:
+        logger.debug(
+            "Net worth fallback: missing investment profile, using holdings fallback"
+        )
+        return _fallback_portfolio_values_from_holdings(session, display_currency)
+    total_value = float(rebalance.get("total_value", 0.0))
+    categories = rebalance.get("categories", {}) or {}
+    cash_market_value = float(
+        categories.get("Cash", {}).get("market_value", 0.0) or 0.0
+    )
+    return total_value, cash_market_value
+
+
 def get_seed_preview(session: Session, display_currency: str = "USD") -> dict:
     currency = display_currency.strip().upper()
     holdings = _list_user_holdings(session)
-    latest_snapshot = _get_latest_portfolio_snapshot(session)
     has_holdings = len(holdings) > 0
 
     # Cash positions grouped by native currency for intuitive onboarding.
@@ -272,21 +277,14 @@ def get_seed_preview(session: Session, display_currency: str = "USD") -> dict:
         if amount > 0
     ]
 
-    investment_non_cash = (
-        (
-            float(latest_snapshot.total_value)
-            - _extract_cash_value_from_snapshot(latest_snapshot)
-        )
-        if latest_snapshot is not None
-        else _calculate_investment_from_holdings(
-            holdings, display_currency=currency, include_cash=False
-        )
-    )
+    total_value, cash_value = _get_live_portfolio_values(session, currency)
+    investment_non_cash = total_value - cash_value
     investment_non_cash = max(0.0, investment_non_cash)
 
+    # Live cash bucket from rebalance is authoritative. Fallback to local conversion for robustness.
     cash_in_display_currency = (
-        _extract_cash_value_from_snapshot(latest_snapshot)
-        if latest_snapshot is not None
+        cash_value
+        if cash_value > 0
         else _calculate_cash_value_from_positions(cash_by_currency, currency)
     )
 
@@ -359,34 +357,10 @@ def seed_from_portfolio(session: Session) -> dict:
 
 def calculate_net_worth(session: Session, display_currency: str = "USD") -> dict:
     currency = display_currency.strip().upper()
-    latest_snapshot = _get_latest_portfolio_snapshot(session)
-    investment_value = float(latest_snapshot.total_value) if latest_snapshot else 0.0
-    holdings: list[Holding] = []
-    if latest_snapshot is None:
-        holdings = _list_user_holdings(session)
-        investment_value = _calculate_investment_from_holdings(
-            holdings, display_currency=currency, include_cash=True
-        )
+    investment_value, cash_value = _get_live_portfolio_values(session, currency)
 
     if _has_seeded_cash_items(session):
-        if latest_snapshot is not None:
-            investment_value = max(
-                0.0,
-                investment_value - _extract_cash_value_from_snapshot(latest_snapshot),
-            )
-        else:
-            total_with_cash = _calculate_investment_from_holdings(
-                holdings,
-                display_currency=currency,
-                include_cash=True,
-            )
-            total_without_cash = _calculate_investment_from_holdings(
-                holdings,
-                display_currency=currency,
-                include_cash=False,
-            )
-            cash_only = total_with_cash - total_without_cash
-            investment_value = max(0.0, investment_value - max(0.0, cash_only))
+        investment_value = max(0.0, investment_value - max(0.0, cash_value))
 
     items = list_items(session, display_currency=currency)
     other_assets_value = 0.0
