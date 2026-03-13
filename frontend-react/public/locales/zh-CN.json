@@ -1876,6 +1876,8 @@
       "missing_required_mapping_date": "请先映射交易日期字段。",
       "missing_required_mapping_type": "请先映射交易类型字段。",
       "missing_required_mapping_total": "请先映射总金额字段。",
+      "missing_required_mapping_total_or_price_qty": "请映射总金额，或同时映射价格和数量字段。",
+      "total_amount_auto_hint": "将按价格 x 数量自动计算。",
       "error_missing_date": "交易日期为必填项。",
       "error_missing_ticker_cash": "现金交易必须填写币种 ticker。",
       "error_missing_ticker_non_cash": "BUY/SELL/DIVIDEND 交易必须填写 ticker。",

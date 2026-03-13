@@ -1876,6 +1876,8 @@
       "missing_required_mapping_date": "取引日付の列をマッピングしてください。",
       "missing_required_mapping_type": "取引種別の列をマッピングしてください。",
       "missing_required_mapping_total": "合計金額の列をマッピングしてください。",
+      "missing_required_mapping_total_or_price_qty": "合計金額をマッピングするか、価格と数量の両方をマッピングしてください。",
+      "total_amount_auto_hint": "価格 x 数量で自動計算されます。",
       "error_missing_date": "取引日付は必須です。",
       "error_missing_ticker_cash": "現金の移動には通貨のティッカーが必須です。",
       "error_missing_ticker_non_cash": "買付/売却/配当ではティッカーが必須です。",

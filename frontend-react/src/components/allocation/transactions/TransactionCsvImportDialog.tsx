@@ -112,8 +112,8 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
       setFeedback(t("transactions.import.missing_required_mapping_type"))
       return false
     }
-    if (!mapping.totalAmountColumn) {
-      setFeedback(t("transactions.import.missing_required_mapping_total"))
+    if (!mapping.totalAmountColumn && (!mapping.priceColumn || !mapping.quantityColumn)) {
+      setFeedback(t("transactions.import.missing_required_mapping_total_or_price_qty"))
       return false
     }
     return true
@@ -223,6 +223,14 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
                         </option>
                       ))}
                     </select>
+                    {key === "totalAmountColumn" &&
+                    !mapping.totalAmountColumn &&
+                    mapping.priceColumn &&
+                    mapping.quantityColumn ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("transactions.import.total_amount_auto_hint")}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>

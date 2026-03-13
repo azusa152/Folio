@@ -1876,6 +1876,8 @@
       "missing_required_mapping_date": "Please map the transaction date column.",
       "missing_required_mapping_type": "Please map the transaction type column.",
       "missing_required_mapping_total": "Please map the total amount column.",
+      "missing_required_mapping_total_or_price_qty": "Please map Total amount, or map both Price and Quantity.",
+      "total_amount_auto_hint": "Auto-calculated from Price x Quantity.",
       "error_missing_date": "Transaction date is required.",
       "error_missing_ticker_cash": "Currency ticker is required for cash movements.",
       "error_missing_ticker_non_cash": "Ticker is required for BUY/SELL/DIVIDEND.",

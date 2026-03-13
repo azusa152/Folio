@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTransactions } from "@/api/hooks/useTransactions"
 import { ACCOUNT_TYPES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
@@ -52,6 +53,7 @@ export function AccountsTab({
   const [detailView, setDetailView] = useState<AccountDetailView>("positions")
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [exportScope, setExportScope] = useState<"selected" | "all">("selected")
 
   const sortedAccounts = useMemo(
     () => [...(accounts ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -88,6 +90,13 @@ export function AccountsTab({
     selectedAccount?.id ?? null,
     enabled && selectedAccount != null,
   )
+  const { data: allTransactions } = useTransactions({ enabled, limit: 1 })
+  const effectiveExportScope = exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
+  const selectedScopeHasTransactions = (selectedAccountTransactions?.length ?? 0) > 0
+  const allScopeHasTransactions = (allTransactions?.length ?? 0) > 0
+  const exportDisabled = exportingCsv || (effectiveExportScope === "selected"
+    ? !selectedScopeHasTransactions
+    : !allScopeHasTransactions)
 
   const resetForm = () => {
     setEditingId(null)
@@ -180,15 +189,20 @@ export function AccountsTab({
   }
 
   const handleExportCsv = async () => {
-    if (selectedAccount?.id == null) return
     setExportingCsv(true)
     try {
       const headers: HeadersInit = {}
       const apiKey = import.meta.env.VITE_API_KEY
       if (apiKey) headers["X-API-Key"] = apiKey
 
-      const params = new URLSearchParams({ account_id: String(selectedAccount.id) })
-      const response = await fetch(`/api/transactions/export-csv?${params.toString()}`, {
+      const params = new URLSearchParams()
+      if (effectiveExportScope === "selected" && selectedAccount?.id != null) {
+        params.set("account_id", String(selectedAccount.id))
+      }
+      const requestUrl = params.toString()
+        ? `/api/transactions/export-csv?${params.toString()}`
+        : "/api/transactions/export-csv"
+      const response = await fetch(requestUrl, {
         headers,
       })
       if (!response.ok) throw new Error(response.statusText)
@@ -198,7 +212,7 @@ export function AccountsTab({
       const link = document.createElement("a")
       const contentDisposition = response.headers.get("Content-Disposition") || ""
       const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
-      link.download = filenameMatch?.[1] || `transactions_${selectedAccount.id}.csv`
+      link.download = filenameMatch?.[1] || "transactions.csv"
       link.href = url
       link.click()
       URL.revokeObjectURL(url)
@@ -216,9 +230,41 @@ export function AccountsTab({
           <p className="text-sm font-semibold">{t("accounts.title")}</p>
           <p className="text-xs text-muted-foreground">{t("accounts.caption")}</p>
         </div>
-        <Button className="text-xs min-h-[44px]" onClick={openCreate}>
-          {t("accounts.add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label={t("transactions.filter.account")}
+            value={exportScope}
+            onChange={(event) => setExportScope(event.target.value as "selected" | "all")}
+            className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+          >
+            <option value="selected" disabled={selectedAccount == null}>
+              {selectedAccount?.name ?? t("transactions.filter.account")}
+            </option>
+            <option value="all">{t("transactions.filter.all_accounts")}</option>
+          </select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs min-h-[44px]"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="mr-1 h-3.5 w-3.5" />
+            {t("transactions.import_button")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs min-h-[44px]"
+            onClick={handleExportCsv}
+            disabled={exportDisabled}
+          >
+            <Download className="mr-1 h-3.5 w-3.5" />
+            {t("transactions.export_button")}
+          </Button>
+          <Button className="text-xs min-h-[44px]" onClick={openCreate}>
+            {t("accounts.add")}
+          </Button>
+        </div>
       </div>
 
       {formOpen ? (
@@ -456,28 +502,6 @@ export function AccountsTab({
             </TabsContent>
 
             <TabsContent value="transactions" className="mt-3">
-              <div className="mb-3 flex items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setImportDialogOpen(true)}
-                  disabled={selectedAccount == null}
-                >
-                  <Upload className="mr-1 h-3.5 w-3.5" />
-                  {t("transactions.import_button")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={handleExportCsv}
-                  disabled={selectedAccount == null || (selectedAccountTransactions?.length ?? 0) === 0 || exportingCsv}
-                >
-                  <Download className="mr-1 h-3.5 w-3.5" />
-                  {t("transactions.export_button")}
-                </Button>
-              </div>
               <TransactionList
                 transactions={selectedAccountTransactions ?? []}
                 accounts={selectedAccount ? [selectedAccount] : []}

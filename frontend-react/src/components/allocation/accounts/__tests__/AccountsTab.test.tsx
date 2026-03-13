@@ -25,8 +25,31 @@ vi.mock("sonner", () => ({
 
 const mockDeleteTransactionMutate = vi.fn()
 const mockImportTransactionsMutate = vi.fn()
+let mockAllTransactionsData = [
+  {
+    id: 501,
+    user_id: "default",
+    account_id: 999,
+    holding_id: null,
+    ticker: "SPY",
+    transaction_type: "BUY",
+    quantity: 1,
+    price: 500,
+    total_amount: 500,
+    currency: "USD",
+    fx_rate: null,
+    fee: 0,
+    note: "",
+    transaction_date: "2026-03-12",
+    created_at: "2026-03-12T10:00:00",
+  },
+]
 
 vi.mock("@/api/hooks/useTransactions", () => ({
+  useTransactions: () => ({
+    data: mockAllTransactionsData,
+    isLoading: false,
+  }),
   useDeleteTransaction: () => ({
     mutate: mockDeleteTransactionMutate,
     isPending: false,
@@ -126,6 +149,25 @@ describe("AccountsTab", () => {
         created_at: "2026-03-12T10:00:00",
       },
     ]
+    mockAllTransactionsData = [
+      {
+        id: 501,
+        user_id: "default",
+        account_id: 999,
+        holding_id: null,
+        ticker: "SPY",
+        transaction_type: "BUY",
+        quantity: 1,
+        price: 500,
+        total_amount: 500,
+        currency: "USD",
+        fx_rate: null,
+        fee: 0,
+        note: "",
+        transaction_date: "2026-03-12",
+        created_at: "2026-03-12T10:00:00",
+      },
+    ]
   })
 
   it("renders account summary with cash balances", () => {
@@ -161,25 +203,37 @@ describe("AccountsTab", () => {
     })
   })
 
-  it("shows import/export toolbar actions in account transactions tab", async () => {
+  it("shows import/export actions in accounts header", () => {
     render(<AccountsTab enabled />)
-    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
-    fireEvent.click(transactionsTab)
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "transactions.import_button" })).toBeInTheDocument()
-      expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeInTheDocument()
-    })
+    expect(screen.getByRole("button", { name: "transactions.import_button" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeInTheDocument()
   })
 
-  it("disables export button when selected account has no transactions", async () => {
+  it("disables export button when selected account has no transactions", () => {
     mockAccountTransactionsData = []
     render(<AccountsTab enabled />)
-    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
-    fireEvent.click(transactionsTab)
+    expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeDisabled()
+  })
+
+  it("exports all transactions when scope is all accounts", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(["transaction_date,ticker\n2026-03-12,SPY\n"], { type: "text/csv" }),
+      headers: {
+        get: () => 'attachment; filename="transactions_20260312.csv"',
+      },
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<AccountsTab enabled />)
+    fireEvent.change(screen.getByLabelText("transactions.filter.account"), { target: { value: "all" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.export_button" }))
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "transactions.export_button" })).toBeDisabled()
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/transactions/export-csv",
+        expect.objectContaining({ headers: expect.any(Object) }),
+      )
     })
   })
 
@@ -194,9 +248,7 @@ describe("AccountsTab", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     render(<AccountsTab enabled />)
-    const transactionsTab = screen.getByRole("tab", { name: "accounts.detail.transactions" })
-    fireEvent.click(transactionsTab)
-    fireEvent.click(await screen.findByRole("button", { name: "transactions.export_button" }))
+    fireEvent.click(screen.getByRole("button", { name: "transactions.export_button" }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

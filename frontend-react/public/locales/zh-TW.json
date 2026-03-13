@@ -1876,6 +1876,8 @@
       "missing_required_mapping_date": "請先對應交易日期欄位。",
       "missing_required_mapping_type": "請先對應交易類型欄位。",
       "missing_required_mapping_total": "請先對應總金額欄位。",
+      "missing_required_mapping_total_or_price_qty": "請對應總金額，或同時對應價格與數量欄位。",
+      "total_amount_auto_hint": "將以價格 x 數量自動計算。",
       "error_missing_date": "交易日期為必填。",
       "error_missing_ticker_cash": "現金交易必須填寫幣別 ticker。",
       "error_missing_ticker_non_cash": "BUY/SELL/DIVIDEND 交易必須填寫 ticker。",

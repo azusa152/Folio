@@ -131,6 +131,36 @@ describe("TransactionCsvImportDialog", () => {
     )
   })
 
+  it("allows preview when total is skipped but price and quantity are mapped", async () => {
+    parseTransactionCSVMock.mockResolvedValue({
+      headers: ["date", "type", "ticker", "qty", "price", "currency"],
+      rows: [
+        {
+          date: "2024-01-15",
+          type: "BUY",
+          ticker: "AAPL",
+          qty: "10",
+          price: "150",
+          currency: "USD",
+        },
+      ],
+      warnings: [],
+    })
+
+    renderDialog()
+    uploadFile()
+
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_map")).toBeInTheDocument(),
+    )
+    expect(screen.getByText("transactions.import.total_amount_auto_hint")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.next" }))
+    await waitFor(() =>
+      expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
+    )
+  })
+
   it("sends correct payload shape on import", async () => {
     renderDialog()
     uploadFile()
