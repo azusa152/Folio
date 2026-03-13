@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   autoDetectTransactionColumns,
+  generateTransactionCsvTemplate,
   isCashMovementRow,
   parseTransactionCsvText,
   transformTransactionRow,
@@ -11,6 +12,48 @@ import {
 } from "@/lib/transaction-csv-import"
 
 describe("transaction-csv-import", () => {
+  describe("generateTransactionCsvTemplate", () => {
+    it("returns canonical header, three example rows, and Excel-friendly format", () => {
+      const template = generateTransactionCsvTemplate()
+      expect(template.startsWith("\uFEFF")).toBe(true)
+      expect(template.includes("\r\n")).toBe(true)
+
+      const content = template.replace(/^\uFEFF/, "")
+      const lines = content.trimEnd().split("\r\n")
+
+      expect(lines[0]).toBe(
+        "transaction_date,transaction_type,ticker,quantity,price,total_amount,currency,fx_rate,fee,note",
+      )
+      expect(lines).toHaveLength(4)
+      expect(lines[1]).toBe(
+        "2024-01-15,BUY,AAPL,10,150.00,1500.00,USD,,4.99,Example buy",
+      )
+      expect(lines[2]).toBe(
+        "2024-01-15,DEPOSIT,,1,5000.00,5000.00,USD,,0,Initial deposit",
+      )
+      expect(lines[3]).toBe(
+        "2024-01-20,WITHDRAWAL,,1,1200.00,1200.00,USD,,0,Cash withdrawal",
+      )
+    })
+
+    it("is fully auto-detectable by column mapper", () => {
+      const [headerLine] = generateTransactionCsvTemplate().replace(/^\uFEFF/, "").split("\r\n")
+      const headers = (headerLine ?? "").split(",")
+      const mapping = autoDetectTransactionColumns(headers)
+
+      expect(mapping.dateColumn).toBe("transaction_date")
+      expect(mapping.typeColumn).toBe("transaction_type")
+      expect(mapping.tickerColumn).toBe("ticker")
+      expect(mapping.quantityColumn).toBe("quantity")
+      expect(mapping.priceColumn).toBe("price")
+      expect(mapping.totalAmountColumn).toBe("total_amount")
+      expect(mapping.currencyColumn).toBe("currency")
+      expect(mapping.fxRateColumn).toBe("fx_rate")
+      expect(mapping.feeColumn).toBe("fee")
+      expect(mapping.noteColumn).toBe("note")
+    })
+  })
+
   describe("autoDetectTransactionColumns", () => {
     it("detects common column aliases", () => {
       const mapping = autoDetectTransactionColumns([

@@ -1805,6 +1805,8 @@
       "step_map": "2. 列のマッピング",
       "step_preview": "3. プレビューとインポート",
       "select_file": "取引CSVを選択",
+      "download_template": "CSVテンプレートをダウンロード",
+      "download_template_hint": "テンプレートをダウンロードして行を入力し、この画面からアップロードしてください。",
       "account": "口座",
       "account_optional": "口座を選択しない",
       "import_mode": "インポートモード",

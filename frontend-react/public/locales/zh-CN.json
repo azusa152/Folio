@@ -1805,6 +1805,8 @@
       "step_map": "2. 字段映射",
       "step_preview": "3. 预览并导入",
       "select_file": "选择交易 CSV",
+      "download_template": "下载 CSV 模板",
+      "download_template_hint": "先下载模板并填写数据，然后回到这里上传文件。",
       "account": "账户",
       "account_optional": "不选择账户",
       "import_mode": "导入模式",

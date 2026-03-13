@@ -1805,6 +1805,8 @@
       "step_map": "2. Map Columns",
       "step_preview": "3. Preview & Import",
       "select_file": "Select transaction CSV",
+      "download_template": "Download CSV template",
+      "download_template_hint": "Download the template, fill your rows, then upload the file here.",
       "account": "Account",
       "account_optional": "No account selected",
       "import_mode": "Import mode",

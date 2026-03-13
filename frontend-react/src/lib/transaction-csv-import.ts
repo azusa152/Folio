@@ -68,6 +68,19 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   note: ["note", "memo", "remarks"],
 }
 
+const TEMPLATE_HEADERS = [
+  "transaction_date",
+  "transaction_type",
+  "ticker",
+  "quantity",
+  "price",
+  "total_amount",
+  "currency",
+  "fx_rate",
+  "fee",
+  "note",
+] as const
+
 function normalizeHeader(value: string): string {
   return value.trim().toLowerCase().replace(/[_\s-]+/g, " ")
 }
@@ -279,6 +292,16 @@ export function validateTransactionRows(
     }
   })
   return byRow
+}
+
+export function generateTransactionCsvTemplate(): string {
+  const lines = [
+    TEMPLATE_HEADERS.join(","),
+    "2024-01-15,BUY,AAPL,10,150.00,1500.00,USD,,4.99,Example buy",
+    "2024-01-15,DEPOSIT,,1,5000.00,5000.00,USD,,0,Initial deposit",
+    "2024-01-20,WITHDRAWAL,,1,1200.00,1200.00,USD,,0,Cash withdrawal",
+  ]
+  return `\uFEFF${lines.join("\r\n")}\r\n`
 }
 
 export function parseTransactionCsvText(
