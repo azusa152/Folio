@@ -84,7 +84,7 @@
 | domain/analysis/smart\_money.py                       |       27 |        1 |     96% |        35 |
 | domain/constants.py                                   |        1 |        0 |    100% |           |
 | domain/core/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
-| domain/core/constants.py                              |      331 |        0 |    100% |           |
+| domain/core/constants.py                              |      318 |        0 |    100% |           |
 | domain/core/entities.py                               |      201 |        4 |     98% |280-281, 293-294 |
 | domain/core/enums.py                                  |       71 |        0 |    100% |           |
 | domain/core/formatters.py                             |       38 |        0 |    100% |           |
@@ -126,7 +126,7 @@
 | infrastructure/persistence/repositories.py            |      542 |       83 |     85% |64-72, 96-104, 130-143, 148-162, 174, 187-189, 357-360, 365-369, 386, 391-392, 481, 612, 1244, 1258, 1290, 1333-1336, 1341-1342, 1347-1352, 1357-1363, 1380-1383, 1402-1405, 1440-1443, 1467, 1469, 1471, 1506-1509, 1514-1515 |
 | infrastructure/repositories.py                        |        1 |        0 |    100% |           |
 | infrastructure/sec\_edgar.py                          |        1 |        0 |    100% |           |
-| **TOTAL**                                             | **9685** | **1313** | **86%** |           |
+| **TOTAL**                                             | **9672** | **1313** | **86%** |           |
 
 
 ## Setup coverage badge
