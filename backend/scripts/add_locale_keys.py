@@ -152,10 +152,10 @@ new_keys = {
             "zh-CN": "处理请求时发生错误。",
         },
         "notification_scan_alerts": {
-            "zh-TW": "掃描訊號通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
-            "en": "Scan signal alerts (THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY)",
-            "ja": "スキャンシグナル通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
-            "zh-CN": "扫描信号通知（THESIS_BROKEN / OVERHEATED / CONTRARIAN_BUY）",
+            "zh-TW": "掃描訊號變化：基本面惡化 · 股價偏低 · 急跌中 · 可能反彈 · 快到買點 · 漲太快 · 要留意 · 漲勢減弱 · 突然暴跌",
+            "en": "Scan signal changes: Business Declining · Priced Very Low · Sharp Drop · Possible Bounce · Near Buy Zone · Price Too Hot · Be Cautious · Losing Steam · Sudden Crash",
+            "ja": "スキャンシグナル変化: 業績悪化 · かなり割安 · 急落中 · 反発の兆し · 買い場に近い · 上がりすぎ · 要注意 · 勢い低下 · 急落警報",
+            "zh-CN": "扫描信号变化：基本面恶化 · 股价偏低 · 急跌中 · 可能反弹 · 快到买点 · 涨太快 · 要留意 · 涨势减弱 · 突然暴跌",
         },
         "notification_price_alerts": {
             "zh-TW": "自訂價格警報觸發通知",
@@ -224,18 +224,6 @@ new_keys = {
             "en": "No trend setter stocks available for analysis",
             "ja": "分析可能なトレンドセッター銘柄がありません",
             "zh-CN": "无风向球股票可供分析",
-        },
-        "caution_details": {
-            "zh-TW": "多數風向球股價轉弱（{below}/{total} 跌破 60MA）",
-            "en": "Most trend setters weakening ({below}/{total} below 60MA)",
-            "ja": "大半のトレンドセッターが軟調（{below}/{total} が60MA割れ）",
-            "zh-CN": "多数风向球股价转弱（{below}/{total} 跌破 60MA）",
-        },
-        "positive_details": {
-            "zh-TW": "風向球整體穩健（{below}/{total} 跌破 60MA）",
-            "en": "Trend setters overall healthy ({below}/{total} below 60MA)",
-            "ja": "トレンドセッター全体は堅調（{below}/{total} が60MA割れ）",
-            "zh-CN": "风向球整体稳健（{below}/{total} 跌破 60MA）",
         },
         "fallback_optimistic": {
             "zh-TW": "無法判斷，預設樂觀",

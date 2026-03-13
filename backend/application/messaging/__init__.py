@@ -3,7 +3,6 @@
 from application.messaging.notification_service import (  # noqa: F401
     get_portfolio_summary,
     send_filing_season_digest,
-    send_resonance_alerts,
     send_weekly_digest,
 )
 from application.messaging.telegram_settings_service import (  # noqa: F401

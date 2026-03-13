@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   autoDetectTransactionColumns,
+  generateTransactionCsvTemplate,
   parseTransactionCSV,
   transformTransactionRows,
   validateTransactionRows,
@@ -108,6 +109,19 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
     }
   }
 
+  const handleDownloadTemplate = () => {
+    const csv = generateTransactionCsvTemplate()
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "folio-transaction-template.csv"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   const validateRequiredMappings = () => {
     if (!mapping.dateColumn) {
       setFeedback(t("transactions.import.missing_required_mapping_date"))
@@ -194,6 +208,14 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
               <Button type="button" onClick={() => fileRef.current?.click()}>
                 {t("transactions.import.select_file")}
               </Button>
+              <div className="space-y-2">
+                <Button type="button" variant="outline" onClick={handleDownloadTemplate}>
+                  {t("transactions.import.download_template")}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  {t("transactions.import.download_template_hint")}
+                </p>
+              </div>
             </div>
           ) : null}
 

@@ -67,12 +67,9 @@ export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
   HK: ["Tech", "Finance", "Property", "Telecom", "Energy", "Consumer"],
 }
 
-// Keep for backward compatibility
-export const DEFAULT_TAG_OPTIONS = MARKET_TAG_OPTIONS.US
+export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
 
-export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
-
-export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP"]
+export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
 
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30
@@ -96,6 +93,11 @@ export const CURRENCY_TO_REGION: Record<string, string> = {
   TWD: "TW",
   JPY: "JP",
   HKD: "HK",
+  EUR: "EU",
+  GBP: "UK",
+  CNY: "CN",
+  SGD: "SG",
+  THB: "TH",
 }
 
 export const GEOGRAPHIC_COLOR_MAP: Record<string, string> = {
@@ -103,6 +105,11 @@ export const GEOGRAPHIC_COLOR_MAP: Record<string, string> = {
   TW: "#22C55E",
   JP: "#EF4444",
   HK: "#F59E0B",
+  EU: "#8B5CF6",
+  UK: "#06B6D4",
+  CN: "#EC4899",
+  SG: "#14B8A6",
+  TH: "#F97316",
   Other: "#9CA3AF",
 }
 
@@ -111,6 +118,11 @@ export const GEOGRAPHIC_LABELS: Record<string, string> = {
   TW: "allocation.geo.tw",
   JP: "allocation.geo.jp",
   HK: "allocation.geo.hk",
+  EU: "allocation.geo.eu",
+  UK: "allocation.geo.uk",
+  CN: "allocation.geo.cn",
+  SG: "allocation.geo.sg",
+  TH: "allocation.geo.th",
   Other: "allocation.geo.other",
 }
 
@@ -156,7 +168,6 @@ export const GURU_TIER_STARS: Record<string, number> = {
 }
 export const GURU_BACKTEST_QUARTER_OPTIONS = [2, 4, 8, 12] as const
 export const GURU_BACKTEST_BENCHMARK_OPTIONS = ["SPY", "VT"] as const
-export const GURU_HEATMAP_MIN_GURUS = 1
 
 export const HIGH_CONVICTION_THRESHOLD = 60
 export const DIVERSIFIED_THRESHOLD = 30

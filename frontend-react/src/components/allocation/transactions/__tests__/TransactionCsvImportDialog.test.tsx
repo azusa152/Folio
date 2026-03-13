@@ -93,6 +93,63 @@ describe("TransactionCsvImportDialog", () => {
     renderDialog()
     expect(screen.getByText("transactions.import.title")).toBeInTheDocument()
     expect(screen.getByText("transactions.import.step_select")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "transactions.import.download_template" })).toBeInTheDocument()
+    expect(screen.getByText("transactions.import.download_template_hint")).toBeInTheDocument()
+  })
+
+  it("downloads template with expected filename when clicked", () => {
+    const originalCreateObjectURL = (URL as { createObjectURL?: (obj: Blob) => string }).createObjectURL
+    const originalRevokeObjectURL = (URL as { revokeObjectURL?: (url: string) => void })
+      .revokeObjectURL
+    const createObjectURLMock = vi.fn(() => "blob:template-url")
+    const revokeObjectURLMock = vi.fn()
+    Object.defineProperty(URL, "createObjectURL", {
+      writable: true,
+      configurable: true,
+      value: createObjectURLMock,
+    })
+    Object.defineProperty(URL, "revokeObjectURL", {
+      writable: true,
+      configurable: true,
+      value: revokeObjectURLMock,
+    })
+    const originalCreateElement = document.createElement.bind(document)
+    const anchorClick = vi.fn()
+    const capturedAnchorRef: { current: HTMLAnchorElement | null } = { current: null }
+
+    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
+      const element = originalCreateElement(tagName) as HTMLElement
+      if (tagName.toLowerCase() === "a") {
+        capturedAnchorRef.current = element as HTMLAnchorElement
+        capturedAnchorRef.current.click = anchorClick
+      }
+      return element
+    })
+
+    renderDialog()
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.download_template" }))
+
+    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    if (!capturedAnchorRef.current) {
+      throw new Error("Expected anchor element to be created")
+    }
+    const anchor = capturedAnchorRef.current
+    expect(anchor.download).toBe("folio-transaction-template.csv")
+    expect(anchor.href).toContain("blob:template-url")
+    expect(anchorClick).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:template-url")
+
+    createElementSpy.mockRestore()
+    Object.defineProperty(URL, "createObjectURL", {
+      writable: true,
+      configurable: true,
+      value: originalCreateObjectURL,
+    })
+    Object.defineProperty(URL, "revokeObjectURL", {
+      writable: true,
+      configurable: true,
+      value: originalRevokeObjectURL,
+    })
   })
 
   it("progresses through select → map → preview", async () => {

@@ -31,6 +31,20 @@ LOCALE_SETS = [
     },
 ]
 
+REQUIRED_FRONTEND_KEYS = {
+    "allocation.geo.title",
+    "allocation.geo.us",
+    "allocation.geo.tw",
+    "allocation.geo.jp",
+    "allocation.geo.hk",
+    "allocation.geo.eu",
+    "allocation.geo.uk",
+    "allocation.geo.cn",
+    "allocation.geo.sg",
+    "allocation.geo.th",
+    "allocation.geo.other",
+}
+
 
 def _flatten_keys(obj: dict, prefix: str = "") -> set[str]:
     """Recursively collect all leaf key paths from a nested dict."""
@@ -64,9 +78,17 @@ def check_set(name: str, directory: Path, glob: str) -> list[str]:
     errors: list[str] = []
     for locale, keys in sorted(locales.items()):
         missing = all_keys - keys
+        missing_set = set(missing)
         if missing:
             for key in sorted(missing):
                 errors.append(f"[{name}/{locale}] Missing key: {key}")
+
+        # Guardrail: required geo labels must exist even if missing in every locale.
+        if name == "frontend":
+            missing_required = REQUIRED_FRONTEND_KEYS - keys
+            for key in sorted(missing_required):
+                if key not in missing_set:
+                    errors.append(f"[{name}/{locale}] Missing required key: {key}")
 
     return errors
 

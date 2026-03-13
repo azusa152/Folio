@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { ChevronDown, ChevronUp, SendHorizonal } from "lucide-react"
 import { isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useStocks,
@@ -46,8 +47,6 @@ import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
-
-const DISPLAY_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD"]
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
@@ -200,7 +199,7 @@ export default function Dashboard() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {DISPLAY_CURRENCY_OPTIONS.map((c) => (
+            {DISPLAY_CURRENCIES.map((c) => (
               <SelectItem key={c} value={c} className="text-xs">
                 {c}
               </SelectItem>

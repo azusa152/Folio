@@ -68,6 +68,19 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   note: ["note", "memo", "remarks"],
 }
 
+const TEMPLATE_HEADERS = [
+  "transaction_date",
+  "transaction_type",
+  "ticker",
+  "quantity",
+  "price",
+  "total_amount",
+  "currency",
+  "fx_rate",
+  "fee",
+  "note",
+] as const
+
 function normalizeHeader(value: string): string {
   return value.trim().toLowerCase().replace(/[_\s-]+/g, " ")
 }
@@ -157,7 +170,7 @@ export function transformTransactionRow(
   row: CsvRow,
   mapping: TransactionColumnMapping,
 ): TransactionImportItem {
-  const transactionType = normalizeType(
+  let transactionType = normalizeType(
     mapping.typeColumn ? row[mapping.typeColumn] : undefined,
     mapping.transactionTypeDefault ?? "BUY",
   )
@@ -171,14 +184,29 @@ export function transformTransactionRow(
   const quantityFromCsv = parseNumber(
     mapping.quantityColumn ? row[mapping.quantityColumn] : undefined,
   )
-  const quantity =
+  let quantity =
     quantityFromCsv ??
     (transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL" ? 1 : 0)
-  const price = parseNumber(mapping.priceColumn ? row[mapping.priceColumn] : undefined)
+  let price = parseNumber(mapping.priceColumn ? row[mapping.priceColumn] : undefined)
   const totalFromCsv = parseNumber(
     mapping.totalAmountColumn ? row[mapping.totalAmountColumn] : undefined,
   )
-  const totalAmount = totalFromCsv ?? (quantity > 0 && price != null ? quantity * price : 0)
+  let totalAmount = totalFromCsv ?? (quantity > 0 && price != null ? quantity * price : 0)
+
+  // Broker exports can represent cash in/out with sign only.
+  // Normalize sign to positive amount and infer withdrawal from negative cash amount.
+  if (CASH_MOVEMENT_TYPES.has(transactionType)) {
+    const hasNegativeCashSignal =
+      (price != null && price < 0) || (totalFromCsv != null && totalFromCsv < 0) || totalAmount < 0
+    if (hasNegativeCashSignal) {
+      transactionType = "WITHDRAWAL"
+    }
+    quantity = Math.abs(quantity)
+    totalAmount = Math.abs(totalAmount)
+    if (price != null) {
+      price = Math.abs(price)
+    }
+  }
   const isCashMovement = CASH_MOVEMENT_TYPES.has(transactionType)
   const rawTicker = mapping.tickerColumn ? row[mapping.tickerColumn]?.trim() : ""
   const ticker = (rawTicker || (isCashMovement ? currency || "USD" : "")).trim()
@@ -264,6 +292,16 @@ export function validateTransactionRows(
     }
   })
   return byRow
+}
+
+export function generateTransactionCsvTemplate(): string {
+  const lines = [
+    TEMPLATE_HEADERS.join(","),
+    "2024-01-15,BUY,AAPL,10,150.00,1500.00,USD,,4.99,Example buy",
+    "2024-01-15,DEPOSIT,,1,5000.00,5000.00,USD,,0,Initial deposit",
+    "2024-01-20,WITHDRAWAL,,1,1200.00,1200.00,USD,,0,Cash withdrawal",
+  ]
+  return `\uFEFF${lines.join("\r\n")}\r\n`
 }
 
 export function parseTransactionCsvText(

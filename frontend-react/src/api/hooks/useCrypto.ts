@@ -23,21 +23,3 @@ export function useCryptoSearch(query: string) {
     staleTime: 60 * 1000,
   })
 }
-
-export function useCryptoPrice(ticker: string, coingeckoId?: string) {
-  return useQuery({
-    queryKey: ["crypto", "price", ticker, coingeckoId ?? ""],
-    queryFn: async () => {
-      const { data, error } = await client.GET("/crypto/price/{ticker}", {
-        params: {
-          path: { ticker },
-          query: { coingecko_id: coingeckoId },
-        },
-      })
-      if (error) throw error
-      return data
-    },
-    enabled: ticker.trim().length > 0,
-    staleTime: 60 * 1000,
-  })
-}
