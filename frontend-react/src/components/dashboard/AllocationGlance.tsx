@@ -75,14 +75,14 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
   const catKeys = Object.keys(targetConfig)
 
   const pieData = catKeys.map((k) => ({
-    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${k}`,
+    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${t(`config.category.${k.toLowerCase()}`, k)}`,
     target: targetConfig[k] ?? 0,
     actual: breakdown[k]?.current_pct ?? 0,
     color: CATEGORY_COLOR_MAP[k] ?? CATEGORY_COLOR_FALLBACK,
   }))
 
   const driftData = catKeys.map((k) => ({
-    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${k}`,
+    name: `${CATEGORY_ICON_SHORT[k] ?? ""} ${t(`config.category.${k.toLowerCase()}`, k)}`,
     drift: breakdown[k]?.drift_pct ?? 0,
     fill: Math.abs(breakdown[k]?.drift_pct ?? 0) > 5 ? "#ef4444" : "#9ca3af",
   }))

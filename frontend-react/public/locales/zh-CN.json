@@ -279,7 +279,7 @@
     "section_market_pulse": "市场脉搏",
     "section_portfolio_overview": "投资组合概览",
     "section_deep_dive": "深入分析",
-    "top_holdings_title": "🏆 前 {{limit}} 大持仓",
+    "top_holdings_title": "🏆 前 {{limit}} 大仓位",
     "holdings_table": {
       "ticker": "股票",
       "category": "分类",
@@ -364,11 +364,11 @@
     "performance_backfill_complete": "基准数据已加载 — 图表已更新",
     "performance_backfill_timeout": "回填时间较长，请稍后刷新页面",
     "holding_breakdown": {
-      "title": "持仓比例",
+      "title": "仓位比例",
       "other": "其他",
-      "show_all": "显示全部持仓",
+      "show_all": "显示全部仓位",
       "show_less": "收起",
-      "stacked_bar_aria": "投资组合持仓比例分布"
+      "stacked_bar_aria": "投资组合仓位比例分布"
     },
     "show_advanced": "显示深入分析",
     "hide_advanced": "隐藏深入分析"

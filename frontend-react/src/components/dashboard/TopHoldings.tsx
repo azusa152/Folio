@@ -14,6 +14,53 @@ interface Props {
   rebalance?: RebalanceResponse | null
 }
 
+function aggregateHoldingsByTicker(holdings: HoldingDetail[]): HoldingDetail[] {
+  const byTicker = new Map<
+    string,
+    {
+      holding: HoldingDetail
+      changeWeightedSum: number
+      changeWeight: number
+    }
+  >()
+
+  for (const holding of holdings) {
+    const key = holding.ticker.toUpperCase()
+    const existing = byTicker.get(key)
+    const weight = Math.max(holding.market_value ?? 0, 0)
+    const changeWeighted = holding.change_pct != null ? holding.change_pct * weight : 0
+    const changeWeight = holding.change_pct != null ? weight : 0
+
+    if (!existing) {
+      byTicker.set(key, {
+        holding: { ...holding },
+        changeWeightedSum: changeWeighted,
+        changeWeight,
+      })
+      continue
+    }
+
+    existing.holding.quantity += holding.quantity
+    existing.holding.market_value += holding.market_value
+    existing.holding.weight_pct += holding.weight_pct
+    if (holding.cost_total != null) {
+      existing.holding.cost_total = (existing.holding.cost_total ?? 0) + holding.cost_total
+    }
+    existing.changeWeightedSum += changeWeighted
+    existing.changeWeight += changeWeight
+  }
+
+  return Array.from(byTicker.values()).map((item) => {
+    const merged = { ...item.holding }
+    if (item.changeWeight > 0) {
+      merged.change_pct = item.changeWeightedSum / item.changeWeight
+    } else {
+      merged.change_pct = null
+    }
+    return merged
+  })
+}
+
 function ChangeCell({ value, category, change24hLabel }: { value?: number | null; category: string; change24hLabel: string }) {
   if (value == null) return <td className="text-right px-3 py-2 text-sm">N/A</td>
   const isPos = value >= 0
@@ -72,7 +119,8 @@ export function TopHoldings({ rebalance }: Props) {
     )
   }
 
-  const sorted = [...rebalance.holdings_detail].sort((a, b) => b.weight_pct - a.weight_pct)
+  const aggregated = aggregateHoldingsByTicker(rebalance.holdings_detail)
+  const sorted = [...aggregated].sort((a, b) => b.weight_pct - a.weight_pct)
   const top = sorted.slice(0, TOP_LIMIT)
 
   return (
@@ -98,10 +146,10 @@ export function TopHoldings({ rebalance }: Props) {
             </thead>
             <tbody>
               {top.map((h) => (
-                <tr key={`${h.ticker}-${h.weight_pct}`} className="border-t border-border/50 hover:bg-muted/30">
+                <tr key={h.ticker} className="border-t border-border/50 hover:bg-muted/30">
                   <td className="px-3 py-2 font-semibold">{h.ticker}</td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {CATEGORY_ICON_SHORT[h.category] ?? ""} {h.category}
+                    {CATEGORY_ICON_SHORT[h.category] ?? ""} {t(`config.category.${h.category.toLowerCase()}`, h.category)}
                   </td>
                   <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
                   <td className="text-right px-3 py-2">

@@ -279,7 +279,7 @@
     "section_market_pulse": "市場脈搏",
     "section_portfolio_overview": "投資組合概覽",
     "section_deep_dive": "深入分析",
-    "top_holdings_title": "🏆 前 {{limit}} 大持倉",
+    "top_holdings_title": "🏆 前 {{limit}} 大部位",
     "holdings_table": {
       "ticker": "股票",
       "category": "分類",
@@ -364,11 +364,11 @@
     "performance_backfill_complete": "基準資料已載入 — 圖表已更新",
     "performance_backfill_timeout": "回填時間較長，請稍後重新整理頁面",
     "holding_breakdown": {
-      "title": "持倉比例",
+      "title": "部位比例",
       "other": "其他",
-      "show_all": "顯示全部持倉",
+      "show_all": "顯示全部部位",
       "show_less": "收起",
-      "stacked_bar_aria": "投資組合持倉比例分佈"
+      "stacked_bar_aria": "投資組合部位比例分佈"
     },
     "show_advanced": "顯示深入分析",
     "hide_advanced": "隱藏深入分析"

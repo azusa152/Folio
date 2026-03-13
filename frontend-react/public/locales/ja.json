@@ -279,7 +279,7 @@
     "section_market_pulse": "マーケットパルス",
     "section_portfolio_overview": "ポートフォリオ概要",
     "section_deep_dive": "詳細分析",
-    "top_holdings_title": "🏆 上位 {{limit}} 件の保有銘柄",
+    "top_holdings_title": "🏆 上位 {{limit}} 件のポジション",
     "holdings_table": {
       "ticker": "銘柄",
       "category": "カテゴリ",
@@ -364,11 +364,11 @@
     "performance_backfill_complete": "基準データを読み込み、チャートを更新しました",
     "performance_backfill_timeout": "処理に時間がかかっています。ページを再読み込みしてください",
     "holding_breakdown": {
-      "title": "保有比率の内訳",
+      "title": "ポジション比率の内訳",
       "other": "その他",
-      "show_all": "すべて表示",
+      "show_all": "すべてのポジションを表示",
       "show_less": "折りたたむ",
-      "stacked_bar_aria": "ポートフォリオ保有比率の内訳"
+      "stacked_bar_aria": "ポートフォリオのポジション比率の内訳"
     },
     "show_advanced": "詳細分析を表示",
     "hide_advanced": "詳細分析を非表示"

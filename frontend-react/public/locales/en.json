@@ -279,7 +279,7 @@
     "section_market_pulse": "Market Pulse",
     "section_portfolio_overview": "Portfolio Overview",
     "section_deep_dive": "Deep Dive",
-    "top_holdings_title": "🏆 Top {{limit}} Holdings",
+    "top_holdings_title": "🏆 Top {{limit}} Positions",
     "holdings_table": {
       "ticker": "Ticker",
       "category": "Category",
@@ -364,11 +364,11 @@
     "performance_backfill_complete": "Benchmark data loaded — chart updated",
     "performance_backfill_timeout": "Backfill is taking longer than expected — try refreshing the page",
     "holding_breakdown": {
-      "title": "Holding Breakdown",
+      "title": "Position Breakdown",
       "other": "Other",
-      "show_all": "Show all holdings",
+      "show_all": "Show all positions",
       "show_less": "Show fewer",
-      "stacked_bar_aria": "Portfolio holding percentage breakdown"
+      "stacked_bar_aria": "Portfolio position percentage breakdown"
     },
     "show_advanced": "Show deep dive",
     "hide_advanced": "Hide deep dive"
