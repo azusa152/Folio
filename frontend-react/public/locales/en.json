@@ -387,7 +387,13 @@
       "empty_cta": "Create Account",
       "error_title": "Unable to load account summary",
       "error_description": "Please refresh and try again.",
-      "stacked_bar_aria": "Portfolio value distribution across accounts"
+      "stacked_bar_aria": "Portfolio value distribution across accounts",
+      "top_positions_label": "Positions",
+      "shares_label": "{{quantity}} shares",
+      "more_positions": "+{{count}} more positions",
+      "no_positions": "No positions yet",
+      "account_gain_loss": "Unrealized",
+      "view_positions": "View all"
     },
     "show_advanced": "Show deep dive",
     "hide_advanced": "Hide deep dive"

@@ -387,7 +387,13 @@
       "empty_cta": "创建账户",
       "error_title": "无法加载账户摘要",
       "error_description": "请刷新后重试。",
-      "stacked_bar_aria": "各账户投资组合金额分布"
+      "stacked_bar_aria": "各账户投资组合金额分布",
+      "top_positions_label": "持仓",
+      "shares_label": "{{quantity}} 股",
+      "more_positions": "还有 {{count}} 个持仓",
+      "no_positions": "暂无持仓",
+      "account_gain_loss": "未实现盈亏",
+      "view_positions": "查看全部"
     },
     "show_advanced": "显示深入分析",
     "hide_advanced": "隐藏深入分析"

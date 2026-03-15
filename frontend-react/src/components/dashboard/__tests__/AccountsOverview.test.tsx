@@ -1,10 +1,21 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AccountsOverview } from "../AccountsOverview"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import type { AccountSummaryItem } from "@/api/types/account"
 import type { RebalanceResponse } from "@/api/types/dashboard"
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      if (key === "dashboard.accounts_overview.shares_label" && options?.quantity != null) {
+        return `${String(options.quantity)} shares`
+      }
+      return key
+    },
+  }),
+}))
 
 function renderOverview({
   accountSummary = [],
@@ -248,6 +259,107 @@ describe("AccountsOverview", () => {
     const barButton = within(bar).getByRole("button", { name: /Wallet B/ })
     fireEvent.click(barButton)
     expect(barButton).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("shows top holdings, overflow link, and unrealized summary when account row is expanded", () => {
+    const accountSummary = [
+      {
+        account: { id: 1, name: "Broker A", broker: "IB", account_type: "brokerage" },
+        holdings_count: 4,
+        tickers: ["AAPL", "MSFT", "NVDA", "AMZN"],
+        cash_balances: [{ currency: "USD", balance: 150 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 3, category: "Growth", currency: "USD", cost_total: 800 },
+        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 700, weight_pct: 7, quantity: 2, category: "Moat", currency: "USD", cost_total: 650 },
+        { account_id: 1, account_name: "Broker A", ticker: "NVDA", market_value: 500, weight_pct: 5, quantity: 1, category: "Growth", currency: "USD", cost_total: 450 },
+        { account_id: 1, account_name: "Broker A", ticker: "AMZN", market_value: 300, weight_pct: 3, quantity: 1, category: "Growth", currency: "USD", cost_total: 280 },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getByText("dashboard.accounts_overview.top_positions_label")).toBeInTheDocument()
+    expect(screen.getByText("AAPL")).toBeInTheDocument()
+    expect(screen.getByText("3 shares")).toBeInTheDocument()
+    expect(screen.getByText("MSFT")).toBeInTheDocument()
+    expect(screen.getByText("NVDA")).toBeInTheDocument()
+    expect(screen.queryByText("AMZN")).not.toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.more_positions")).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.account_gain_loss")).toBeInTheDocument()
+
+    const links = screen.getAllByRole("link", { name: "dashboard.accounts_overview.view_positions" })
+    expect(links.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1")).toBe(true)
+  })
+
+  it("renders signed negative unrealized percentage at account level", () => {
+    const accountSummary = [
+      {
+        account: { id: 11, name: "Loss Account", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["AAPL"],
+        cash_balances: [{ currency: "USD", balance: 0 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        { account_id: 11, account_name: "Loss Account", ticker: "AAPL", market_value: 850, weight_pct: 10, quantity: 1234.56789, category: "Growth", currency: "USD", cost_total: 1000 },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Loss Account.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getByText("1,234.5679 shares")).toBeInTheDocument()
+    expect(screen.getByText("-$150.00 (-15.0%)")).toBeInTheDocument()
+  })
+
+  it("shows no-positions message when account has no holdings", () => {
+    const accountSummary = [
+      {
+        account: { id: 9, name: "Cash Account", broker: "Bank", account_type: "bank" },
+        holdings_count: 0,
+        tickers: [],
+        cash_balances: [{ currency: "USD", balance: 20 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Cash Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    expect(screen.getByText(/dashboard\.accounts_overview\.no_positions/)).toBeInTheDocument()
+  })
+
+  it("masks expanded position values in privacy mode", () => {
+    usePrivacyMode.setState({ isPrivate: true })
+
+    const accountSummary = [
+      {
+        account: { id: 1, name: "Broker A", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["AAPL"],
+        cash_balances: [{ currency: "USD", balance: 100 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD", cost_total: 700 },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
+    expect(screen.getAllByText("***").length).toBeGreaterThan(2)
+    expect(screen.queryByText("$1,000.00")).not.toBeInTheDocument()
   })
 
   it("renders error state when account summary query fails", () => {

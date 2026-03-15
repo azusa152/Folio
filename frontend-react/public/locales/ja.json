@@ -387,7 +387,13 @@
       "empty_cta": "口座を作成",
       "error_title": "口座サマリーを読み込めませんでした",
       "error_description": "ページを更新して再試行してください。",
-      "stacked_bar_aria": "口座別のポートフォリオ金額配分"
+      "stacked_bar_aria": "口座別のポートフォリオ金額配分",
+      "top_positions_label": "ポジション",
+      "shares_label": "{{quantity}} 株",
+      "more_positions": "他 {{count}} 件のポジション",
+      "no_positions": "まだポジションがありません",
+      "account_gain_loss": "未実現損益",
+      "view_positions": "すべて表示"
     },
     "show_advanced": "詳細分析を表示",
     "hide_advanced": "詳細分析を非表示"

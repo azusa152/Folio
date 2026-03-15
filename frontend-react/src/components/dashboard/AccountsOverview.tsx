@@ -9,9 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
+import { FINANCE_TEXT } from "@/lib/colors"
 import { formatCurrency } from "@/lib/format"
 import type { AccountSummaryItem } from "@/api/types/account"
-import type { RebalanceResponse } from "@/api/types/dashboard"
+import type { HoldingDetail, RebalanceResponse } from "@/api/types/dashboard"
 
 interface Props {
   accountSummary?: AccountSummaryItem[]
@@ -32,6 +33,10 @@ interface AccountRow {
   totalValue: number
   sharePct: number
   color: string
+  topHoldings: HoldingDetail[]
+  remainingCount: number
+  accountGainLoss: number | null
+  accountCostTotal: number
 }
 
 const ACCOUNT_COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DC2626", "#EA580C", "#4F46E5"]
@@ -57,6 +62,13 @@ function formatCashBalances(
   return balances
     .map((item) => formatCurrency(item.balance, item.currency))
     .join(" / ")
+}
+
+function formatHoldingQuantity(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toLocaleString()
+  }
+  return value.toLocaleString(undefined, { maximumFractionDigits: 4 })
 }
 
 export function AccountsOverview({
@@ -86,8 +98,12 @@ export function AccountsOverview({
 
   const rows = useMemo<AccountRow[]>(() => {
     const positionValueByAccount = new Map<number, number>()
+    const holdingsByAccount = new Map<number, HoldingDetail[]>()
     for (const holding of rebalance?.holdings_detail ?? []) {
       if (holding.account_id == null) continue
+      const accountHoldings = holdingsByAccount.get(holding.account_id) ?? []
+      accountHoldings.push(holding)
+      holdingsByAccount.set(holding.account_id, accountHoldings)
       positionValueByAccount.set(
         holding.account_id,
         (positionValueByAccount.get(holding.account_id) ?? 0) + (holding.market_value ?? 0),
@@ -110,6 +126,21 @@ export function AccountsOverview({
           convertedCash += balance.balance * rate
         }
         const totalValue = (positionValueByAccount.get(account.id) ?? 0) + convertedCash
+        const accountHoldings = [...(holdingsByAccount.get(account.id) ?? [])].sort(
+          (a, b) => (b.market_value ?? 0) - (a.market_value ?? 0),
+        )
+        const topHoldings = accountHoldings.slice(0, 3)
+        const remainingCount = Math.max(accountHoldings.length - topHoldings.length, 0)
+        let accountGainLoss = 0
+        let accountCostTotal = 0
+        let hasCostData = false
+        for (const holding of accountHoldings) {
+          const costTotal = holding.cost_total
+          if (costTotal == null || costTotal <= 0) continue
+          hasCostData = true
+          accountCostTotal += costTotal
+          accountGainLoss += (holding.market_value ?? 0) - costTotal
+        }
 
         return {
           id: account.id,
@@ -122,6 +153,10 @@ export function AccountsOverview({
           totalValue,
           sharePct: 0,
           color: "",
+          topHoldings,
+          remainingCount,
+          accountGainLoss: hasCostData ? accountGainLoss : null,
+          accountCostTotal,
         }
       })
 
@@ -301,6 +336,9 @@ export function AccountsOverview({
                     t("dashboard.accounts_overview.no_cash"),
                   )
               const rowMeta = `${t("dashboard.accounts_overview.positions_count", { count: row.holdingsCount })} · ${t("dashboard.accounts_overview.cash_label")}: ${cashSummary}`
+              const accountReturnPct = row.accountGainLoss != null && row.accountCostTotal > 0
+                ? (row.accountGainLoss / row.accountCostTotal) * 100
+                : null
 
               return (
                 <Collapsible key={row.id} open={expandedRowIds.has(row.id)} onOpenChange={(isOpen) => setExpanded(row.id, isOpen)}>
@@ -365,6 +403,96 @@ export function AccountsOverview({
                           currencies: row.missingFxCurrencies.join(", "),
                         })}
                       </p>
+                    )}
+
+                    <div className="mt-2 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-foreground">
+                          {t("dashboard.accounts_overview.top_positions_label")}
+                        </p>
+                        <Link
+                          to={`/allocation?tab=accounts&accountId=${row.id}`}
+                          className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        >
+                          {t("dashboard.accounts_overview.view_positions")}
+                        </Link>
+                      </div>
+
+                      {row.topHoldings.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          {t("dashboard.accounts_overview.no_positions")} ·{" "}
+                          <Link
+                            to={`/allocation?tab=accounts&accountId=${row.id}&action=trade`}
+                            className="underline underline-offset-2"
+                          >
+                            {t("dashboard.accounts_overview.trade")}
+                          </Link>
+                        </p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {row.topHoldings.map((holding) => {
+                            const returnPct = holding.cost_total && holding.cost_total > 0
+                              ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
+                              : null
+                            const returnClass = returnPct == null
+                              ? "text-muted-foreground"
+                              : returnPct >= 0
+                                ? FINANCE_TEXT.gain
+                                : FINANCE_TEXT.loss
+                            return (
+                              <li key={`${row.id}-${holding.ticker}`} className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-foreground">{holding.ticker}</p>
+                                  <p className="truncate text-muted-foreground">
+                                    {t("dashboard.accounts_overview.shares_label", { quantity: formatHoldingQuantity(holding.quantity) })}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="tabular-nums text-foreground">
+                                    {isPrivate ? "***" : maskMoney(holding.market_value, displayCurrency)}
+                                  </p>
+                                  <p className={`tabular-nums ${returnClass}`}>
+                                    {returnPct == null ? "—" : `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`}
+                                  </p>
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+
+                      {row.remainingCount > 0 && (
+                        <Link
+                          to={`/allocation?tab=accounts&accountId=${row.id}`}
+                          className="inline-flex text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        >
+                          {t("dashboard.accounts_overview.more_positions", { count: row.remainingCount })}
+                        </Link>
+                      )}
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
+                      <span className="text-muted-foreground">
+                        {t("dashboard.accounts_overview.cash_label")}:
+                      </span>
+                      <span className="tabular-nums text-foreground">
+                        {cashSummary}
+                      </span>
+                    </div>
+
+                    {row.accountGainLoss != null && accountReturnPct != null && (
+                      <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-foreground">
+                          {t("dashboard.accounts_overview.account_gain_loss")}
+                        </span>
+                        <span
+                          className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                        >
+                          {isPrivate
+                            ? "***"
+                            : `${row.accountGainLoss >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.accountGainLoss), displayCurrency)} (${accountReturnPct >= 0 ? "+" : ""}${accountReturnPct.toFixed(1)}%)`}
+                        </span>
+                      </div>
                     )}
                   </CollapsibleContent>
                 </div>

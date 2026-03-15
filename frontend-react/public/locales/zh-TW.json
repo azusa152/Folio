@@ -387,7 +387,13 @@
       "empty_cta": "建立帳戶",
       "error_title": "無法載入帳戶摘要",
       "error_description": "請重新整理後再試一次。",
-      "stacked_bar_aria": "各帳戶投資組合金額分佈"
+      "stacked_bar_aria": "各帳戶投資組合金額分佈",
+      "top_positions_label": "持倉",
+      "shares_label": "{{quantity}} 股",
+      "more_positions": "還有 {{count}} 個持倉",
+      "no_positions": "目前沒有持倉",
+      "account_gain_loss": "未實現損益",
+      "view_positions": "查看全部"
     },
     "show_advanced": "顯示深入分析",
     "hide_advanced": "隱藏深入分析"
