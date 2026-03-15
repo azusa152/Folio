@@ -157,6 +157,10 @@ class FXTimingResult:
     consecutive_threshold: int  # 連續上漲門檻
     alert_on_recent_high: bool  # 是否啟用近期高點警報
     alert_on_consecutive_increase: bool  # 是否啟用連續上漲警報
+    target_rate: float | None  # 目標匯率（達標時觸發）
+    target_direction: str | None  # above / below
+    target_hit: bool  # 是否達到目標匯率
+    target_distance_pct: float | None  # 距離目標匯率百分比（未達標時顯示）
     should_alert: bool  # 是否應發出警報
     recommendation_zh: str  # 繁體中文建議
     reasoning_zh: str  # 繁體中文理由
@@ -345,6 +349,8 @@ def assess_exchange_timing(
     consecutive_threshold: int,
     alert_on_recent_high: bool = True,
     alert_on_consecutive_increase: bool = True,
+    target_rate: float | None = None,
+    target_direction: str | None = None,
 ) -> FXTimingResult:
     """
     評估換匯時機，產出結構化分析結果。
@@ -378,11 +384,19 @@ def assess_exchange_timing(
             signal_strength="none",
             alert_on_recent_high=alert_on_recent_high,
             alert_on_consecutive_increase=alert_on_consecutive_increase,
+            target_rate=target_rate,
+            target_direction=target_direction,
+            target_hit=False,
+            target_distance_pct=None,
             should_alert=False,
             recommendation_zh="無歷史資料，無法分析",
             reasoning_zh="歷史資料不足",
             scenario="no_data",
-            scenario_vars={"base": base_currency, "quote": quote_currency},
+            scenario_vars={
+                "base": base_currency,
+                "quote": quote_currency,
+                "pair": f"{base_currency}/{quote_currency}",
+            },
         )
 
     current_rate = history[-1].get("close") or 0.0
@@ -391,6 +405,26 @@ def assess_exchange_timing(
     high = recent_high.lookback_high
     consec = count_consecutive_increases(history)
     trend_direction, trend_strength = detect_trend_direction(history)
+    normalized_target_direction = (
+        target_direction if target_direction in {"above", "below"} else None
+    )
+    valid_target_rate = (
+        round(float(target_rate), 6)
+        if isinstance(target_rate, (int, float)) and target_rate > 0
+        else None
+    )
+    target_hit = False
+    target_distance_pct: float | None = None
+    if valid_target_rate is not None and normalized_target_direction is not None:
+        if normalized_target_direction == "above":
+            target_hit = current_rate >= valid_target_rate
+        else:
+            target_hit = current_rate <= valid_target_rate
+        if not target_hit and valid_target_rate > 0:
+            target_distance_pct = round(
+                abs((valid_target_rate - current_rate) / valid_target_rate) * 100,
+                2,
+            )
 
     actionable_high = near_high and (
         trend_direction != "falling"
@@ -411,10 +445,19 @@ def assess_exchange_timing(
         "consec_threshold": consecutive_threshold,
         "trend_direction": trend_direction,
         "trend_strength_pct": trend_strength,
+        "target_rate": valid_target_rate or 0.0,
+        "target_direction": normalized_target_direction or "",
+        "target_hit": target_hit,
+        "target_distance_pct": target_distance_pct or 0.0,
     }
 
     # 判斷是否應發出警報：根據啟用的條件使用 OR 邏輯
-    if not alert_on_recent_high and not alert_on_consecutive_increase:
+    target_condition = target_hit and valid_target_rate is not None
+    if (
+        not alert_on_recent_high
+        and not alert_on_consecutive_increase
+        and valid_target_rate is None
+    ):
         # 兩項條件皆關閉
         should_alert = False
         recommendation_zh = "監控已停用：兩項條件皆關閉"
@@ -426,27 +469,53 @@ def assess_exchange_timing(
         consec_condition = (
             alert_on_consecutive_increase and consec >= consecutive_threshold
         )
-        should_alert = high_condition or consec_condition
+        should_alert = high_condition or consec_condition or target_condition
 
         if should_alert:
             # 產生觸發條件說明
             triggers = []
+            if target_condition:
+                triggers.append("目標匯率")
             if high_condition and consec_condition:
                 triggers.append("近期高點 + 連續上漲")
-                scenario = "should_alert_both"
+                scenario = (
+                    "should_alert_target_combo"
+                    if target_condition
+                    else "should_alert_both"
+                )
             elif high_condition:
                 triggers.append("近期高點")
                 is_at_high = (
                     recent_high.high_days_ago == 0
                     and recent_high.distance_from_high_pct == 0.0
                 )
-                scenario = "at_high" if is_at_high else "approaching_high"
+                if target_condition:
+                    scenario = (
+                        "at_high_target" if is_at_high else "approaching_high_target"
+                    )
+                else:
+                    scenario = "at_high" if is_at_high else "approaching_high"
+            elif consec_condition and target_condition:
+                triggers.append("連續上漲")
+                scenario = "should_alert_target_combo"
             else:
                 triggers.append("連續上漲")
-                scenario = "should_alert_consec"
+                scenario = (
+                    "should_alert_target_combo"
+                    if target_condition
+                    else "should_alert_consec"
+                )
+
+            if target_condition and not high_condition and not consec_condition:
+                scenario = "should_alert_target"
 
             recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
             parts = []
+            if target_condition and valid_target_rate is not None:
+                parts.append(
+                    f"已達目標匯率 {valid_target_rate:.4f}"
+                    f"（條件：{normalized_target_direction}）"
+                )
             if high_condition:
                 parts.append(
                     f"接近 {recent_high_days} 日高點 ({high:.4f})，"
@@ -513,6 +582,10 @@ def assess_exchange_timing(
         signal_strength=signal_strength,
         alert_on_recent_high=alert_on_recent_high,
         alert_on_consecutive_increase=alert_on_consecutive_increase,
+        target_rate=valid_target_rate,
+        target_direction=normalized_target_direction,
+        target_hit=target_hit,
+        target_distance_pct=target_distance_pct,
         should_alert=should_alert,
         recommendation_zh=recommendation_zh,
         reasoning_zh=reasoning_zh,

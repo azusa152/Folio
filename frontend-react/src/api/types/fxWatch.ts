@@ -40,6 +40,10 @@ export interface FxAnalysis {
   trend_direction: "rising" | "falling" | "sideways"
   trend_strength_pct: number
   signal_strength: "strong" | "moderate" | "weak" | "none"
+  target_rate: number | null
+  target_direction: "above" | "below" | null
+  target_hit: boolean
+  target_distance_pct: number | null
 }
 
 // GET /forex/{base}/{quote}/history-long returns list[dict]

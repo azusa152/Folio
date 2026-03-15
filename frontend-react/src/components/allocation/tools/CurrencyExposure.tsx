@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ interface Props {
   privacyMode: boolean
   profile: ProfileResponse
   enabled: boolean
+  showFxDashboardLink?: boolean
 }
 
 const ALERT_TEXT_CLASSES: Record<string, string> = {
@@ -22,7 +24,7 @@ const ALERT_TEXT_CLASSES: Record<string, string> = {
   long_term_trend: "text-blue-600 dark:text-blue-400",
 }
 
-export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
+export function CurrencyExposure({ privacyMode, profile, enabled, showFxDashboardLink = false }: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const { data, isLoading } = useCurrencyExposure(enabled)
@@ -57,6 +59,11 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
       {/* Home currency selector */}
       <div className="flex items-center gap-3">
         <span className="text-sm font-semibold">{t("allocation.fx.title")}</span>
+        {showFxDashboardLink && (
+          <Link to="/fx-watch?tab=overview" className="text-xs text-primary hover:underline">
+            {t("allocation.fx.open_dashboard")}
+          </Link>
+        )}
         <div className="flex items-center gap-2 ml-auto">
           <label htmlFor="fx-home-currency" className="text-xs text-muted-foreground">{t("allocation.fx.home_currency")}</label>
           <select
@@ -81,15 +88,17 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.fx.cash_chart")}</p>
           {!privacyMode ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={cashData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
-                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
-                  {cashData.map((entry, i) => <Cell key={entry.name} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label={t("allocation.fx.cash_chart")}>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={cashData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
+                    label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
+                    {cashData.map((entry, i) => <Cell key={entry.name} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-52 flex items-center justify-center border border-border rounded text-xs text-muted-foreground">
               ***
@@ -99,15 +108,17 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
         <div>
           <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.fx.total_chart")}</p>
           {!privacyMode ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={totalData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
-                  label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
-                  {totalData.map((entry, i) => <Cell key={entry.name} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label={t("allocation.fx.total_chart")}>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={totalData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="40%" outerRadius="70%" paddingAngle={1}
+                    label={({ name: n, value: v }) => `${n} ${(v as number).toFixed(1)}%`} labelLine={false}>
+                    {totalData.map((entry, i) => <Cell key={entry.name} fill={CURRENCY_COLORS[i % CURRENCY_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-52 flex items-center justify-center border border-border rounded text-xs text-muted-foreground">
               ***
@@ -127,6 +138,7 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
                   <th className="text-left py-0.5 pr-3">{t("allocation.fx.col_pair")}</th>
                   <th className="text-right py-0.5 pr-3">{t("allocation.fx.col_rate")}</th>
                   <th className="text-right py-0.5">{t("allocation.fx.col_change")}</th>
+                  <th className="text-right py-0.5">{t("allocation.fx.col_impact")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +154,14 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
                         !privacyMode && (m.change_pct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss),
                       )}
                     >
-                      {privacyMode ? "***" : `${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}% ${m.direction === "up" ? "📈" : "📉"}`}
+                      {privacyMode
+                        ? "***"
+                        : `${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}% (${m.direction})`}
+                    </td>
+                    <td className="py-0.5 text-right">
+                      {privacyMode
+                        ? "***"
+                        : `${(m.impact_home_value ?? 0) >= 0 ? "+" : ""}${(m.impact_home_value ?? 0).toFixed(2)}`}
                     </td>
                   </tr>
                 ))}
@@ -150,6 +169,9 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
             </table>
           </div>
         </section>
+      )}
+      {data.fx_movements.length === 0 && (
+        <p className="text-xs text-muted-foreground">{t("allocation.fx.empty_movements")}</p>
       )}
 
       {/* Rate Alerts */}
@@ -173,6 +195,9 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
           </div>
         </section>
       )}
+      {data.fx_rate_alerts.length === 0 && (
+        <p className="text-xs text-muted-foreground">{t("allocation.fx.empty_alerts")}</p>
+      )}
 
       {/* Advice */}
       {data.advice.length > 0 && (
@@ -181,6 +206,9 @@ export function CurrencyExposure({ privacyMode, profile, enabled }: Props) {
             <li key={a} className="text-xs text-muted-foreground">• {a}</li>
           ))}
         </ul>
+      )}
+      {data.advice.length === 0 && (
+        <p className="text-xs text-muted-foreground">{t("allocation.fx.empty_advice")}</p>
       )}
 
       {/* Alert button */}

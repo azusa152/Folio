@@ -158,6 +158,10 @@ async function fetchFxAnalysis(forceRefresh = false): Promise<FxAnalysisState> {
       trend_direction: r.result.trend_direction,
       trend_strength_pct: r.result.trend_strength_pct,
       signal_strength: r.result.signal_strength,
+      target_rate: r.result.target_rate ?? null,
+      target_direction: r.result.target_direction ?? null,
+      target_hit: r.result.target_hit ?? false,
+      target_distance_pct: r.result.target_distance_pct ?? null,
     }
     map[r.watch_id] = entry
   }

@@ -162,6 +162,7 @@ class FXMovement(BaseModel):
     current_rate: float
     change_pct: float  # 期間內百分比變動
     direction: str  # "up" / "down" / "flat"
+    impact_home_value: float = 0.0  # 估算對本幣資產價值的影響
 
 
 class FXRateAlertItem(BaseModel):

@@ -36,6 +36,20 @@ class TestFXWatchCRUD:
         assert data["is_active"] is True
         assert "id" in data
 
+    def test_create_fx_watch_config_with_target_fields(self, client: TestClient):
+        payload = {
+            "base_currency": "USD",
+            "quote_currency": "JPY",
+            "target_rate": 150.0,
+            "target_direction": "below",
+        }
+
+        response = client.post("/fx-watch", json=payload)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["target_rate"] == 150.0
+        assert data["target_direction"] == "below"
+
     def test_get_all_fx_watch_configs(self, client: TestClient):
         # Arrange: create two configs
         client.post(
@@ -123,6 +137,51 @@ class TestFXWatchCRUD:
         assert data["recent_high_days"] == 60
         assert data["consecutive_increase_days"] == 5
         assert data["is_active"] is False
+
+    def test_update_should_allow_clearing_target_fields(self, client: TestClient):
+        create_response = client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "target_rate": 150.0,
+                "target_direction": "below",
+            },
+        )
+        watch_id = create_response.json()["id"]
+
+        clear_response = client.patch(
+            f"/fx-watch/{watch_id}",
+            json={"target_rate": None, "target_direction": None},
+        )
+        assert clear_response.status_code == 200
+        cleared = clear_response.json()
+        assert cleared["target_rate"] is None
+        assert cleared["target_direction"] is None
+
+    def test_update_without_target_fields_should_preserve_existing_target(
+        self, client: TestClient
+    ):
+        create_response = client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "target_rate": 150.0,
+                "target_direction": "below",
+            },
+        )
+        watch_id = create_response.json()["id"]
+
+        update_response = client.patch(
+            f"/fx-watch/{watch_id}",
+            json={"recent_high_days": 45},
+        )
+        assert update_response.status_code == 200
+        updated = update_response.json()
+        assert updated["recent_high_days"] == 45
+        assert updated["target_rate"] == 150.0
+        assert updated["target_direction"] == "below"
 
     def test_update_nonexistent_watch_returns_404(self, client: TestClient):
         # Act
@@ -293,6 +352,18 @@ class TestFXWatchActions:
             "weak",
             "none",
         ]
+        target_direction_prop = properties["target_direction"]
+        enum_values = target_direction_prop.get("enum")
+        if enum_values is None:
+            enum_values = next(
+                (
+                    item.get("enum")
+                    for item in target_direction_prop.get("anyOf", [])
+                    if isinstance(item, dict) and item.get("enum")
+                ),
+                None,
+            )
+        assert enum_values == ["above", "below"]
 
     def test_check_fx_watches_with_no_configs(self, client: TestClient):
         # Act
@@ -492,6 +563,39 @@ class TestFXWatchValidation:
         response = client.post("/fx-watch", json={"quote_currency": "TWD"})
 
         # Assert
+        assert response.status_code == 422
+
+    def test_create_should_return_422_when_target_direction_without_target_rate(
+        self, client: TestClient
+    ):
+        response = client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "target_direction": "above",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_update_should_return_422_when_target_direction_without_target_rate(
+        self, client: TestClient
+    ):
+        create_response = client.post(
+            "/fx-watch",
+            json={
+                "base_currency": "USD",
+                "quote_currency": "JPY",
+                "target_rate": 150.0,
+                "target_direction": "below",
+            },
+        )
+        watch_id = create_response.json()["id"]
+
+        response = client.patch(
+            f"/fx-watch/{watch_id}",
+            json={"target_direction": "above"},
+        )
         assert response.status_code == 422
 
 

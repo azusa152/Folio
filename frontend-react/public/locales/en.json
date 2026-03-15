@@ -8,7 +8,7 @@
     "radar": "Investment Radar",
     "backtest": "Signal Backtest",
     "allocation": "Asset Allocation",
-    "fx_watch": "FX Watch",
+    "fx_watch": "FX Monitor",
     "smart_money": "Smart Money"
   },
   "common": {
@@ -913,6 +913,7 @@
     "clear_filter": "Clear filter",
     "fx": {
       "title": "💱 Currency Exposure",
+      "open_dashboard": "Open FX dashboard",
       "home_currency": "Home Currency",
       "save_home": "Save",
       "cash_chart": "💵 Cash Exposure",
@@ -922,7 +923,11 @@
       "alert_button": "📨 Send FX Alert",
       "col_pair": "Pair",
       "col_rate": "Rate",
-      "col_change": "Change"
+      "col_change": "Change",
+      "col_impact": "Impact",
+      "empty_movements": "No FX movement data available.",
+      "empty_alerts": "No FX alerts at the moment.",
+      "empty_advice": "No FX advice available."
     },
     "stress": {
       "title": "🧪 Stress Test",
@@ -995,6 +1000,16 @@
       "add_help": "Add new FX monitor",
       "refresh_cooldown": "Refresh rates ({{seconds}}s)"
     },
+    "tab": {
+      "overview": "Overview",
+      "watches": "Watches",
+      "exposure": "Exposure"
+    },
+    "overview": {
+      "portfolio_impact": "Portfolio impact snapshot",
+      "non_home": "Non-home asset ratio: {{pct}}%",
+      "cash_non_home": "Non-home cash ratio: {{pct}}%"
+    },
     "empty": {
       "message": "📭 No monitors configured. Click \"➕ Add\" above to start.",
       "hint": "💡 Common setup: USD/TWD to track optimal exchange timing."
@@ -1030,6 +1045,16 @@
       "alert_on_high_help": "Alert when rate approaches recent high",
       "alert_on_consecutive": "Enable Consecutive Up Alert",
       "alert_on_consecutive_help": "Alert when rate has consecutive up days",
+      "quick_mode": "Quick mode",
+      "advanced_mode": "Advanced mode",
+      "preset_travel": "Travel prep",
+      "preset_long_term": "Long-term monitoring",
+      "target_rate": "Target rate",
+      "target_rate_placeholder": "Optional (e.g. 32.0000)",
+      "target_direction": "Trigger when",
+      "target_direction_placeholder": "Select direction",
+      "target_direction_above": "Rate is above target",
+      "target_direction_below": "Rate is below target",
       "reminder_hours": "Reminder Interval (hours)",
       "reminder_hours_help": "Cooldown to avoid duplicate alerts",
       "save": "💾 Save Changes",
@@ -1037,12 +1062,16 @@
       "cancel": "❌ Cancel",
       "error_same_currency": "⚠️ Base and quote currency cannot be the same",
       "error_no_alert": "⚠️ At least one alert condition must be enabled",
-      "error_reminder_hours": "⚠️ Reminder interval must be between 1 and 168 hours."
+      "error_reminder_hours": "⚠️ Reminder interval must be between 1 and 168 hours.",
+      "error_target_rate": "⚠️ Target rate must be a positive number.",
+      "error_target_direction": "⚠️ Select target direction when target rate is set."
     },
     "analysis": {
       "title": "📊 Analysis Reason",
       "waiting": "⏳ Waiting for analysis...",
       "loading": "⏳ Analyzing...",
+      "show_details": "Show technical details",
+      "hide_details": "Hide technical details",
       "trend_direction": "Trend direction",
       "trend_rising": "Rising",
       "trend_falling": "Falling",
@@ -1060,13 +1089,22 @@
       "1w": "1W",
       "1m": "1M",
       "2m": "2M",
-      "3m": "3M"
+      "3m": "3M",
+      "6m": "6M",
+      "1y": "1Y"
     },
     "badge": {
       "alert": "Alert",
+      "good_time": "Good time to exchange",
+      "watch": "Worth watching",
+      "declining": "Rate declining",
       "normal": "Normal",
       "inactive": "Inactive",
       "loading": "Loading..."
+    },
+    "target": {
+      "hit": "Target reached",
+      "away": "{{pct}}% away from target"
     },
     "indicator": {
       "near_high": "Near {{days}}d high",
@@ -1100,6 +1138,8 @@
       "recent_high": "• Recent high: {{days}} days",
       "consecutive": "• Consecutive up: {{days}} days",
       "interval": "• Interval: {{hours}} hours",
+      "target": "• Target: {{direction}} {{rate}}",
+      "target_none": "• Target: not set",
       "high_alert": "• High alert: {{icon}}",
       "consec_alert": "• Up alert: {{icon}}",
       "last_alert_time": "• Last alert: {{time}}",
@@ -1110,6 +1150,7 @@
       "period_label": "Trend Period",
       "hover_template": "%{x}<br>Rate: %{y}",
       "high_annotation": "{{days}}-day high: {{high}}",
+      "target_annotation": "Target {{target}} ({{distance}}% away)",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} Rate Chart",

@@ -7480,6 +7480,11 @@
           "direction": {
             "type": "string",
             "title": "Direction"
+          },
+          "impact_home_value": {
+            "type": "number",
+            "title": "Impact Home Value",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -7603,6 +7608,48 @@
           "alert_on_consecutive_increase": {
             "type": "boolean",
             "title": "Alert On Consecutive Increase"
+          },
+          "target_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rate"
+          },
+          "target_direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "below"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Direction"
+          },
+          "target_hit": {
+            "type": "boolean",
+            "title": "Target Hit",
+            "default": false
+          },
+          "target_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Distance Pct"
           },
           "should_alert": {
             "type": "boolean",
@@ -7764,6 +7811,32 @@
             "title": "Alert On Consecutive Increase",
             "default": true
           },
+          "target_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rate"
+          },
+          "target_direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "below"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Direction"
+          },
           "reminder_interval_hours": {
             "type": "integer",
             "title": "Reminder Interval Hours",
@@ -7811,6 +7884,32 @@
           "alert_on_consecutive_increase": {
             "type": "boolean",
             "title": "Alert On Consecutive Increase"
+          },
+          "target_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rate"
+          },
+          "target_direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "below"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Direction"
           },
           "reminder_interval_hours": {
             "type": "integer",
@@ -7903,6 +8002,32 @@
               }
             ],
             "title": "Alert On Consecutive Increase"
+          },
+          "target_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Rate"
+          },
+          "target_direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "below"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Direction"
           },
           "reminder_interval_hours": {
             "anyOf": [

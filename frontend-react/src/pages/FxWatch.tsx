@@ -7,6 +7,7 @@ import { formatLocalTime, formatRelativeTime, parseUtc, getErrorMessage } from "
 import { FX_WATCH_REFRESH_COOLDOWN_SECONDS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -20,6 +21,10 @@ import {
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
 import type { FxWatch } from "@/api/types/fxWatch"
+import { useCurrencyExposure } from "@/api/hooks/useAllocation"
+import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
+import { useProfile } from "@/api/hooks/useDashboard"
+import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 
 type SortMode = "alert_first" | "alphabetical" | "volatility"
 type FilterMode = "all" | "active_only"
@@ -90,13 +95,18 @@ export default function FxWatch() {
   const [refreshCooldownRemainingSeconds, setRefreshCooldownRemainingSeconds] = useState(0)
   const rawSort = searchParams.get("sort")
   const rawFilter = searchParams.get("filter")
+  const rawTab = searchParams.get("tab")
   const sortMode: SortMode =
     rawSort === "alphabetical" || rawSort === "volatility" || rawSort === "alert_first"
       ? rawSort
       : "alert_first"
   const filterMode: FilterMode = rawFilter === "active_only" ? "active_only" : "all"
+  const activeTab = rawTab === "overview" || rawTab === "exposure" ? rawTab : "watches"
 
   const { data: watches, isLoading, isError } = useFxWatches()
+  const { data: profile } = useProfile()
+  const privacyMode = usePrivacyMode((s) => s.isPrivate)
+  const { data: exposure } = useCurrencyExposure(activeTab !== "watches")
   const setSortMode = (nextSortMode: SortMode) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -111,6 +121,14 @@ export default function FxWatch() {
       const next = new URLSearchParams(prev)
       if (nextFilterMode === "all") next.delete("filter")
       else next.set("filter", nextFilterMode)
+      return next
+    })
+  }
+  const setActiveTab = (nextTab: "overview" | "watches" | "exposure") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (nextTab === "watches") next.delete("tab")
+      else next.set("tab", nextTab)
       return next
     })
   }
@@ -177,6 +195,16 @@ export default function FxWatch() {
           : "bg-muted-foreground/40"
 
   const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
+  const topMovements = useMemo(
+    () =>
+      [...(exposure?.fx_movements ?? [])]
+        .sort(
+          (a, b) =>
+            Math.abs(b.impact_home_value ?? 0) - Math.abs(a.impact_home_value ?? 0),
+        )
+        .slice(0, 5),
+    [exposure],
+  )
 
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
@@ -367,91 +395,134 @@ export default function FxWatch() {
         </div>
       </div>
 
-      {/* Summary strip */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <SummaryCard label={t("fx_watch.metric.total")} value={String(watches.length)} />
-        <SummaryCard label={t("fx_watch.metric.active")} value={String(activeCount)} />
-        <SummaryCard
-          label={t("fx_watch.metric.alerts")}
-          value={String(alertCount)}
-          highlight={alertCount > 0}
-        />
-        <SummaryCard
-          label={t("fx_watch.metric.last_alert")}
-          value={lastAlert ?? t("fx_watch.metric.not_sent")}
-          small
-        />
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "overview" | "watches" | "exposure")}>
+        <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
+          <TabsTrigger value="overview" className="min-h-[44px]">
+            {t("fx_watch.tab.overview")}
+          </TabsTrigger>
+          <TabsTrigger value="watches" className="min-h-[44px]">
+            {t("fx_watch.tab.watches")}
+          </TabsTrigger>
+          <TabsTrigger value="exposure" className="min-h-[44px]">
+            {t("fx_watch.tab.exposure")}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Watch list */}
-      {watches.length === 0 ? (
-        <div className="space-y-1 py-4">
-          <p className="text-sm text-muted-foreground">{t("fx_watch.empty.message")}</p>
-          <p className="text-xs text-muted-foreground">{t("fx_watch.empty.hint")}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {/* Sort & filter controls */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex rounded-md border border-border overflow-hidden">
-              <button
-                onClick={() => setFilterMode("all")}
-                className={`px-3 py-1 text-xs min-h-[44px] transition-colors ${
-                  filterMode === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t("fx_watch.filter.all")}
-              </button>
-              <button
-                onClick={() => setFilterMode("active_only")}
-                className={`px-3 py-1 text-xs min-h-[44px] border-l border-border transition-colors ${
-                  filterMode === "active_only"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t("fx_watch.filter.active_only")}
-              </button>
-            </div>
-
-            <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-              <SelectTrigger className="w-36 text-xs min-h-[44px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alert_first" className="text-xs">
-                  {t("fx_watch.sort.alert_first")}
-                </SelectItem>
-                <SelectItem value="alphabetical" className="text-xs">
-                  {t("fx_watch.sort.alphabetical")}
-                </SelectItem>
-                <SelectItem value="volatility" className="text-xs">
-                  {t("fx_watch.sort.volatility")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            <span className="text-xs text-muted-foreground">
-              {t("fx_watch.list.title")} ({sortedWatches.length})
-            </span>
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <SummaryCard label={t("fx_watch.metric.total")} value={String(watches.length)} />
+            <SummaryCard label={t("fx_watch.metric.active")} value={String(activeCount)} />
+            <SummaryCard
+              label={t("fx_watch.metric.alerts")}
+              value={String(alertCount)}
+              highlight={alertCount > 0}
+            />
+            <SummaryCard
+              label={t("fx_watch.metric.last_alert")}
+              value={lastAlert ?? t("fx_watch.metric.not_sent")}
+              small
+            />
           </div>
 
-          {sortedWatches.map((watch: FxWatch) => {
-            const pair = `${watch.base_currency}/${watch.quote_currency}`
-            return (
-              <WatchCard
-                key={watch.id}
-                watch={watch}
-                analysis={analysisMap[watch.id]}
-                analysisLoading={analysisLoading}
-                sparklineData={historyMap[pair]}
-              />
-            )
-          })}
-        </div>
-      )}
+          <div className="rounded-md border border-border p-3">
+            <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>
+            {exposure ? (
+              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <p>{t("fx_watch.overview.non_home", { pct: exposure.non_home_pct.toFixed(2) })}</p>
+                <p>{t("fx_watch.overview.cash_non_home", { pct: exposure.cash_non_home_pct.toFixed(2) })}</p>
+                {topMovements.map((m) => (
+                  <p key={m.pair}>
+                    {m.pair}: {m.change_pct >= 0 ? "+" : ""}
+                    {m.change_pct.toFixed(2)}% (
+                    {(m.impact_home_value ?? 0) >= 0 ? "+" : ""}
+                    {(m.impact_home_value ?? 0).toFixed(2)} {exposure.home_currency})
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">{t("common.loading")}</p>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="watches" className="mt-4 space-y-3">
+          {watches.length === 0 ? (
+            <div className="space-y-1 py-4">
+              <p className="text-sm text-muted-foreground">{t("fx_watch.empty.message")}</p>
+              <p className="text-xs text-muted-foreground">{t("fx_watch.empty.hint")}</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  <button
+                    onClick={() => setFilterMode("all")}
+                    className={`px-3 py-1 text-xs min-h-[44px] transition-colors ${
+                      filterMode === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t("fx_watch.filter.all")}
+                  </button>
+                  <button
+                    onClick={() => setFilterMode("active_only")}
+                    className={`px-3 py-1 text-xs min-h-[44px] border-l border-border transition-colors ${
+                      filterMode === "active_only"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t("fx_watch.filter.active_only")}
+                  </button>
+                </div>
+
+                <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                  <SelectTrigger className="w-36 text-xs min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alert_first" className="text-xs">
+                      {t("fx_watch.sort.alert_first")}
+                    </SelectItem>
+                    <SelectItem value="alphabetical" className="text-xs">
+                      {t("fx_watch.sort.alphabetical")}
+                    </SelectItem>
+                    <SelectItem value="volatility" className="text-xs">
+                      {t("fx_watch.sort.volatility")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <span className="text-xs text-muted-foreground">
+                  {t("fx_watch.list.title")} ({sortedWatches.length})
+                </span>
+              </div>
+
+              {sortedWatches.map((watch: FxWatch) => {
+                const pair = `${watch.base_currency}/${watch.quote_currency}`
+                return (
+                  <WatchCard
+                    key={watch.id}
+                    watch={watch}
+                    analysis={analysisMap[watch.id]}
+                    analysisLoading={analysisLoading}
+                    sparklineData={historyMap[pair]}
+                  />
+                )
+              })}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="exposure" className="mt-4">
+          {profile ? (
+            <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "exposure"} />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <AddWatchDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>

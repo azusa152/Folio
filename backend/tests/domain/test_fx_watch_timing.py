@@ -343,6 +343,81 @@ class TestAssessExchangeTiming:
             and "連續上漲" in result.recommendation_zh
         )
 
+    def test_should_alert_when_target_only_condition_met(self):
+        history = [
+            {"date": "2026-02-08", "close": 30.0},
+            {"date": "2026-02-09", "close": 30.1},
+            {"date": "2026-02-10", "close": 30.2},
+            {"date": "2026-02-11", "close": 30.3},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            5,
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=False,
+            target_rate=30.0,
+            target_direction="above",
+        )
+
+        assert result.should_alert is True
+        assert result.target_rate == 30.0
+        assert result.target_direction == "above"
+        assert result.target_hit is True
+        assert result.scenario == "should_alert_target"
+
+    def test_should_calculate_target_distance_when_not_hit(self):
+        history = [
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 31.2},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            10,
+            alert_on_recent_high=False,
+            alert_on_consecutive_increase=False,
+            target_rate=32.0,
+            target_direction="above",
+        )
+
+        assert result.target_hit is False
+        assert result.target_distance_pct is not None
+        assert result.target_distance_pct > 0
+        assert result.should_alert is False
+
+    def test_should_fallback_to_non_target_scenario_when_target_invalid(self):
+        history = [
+            {"date": "2026-02-10", "close": 31.0},
+            {"date": "2026-02-11", "close": 31.2},
+        ]
+
+        result = assess_exchange_timing(
+            "USD",
+            "TWD",
+            history,
+            30,
+            3,
+            target_rate=32.0,
+            target_direction="sideways",
+        )
+
+        assert result.target_direction is None
+        assert result.target_hit is False
+        assert result.scenario in {
+            "no_signal",
+            "should_alert_consec",
+            "approaching_high",
+            "at_high",
+            "should_alert_both",
+        }
+
 
 class TestAssessExchangeTimingEdgeCases:
     """Edge case tests for assess_exchange_timing."""

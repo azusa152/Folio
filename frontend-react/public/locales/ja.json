@@ -8,7 +8,7 @@
     "radar": "投資レーダー",
     "backtest": "バックテスト",
     "allocation": "資産配分",
-    "fx_watch": "為替ウォッチ",
+    "fx_watch": "FXモニター",
     "smart_money": "スマートマネー"
   },
   "common": {
@@ -913,6 +913,7 @@
     "clear_filter": "フィルターをクリア",
     "fx": {
       "title": "💱 通貨エクスポージャー",
+      "open_dashboard": "FXダッシュボードを開く",
       "home_currency": "基準通貨",
       "save_home": "保存",
       "cash_chart": "💵 現金エクスポージャー",
@@ -922,7 +923,11 @@
       "alert_button": "📨 為替アラートを送信",
       "col_pair": "通貨ペア",
       "col_rate": "レート",
-      "col_change": "変動"
+      "col_change": "変動",
+      "col_impact": "影響額",
+      "empty_movements": "表示できる為替変動はありません。",
+      "empty_alerts": "現在、為替アラートはありません。",
+      "empty_advice": "現在、アドバイスはありません。"
     },
     "stress": {
       "title": "🧪 ストレステスト",
@@ -995,6 +1000,16 @@
       "add_help": "新しい為替監視を追加します",
       "refresh_cooldown": "レート更新 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "概要",
+      "watches": "監視リスト",
+      "exposure": "エクスポージャー"
+    },
+    "overview": {
+      "portfolio_impact": "ポートフォリオ影響スナップショット",
+      "non_home": "非基準通貨資産比率: {{pct}}%",
+      "cash_non_home": "非基準通貨キャッシュ比率: {{pct}}%"
+    },
     "empty": {
       "message": "📭 監視設定がありません。上の「➕ 追加」ボタンから開始してください。",
       "hint": "💡 よく使われる設定: USD/JPY (米ドル/日本円) で最適な両替タイミングを追跡します。"
@@ -1030,6 +1045,16 @@
       "alert_on_high_help": "レートが直近の高値に接近した際にアラートを送信します",
       "alert_on_consecutive": "連続上昇アラートを有効にする",
       "alert_on_consecutive_help": "連続上昇日数が閾値に達した際にアラートを送信します",
+      "quick_mode": "クイックモード",
+      "advanced_mode": "詳細モード",
+      "preset_travel": "旅行準備",
+      "preset_long_term": "長期モニタリング",
+      "target_rate": "目標レート",
+      "target_rate_placeholder": "任意 (例: 150.0000)",
+      "target_direction": "トリガー条件",
+      "target_direction_placeholder": "方向を選択",
+      "target_direction_above": "目標より上で通知",
+      "target_direction_below": "目標より下で通知",
       "reminder_hours": "リマインダー間隔 (時間)",
       "reminder_hours_help": "重複通知を防ぐため、一度アラートが鳴った後、この時間内は再通知しません",
       "save": "💾 変更を保存",
@@ -1037,12 +1062,16 @@
       "cancel": "❌ キャンセル",
       "error_same_currency": "⚠️ ベース通貨とクォート通貨を同じにすることはできません",
       "error_no_alert": "⚠️ 少なくとも1つのアラート条件を有効にする必要があります",
-      "error_reminder_hours": "⚠️ リマインダー間隔は1から168時間の間で設定してください"
+      "error_reminder_hours": "⚠️ リマインダー間隔は1から168時間の間で設定してください",
+      "error_target_rate": "⚠️ 目標レートは正の数で入力してください。",
+      "error_target_direction": "⚠️ 目標レートを設定する場合は方向を選択してください。"
     },
     "analysis": {
       "title": "📊 分析理由",
       "waiting": "⏳ 分析待機中...",
       "loading": "⏳ 分析中...",
+      "show_details": "テクニカル詳細を表示",
+      "hide_details": "テクニカル詳細を非表示",
       "trend_direction": "トレンド方向",
       "trend_rising": "上昇",
       "trend_falling": "下降",
@@ -1060,13 +1089,22 @@
       "1w": "1週間",
       "1m": "1ヶ月",
       "2m": "2ヶ月",
-      "3m": "3ヶ月"
+      "3m": "3ヶ月",
+      "6m": "6ヶ月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "アラート",
+      "good_time": "両替の好機",
+      "watch": "要ウォッチ",
+      "declining": "レート下落中",
       "normal": "正常",
       "inactive": "無効",
       "loading": "読込中..."
+    },
+    "target": {
+      "hit": "目標到達",
+      "away": "目標まで {{pct}}%"
     },
     "indicator": {
       "near_high": "{{days}}日高値に接近",
@@ -1100,6 +1138,8 @@
       "recent_high": "• 直近高値: {{days}}日",
       "consecutive": "• 連続上昇: {{days}}日",
       "interval": "• 通知間隔: {{hours}}時間",
+      "target": "• 目標: {{direction}} {{rate}}",
+      "target_none": "• 目標: 未設定",
       "high_alert": "• 高値アラート: {{icon}}",
       "consec_alert": "• 上昇アラート: {{icon}}",
       "last_alert_time": "• 最終アラート: {{time}}",
@@ -1110,6 +1150,7 @@
       "period_label": "トレンド期間",
       "hover_template": "%{x}<br>レート: %{y}",
       "high_annotation": "{{days}}日高値: {{high}}",
+      "target_annotation": "目標 {{target}} (あと {{distance}}%)",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} レート推移",

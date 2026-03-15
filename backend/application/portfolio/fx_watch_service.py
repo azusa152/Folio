@@ -4,6 +4,7 @@ Application — FX Watch Service：外匯換匯時機監控與警報。
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from sqlmodel import Session
 
@@ -30,6 +31,7 @@ from infrastructure.repositories import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+_UNSET = object()
 
 
 # ===========================================================================
@@ -45,6 +47,8 @@ def create_watch(
     consecutive_increase_days: int = 3,
     alert_on_recent_high: bool = True,
     alert_on_consecutive_increase: bool = True,
+    target_rate: float | None = None,
+    target_direction: str | None = None,
     reminder_interval_hours: int = 24,
     user_id: str = DEFAULT_USER_ID,
 ) -> FXWatchConfig:
@@ -73,6 +77,8 @@ def create_watch(
         consecutive_increase_days=consecutive_increase_days,
         alert_on_recent_high=alert_on_recent_high,
         alert_on_consecutive_increase=alert_on_consecutive_increase,
+        target_rate=target_rate,
+        target_direction=target_direction,
         reminder_interval_hours=reminder_interval_hours,
         is_active=True,
     )
@@ -116,6 +122,8 @@ def update_watch(
     consecutive_increase_days: int | None = None,
     alert_on_recent_high: bool | None = None,
     alert_on_consecutive_increase: bool | None = None,
+    target_rate: float | None | object = _UNSET,
+    target_direction: str | None | object = _UNSET,
     reminder_interval_hours: int | None = None,
     is_active: bool | None = None,
 ) -> FXWatchConfig | None:
@@ -147,6 +155,10 @@ def update_watch(
         watch.alert_on_recent_high = alert_on_recent_high
     if alert_on_consecutive_increase is not None:
         watch.alert_on_consecutive_increase = alert_on_consecutive_increase
+    if target_rate is not _UNSET:
+        watch.target_rate = cast("float | None", target_rate)
+    if target_direction is not _UNSET:
+        watch.target_direction = cast("str | None", target_direction)
     if reminder_interval_hours is not None:
         watch.reminder_interval_hours = reminder_interval_hours
     if is_active is not None:
@@ -259,6 +271,8 @@ def check_fx_watches(session: Session, user_id: str = DEFAULT_USER_ID) -> list[d
                 consecutive_threshold=watch.consecutive_increase_days,
                 alert_on_recent_high=watch.alert_on_recent_high,
                 alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
+                target_rate=watch.target_rate,
+                target_direction=watch.target_direction,
             )
             results.append(
                 {
@@ -347,6 +361,8 @@ def send_fx_watch_alerts(session: Session, user_id: str = DEFAULT_USER_ID) -> di
                 consecutive_threshold=watch.consecutive_increase_days,
                 alert_on_recent_high=watch.alert_on_recent_high,
                 alert_on_consecutive_increase=watch.alert_on_consecutive_increase,
+                target_rate=watch.target_rate,
+                target_direction=watch.target_direction,
             )
 
             # 若應發出警報，加入列表並更新時間戳

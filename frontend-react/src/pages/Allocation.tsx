@@ -245,7 +245,12 @@ export default function Allocation() {
         <TabsContent value="risk" className="mt-4 space-y-6">
           {riskExpanded ? (
             <>
-              <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "risk"} />
+              <CurrencyExposure
+                privacyMode={privacyMode}
+                profile={profile}
+                enabled={activeTab === "risk"}
+                showFxDashboardLink
+              />
               <hr className="border-border" />
               <StressTest displayCurrency={displayCurrency} privacyMode={privacyMode} enabled={activeTab === "risk"} />
               <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setRiskExpanded(false)}>

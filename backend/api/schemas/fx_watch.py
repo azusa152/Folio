@@ -4,7 +4,7 @@ API — FX Watch / Forex Monitoring Schemas。
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from domain.constants import (
     FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE,
@@ -28,7 +28,17 @@ class FXWatchCreateRequest(BaseModel):
     consecutive_increase_days: int = FX_WATCH_DEFAULT_CONSECUTIVE_DAYS
     alert_on_recent_high: bool = FX_WATCH_DEFAULT_ALERT_ON_RECENT_HIGH
     alert_on_consecutive_increase: bool = FX_WATCH_DEFAULT_ALERT_ON_CONSECUTIVE
+    target_rate: float | None = None
+    target_direction: Literal["above", "below"] | None = None
     reminder_interval_hours: int = FX_WATCH_DEFAULT_REMINDER_HOURS
+
+    @model_validator(mode="after")
+    def validate_target_direction_requires_target_rate(self) -> "FXWatchCreateRequest":
+        if self.target_direction is not None and self.target_rate is None:
+            raise ValueError(
+                "target_direction requires target_rate in the same request body"
+            )
+        return self
 
 
 class FXWatchUpdateRequest(BaseModel):
@@ -38,8 +48,28 @@ class FXWatchUpdateRequest(BaseModel):
     consecutive_increase_days: int | None = None
     alert_on_recent_high: bool | None = None
     alert_on_consecutive_increase: bool | None = None
+    target_rate: float | None = None
+    target_direction: Literal["above", "below"] | None = None
     reminder_interval_hours: int | None = None
     is_active: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_target_direction_requires_target_rate(self) -> "FXWatchUpdateRequest":
+        has_target_rate = "target_rate" in self.model_fields_set
+        has_target_direction = "target_direction" in self.model_fields_set
+        if has_target_direction and not has_target_rate:
+            raise ValueError(
+                "target_direction requires target_rate in the same request body"
+            )
+        if (
+            has_target_direction
+            and self.target_direction is not None
+            and self.target_rate is None
+        ):
+            raise ValueError(
+                "target_direction requires a non-null target_rate in the same request body"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +88,8 @@ class FXWatchResponse(BaseModel):
     consecutive_increase_days: int
     alert_on_recent_high: bool
     alert_on_consecutive_increase: bool
+    target_rate: float | None = None
+    target_direction: Literal["above", "below"] | None = None
     reminder_interval_hours: int
     is_active: bool
     last_alerted_at: str | None = None
@@ -87,6 +119,10 @@ class FXTimingResultResponse(BaseModel):
     signal_strength: SignalStrengthLiteral
     alert_on_recent_high: bool
     alert_on_consecutive_increase: bool
+    target_rate: float | None = None
+    target_direction: Literal["above", "below"] | None = None
+    target_hit: bool = False
+    target_distance_pct: float | None = None
     should_alert: bool
     scenario: str
     scenario_vars: dict

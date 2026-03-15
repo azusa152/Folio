@@ -1016,12 +1016,15 @@ def calculate_currency_exposure(
                 direction = (
                     "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
                 )
+                currency_value_home = currency_values.get(cur, 0.0)
+                impact_home_value = round(currency_value_home * (change_pct / 100.0), 2)
                 fx_movements.append(
                     {
                         "pair": f"{cur}/{home_currency}",
                         "current_rate": last_close,
                         "change_pct": change_pct,
                         "direction": direction,
+                        "impact_home_value": impact_home_value,
                     }
                 )
 
@@ -1201,9 +1204,30 @@ def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
     if lang is None:
         lang = get_user_language(session)
 
+    home_currency = exposure.get("home_currency", "TWD")
+    cash_breakdown = exposure.get("cash_breakdown", [])
+    cash_by_cur = {
+        row.get("currency"): row.get("value", 0.0)
+        for row in cash_breakdown
+        if row.get("currency")
+    }
+
     # 匯率變動警報（三層級偵測）
     for alert_data in exposure.get("fx_rate_alerts", []):
         pair = alert_data["pair"]
+        base_currency = pair.split("/")[0]
+        cash_amt = float(cash_by_cur.get(base_currency, 0.0) or 0.0)
+        cash_note = (
+            t(
+                "rebalance.cash_impact",
+                lang=lang,
+                currency=base_currency,
+                amount=cash_amt,
+                home=home_currency,
+            )
+            if cash_amt > 0
+            else ""
+        )
         type_label_key = FX_ALERT_LABEL.get(
             alert_data["alert_type"], alert_data["alert_type"]
         )
@@ -1227,7 +1251,7 @@ def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
                 period=period,
                 change_pct=alert_data["change_pct"],
                 rate=alert_data["current_rate"],
-                cash_note="",
+                cash_note=cash_note,
             ).rstrip()
         )
 

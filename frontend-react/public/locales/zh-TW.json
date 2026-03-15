@@ -8,7 +8,7 @@
     "radar": "投資雷達",
     "backtest": "訊號回測",
     "allocation": "個人資產配置",
-    "fx_watch": "外匯監控",
+    "fx_watch": "外匯總覽",
     "smart_money": "大師足跡"
   },
   "common": {
@@ -913,6 +913,7 @@
     "clear_filter": "清除篩選",
     "fx": {
       "title": "💱 外幣曝險",
+      "open_dashboard": "前往外匯總覽",
       "home_currency": "主要貨幣",
       "save_home": "儲存",
       "cash_chart": "💵 現金曝險",
@@ -922,7 +923,11 @@
       "alert_button": "📨 發送外匯警報",
       "col_pair": "貨幣對",
       "col_rate": "匯率",
-      "col_change": "變動"
+      "col_change": "變動",
+      "col_impact": "影響",
+      "empty_movements": "目前沒有可顯示的匯率變動。",
+      "empty_alerts": "目前沒有匯率警報。",
+      "empty_advice": "目前沒有建議。"
     },
     "stress": {
       "title": "🧪 壓力測試",
@@ -995,6 +1000,16 @@
       "add_help": "新增外匯監控配置",
       "refresh_cooldown": "更新匯率 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "總覽",
+      "watches": "監控清單",
+      "exposure": "曝險"
+    },
+    "overview": {
+      "portfolio_impact": "投資組合影響快照",
+      "non_home": "非本幣資產占比：{{pct}}%",
+      "cash_non_home": "非本幣現金占比：{{pct}}%"
+    },
     "empty": {
       "message": "📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始",
       "hint": "💡 最常用的監控配置：USD/TWD（美元兌台幣），可追蹤換匯時機。"
@@ -1030,6 +1045,16 @@
       "alert_on_high_help": "當匯率接近近期高點時發送警報",
       "alert_on_consecutive": "啟用連續上漲警報",
       "alert_on_consecutive_help": "當匯率連續上漲達門檻時發送警報",
+      "quick_mode": "快速模式",
+      "advanced_mode": "進階模式",
+      "preset_travel": "旅遊換匯",
+      "preset_long_term": "長期監控",
+      "target_rate": "目標匯率",
+      "target_rate_placeholder": "選填（例如 32.0000）",
+      "target_direction": "觸發條件",
+      "target_direction_placeholder": "選擇方向",
+      "target_direction_above": "高於目標時提醒",
+      "target_direction_below": "低於目標時提醒",
       "reminder_hours": "提醒間隔（小時）",
       "reminder_hours_help": "避免重複通知，同一配置在此時間內不重複警報",
       "save": "💾 儲存變更",
@@ -1037,12 +1062,16 @@
       "cancel": "❌ 取消",
       "error_same_currency": "⚠️ 基礎貨幣與報價貨幣不能相同",
       "error_no_alert": "⚠️ 至少要啟用一項警報條件",
-      "error_reminder_hours": "⚠️ 提醒間隔必須介於 1 到 168 小時。"
+      "error_reminder_hours": "⚠️ 提醒間隔必須介於 1 到 168 小時。",
+      "error_target_rate": "⚠️ 目標匯率需為正數。",
+      "error_target_direction": "⚠️ 設定目標匯率時請選擇方向。"
     },
     "analysis": {
       "title": "📊 分析原因",
       "waiting": "⏳ 等待分析...",
       "loading": "⏳ 分析中...",
+      "show_details": "顯示技術細節",
+      "hide_details": "隱藏技術細節",
       "trend_direction": "趨勢方向",
       "trend_rising": "上升",
       "trend_falling": "下降",
@@ -1060,13 +1089,22 @@
       "1w": "1週",
       "1m": "1月",
       "2m": "2月",
-      "3m": "3月"
+      "3m": "3月",
+      "6m": "6月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "警報",
+      "good_time": "適合換匯",
+      "watch": "值得觀察",
+      "declining": "匯率回落中",
       "normal": "正常",
       "inactive": "已停用",
       "loading": "載入中..."
+    },
+    "target": {
+      "hit": "已達目標",
+      "away": "距離目標 {{pct}}%"
     },
     "indicator": {
       "near_high": "接近 {{days}} 日高點",
@@ -1100,6 +1138,8 @@
       "recent_high": "• 近期高點: {{days}} 日",
       "consecutive": "• 連續上漲: {{days}} 日",
       "interval": "• 間隔: {{hours}} 小時",
+      "target": "• 目標: {{direction}} {{rate}}",
+      "target_none": "• 目標: 未設定",
       "high_alert": "• 高點警報: {{icon}}",
       "consec_alert": "• 上漲警報: {{icon}}",
       "last_alert_time": "• 最後警報: {{time}}",
@@ -1110,6 +1150,7 @@
       "period_label": "趨勢區間",
       "hover_template": "%{x}<br>匯率: %{y}",
       "high_annotation": "{{days}} 日高點: {{high}}",
+      "target_annotation": "目標 {{target}}（距離 {{distance}}%）",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} 匯率走勢",

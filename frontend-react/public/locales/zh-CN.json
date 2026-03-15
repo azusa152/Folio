@@ -8,7 +8,7 @@
     "radar": "投资雷达",
     "backtest": "信号回测",
     "allocation": "个人资产配置",
-    "fx_watch": "外汇监控",
+    "fx_watch": "外汇总览",
     "smart_money": "大师足迹"
   },
   "common": {
@@ -913,6 +913,7 @@
     "clear_filter": "清除筛选",
     "fx": {
       "title": "💱 外币敞口",
+      "open_dashboard": "打开外汇看板",
       "home_currency": "主要货币",
       "save_home": "保存",
       "cash_chart": "💵 现金敞口",
@@ -922,7 +923,11 @@
       "alert_button": "📨 发送外汇警报",
       "col_pair": "货币对",
       "col_rate": "汇率",
-      "col_change": "变动"
+      "col_change": "变动",
+      "col_impact": "影响",
+      "empty_movements": "暂无可显示的汇率变动。",
+      "empty_alerts": "当前没有汇率警报。",
+      "empty_advice": "当前没有建议。"
     },
     "stress": {
       "title": "🧪 压力测试",
@@ -995,6 +1000,16 @@
       "add_help": "新增外汇监控配置",
       "refresh_cooldown": "更新汇率 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "总览",
+      "watches": "监控列表",
+      "exposure": "敞口"
+    },
+    "overview": {
+      "portfolio_impact": "组合影响快照",
+      "non_home": "非本币资产占比：{{pct}}%",
+      "cash_non_home": "非本币现金占比：{{pct}}%"
+    },
     "empty": {
       "message": "📭 尚未设定任何监控配置，请点击上方「➕ 新增」按钮开始",
       "hint": "💡 最常用的监控配置：USD/TWD（美元兑台币），可追踪换汇时机。"
@@ -1030,6 +1045,16 @@
       "alert_on_high_help": "当汇率接近近期高点时发送警报",
       "alert_on_consecutive": "启用连续上涨警报",
       "alert_on_consecutive_help": "当汇率连续上涨达门槛时发送警报",
+      "quick_mode": "快速模式",
+      "advanced_mode": "高级模式",
+      "preset_travel": "旅行换汇",
+      "preset_long_term": "长期监控",
+      "target_rate": "目标汇率",
+      "target_rate_placeholder": "可选（例如 7.2000）",
+      "target_direction": "触发条件",
+      "target_direction_placeholder": "选择方向",
+      "target_direction_above": "高于目标时提醒",
+      "target_direction_below": "低于目标时提醒",
       "reminder_hours": "提醒间隔（小时）",
       "reminder_hours_help": "避免重复通知，同一配置在此时间内不重复警报",
       "save": "💾 保存变更",
@@ -1037,12 +1062,16 @@
       "cancel": "❌ 取消",
       "error_same_currency": "⚠️ 基础货币与报价货币不能相同",
       "error_no_alert": "⚠️ 至少要启用一项警报条件",
-      "error_reminder_hours": "⚠️ 提醒间隔必须介于 1 到 168 小时。"
+      "error_reminder_hours": "⚠️ 提醒间隔必须介于 1 到 168 小时。",
+      "error_target_rate": "⚠️ 目标汇率必须为正数。",
+      "error_target_direction": "⚠️ 设置目标汇率时请选择方向。"
     },
     "analysis": {
       "title": "📊 分析原因",
       "waiting": "⏳ 等待分析...",
       "loading": "⏳ 分析中...",
+      "show_details": "显示技术细节",
+      "hide_details": "隐藏技术细节",
       "trend_direction": "趋势方向",
       "trend_rising": "上升",
       "trend_falling": "下降",
@@ -1060,13 +1089,22 @@
       "1w": "1周",
       "1m": "1月",
       "2m": "2月",
-      "3m": "3月"
+      "3m": "3月",
+      "6m": "6月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "警报",
+      "good_time": "适合换汇",
+      "watch": "值得关注",
+      "declining": "汇率回落中",
       "normal": "正常",
       "inactive": "已停用",
       "loading": "加载中..."
+    },
+    "target": {
+      "hit": "已达到目标",
+      "away": "距离目标 {{pct}}%"
     },
     "indicator": {
       "near_high": "接近 {{days}} 日高点",
@@ -1100,6 +1138,8 @@
       "recent_high": "• 近期高点: {{days}} 日",
       "consecutive": "• 连续上涨: {{days}} 日",
       "interval": "• 间隔: {{hours}} 小时",
+      "target": "• 目标: {{direction}} {{rate}}",
+      "target_none": "• 目标: 未设置",
       "high_alert": "• 高点警报: {{icon}}",
       "consec_alert": "• 上涨警报: {{icon}}",
       "last_alert_time": "• 最后警报: {{time}}",
@@ -1110,6 +1150,7 @@
       "period_label": "趋势区间",
       "hover_template": "%{x}<br>汇率: %{y}",
       "high_annotation": "{{days}}日高点: {{high}}",
+      "target_annotation": "目标 {{target}}（距离 {{distance}}%）",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} 汇率走势",
