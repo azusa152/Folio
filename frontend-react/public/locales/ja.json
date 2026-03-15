@@ -1007,8 +1007,23 @@
     },
     "overview": {
       "portfolio_impact": "ポートフォリオ影響スナップショット",
-      "non_home": "非基準通貨資産比率: {{pct}}%",
-      "cash_non_home": "非基準通貨キャッシュ比率: {{pct}}%"
+      "cash_non_home": "非基準通貨キャッシュ比率: {{pct}}%",
+      "net_impact_title": "為替の純影響",
+      "net_impact_positive": "最近の為替変動により、ポートフォリオに {{amount}} {{currency}} のプラス影響がありました",
+      "net_impact_negative": "最近の為替変動により、ポートフォリオは {{amount}} {{currency}} 減少しました",
+      "net_impact_neutral": "直近で大きな為替影響はありません",
+      "risk_title": "為替リスクレベル",
+      "risk_low": "為替リスク: 低",
+      "risk_medium": "為替リスク: 中",
+      "risk_high": "為替リスク: 高",
+      "foreign_exposure": "ポートフォリオの {{pct}}% は外貨建てです",
+      "currency_breakdown": "通貨内訳",
+      "top_movements": "ポートフォリオへの為替影響（上位）",
+      "advice_title": "できること",
+      "advice_show_more": "アドバイスをもっと見る",
+      "active_alerts": "有効な為替アラート",
+      "other_currencies": "その他",
+      "privacy_hidden": "プライバシーモードで数値を非表示にしています。"
     },
     "empty": {
       "message": "📭 監視設定がありません。上の「➕ 追加」ボタンから開始してください。",

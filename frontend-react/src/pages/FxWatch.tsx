@@ -23,6 +23,7 @@ import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
 import type { FxWatch } from "@/api/types/fxWatch"
 import { useCurrencyExposure } from "@/api/hooks/useAllocation"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
+import { PortfolioImpactSnapshot } from "@/components/fxwatch/PortfolioImpactSnapshot"
 import { useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 
@@ -195,17 +196,6 @@ export default function FxWatch() {
           : "bg-muted-foreground/40"
 
   const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
-  const topMovements = useMemo(
-    () =>
-      [...(exposure?.fx_movements ?? [])]
-        .sort(
-          (a, b) =>
-            Math.abs(b.impact_home_value ?? 0) - Math.abs(a.impact_home_value ?? 0),
-        )
-        .slice(0, 5),
-    [exposure],
-  )
-
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
@@ -424,25 +414,14 @@ export default function FxWatch() {
             />
           </div>
 
-          <div className="rounded-md border border-border p-3">
-            <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>
-            {exposure ? (
-              <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                <p>{t("fx_watch.overview.non_home", { pct: exposure.non_home_pct.toFixed(2) })}</p>
-                <p>{t("fx_watch.overview.cash_non_home", { pct: exposure.cash_non_home_pct.toFixed(2) })}</p>
-                {topMovements.map((m) => (
-                  <p key={m.pair}>
-                    {m.pair}: {m.change_pct >= 0 ? "+" : ""}
-                    {m.change_pct.toFixed(2)}% (
-                    {(m.impact_home_value ?? 0) >= 0 ? "+" : ""}
-                    {(m.impact_home_value ?? 0).toFixed(2)} {exposure.home_currency})
-                  </p>
-                ))}
-              </div>
-            ) : (
+          {exposure ? (
+            <PortfolioImpactSnapshot exposure={exposure} privacyMode={privacyMode} />
+          ) : (
+            <div className="rounded-md border border-border p-3">
+              <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>
               <p className="mt-2 text-xs text-muted-foreground">{t("common.loading")}</p>
-            )}
-          </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="watches" className="mt-4 space-y-3">

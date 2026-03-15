@@ -1007,8 +1007,23 @@
     },
     "overview": {
       "portfolio_impact": "Portfolio impact snapshot",
-      "non_home": "Non-home asset ratio: {{pct}}%",
-      "cash_non_home": "Non-home cash ratio: {{pct}}%"
+      "cash_non_home": "Non-home cash ratio: {{pct}}%",
+      "net_impact_title": "Net FX impact",
+      "net_impact_positive": "Recent FX changes added {{amount}} {{currency}} to your portfolio",
+      "net_impact_negative": "Recent FX changes reduced your portfolio by {{amount}} {{currency}}",
+      "net_impact_neutral": "No significant FX impact recently",
+      "risk_title": "FX risk level",
+      "risk_low": "Low FX risk",
+      "risk_medium": "Moderate FX risk",
+      "risk_high": "High FX risk",
+      "foreign_exposure": "{{pct}}% of your portfolio is in foreign currencies",
+      "currency_breakdown": "Currency breakdown",
+      "top_movements": "Biggest FX impact on your portfolio",
+      "advice_title": "What you can do",
+      "advice_show_more": "Show more advice",
+      "active_alerts": "Active FX alerts",
+      "other_currencies": "Other",
+      "privacy_hidden": "Sensitive values are hidden in privacy mode."
     },
     "empty": {
       "message": "📭 No monitors configured. Click \"➕ Add\" above to start.",

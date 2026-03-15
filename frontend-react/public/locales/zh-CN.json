@@ -1007,8 +1007,23 @@
     },
     "overview": {
       "portfolio_impact": "组合影响快照",
-      "non_home": "非本币资产占比：{{pct}}%",
-      "cash_non_home": "非本币现金占比：{{pct}}%"
+      "cash_non_home": "非本币现金占比：{{pct}}%",
+      "net_impact_title": "汇率净影响",
+      "net_impact_positive": "近期汇率变化让您的组合增加 {{amount}} {{currency}}",
+      "net_impact_negative": "近期汇率变化让您的组合减少 {{amount}} {{currency}}",
+      "net_impact_neutral": "近期没有明显的汇率影响",
+      "risk_title": "汇率风险等级",
+      "risk_low": "汇率风险：低",
+      "risk_medium": "汇率风险：中",
+      "risk_high": "汇率风险：高",
+      "foreign_exposure": "您的组合有 {{pct}}% 为外币资产",
+      "currency_breakdown": "币种分布",
+      "top_movements": "对组合影响最大的汇率变化",
+      "advice_title": "您可以怎么做",
+      "advice_show_more": "查看更多建议",
+      "active_alerts": "当前汇率警报",
+      "other_currencies": "其他",
+      "privacy_hidden": "已启用隐私模式，数值已隐藏。"
     },
     "empty": {
       "message": "📭 尚未设定任何监控配置，请点击上方「➕ 新增」按钮开始",

@@ -1007,8 +1007,23 @@
     },
     "overview": {
       "portfolio_impact": "投資組合影響快照",
-      "non_home": "非本幣資產占比：{{pct}}%",
-      "cash_non_home": "非本幣現金占比：{{pct}}%"
+      "cash_non_home": "非本幣現金占比：{{pct}}%",
+      "net_impact_title": "匯率淨影響",
+      "net_impact_positive": "近期匯率變動讓您的投資組合增加 {{amount}} {{currency}}",
+      "net_impact_negative": "近期匯率變動讓您的投資組合減少 {{amount}} {{currency}}",
+      "net_impact_neutral": "近期沒有明顯的匯率影響",
+      "risk_title": "匯率風險等級",
+      "risk_low": "匯率風險：低",
+      "risk_medium": "匯率風險：中",
+      "risk_high": "匯率風險：高",
+      "foreign_exposure": "您的投資組合有 {{pct}}% 為外幣資產",
+      "currency_breakdown": "幣別分布",
+      "top_movements": "對投資組合影響最大的匯率變動",
+      "advice_title": "您可以怎麼做",
+      "advice_show_more": "查看更多建議",
+      "active_alerts": "目前匯率警報",
+      "other_currencies": "其他",
+      "privacy_hidden": "已啟用隱私模式，數值已隱藏。"
     },
     "empty": {
       "message": "📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始",
