@@ -368,7 +368,13 @@
     },
     "accounts_overview": {
       "title": "帳戶總覽",
+      "header_total_label": "投資組合總額",
       "view_all": "查看全部帳戶",
+      "distribution_label": "依帳戶分布",
+      "distribution_help": "顯示你的投資組合總額在各帳戶之間的占比。",
+      "distribution_help_aria": "說明帳戶分布",
+      "legend_more": "另外 {{count}} 個",
+      "toggle_details": "切換帳戶詳細資訊",
       "positions_count": "{{count}} 個部位",
       "cash_label": "現金",
       "no_cash": "無現金",

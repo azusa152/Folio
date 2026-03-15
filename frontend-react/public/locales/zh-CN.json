@@ -368,7 +368,13 @@
     },
     "accounts_overview": {
       "title": "账户总览",
+      "header_total_label": "投资组合总额",
       "view_all": "查看全部账户",
+      "distribution_label": "按账户分布",
+      "distribution_help": "显示你的投资组合总额在各账户之间的占比。",
+      "distribution_help_aria": "说明账户分布",
+      "legend_more": "另有 {{count}} 个",
+      "toggle_details": "切换账户详情",
       "positions_count": "{{count}} 个仓位",
       "cash_label": "现金",
       "no_cash": "无现金",

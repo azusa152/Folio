@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it } from "vitest"
 import { AccountsOverview } from "../AccountsOverview"
@@ -77,6 +77,8 @@ describe("AccountsOverview", () => {
 
     expect(screen.getByText("$1,650.00")).toBeInTheDocument()
     expect(screen.getByText("$420.00")).toBeInTheDocument()
+    expect(screen.getByText(/dashboard\.accounts_overview\.header_total_label/)).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.distribution_label")).toBeInTheDocument()
 
     const depositLinks = screen.getAllByRole("link", { name: "dashboard.accounts_overview.deposit" })
     expect(depositLinks.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1&action=deposit")).toBe(true)
@@ -138,11 +140,11 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    expect(screen.getByText("$50.00")).toBeInTheDocument()
+    expect(screen.getAllByText("$50.00").length).toBeGreaterThan(0)
     expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
   })
 
-  it("shows missing-fx hint when account has non-display-currency cash without fx source", () => {
+  it("shows missing-fx hint when expanded and account has non-display-currency cash without fx source", () => {
     const accountSummary = [
       {
         account: { id: 3, name: "Global Account", broker: "Bank", account_type: "bank" },
@@ -157,7 +159,95 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
 
+    fireEvent.click(screen.getByRole("button", { name: /Global Account.*dashboard\.accounts_overview\.toggle_details/ }))
     expect(screen.getByText("dashboard.accounts_overview.cash_missing_fx_hint")).toBeInTheDocument()
+  })
+
+  it("shows legend overflow label when there are more than four accounts", () => {
+    const accountSummary = Array.from({ length: 5 }, (_, index) => ({
+      account: { id: index + 1, name: `Account ${index + 1}`, broker: "Broker", account_type: "brokerage" },
+      holdings_count: 1,
+      tickers: [`TICK${index + 1}`],
+      cash_balances: [{ currency: "USD", balance: 100 - index }],
+    })) as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: accountSummary.map((item, index) => ({
+        account_id: item.account!.id,
+        account_name: item.account!.name,
+        ticker: item.tickers[0],
+        market_value: 1000 - index * 10,
+        weight_pct: 1,
+        quantity: 1,
+        category: "Growth",
+        currency: "USD",
+      })),
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    expect(screen.getByText("dashboard.accounts_overview.legend_more")).toBeInTheDocument()
+  })
+
+  it("expands account details when row body is clicked, not action links", () => {
+    const accountSummary = [
+      {
+        account: { id: 3, name: "Global Account", broker: "Bank", account_type: "bank" },
+        holdings_count: 0,
+        tickers: [],
+        cash_balances: [
+          { currency: "USD", balance: 100 },
+          { currency: "JPY", balance: 5000 },
+        ],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
+
+    expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("link", { name: "dashboard.accounts_overview.deposit" }))
+    expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /Global Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    expect(screen.getByText("dashboard.accounts_overview.cash_missing_fx_hint")).toBeInTheDocument()
+  })
+
+  it("supports click highlight sync between legend and distribution bar", () => {
+    const accountSummary = [
+      {
+        account: { id: 1, name: "Broker A", broker: "IB", account_type: "brokerage" },
+        holdings_count: 2,
+        tickers: ["AAPL", "MSFT"],
+        cash_balances: [{ currency: "USD", balance: 150 }],
+      },
+      {
+        account: { id: 2, name: "Wallet B", broker: "Wallet", account_type: "wallet" },
+        holdings_count: 1,
+        tickers: ["BTC"],
+        cash_balances: [{ currency: "USD", balance: 20 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD" },
+        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 500, weight_pct: 5, quantity: 1, category: "Moat", currency: "USD" },
+        { account_id: 2, account_name: "Wallet B", ticker: "BTC", market_value: 400, weight_pct: 4, quantity: 0.01, category: "Crypto", currency: "USD" },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    const legendButton = screen.getAllByText("Broker A")[0]?.closest("button")
+    expect(legendButton).not.toBeNull()
+    if (!legendButton) return
+    fireEvent.click(legendButton)
+    expect(legendButton).toHaveAttribute("aria-pressed", "true")
+
+    const bar = screen.getByRole("group", { name: "dashboard.accounts_overview.stacked_bar_aria" })
+    const barButton = within(bar).getByRole("button", { name: /Wallet B/ })
+    fireEvent.click(barButton)
+    expect(barButton).toHaveAttribute("aria-pressed", "true")
   })
 
   it("renders error state when account summary query fails", () => {

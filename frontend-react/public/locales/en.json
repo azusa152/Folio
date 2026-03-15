@@ -368,7 +368,13 @@
     },
     "accounts_overview": {
       "title": "Accounts",
+      "header_total_label": "Portfolio total",
       "view_all": "View all accounts",
+      "distribution_label": "Distribution by account",
+      "distribution_help": "Shows how your total portfolio value is split across accounts.",
+      "distribution_help_aria": "Explain account distribution",
+      "legend_more": "+{{count}} more",
+      "toggle_details": "Toggle account details",
       "positions_count": "{{count}} positions",
       "cash_label": "Cash",
       "no_cash": "No cash",

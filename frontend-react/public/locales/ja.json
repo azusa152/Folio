@@ -368,7 +368,13 @@
     },
     "accounts_overview": {
       "title": "口座",
+      "header_total_label": "ポートフォリオ合計",
       "view_all": "すべての口座を表示",
+      "distribution_label": "口座ごとの配分",
+      "distribution_help": "ポートフォリオ合計が各口座にどう配分されているかを表示します。",
+      "distribution_help_aria": "口座配分の説明を表示",
+      "legend_more": "他 {{count}} 件",
+      "toggle_details": "口座詳細を切り替え",
       "positions_count": "{{count}} 件のポジション",
       "cash_label": "現金",
       "no_cash": "現金なし",
