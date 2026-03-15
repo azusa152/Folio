@@ -43,7 +43,13 @@
     "error_render": "发生错误",
     "retry": "重试",
     "offline_banner": "当前离线中，数据可能不是最新。",
-    "last_updated_relative": "上次更新 {{time}}"
+    "last_updated_relative": "上次更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 股",
+      "units": "{{quantity}} 单位",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "快捷命令面板",
@@ -389,7 +395,6 @@
       "error_description": "请刷新后重试。",
       "stacked_bar_aria": "各账户投资组合金额分布",
       "top_positions_label": "持仓",
-      "shares_label": "{{quantity}} 股",
       "more_positions": "还有 {{count}} 个持仓",
       "no_positions": "暂无持仓",
       "account_gain_loss": "未实现盈亏",

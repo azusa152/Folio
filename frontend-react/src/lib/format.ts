@@ -62,6 +62,27 @@ export function formatQuantity(
     })
   }
 
+  if (opts?.category === "Cash") {
+    return quantity.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  if (opts?.category === "Bond") {
+    return quantity.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 4,
+    })
+  }
+
+  if (opts?.category) {
+    return quantity.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 4,
+    })
+  }
+
   // Preserve non-zero tiny values (e.g. micro-lot crypto imports) so they never
   // appear as misleading 0.00 in generic tables where category is unavailable.
   const roundsToZeroAt2dp = quantity !== 0 && Number(quantity.toFixed(2)) === 0
@@ -78,6 +99,57 @@ export function formatQuantity(
           maximumFractionDigits: 2,
         },
   )
+}
+
+export function getQuantityUnitKey(
+  category?: string,
+  ticker?: string,
+): { key: string; params: Record<string, string> } {
+  if (category === "Cash") {
+    return ticker
+      ? { key: "common.quantity_unit.currency", params: { ticker } }
+      : { key: "common.quantity_unit.units", params: {} }
+  }
+
+  if (category === "Crypto") {
+    return ticker
+      ? { key: "common.quantity_unit.crypto", params: { ticker } }
+      : { key: "common.quantity_unit.units", params: {} }
+  }
+
+  if (category === "Bond") {
+    return { key: "common.quantity_unit.units", params: {} }
+  }
+
+  return { key: "common.quantity_unit.shares", params: {} }
+}
+
+export function getTransactionQuantityUnitKey(opts: {
+  transactionType: string
+  category?: string | null
+  ticker?: string | null
+  currency?: string | null
+  isCash?: boolean | null
+}): { key: string; params: Record<string, string> } {
+  const type = opts.transactionType.toUpperCase()
+  const cashFlowTypes = new Set([
+    "DEPOSIT",
+    "WITHDRAWAL",
+    "TRANSFER_IN",
+    "TRANSFER_OUT",
+    "OPENING_BALANCE",
+    "ADJUSTMENT",
+    "DIVIDEND",
+  ])
+
+  if (cashFlowTypes.has(type) || opts.isCash === true) {
+    return {
+      key: "common.quantity_unit.currency",
+      params: { ticker: opts.currency || "USD" },
+    }
+  }
+
+  return getQuantityUnitKey(opts.category ?? undefined, opts.ticker ?? undefined)
 }
 
 export function formatMarketCap(value: number | null | undefined): string {

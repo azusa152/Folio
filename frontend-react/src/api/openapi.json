@@ -11690,6 +11690,28 @@
             "type": "boolean",
             "title": "Auto Radar",
             "default": false
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "is_cash": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Cash"
           }
         },
         "type": "object",

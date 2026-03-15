@@ -83,6 +83,8 @@ class TransactionResponse(BaseModel):
     transaction_date: date
     created_at: str
     auto_radar: bool = False
+    category: str | None = None
+    is_cash: bool | None = None
 
 
 class TransactionImportItem(BaseModel):

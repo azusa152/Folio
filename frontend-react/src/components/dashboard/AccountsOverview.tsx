@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import type { AccountSummaryItem } from "@/api/types/account"
 import type { HoldingDetail, RebalanceResponse } from "@/api/types/dashboard"
 
@@ -62,13 +62,6 @@ function formatCashBalances(
   return balances
     .map((item) => formatCurrency(item.balance, item.currency))
     .join(" / ")
-}
-
-function formatHoldingQuantity(value: number): string {
-  if (Number.isInteger(value)) {
-    return value.toLocaleString()
-  }
-  return value.toLocaleString(undefined, { maximumFractionDigits: 4 })
 }
 
 export function AccountsOverview({
@@ -434,6 +427,7 @@ export function AccountsOverview({
                             const returnPct = holding.cost_total && holding.cost_total > 0
                               ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
                               : null
+                            const quantityUnit = getQuantityUnitKey(holding.category, holding.ticker)
                             const returnClass = returnPct == null
                               ? "text-muted-foreground"
                               : returnPct >= 0
@@ -444,7 +438,13 @@ export function AccountsOverview({
                                 <div className="min-w-0">
                                   <p className="truncate font-medium text-foreground">{holding.ticker}</p>
                                   <p className="truncate text-muted-foreground">
-                                    {t("dashboard.accounts_overview.shares_label", { quantity: formatHoldingQuantity(holding.quantity) })}
+                                    {t(quantityUnit.key, {
+                                      quantity: formatQuantity(holding.quantity, {
+                                        category: holding.category,
+                                        ticker: holding.ticker,
+                                      }),
+                                      ...quantityUnit.params,
+                                    })}
                                   </p>
                                 </div>
                                 <div className="shrink-0 text-right">

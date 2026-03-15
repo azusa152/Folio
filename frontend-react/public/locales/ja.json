@@ -43,7 +43,13 @@
     "error_render": "エラーが発生しました",
     "retry": "再試行",
     "offline_banner": "オフラインです。データが最新ではない可能性があります。",
-    "last_updated_relative": "最終更新 {{time}}"
+    "last_updated_relative": "最終更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 株",
+      "units": "{{quantity}} 口",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "コマンドパレット",
@@ -389,7 +395,6 @@
       "error_description": "ページを更新して再試行してください。",
       "stacked_bar_aria": "口座別のポートフォリオ金額配分",
       "top_positions_label": "ポジション",
-      "shares_label": "{{quantity}} 株",
       "more_positions": "他 {{count}} 件のポジション",
       "no_positions": "まだポジションがありません",
       "account_gain_loss": "未実現損益",

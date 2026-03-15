@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button"
 import type { AccountResponse } from "@/api/types/account"
 import { useDeleteTransaction } from "@/api/hooks/useTransactions"
 import type { TransactionResponse } from "@/api/types/transaction"
-import { formatCurrency, formatQuantity } from "@/lib/format"
+import {
+  formatCurrency,
+  formatQuantity,
+  getTransactionQuantityUnitKey,
+} from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -58,71 +62,88 @@ export function TransactionList({ transactions, accounts, isLoading }: Props) {
           </tr>
         </thead>
         <tbody>
-          {transactions.map((transaction) => (
-            <tr key={transaction.id} className="border-b border-border/50">
-              <td className="py-1.5 pr-2 whitespace-nowrap">{transaction.transaction_date}</td>
-              <td className="py-1.5 pr-2 font-medium">{transaction.ticker}</td>
-              <td className="py-1.5 pr-2">
-                {transaction.account_id != null ? accountMap.get(transaction.account_id) ?? "—" : "—"}
-              </td>
-              <td className="py-1.5 pr-2">
-                <Badge variant="secondary" className={typeBadgeClass(transaction.transaction_type)}>
-                  {t(`transactions.type.${transaction.transaction_type.toLowerCase()}`)}
-                </Badge>
-              </td>
-              <td className="py-1.5 pr-2 text-right">{formatQuantity(transaction.quantity)}</td>
-              <td className="py-1.5 pr-2 text-right">
-                {transaction.price != null
-                  ? formatCurrency(transaction.price, transaction.currency || "USD")
-                  : "—"}
-              </td>
-              <td className="py-1.5 pr-2 text-right">
-                {formatCurrency(transaction.total_amount, transaction.currency || "USD")}
-              </td>
-              <td className="py-1.5 text-right whitespace-nowrap">
-                {pendingDeleteId === transaction.id ? (
-                  <div className="inline-flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-7 text-[11px]"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        deleteMutation.mutate(transaction.id, {
-                          onSuccess: () => {
-                            setPendingDeleteId(null)
-                            toast.success(t("transactions.toast.deleted"))
-                          },
-                          onError: (err: unknown) => {
-                            toast.error(getErrorMessage(err) || t("common.error"))
-                          },
-                        })
-                      }}
-                    >
-                      {t("common.confirm")}
-                    </Button>
+          {transactions.map((transaction) => {
+            const quantityUnit = getTransactionQuantityUnitKey({
+              transactionType: transaction.transaction_type,
+              category: transaction.category,
+              ticker: transaction.ticker,
+              currency: transaction.currency,
+              isCash: transaction.is_cash,
+            })
+            const quantityText = t(quantityUnit.key, {
+              quantity: formatQuantity(transaction.quantity, {
+                category: transaction.category ?? undefined,
+                ticker: transaction.ticker,
+              }),
+              ...quantityUnit.params,
+            })
+
+            return (
+              <tr key={transaction.id} className="border-b border-border/50">
+                <td className="py-1.5 pr-2 whitespace-nowrap">{transaction.transaction_date}</td>
+                <td className="py-1.5 pr-2 font-medium">{transaction.ticker}</td>
+                <td className="py-1.5 pr-2">
+                  {transaction.account_id != null ? accountMap.get(transaction.account_id) ?? "—" : "—"}
+                </td>
+                <td className="py-1.5 pr-2">
+                  <Badge variant="secondary" className={typeBadgeClass(transaction.transaction_type)}>
+                    {t(`transactions.type.${transaction.transaction_type.toLowerCase()}`)}
+                  </Badge>
+                </td>
+                <td className="py-1.5 pr-2 text-right">{quantityText}</td>
+                <td className="py-1.5 pr-2 text-right">
+                  {transaction.price != null
+                    ? formatCurrency(transaction.price, transaction.currency || "USD")
+                    : "—"}
+                </td>
+                <td className="py-1.5 pr-2 text-right">
+                  {formatCurrency(transaction.total_amount, transaction.currency || "USD")}
+                </td>
+                <td className="py-1.5 text-right whitespace-nowrap">
+                  {pendingDeleteId === transaction.id ? (
+                    <div className="inline-flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-[11px]"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          deleteMutation.mutate(transaction.id, {
+                            onSuccess: () => {
+                              setPendingDeleteId(null)
+                              toast.success(t("transactions.toast.deleted"))
+                            },
+                            onError: (err: unknown) => {
+                              toast.error(getErrorMessage(err) || t("common.error"))
+                            },
+                          })
+                        }}
+                      >
+                        {t("common.confirm")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[11px]"
+                        onClick={() => setPendingDeleteId(null)}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 text-[11px]"
-                      onClick={() => setPendingDeleteId(null)}
+                      className="h-7 text-[11px] text-destructive"
+                      onClick={() => setPendingDeleteId(transaction.id)}
                     >
-                      {t("common.cancel")}
+                      {t("transactions.table.delete")}
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-[11px] text-destructive"
-                    onClick={() => setPendingDeleteId(transaction.id)}
-                  >
-                    {t("transactions.table.delete")}
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

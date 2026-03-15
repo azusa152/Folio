@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { useHoldings } from "@/api/hooks/useDashboard"
-import { formatPrice, formatQuantity } from "@/lib/format"
+import { formatPrice, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 
 interface Props {
   privacyMode: boolean
@@ -38,26 +38,32 @@ export function HoldingsManager({ privacyMode }: Props) {
             </tr>
           </thead>
           <tbody>
-            {holdings.map((holding) => (
-              <tr key={holding.id} className="border-b border-border/50">
-                <td className="py-0.5 pr-2 font-medium">{holding.ticker}</td>
-                <td className="py-0.5 pr-2 text-muted-foreground">{holding.category}</td>
-                <td className="py-0.5 pr-2 text-right">
-                  {privacyMode
-                    ? "***"
-                    : formatQuantity(holding.quantity, {
-                        category: holding.category,
-                        ticker: holding.ticker,
-                      })}
-                </td>
-                <td className="py-0.5 pr-2 text-right">
-                  {privacyMode
-                    ? "***"
-                    : (holding.cost_basis != null ? formatPrice(holding.cost_basis, holding.currency) : "—")}
-                </td>
-                <td className="py-0.5 pr-2 text-muted-foreground">{holding.broker ?? "—"}</td>
-              </tr>
-            ))}
+            {holdings.map((holding) => {
+              const quantityUnit = getQuantityUnitKey(holding.category, holding.ticker)
+              const quantityText = t(quantityUnit.key, {
+                quantity: formatQuantity(holding.quantity, {
+                  category: holding.category,
+                  ticker: holding.ticker,
+                }),
+                ...quantityUnit.params,
+              })
+
+              return (
+                <tr key={holding.id} className="border-b border-border/50">
+                  <td className="py-0.5 pr-2 font-medium">{holding.ticker}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">{holding.category}</td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {privacyMode ? "***" : quantityText}
+                  </td>
+                  <td className="py-0.5 pr-2 text-right">
+                    {privacyMode
+                      ? "***"
+                      : (holding.cost_basis != null ? formatPrice(holding.cost_basis, holding.currency) : "—")}
+                  </td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">{holding.broker ?? "—"}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

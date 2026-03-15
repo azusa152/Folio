@@ -43,7 +43,13 @@
     "error_render": "發生錯誤",
     "retry": "重試",
     "offline_banner": "目前離線中，資料可能不是最新。",
-    "last_updated_relative": "上次更新 {{time}}"
+    "last_updated_relative": "上次更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 股",
+      "units": "{{quantity}} 單位",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "快速命令面板",
@@ -389,7 +395,6 @@
       "error_description": "請重新整理後再試一次。",
       "stacked_bar_aria": "各帳戶投資組合金額分佈",
       "top_positions_label": "持倉",
-      "shares_label": "{{quantity}} 股",
       "more_positions": "還有 {{count}} 個持倉",
       "no_positions": "目前沒有持倉",
       "account_gain_loss": "未實現損益",

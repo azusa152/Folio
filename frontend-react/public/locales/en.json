@@ -43,7 +43,13 @@
     "error_render": "Something went wrong",
     "retry": "Retry",
     "offline_banner": "You are offline. Data may not be current.",
-    "last_updated_relative": "Last updated {{time}}"
+    "last_updated_relative": "Last updated {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} shares",
+      "units": "{{quantity}} units",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "Command Palette",
@@ -389,7 +395,6 @@
       "error_description": "Please refresh and try again.",
       "stacked_bar_aria": "Portfolio value distribution across accounts",
       "top_positions_label": "Positions",
-      "shares_label": "{{quantity}} shares",
       "more_positions": "+{{count}} more positions",
       "no_positions": "No positions yet",
       "account_gain_loss": "Unrealized",

@@ -5,4 +5,6 @@ export type TransactionRequest = components["schemas"]["TransactionRequest"] & {
 }
 export type TransactionResponse = components["schemas"]["TransactionResponse"] & {
   account_id?: number | null
+  category?: string | null
+  is_cash?: boolean | null
 }

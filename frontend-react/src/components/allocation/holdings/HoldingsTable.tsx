@@ -3,7 +3,7 @@ import { Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatQuantity } from "@/lib/format"
+import { formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import {
   Tooltip,
@@ -98,6 +98,11 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
                 showFxBreakdown && h.change_pct != null
                   ? h.change_pct + fxReturn
                   : null
+              const quantityUnit = getQuantityUnitKey(h.category, h.ticker)
+              const quantityText = t(quantityUnit.key, {
+                quantity: formatQuantity(h.quantity, { category: h.category, ticker: h.ticker }),
+                ...quantityUnit.params,
+              })
 
               return (
                 <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
@@ -109,7 +114,7 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
                   <td className="py-0.5 pr-2 text-right">
                     {privacyMode
                       ? "***"
-                      : formatQuantity(h.quantity, { category: h.category, ticker: h.ticker })}
+                      : quantityText}
                   </td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}

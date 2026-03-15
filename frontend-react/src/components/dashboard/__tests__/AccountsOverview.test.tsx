@@ -9,8 +9,17 @@ import type { RebalanceResponse } from "@/api/types/dashboard"
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
-      if (key === "dashboard.accounts_overview.shares_label" && options?.quantity != null) {
+      if (key === "common.quantity_unit.shares" && options?.quantity != null) {
         return `${String(options.quantity)} shares`
+      }
+      if (key === "common.quantity_unit.units" && options?.quantity != null) {
+        return `${String(options.quantity)} units`
+      }
+      if (key === "common.quantity_unit.crypto" && options?.quantity != null && options?.ticker != null) {
+        return `${String(options.quantity)} ${String(options.ticker)}`
+      }
+      if (key === "common.quantity_unit.currency" && options?.quantity != null && options?.ticker != null) {
+        return `${String(options.quantity)} ${String(options.ticker)}`
       }
       return key
     },
@@ -266,17 +275,17 @@ describe("AccountsOverview", () => {
       {
         account: { id: 1, name: "Broker A", broker: "IB", account_type: "brokerage" },
         holdings_count: 4,
-        tickers: ["AAPL", "MSFT", "NVDA", "AMZN"],
+        tickers: ["USD", "BTC", "AAPL", "MSFT"],
         cash_balances: [{ currency: "USD", balance: 150 }],
       },
     ] as unknown as AccountSummaryItem[]
 
     const rebalance = {
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 3, category: "Growth", currency: "USD", cost_total: 800 },
-        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 700, weight_pct: 7, quantity: 2, category: "Moat", currency: "USD", cost_total: 650 },
-        { account_id: 1, account_name: "Broker A", ticker: "NVDA", market_value: 500, weight_pct: 5, quantity: 1, category: "Growth", currency: "USD", cost_total: 450 },
-        { account_id: 1, account_name: "Broker A", ticker: "AMZN", market_value: 300, weight_pct: 3, quantity: 1, category: "Growth", currency: "USD", cost_total: 280 },
+        { account_id: 1, account_name: "Broker A", ticker: "USD", market_value: 1100, weight_pct: 11, quantity: 1250.5, category: "Cash", currency: "USD", cost_total: 1100 },
+        { account_id: 1, account_name: "Broker A", ticker: "BTC", market_value: 900, weight_pct: 9, quantity: 0.12345678, category: "Crypto", currency: "USD", cost_total: 870 },
+        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 700, weight_pct: 7, quantity: 3, category: "Growth", currency: "USD", cost_total: 650 },
+        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 400, weight_pct: 4, quantity: 2, category: "Moat", currency: "USD", cost_total: 390 },
       ],
     } as unknown as RebalanceResponse
 
@@ -285,11 +294,13 @@ describe("AccountsOverview", () => {
     fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
 
     expect(screen.getByText("dashboard.accounts_overview.top_positions_label")).toBeInTheDocument()
+    expect(screen.getByText("USD")).toBeInTheDocument()
+    expect(screen.getByText("1,250.50 USD")).toBeInTheDocument()
+    expect(screen.getByText("BTC")).toBeInTheDocument()
+    expect(screen.getByText("0.12345678 BTC")).toBeInTheDocument()
     expect(screen.getByText("AAPL")).toBeInTheDocument()
     expect(screen.getByText("3 shares")).toBeInTheDocument()
-    expect(screen.getByText("MSFT")).toBeInTheDocument()
-    expect(screen.getByText("NVDA")).toBeInTheDocument()
-    expect(screen.queryByText("AMZN")).not.toBeInTheDocument()
+    expect(screen.queryByText("MSFT")).not.toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.more_positions")).toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.account_gain_loss")).toBeInTheDocument()
 
