@@ -186,6 +186,7 @@ class CurrencyExposureResponse(BaseModel):
     cash_breakdown: list[CurrencyBreakdown] = []
     cash_non_home_pct: float = 0.0
     total_cash_home: float = 0.0
+    fx_movement_period: str = ""
     fx_movements: list[FXMovement]
     fx_rate_alerts: list[FXRateAlertItem] = []
     risk_level: str  # "low" / "medium" / "high"

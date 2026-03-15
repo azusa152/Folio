@@ -7325,6 +7325,11 @@
             "title": "Total Cash Home",
             "default": 0.0
           },
+          "fx_movement_period": {
+            "type": "string",
+            "title": "Fx Movement Period",
+            "default": ""
+          },
           "fx_movements": {
             "items": {
               "$ref": "#/components/schemas/FXMovement"

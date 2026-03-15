@@ -35,6 +35,13 @@ interface BreakdownItem {
   value: number
 }
 
+interface AttributionRow {
+  pair: string
+  holdingsValue: number
+  rateChangePct: number
+  impactHomeValue: number
+}
+
 const ALERT_TEXT_CLASSES: Record<string, string> = {
   daily_spike: FINANCE_TEXT.loss,
   short_term_swing: FINANCE_TEXT.warning,
@@ -61,6 +68,13 @@ function riskLabelKey(riskLevel: string): string {
   if (riskLevel === "low") return "fx_watch.overview.risk_low"
   if (riskLevel === "high") return "fx_watch.overview.risk_high"
   return "fx_watch.overview.risk_medium"
+}
+
+function periodToLabel(period: string, t: (key: string) => string): string {
+  if (period === "5d") return t("fx_watch.overview.period_5d")
+  if (period === "1mo") return t("fx_watch.overview.period_1mo")
+  if (period === "3mo") return t("fx_watch.overview.period_3mo")
+  return t("fx_watch.overview.period_recent")
 }
 
 export function PortfolioImpactSnapshot({
@@ -98,6 +112,27 @@ export function PortfolioImpactSnapshot({
     if (rest > 0) top.push({ name: t("fx_watch.overview.other_currencies"), value: rest })
     return top
   }, [exposure.breakdown, t])
+  const attributionRows = useMemo<AttributionRow[]>(() => {
+    const valueByCurrency = new Map(
+      (exposure.breakdown ?? []).map((item) => [item.currency, item.value] as const),
+    )
+    return topMovements.map((movement) => {
+      const [baseCurrency] = movement.pair.split("/")
+      return {
+        pair: movement.pair,
+        holdingsValue: valueByCurrency.get(baseCurrency) ?? 0,
+        rateChangePct: movement.change_pct ?? 0,
+        impactHomeValue: movement.impact_home_value ?? 0,
+      }
+    })
+  }, [exposure.breakdown, topMovements])
+  const movementPeriodLabel = periodToLabel(exposure.fx_movement_period || "5d", t)
+  const calculatedAtLabel = exposure.calculated_at
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(exposure.calculated_at))
+    : ""
 
   const netImpactSummaryKey =
     netImpact > 0
@@ -178,6 +213,14 @@ export function PortfolioImpactSnapshot({
                 currency: exposure.home_currency,
               })}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("fx_watch.overview.impact_period", { period: movementPeriodLabel })}
+        </p>
+        {calculatedAtLabel ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("fx_watch.overview.calculated_at_label", { time: calculatedAtLabel })}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -296,6 +339,41 @@ export function PortfolioImpactSnapshot({
         ) : (
           <p className="text-xs text-muted-foreground">{t("allocation.fx.empty_movements")}</p>
         )}
+        {!privacyMode && attributionRows.length > 0 ? (
+          <div className="space-y-1 pt-1">
+            <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.impact_attribution_title")}</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th className="py-1 text-left font-medium">{t("fx_watch.overview.col_pair")}</th>
+                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_holdings_value")}</th>
+                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_rate_change")}</th>
+                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_impact")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attributionRows.map((row) => (
+                    <tr key={row.pair} className="border-t border-border/60">
+                      <td className="py-1">{row.pair}</td>
+                      <td className="py-1 text-right">
+                        {privacyMode ? "***" : formatAmount(row.holdingsValue, exposure.home_currency, false)}
+                      </td>
+                      <td className="py-1 text-right">
+                        {privacyMode ? "***" : `${row.rateChangePct >= 0 ? "+" : ""}${row.rateChangePct.toFixed(2)}%`}
+                      </td>
+                      <td className="py-1 text-right">
+                        {privacyMode
+                          ? "***"
+                          : formatAmount(row.impactHomeValue, exposure.home_currency, row.impactHomeValue !== 0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {exposure.advice.length > 0 && (

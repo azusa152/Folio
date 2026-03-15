@@ -14,6 +14,7 @@ from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    FX_HISTORY_PERIOD,
     REBALANCE_CACHE_MAXSIZE,
     REBALANCE_CACHE_TTL,
     XRAY_SINGLE_STOCK_WARN_PCT,
@@ -911,6 +912,7 @@ def calculate_currency_exposure(
             "cash_breakdown": [],
             "cash_non_home_pct": 0.0,
             "total_cash_home": 0.0,
+            "fx_movement_period": FX_HISTORY_PERIOD,
             "fx_movements": [],
             "risk_level": "low",
             "advice": [
@@ -1081,6 +1083,7 @@ def calculate_currency_exposure(
         "cash_breakdown": cash_breakdown,
         "cash_non_home_pct": cash_non_home_pct,
         "total_cash_home": round(total_cash_home, 2),
+        "fx_movement_period": FX_HISTORY_PERIOD,
         "fx_movements": fx_movements,
         "fx_rate_alerts": fx_rate_alerts_serialized,
         "risk_level": risk_level,

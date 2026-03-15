@@ -41,6 +41,7 @@ function makeExposure(overrides: Partial<CurrencyExposureResponse> = {}): Curren
     ],
     cash_non_home_pct: 25,
     total_cash_home: 20000,
+    fx_movement_period: "5d",
     fx_movements: [
       { pair: "USD/JPY", current_rate: 150.1, change_pct: 1.2, direction: "up", impact_home_value: 120 },
       { pair: "TWD/USD", current_rate: 0.031, change_pct: -0.6, direction: "down", impact_home_value: -30 },
@@ -70,7 +71,7 @@ describe("PortfolioImpactSnapshot", () => {
     )
 
     expect(screen.getByText("fx_watch.overview.net_impact_neutral")).toBeInTheDocument()
-    expect(screen.getByText("0 USD")).toBeInTheDocument()
+    expect(screen.getAllByText("0 USD").length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText("+0 USD")).not.toBeInTheDocument()
   })
 
@@ -105,6 +106,7 @@ describe("PortfolioImpactSnapshot", () => {
     expect(screen.getAllByText("***").length).toBeGreaterThanOrEqual(3)
     expect(screen.queryByText("+90 USD")).not.toBeInTheDocument()
     expect(screen.getAllByText("fx_watch.overview.privacy_hidden").length).toBeGreaterThanOrEqual(2)
+    expect(screen.queryByText("fx_watch.overview.impact_attribution_title")).not.toBeInTheDocument()
   })
 
   it("renders active alert chips when alerts exist", () => {
@@ -130,9 +132,9 @@ describe("PortfolioImpactSnapshot", () => {
     )
 
     expect(screen.getByText("fx_watch.overview.active_alerts")).toBeInTheDocument()
-    expect(screen.getByText("USD/JPY")).toBeInTheDocument()
+    expect(screen.getAllByText("USD/JPY").length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("1d")).toBeInTheDocument()
-    expect(screen.getByText("+1.20%")).toBeInTheDocument()
+    expect(screen.getAllByText("+1.20%").length).toBeGreaterThanOrEqual(1)
   })
 
   it("calls onCurrencyChange when display currency changes", () => {
@@ -169,5 +171,25 @@ describe("PortfolioImpactSnapshot", () => {
     expect(screen.getByText("fx_watch.overview.currency_scope_hint")).toBeInTheDocument()
     fireEvent.click(screen.getByText("fx_watch.overview.reset_to_default"))
     expect(onResetCurrency).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders impact period, calculated timestamp, and attribution details", () => {
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode={false}
+        selectedCurrency="USD"
+        onCurrencyChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("fx_watch.overview.impact_period")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.calculated_at_label")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.impact_attribution_title")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_pair")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_holdings_value")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_rate_change")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_impact")).toBeInTheDocument()
+    expect(screen.getAllByText("USD/JPY").length).toBeGreaterThanOrEqual(1)
   })
 })
