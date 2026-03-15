@@ -1,6 +1,8 @@
 """Unit tests for geographic and asset class allocation helpers."""
 
+from domain.core.constants import CURRENCY_REGION_MAP, SUPPORTED_CURRENCIES
 from domain.portfolio.allocation import (
+    classify_cash_region,
     classify_market,
     compute_asset_class_allocation,
     compute_geographic_allocation,
@@ -36,6 +38,25 @@ def test_classify_market_hk():
 
 def test_classify_market_empty_string():
     assert classify_market("") == "US"
+
+
+# ---------------------------------------------------------------------------
+# classify_cash_region
+# ---------------------------------------------------------------------------
+
+
+def test_classify_cash_region_known_currencies():
+    assert classify_cash_region("TWD") == "TW"
+    assert classify_cash_region("JPY") == "JP"
+    assert classify_cash_region("SGD") == "SG"
+
+
+def test_classify_cash_region_unknown_currency_defaults_us():
+    assert classify_cash_region("AUD") == "US"
+
+
+def test_currency_region_map_keys_should_match_supported_currencies():
+    assert set(CURRENCY_REGION_MAP.keys()) == set(SUPPORTED_CURRENCIES)
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +97,27 @@ def test_geographic_allocation_missing_keys():
     holdings = [{"other_key": "value"}]
     result = compute_geographic_allocation(holdings)
     assert result["US"] == 0.0
+
+
+def test_geographic_allocation_mixed_equity_and_cash_regions():
+    holdings = [
+        {"ticker": "AAPL", "market_value": 10000},
+        {"region": "TW", "market_value": 5000},
+        {"region": "JP", "market_value": 3000},
+    ]
+    result = compute_geographic_allocation(holdings)
+    assert result["US"] == 10000
+    assert result["TW"] == 5000
+    assert result["JP"] == 3000
+
+
+def test_geographic_allocation_aggregates_cash_and_equity_same_region():
+    holdings = [
+        {"ticker": "MSFT", "market_value": 8000},
+        {"region": "US", "market_value": 2000},
+    ]
+    result = compute_geographic_allocation(holdings)
+    assert result["US"] == 10000
 
 
 # ---------------------------------------------------------------------------

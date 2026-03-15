@@ -27,6 +27,7 @@ from domain.fx_analysis import (
     determine_fx_risk_level,
 )
 from domain.portfolio.allocation import (
+    classify_cash_region,
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
@@ -786,12 +787,21 @@ def _do_calculate_rebalance(
         if v > 0
     ]
 
-    # 11) 地理區域配置（基於 ticker 後綴判別市場）
-    holding_market_data = [
-        {"ticker": ticker, "market_value": agg["mv"]}
-        for ticker, agg in ticker_agg.items()
-        if agg["mv"] > 0 and agg["category"] != StockCategory.CASH
-    ]
+    # 11) 地理區域配置（股票按 ticker 後綴，現金按幣別）
+    holding_market_data: list[dict] = []
+    for ticker, agg in ticker_agg.items():
+        if agg["mv"] <= 0:
+            continue
+        if agg["category"] == StockCategory.CASH:
+            holding_market_data.append(
+                {
+                    "region": classify_cash_region(agg.get("currency", ticker)),
+                    "market_value": agg["mv"],
+                }
+            )
+            continue
+
+        holding_market_data.append({"ticker": ticker, "market_value": agg["mv"]})
     result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
 
     # 12) 資產類別配置（Folio 分類 → 標準資產類別）

@@ -898,3 +898,16 @@ TICKER_MARKET_MAP: dict[str, str] = {
     ".HK": "HK",
 }
 DEFAULT_MARKET = "US"
+
+# Cash currency geographic mapping (currency → market code)
+CURRENCY_REGION_MAP: dict[str, str] = {
+    "USD": "US",
+    "TWD": "TW",
+    "JPY": "JP",
+    "HKD": "HK",
+    "EUR": "EU",
+    "GBP": "UK",
+    "CNY": "CN",
+    "SGD": "SG",
+    "THB": "TH",
+}

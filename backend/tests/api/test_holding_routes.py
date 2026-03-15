@@ -108,6 +108,34 @@ class TestRebalanceResponse:
         assert "US" in data["geographic_allocation"]
         assert "Equity" in data["asset_class_allocation"]
 
+    def test_should_include_non_usd_cash_currency_region_in_geographic_allocation(
+        self, client
+    ):
+        account_id = _seed_equity_holding(client, ticker="NVDA")
+        sgd_deposit = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "SGD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 1000.0,
+                "currency": "SGD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        assert sgd_deposit.status_code == 201
+        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
+        assert profile_resp.status_code in (200, 201)
+
+        resp = client.get("/rebalance")
+        assert resp.status_code == 200
+        geographic = resp.json()["geographic_allocation"]
+        assert "US" in geographic
+        assert "SG" in geographic
+        assert geographic["US"] > 0
+        assert geographic["SG"] > 0
+
     def test_holdings_detail_should_split_same_ticker_by_account(self, client):
         account_a = _seed_equity_holding(client, ticker="AAPL", quantity=2)
         account_b = _seed_equity_holding(client, ticker="AAPL", quantity=3)

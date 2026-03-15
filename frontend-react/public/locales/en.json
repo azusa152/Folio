@@ -886,6 +886,7 @@
     },
     "geo": {
       "title": "Geographic Allocation",
+      "cash_included_hint": "Includes cash by currency region.",
       "us": "United States",
       "tw": "Taiwan",
       "jp": "Japan",

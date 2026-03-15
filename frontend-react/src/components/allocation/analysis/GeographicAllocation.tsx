@@ -58,6 +58,7 @@ export function GeographicAllocation({ data, holdings, privacyMode = false, disp
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold">{t("allocation.geo.title")}</h3>
+      <p className="text-xs text-muted-foreground">{t("allocation.geo.cash_included_hint")}</p>
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={chartData}
