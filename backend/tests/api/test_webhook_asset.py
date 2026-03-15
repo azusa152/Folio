@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
 
 class TestWebhookTransactions:
     """Tests for the 'transactions' action."""
@@ -39,6 +41,28 @@ class TestWebhookTransactions:
         assert call_kwargs.kwargs.get("ticker") == "AAPL"
         assert call_kwargs.kwargs.get("limit") == 5
 
+    def test_transactions_invalid_account_id_should_fail_with_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={"action": "transactions", "params": {"account_id": "abc"}},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error_code"] == "INVALID_INPUT"
+
+    def test_transactions_invalid_date_should_fail_with_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={"action": "transactions", "params": {"start": "2026-99-99"}},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error_code"] == "INVALID_INPUT"
+
 
 class TestWebhookAddTransaction:
     """Tests for the 'add_transaction' action."""
@@ -55,6 +79,7 @@ class TestWebhookAddTransaction:
                 "ticker": "AAPL",
                 "params": {
                     "type": "BUY",
+                    "account_id": "1",
                     "quantity": "10",
                     "total_amount": "1500",
                     "date": "2025-06-01",
@@ -65,6 +90,9 @@ class TestWebhookAddTransaction:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is True
+        _mock.assert_called_once()
+        payload = _mock.call_args.args[1]
+        assert payload["account_id"] == 1
 
     def test_add_transaction_missing_ticker(self, client):
         resp = client.post(
@@ -98,6 +126,79 @@ class TestWebhookAddTransaction:
         assert resp.status_code == 200
         body = resp.json()
         assert body["success"] is False
+        assert body["error_code"] == "INVALID_INPUT"
+
+    def test_add_transaction_missing_account_id(self, client):
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_transaction",
+                "ticker": "AAPL",
+                "params": {
+                    "type": "BUY",
+                    "quantity": "10",
+                    "total_amount": "1500",
+                    "date": "2025-06-01",
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error_code"] == "INVALID_INPUT"
+
+    def test_add_transaction_invalid_account_id(self, client):
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_transaction",
+                "ticker": "AAPL",
+                "params": {
+                    "type": "BUY",
+                    "account_id": "abc",
+                    "quantity": "10",
+                    "total_amount": "1500",
+                    "date": "2025-06-01",
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error_code"] == "INVALID_INPUT"
+
+    @patch(
+        "application.messaging.webhook_service.create_transaction",
+        side_effect=HTTPException(
+            status_code=422,
+            detail={
+                "error_code": "INSUFFICIENT_BALANCE",
+                "detail": "Insufficient balance",
+            },
+        ),
+    )
+    def test_add_transaction_should_propagate_error_code(self, _mock, client):
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_transaction",
+                "ticker": "AAPL",
+                "params": {
+                    "type": "BUY",
+                    "account_id": "1",
+                    "quantity": "10",
+                    "total_amount": "1500",
+                    "date": "2025-06-01",
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body["error_code"] == "INSUFFICIENT_BALANCE"
 
 
 class TestWebhookAccounts:
@@ -183,3 +284,89 @@ class TestWebhookHelpIncludesAssetActions:
             "insights",
         ]:
             assert expected in actions, f"Missing action: {expected}"
+        workflows = resp.json()["data"]["workflows"]
+        assert "asset_review" in workflows
+        assert "record_trade" in workflows
+
+
+class TestWebhookErrorCodeAlwaysPresent:
+    """Verify error_code is always present on every failure path."""
+
+    def _assert_failure_has_error_code(self, resp, *, expected_code: str | None = None):
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False, f"Expected failure, got: {body}"
+        assert body.get("error_code"), f"error_code missing on failure response: {body}"
+        if expected_code:
+            assert body["error_code"] == expected_code, (
+                f"Expected error_code={expected_code!r}, got {body['error_code']!r}"
+            )
+
+    def test_unsupported_action_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "nonexistent_action_xyz"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_signals_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "signals"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_analyze_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "analyze"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_moat_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "moat"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_alerts_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "alerts"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_add_stock_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "add_stock"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_withdraw_missing_amount_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "withdraw"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_withdraw_invalid_amount_has_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={"action": "withdraw", "params": {"amount": "not-a-number"}},
+        )
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_transactions_invalid_params_has_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={"action": "transactions", "params": {"account_id": "bad"}},
+        )
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_add_transaction_missing_ticker_has_error_code(self, client):
+        resp = client.post("/webhook", json={"action": "add_transaction"})
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_add_transaction_missing_account_id_has_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={
+                "action": "add_transaction",
+                "ticker": "AAPL",
+                "params": {
+                    "type": "BUY",
+                    "quantity": "10",
+                    "total_amount": "1500",
+                    "date": "2025-06-01",
+                },
+            },
+        )
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+
+    def test_analytics_invalid_date_has_error_code(self, client):
+        resp = client.post(
+            "/webhook",
+            json={"action": "analytics", "params": {"start": "not-a-date"}},
+        )
+        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")

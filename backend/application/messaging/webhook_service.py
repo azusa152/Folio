@@ -35,6 +35,11 @@ from application.stock.stock_service import (
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     DEFAULT_WEBHOOK_THESIS,
+    ERROR_INTERNAL_ERROR,
+    ERROR_INVALID_INPUT,
+    ERROR_STOCK_ALREADY_EXISTS,
+    ERROR_STOCK_NOT_FOUND,
+    GENERIC_VALIDATION_ERROR,
     WEBHOOK_ACTION_REGISTRY,
 )
 from domain.enums import StockCategory
@@ -67,6 +72,7 @@ def _wrap_response(
     interpretation: str,
     params: Mapping[str, object],
     data: dict | None = None,
+    error_code: str | None = None,
     always_include_data: bool = False,
 ) -> dict:
     response: dict = {
@@ -74,6 +80,8 @@ def _wrap_response(
         "message": message,
         "interpretation": interpretation,
     }
+    if error_code:
+        response["error_code"] = error_code
     if always_include_data or not _is_concise(params):
         response["data"] = data or {}
     return response
@@ -121,6 +129,7 @@ def handle_webhook(
             message=message,
             interpretation=t("webhook.interpretation.action_failed", lang=lang),
             params=params,
+            error_code=ERROR_INVALID_INPUT,
         )
 
     if action == "help":
@@ -135,6 +144,8 @@ def handle_webhook(
                     "quick_check": "dashboard -> analyze {ticker}",
                     "buy_decision": "analyze {ticker} -> fear_greed",
                     "sell_decision": "withdraw {amount, currency}",
+                    "asset_review": "dashboard -> analytics -> insights -> transactions {ticker}",
+                    "record_trade": "add_transaction {ticker} -> transactions {ticker}",
                 },
                 "model_hint": t("webhook.help_model_hint", lang=lang),
             },
@@ -176,6 +187,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         result = get_technical_signals(ticker)
         if not result or "error" in result:
@@ -189,6 +201,7 @@ def handle_webhook(
                 message=message,
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INTERNAL_ERROR,
             )
         status_text = "\n".join(result.get("status", []))
         msg = (
@@ -217,6 +230,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         signals = get_technical_signals(ticker)
         if not signals or "error" in signals:
@@ -230,6 +244,7 @@ def handle_webhook(
                 message=message,
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INTERNAL_ERROR,
             )
         moat = analyze_moat_trend(ticker)
         fundamentals = get_fundamentals_for_ticker(ticker)
@@ -277,6 +292,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         result = analyze_moat_trend(ticker)
         details = result.get("details", "N/A")
@@ -301,6 +317,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         alerts = list_price_alerts(session, ticker)
         if not alerts:
@@ -361,6 +378,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         cat_str = str(params.get("category", DEFAULT_IMPORT_CATEGORY))
         thesis = str(params.get("thesis") or t(DEFAULT_WEBHOOK_THESIS, lang=lang))
@@ -383,6 +401,7 @@ def handle_webhook(
                 message=t("stock.already_exists", lang=lang, ticker=str(t_ticker)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_STOCK_ALREADY_EXISTS,
             )
         except ValueError:
             return _wrap_response(
@@ -390,6 +409,7 @@ def handle_webhook(
                 message=t("webhook.invalid_category", lang=lang, category=cat_str),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
 
     if action == "withdraw":
@@ -400,6 +420,7 @@ def handle_webhook(
                 message=t("webhook.missing_amount", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         try:
             amount_float = float(amount)
@@ -409,6 +430,7 @@ def handle_webhook(
                 message=t("webhook.invalid_amount", lang=lang, amount=amount),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         currency = str(params.get("currency", "USD"))
         try:
@@ -426,6 +448,7 @@ def handle_webhook(
                 message=str(e),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_STOCK_NOT_FOUND,
             )
 
     if action == "fx_watch":
@@ -452,6 +475,7 @@ def handle_webhook(
                 message=t("webhook.fx_watch_failed", lang=lang, error=str(e)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INTERNAL_ERROR,
             )
 
     if action == "guru_sync":
@@ -487,6 +511,7 @@ def handle_webhook(
                 message=t("webhook.guru_sync_failed", lang=lang, error=str(e)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INTERNAL_ERROR,
             )
 
     if action == "guru_summary":
@@ -515,12 +540,35 @@ def handle_webhook(
                 message=t("webhook.guru_summary_failed", lang=lang, error=str(e)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INTERNAL_ERROR,
             )
 
     if action == "transactions":
         ticker_filter = params.get("ticker")
-        limit = min(int(params.get("limit", 10)), 50)
-        txns = list_transactions(session, ticker=ticker_filter, limit=limit)
+        account_id_raw = params.get("account_id")
+        start = params.get("start")
+        end = params.get("end")
+        try:
+            account_id = int(account_id_raw) if account_id_raw is not None else None
+            start_date = date_type.fromisoformat(str(start)) if start else None
+            end_date = date_type.fromisoformat(str(end)) if end else None
+            limit = max(1, min(int(params.get("limit", 10)), 50))
+        except (TypeError, ValueError):
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        txns = list_transactions(
+            session,
+            ticker=ticker_filter,
+            account_id=account_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+        )
         count = len(txns)
         return _wrap_response(
             success=True,
@@ -541,6 +589,7 @@ def handle_webhook(
                 message=t("webhook.missing_ticker", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         txn_type = str(params.get("type", "BUY")).upper()
         quantity = params.get("quantity")
@@ -552,15 +601,40 @@ def handle_webhook(
                 message=t("webhook.missing_required_params", lang=lang),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=ERROR_INVALID_INPUT,
             )
         price = params.get("price")
+        account_id = params.get("account_id")
+        if account_id is None or account_id == "":
+            return _wrap_response(
+                success=False,
+                message=t("webhook.missing_required_params", lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        try:
+            parsed_account_id = int(account_id)
+            parsed_quantity = float(quantity)
+            parsed_price = float(price) if price else None
+            parsed_total_amount = float(total_amount)
+            parsed_txn_date = date_type.fromisoformat(str(txn_date)).isoformat()
+        except (TypeError, ValueError):
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
         data = {
             "ticker": ticker,
             "transaction_type": txn_type,
-            "quantity": float(quantity),
-            "price": float(price) if price else None,
-            "total_amount": float(total_amount),
-            "transaction_date": str(txn_date),
+            "account_id": parsed_account_id,
+            "quantity": parsed_quantity,
+            "price": parsed_price,
+            "total_amount": parsed_total_amount,
+            "transaction_date": parsed_txn_date,
         }
         try:
             result = create_transaction(session, data, lang)
@@ -571,6 +645,7 @@ def handle_webhook(
                 message=detail.get("detail", str(exc.detail)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
+                error_code=detail.get("error_code"),
             )
         return _wrap_response(
             success=True,
@@ -593,8 +668,17 @@ def handle_webhook(
     if action == "analytics":
         start = params.get("start")
         end = params.get("end")
-        start_d = date_type.fromisoformat(start) if start else None
-        end_d = date_type.fromisoformat(end) if end else None
+        try:
+            start_d = date_type.fromisoformat(str(start)) if start else None
+            end_d = date_type.fromisoformat(str(end)) if end else None
+        except (TypeError, ValueError):
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
         metrics = get_risk_metrics_svc(session, start=start_d, end=end_d)
         sharpe = metrics.get("sharpe_ratio", "N/A")
         max_dd_raw = metrics.get("max_drawdown_pct", 0)
@@ -632,4 +716,5 @@ def handle_webhook(
         ),
         interpretation=t("webhook.interpretation.action_failed", lang=lang),
         params=params,
+        error_code=ERROR_INVALID_INPUT,
     )

@@ -130,7 +130,7 @@
       "other": "Other"
     },
     "account_type": {
-      "brokerage": "Brokerage",
+      "brokerage": "Investment Account",
       "retirement": "Retirement (IRA/401k)",
       "savings": "Savings",
       "crypto": "Crypto Exchange",
@@ -673,12 +673,12 @@
     "caption": "Positions · Rebalance · Telegram Notifications",
     "sop": {
       "title": "📖 Asset Allocation: User Manual",
-      "content": "### Page Overview\\n\\nAsset Allocation is now **ledger-driven**: transactions are the source of truth, and holdings are a materialized position view.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nPositions are computed from those transactions automatically.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only position view**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all operate on the ledger-derived positions.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds positions from the ledger."
+      "content": "### Page Overview\\n\\nAsset Allocation now tracks everything through your transactions. Transactions are the source of truth, and holdings are your current balances calculated from them.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nYour holdings update automatically after each transaction.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only view of your current holdings**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all use holdings calculated from your transaction history.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds your holdings from those transactions."
     },
     "sop_csv_note": "CSV/TSV import creates OPENING_BALANCE transactions per row, with column mapping and preview before import.",
     "quick_start": {
       "title": "Quick Start: Account to Trade in 3 Steps",
-      "step1": "Create a brokerage account in the Accounts tab.",
+      "step1": "Create an investment account in the Accounts tab.",
       "step2": "Deposit cash with the account-level Deposit button or from Transactions as DEPOSIT.",
       "step3": "Record a BUY transaction with the same account; both cash and stock positions settle automatically."
     },
@@ -708,7 +708,7 @@
       "import_success": "CSV import completed successfully.",
       "import_error": "CSV import failed. Please review mappings and row errors.",
       "replace_mode": "Replace existing holdings",
-      "replace_mode_warning": "This will clear current holdings and replace them with imported rows.",
+      "replace_mode_warning": "This will delete existing holdings and replace them with imported rows. This cannot be undone.",
       "step_select": "1. Select File",
       "step_map": "2. Map Columns",
       "step_preview": "3. Preview & Import",
@@ -732,8 +732,8 @@
       "mode_append": "Append (add without removing)",
       "select_account_for_replace": "Select an account to use replace-account mode.",
       "confirm_destructive_required": "Please check the confirmation box before importing in a destructive mode.",
-      "confirm_replace_all": "I understand this will delete ALL existing holdings and replace them.",
-      "confirm_replace_account": "I understand this will delete all holdings in the selected account and replace them.",
+      "confirm_replace_all": "I understand this will delete ALL existing holdings and replace them with this import. This cannot be undone.",
+      "confirm_replace_account": "I understand this will delete all holdings in the selected account and replace them with this import. This cannot be undone.",
       "parse_warnings": "Parser warnings: {{count}}",
       "parse_warnings_title": "CSV parser warnings",
       "parse_warning_item": "Row {{row}} ({{code}}): {{message}}"
@@ -842,6 +842,7 @@
       "value": "Value",
       "weight_pct": "Wt%",
       "cost": "Cost",
+      "cost_tooltip": "The total amount you originally paid for this investment.",
       "change_pct": "Chg%",
       "home_return": "Home: {{pct}}",
       "fx_return": "FX: {{pct}}",
@@ -1750,16 +1751,16 @@
     },
     "empty_state": {
       "title": "Create an account first",
-      "description": "You need a brokerage or bank account before recording transactions. It only takes a few seconds.",
+      "description": "You need an investment or bank account before recording transactions. It only takes a few seconds.",
       "create_account": "Create Account"
     },
     "form": {
       "title": "Record Transaction",
       "type": "Transaction Type",
-      "account": "Brokerage account",
+      "account": "Investment account",
       "account_optional": "Optional (no account)",
       "account_required": "Select an account",
-      "account_empty_hint": "No brokerage accounts yet.",
+      "account_empty_hint": "No investment accounts yet.",
       "create_account": "Create an account in the Accounts tab",
       "available_cash": "Available cash ({{currency}}): {{amount}}",
       "proceeds_hint": "Proceeds will be added to {{account}} cash balance.",
@@ -1796,7 +1797,7 @@
       "error_fx_rate": "FX rate must be greater than 0.",
       "error_fee": "Fee must be 0 or greater.",
       "deposit_success_trade": "Funds added. Record a trade?",
-      "buy_no_account_banner": "Create a brokerage account to track trades and cash settlement.",
+      "buy_no_account_banner": "Create an investment account to track trades and balance updates.",
       "buy_no_balance_hint": "No funds yet. Deposit cash to this account first."
     },
     "toast": {
@@ -1819,7 +1820,7 @@
       "mode_replace_account": "Replace all transactions in selected account",
       "select_account_for_replace": "Select an account to use replace mode.",
       "confirm_destructive_required": "Please check the confirmation box before importing in replace mode.",
-      "confirm_replace_account": "I understand this will delete all transactions in the selected account and replace them.",
+      "confirm_replace_account": "I understand this will delete all existing transactions in the selected account and replace them with this import. This cannot be undone.",
       "mapping_date": "Date",
       "mapping_type": "Type",
       "mapping_ticker": "Ticker",
@@ -1862,7 +1863,7 @@
     }
   },
   "accounts": {
-    "title": "Brokerage Accounts",
+    "title": "Investment Accounts",
     "caption": "Accounts are the central hub for managing positions and transactions. Each account tracks cash balances and stock positions.",
     "add": "Add Account",
     "empty": {

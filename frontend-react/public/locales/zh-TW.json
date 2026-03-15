@@ -130,7 +130,7 @@
       "other": "其他"
     },
     "account_type": {
-      "brokerage": "券商帳戶",
+      "brokerage": "投資帳戶",
       "retirement": "退休帳戶（IRA/401k）",
       "savings": "儲蓄帳戶",
       "crypto": "加密貨幣交易所",
@@ -673,12 +673,12 @@
     "caption": "部位管理 · 再平衡分析 · Telegram 通知",
     "sop": {
       "title": "📖 個人資產配置：使用說明書",
-      "content": "### 頁面總覽\\n\\n資產配置頁面已改為**帳本驅動（Ledger-driven）**：交易是唯一事實來源，持倉表是計算後的部位視圖。\\n\\n---\\n\\n### 核心流程\\n\\n1. 設定目標配置\\n2. 建立或選擇帳戶\\n3. 記錄交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n部位會依交易自動計算。\\n\\n---\\n\\n### 部位建立與調整\\n\\n- 新增初始部位會建立 **OPENING_BALANCE** 交易。\\n- 持倉表為**唯讀部位視圖**。\\n- 需要調整數量或現金時，請使用**記錄交易**。\\n\\n---\\n\\n### 分析分頁\\n\\n再平衡、匯率曝險、提款、壓力測試都以帳本推導出的部位為基礎。\\n\\n### CSV 匯入\\n\\nCSV/TSV 匯入會逐列建立 `OPENING_BALANCE` 交易，再由帳本重建部位。"
+      "content": "### 頁面總覽\\n\\n資產配置頁面現在會透過交易自動追蹤你的資產。交易是主要依據，持倉表則是根據交易計算出的目前持有狀態。\\n\\n---\\n\\n### 核心流程\\n\\n1. 設定目標配置\\n2. 建立或選擇帳戶\\n3. 記錄交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n每次記錄交易後，持倉都會自動更新。\\n\\n---\\n\\n### 部位建立與調整\\n\\n- 新增初始部位會建立 **OPENING_BALANCE** 交易。\\n- 持倉表是**目前持有狀態的唯讀檢視**。\\n- 若要調整數量或現金，請使用**記錄交易**（不要直接改持倉表）。\\n\\n---\\n\\n### 分析分頁\\n\\n再平衡、匯率曝險、提款、壓力測試都會使用交易紀錄計算出的持倉資料。\\n\\n### CSV 匯入\\n\\nCSV/TSV 匯入會逐列建立 `OPENING_BALANCE` 交易，再依這些交易重建持倉。"
     },
     "sop_csv_note": "CSV/TSV 匯入會為每一列建立 OPENING_BALANCE 交易，支援欄位對應與預覽後再匯入。",
     "quick_start": {
       "title": "快速上手：3 步驟完成開戶到下單",
-      "step1": "在「帳戶」分頁建立券商帳戶。",
+      "step1": "在「帳戶」分頁建立投資帳戶。",
       "step2": "用帳戶卡片的「存入資金」或在交易分頁用 DEPOSIT 存入現金。",
       "step3": "以同一帳戶記錄 BUY 交易，系統會自動更新現金與股票部位。"
     },
@@ -708,7 +708,7 @@
       "import_success": "CSV 匯入完成。",
       "import_error": "CSV 匯入失敗，請檢查欄位對應與錯誤列。",
       "replace_mode": "覆蓋既有持倉",
-      "replace_mode_warning": "此操作會先清空目前持倉，再匯入新資料。",
+      "replace_mode_warning": "此操作會刪除目前持倉，再以匯入資料取代，且無法復原。",
       "step_select": "1. 選擇檔案",
       "step_map": "2. 欄位對應",
       "step_preview": "3. 預覽與匯入",
@@ -732,8 +732,8 @@
       "mode_append": "追加（不刪除既有資料）",
       "select_account_for_replace": "使用「覆蓋帳戶」模式前請先選擇帳戶。",
       "confirm_destructive_required": "使用覆蓋模式匯入前，請先勾選確認框。",
-      "confirm_replace_all": "我了解此操作將刪除所有既有持倉並替換。",
-      "confirm_replace_account": "我了解此操作將刪除所選帳戶的所有持倉並替換。",
+      "confirm_replace_all": "我了解此操作將刪除所有既有持倉，並以本次匯入資料取代，且無法復原。",
+      "confirm_replace_account": "我了解此操作將刪除所選帳戶的所有持倉，並以本次匯入資料取代，且無法復原。",
       "parse_warnings": "解析警告：{{count}}",
       "parse_warnings_title": "CSV 解析警告",
       "parse_warning_item": "第 {{row}} 列（{{code}}）：{{message}}"
@@ -842,6 +842,7 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
+      "cost_tooltip": "你當初買進這項投資所花的總金額。",
       "change_pct": "漲跌%",
       "home_return": "本幣: {{pct}}",
       "fx_return": "匯率: {{pct}}",
@@ -1750,16 +1751,16 @@
     },
     "empty_state": {
       "title": "請先建立帳戶",
-      "description": "在記錄交易前，請先建立券商或銀行帳戶。只需幾秒鐘即可完成。",
+      "description": "在記錄交易前，請先建立投資或銀行帳戶。只需幾秒鐘即可完成。",
       "create_account": "建立帳戶"
     },
     "form": {
       "title": "新增交易紀錄",
       "type": "交易類型",
-      "account": "券商帳戶",
+      "account": "投資帳戶",
       "account_optional": "選填（不綁定帳戶）",
       "account_required": "請選擇帳戶",
-      "account_empty_hint": "目前還沒有券商帳戶。",
+      "account_empty_hint": "目前還沒有投資帳戶。",
       "create_account": "前往帳戶分頁建立帳戶",
       "available_cash": "可用現金（{{currency}}）：{{amount}}",
       "proceeds_hint": "賣出/股息款項將匯入 {{account}} 現金餘額。",
@@ -1796,7 +1797,7 @@
       "error_fx_rate": "匯率必須大於 0。",
       "error_fee": "手續費不可小於 0。",
       "deposit_success_trade": "資金已入帳，要立即記錄買入嗎？",
-      "buy_no_account_banner": "請先建立券商帳戶，才能追蹤交易與現金結算。",
+      "buy_no_account_banner": "請先建立投資帳戶，才能追蹤交易與資金變化。",
       "buy_no_balance_hint": "此帳戶目前沒有可用資金，請先存入現金。"
     },
     "toast": {
@@ -1819,7 +1820,7 @@
       "mode_replace_account": "覆蓋所選帳戶的所有交易",
       "select_account_for_replace": "請先選擇帳戶才能使用覆蓋模式。",
       "confirm_destructive_required": "使用覆蓋模式匯入前，請先勾選確認。",
-      "confirm_replace_account": "我了解這會刪除所選帳戶中的所有交易，並以本次匯入資料取代。",
+      "confirm_replace_account": "我了解這會刪除所選帳戶中的所有交易，並以本次匯入資料取代，且無法復原。",
       "mapping_date": "日期",
       "mapping_type": "類型",
       "mapping_ticker": "Ticker",
@@ -1862,7 +1863,7 @@
     }
   },
   "accounts": {
-    "title": "券商帳戶",
+    "title": "投資帳戶",
     "caption": "帳戶是管理部位與交易的中心。每個帳戶追蹤現金餘額與股票部位。",
     "add": "新增帳戶",
     "empty": {

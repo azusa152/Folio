@@ -145,5 +145,6 @@ class WebhookResponse(BaseModel):
 
     success: bool
     message: str
+    error_code: str | None = None
     interpretation: str = ""
     data: dict = Field(default_factory=dict)

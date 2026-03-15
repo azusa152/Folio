@@ -1,9 +1,16 @@
 import { useTranslation } from "react-i18next"
+import { Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { formatQuantity } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Props {
   holdings: HoldingDetail[]
@@ -46,7 +53,24 @@ export function HoldingsTable({ holdings, privacyMode, displayCurrency }: Props)
               <th className="text-right py-0.5 pr-2">{t("allocation.col.qty")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.value")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.weight_pct")}</th>
-              <th className="text-right py-0.5 pr-2">{term("cost_basis", t("allocation.col.cost"))}</th>
+              <th className="text-right py-0.5 pr-2">
+                <div className="inline-flex items-center justify-end gap-1">
+                  <span>{term("cost_basis", t("allocation.col.cost"))}</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info
+                          className="h-3 w-3 cursor-help text-muted-foreground"
+                          aria-label={t("allocation.col.cost_tooltip")}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-[220px]">{t("allocation.col.cost_tooltip")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </th>
               <th className="text-right py-0.5">{t("allocation.col.change_pct")}</th>
             </tr>
           </thead>

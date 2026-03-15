@@ -11744,6 +11744,17 @@
             "type": "string",
             "title": "Message"
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
           "interpretation": {
             "type": "string",
             "title": "Interpretation",

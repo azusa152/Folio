@@ -23,6 +23,7 @@ Response envelope:
 |-------|------|----------------|-------|
 | `success` | bool | Yes | Execution result flag |
 | `message` | string | Yes | Human-readable action output |
+| `error_code` | string/null | No | Machine-readable error code on structured failures (`INVALID_INPUT`, `INSUFFICIENT_BALANCE`, etc.) |
 | `interpretation` | string | Yes | One-line pre-interpreted summary for agent decisioning |
 | `data` | object | Conditional | Included by default (`format=detailed`), omitted for most actions when `format=concise` |
 
@@ -311,7 +312,7 @@ Array of insight objects:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/transactions` | List transactions (optional `ticker`, `limit`) |
+| `GET` | `/transactions` | List transactions (optional `ticker`, `account_id`, `start`, `end`, `limit`) |
 | `POST` | `/transactions` | Create transaction |
 | `GET` | `/transactions/{id}` | Get transaction by ID |
 | `DELETE` | `/transactions/{id}` | Delete transaction |

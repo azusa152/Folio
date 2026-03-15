@@ -53,6 +53,7 @@ from application.stock.stock_service import (
 from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
+    ERROR_INTERNAL_ERROR,
     ERROR_INVALID_INPUT,
     ERROR_STOCK_ALREADY_ACTIVE,
     ERROR_STOCK_ALREADY_EXISTS,
@@ -497,11 +498,26 @@ async def webhook_route(
             params["format"] = payload.format
         result = handle_webhook(session, payload.action, payload.ticker, params)
         return WebhookResponse(**result)
+    except HTTPException as e:
+        logger.error("Webhook HTTPException：%s", e, exc_info=True)
+        detail = e.detail if isinstance(e.detail, dict) else {}
+        return WebhookResponse(
+            success=False,
+            message=detail.get(
+                "detail", t(GENERIC_VALIDATION_ERROR, lang=get_user_language(session))
+            ),
+            error_code=detail.get("error_code", ERROR_INVALID_INPUT),
+            interpretation=t(
+                "webhook.interpretation.action_failed",
+                lang=get_user_language(session),
+            ),
+        )
     except Exception as e:
         logger.error("Webhook 處理失敗：%s", e, exc_info=True)
         return WebhookResponse(
             success=False,
             message=t(GENERIC_WEBHOOK_ERROR, lang=get_user_language(session)),
+            error_code=ERROR_INTERNAL_ERROR,
             interpretation=t(
                 "webhook.interpretation.action_failed",
                 lang=get_user_language(session),
