@@ -1007,6 +1007,11 @@
     },
     "overview": {
       "portfolio_impact": "Portfolio impact snapshot",
+      "display_currency": "Display currency",
+      "save_as_default": "Save as default",
+      "default_saved": "Default currency updated",
+      "reset_to_default": "Reset",
+      "currency_scope_hint": "This changes the FX view only unless you save it as default.",
       "cash_non_home": "Non-home cash ratio: {{pct}}%",
       "net_impact_title": "Net FX impact",
       "net_impact_positive": "Recent FX changes added {{amount}} {{currency}} to your portfolio",

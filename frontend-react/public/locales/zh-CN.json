@@ -1007,6 +1007,11 @@
     },
     "overview": {
       "portfolio_impact": "组合影响快照",
+      "display_currency": "显示币种",
+      "save_as_default": "保存为默认",
+      "default_saved": "默认币种已更新",
+      "reset_to_default": "重置",
+      "currency_scope_hint": "除非保存为默认，否则此变更只影响当前页面显示。",
       "cash_non_home": "非本币现金占比：{{pct}}%",
       "net_impact_title": "汇率净影响",
       "net_impact_positive": "近期汇率变化让您的组合增加 {{amount}} {{currency}}",

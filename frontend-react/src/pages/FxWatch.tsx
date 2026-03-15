@@ -21,7 +21,7 @@ import {
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
 import type { FxWatch } from "@/api/types/fxWatch"
-import { useCurrencyExposure } from "@/api/hooks/useAllocation"
+import { useCurrencyExposure, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
 import { PortfolioImpactSnapshot } from "@/components/fxwatch/PortfolioImpactSnapshot"
 import { useProfile } from "@/api/hooks/useDashboard"
@@ -106,8 +106,22 @@ export default function FxWatch() {
 
   const { data: watches, isLoading, isError } = useFxWatches()
   const { data: profile } = useProfile()
+  const [selectedCurrencyOverride, setSelectedCurrencyOverride] = useState<string | null>(null)
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
-  const { data: exposure } = useCurrencyExposure(activeTab !== "watches")
+  const updateProfileMutation = useUpdateProfile()
+  const effectiveHomeCurrency = selectedCurrencyOverride ?? profile?.home_currency
+  const { data: exposure } = useCurrencyExposure(activeTab !== "watches", effectiveHomeCurrency)
+
+  const saveDefaultHomeCurrency = () => {
+    if (!profile || !effectiveHomeCurrency || effectiveHomeCurrency === profile.home_currency) return
+    updateProfileMutation.mutate(
+      { id: profile.id, payload: { home_currency: effectiveHomeCurrency } },
+      {
+        onSuccess: () => toast.success(t("fx_watch.overview.default_saved")),
+        onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error_backend")),
+      },
+    )
+  }
   const setSortMode = (nextSortMode: SortMode) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -415,7 +429,21 @@ export default function FxWatch() {
           </div>
 
           {exposure ? (
-            <PortfolioImpactSnapshot exposure={exposure} privacyMode={privacyMode} />
+            <PortfolioImpactSnapshot
+              exposure={exposure}
+              privacyMode={privacyMode}
+              selectedCurrency={effectiveHomeCurrency ?? exposure.home_currency}
+              onCurrencyChange={setSelectedCurrencyOverride}
+              showSaveDefault={Boolean(
+                profile &&
+                  effectiveHomeCurrency &&
+                  effectiveHomeCurrency !== profile.home_currency,
+              )}
+              onSaveDefault={saveDefaultHomeCurrency}
+              isSavingDefault={updateProfileMutation.isPending}
+              showResetCurrency={selectedCurrencyOverride !== null}
+              onResetCurrency={() => setSelectedCurrencyOverride(null)}
+            />
           ) : (
             <div className="rounded-md border border-border p-3">
               <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>

@@ -2,7 +2,7 @@
 API — 持倉 (Holding) 管理與再平衡 (Rebalance) 路由。
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session
 
 from api.schemas import (
@@ -25,7 +25,13 @@ from application.services import (
     send_fx_alerts,
     send_xray_warnings,
 )
-from domain.constants import ERROR_HOLDING_NOT_FOUND, ERROR_INVALID_SCENARIO_DROP
+from domain.constants import (
+    ERROR_HOLDING_NOT_FOUND,
+    ERROR_INVALID_INPUT,
+    ERROR_INVALID_SCENARIO_DROP,
+    GENERIC_VALIDATION_ERROR,
+    SUPPORTED_CURRENCIES,
+)
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -152,10 +158,28 @@ def calculate_withdraw_route(
     summary="Calculate currency exposure",
 )
 def get_currency_exposure(
+    home_currency: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> dict:
     """計算匯率曝險分析：幣別分佈、匯率變動、風險等級與建議。"""
-    return calculate_currency_exposure(session)
+    normalized_home_currency = (
+        home_currency.strip().upper() if home_currency is not None else None
+    )
+    if (
+        normalized_home_currency is not None
+        and normalized_home_currency not in SUPPORTED_CURRENCIES
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t(
+                    GENERIC_VALIDATION_ERROR,
+                    lang=get_user_language(session),
+                ),
+            },
+        )
+    return calculate_currency_exposure(session, home_currency=normalized_home_currency)
 
 
 @router.post(

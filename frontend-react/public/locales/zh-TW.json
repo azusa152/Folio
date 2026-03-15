@@ -1007,6 +1007,11 @@
     },
     "overview": {
       "portfolio_impact": "投資組合影響快照",
+      "display_currency": "顯示幣別",
+      "save_as_default": "儲存為預設",
+      "default_saved": "已更新預設幣別",
+      "reset_to_default": "重設",
+      "currency_scope_hint": "除非您儲存為預設，否則這只會影響此畫面的顯示。",
       "cash_non_home": "非本幣現金占比：{{pct}}%",
       "net_impact_title": "匯率淨影響",
       "net_impact_positive": "近期匯率變動讓您的投資組合增加 {{amount}} {{currency}}",

@@ -47,11 +47,13 @@ export function useAllocRebalance(displayCurrency: string, enabled = true) {
   })
 }
 
-export function useCurrencyExposure(enabled = true) {
+export function useCurrencyExposure(enabled = true, homeCurrency?: string) {
   return useQuery<CurrencyExposureResponse>({
-    queryKey: ["currency-exposure"],
+    queryKey: ["currency-exposure", homeCurrency ?? "default"],
     queryFn: async () => {
-      const { data, error } = await client.GET("/currency-exposure")
+      const { data, error } = await client.GET("/currency-exposure", {
+        params: { query: { home_currency: homeCurrency } },
+      })
       if (error) throw error
       return data as unknown as CurrencyExposureResponse
     },

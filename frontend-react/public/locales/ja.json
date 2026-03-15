@@ -1007,6 +1007,11 @@
     },
     "overview": {
       "portfolio_impact": "ポートフォリオ影響スナップショット",
+      "display_currency": "表示通貨",
+      "save_as_default": "デフォルトに保存",
+      "default_saved": "デフォルト通貨を更新しました",
+      "reset_to_default": "リセット",
+      "currency_scope_hint": "保存するまで、この変更はこの画面の表示にのみ適用されます。",
       "cash_non_home": "非基準通貨キャッシュ比率: {{pct}}%",
       "net_impact_title": "為替の純影響",
       "net_impact_positive": "最近の為替変動により、ポートフォリオに {{amount}} {{currency}} のプラス影響がありました",

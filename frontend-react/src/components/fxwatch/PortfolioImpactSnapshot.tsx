@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts"
 import type { CurrencyExposureResponse } from "@/api/types/allocation"
-import { CHART_COLOR_PALETTE } from "@/lib/constants"
+import { CHART_COLOR_PALETTE, DISPLAY_CURRENCIES } from "@/lib/constants"
 import { FINANCE_BADGE, FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { cn } from "@/lib/utils"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
@@ -21,6 +21,13 @@ import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 interface Props {
   exposure: CurrencyExposureResponse
   privacyMode: boolean
+  selectedCurrency: string
+  onCurrencyChange: (currency: string) => void
+  showSaveDefault?: boolean
+  onSaveDefault?: () => void
+  isSavingDefault?: boolean
+  showResetCurrency?: boolean
+  onResetCurrency?: () => void
 }
 
 interface BreakdownItem {
@@ -56,7 +63,17 @@ function riskLabelKey(riskLevel: string): string {
   return "fx_watch.overview.risk_medium"
 }
 
-export function PortfolioImpactSnapshot({ exposure, privacyMode }: Props) {
+export function PortfolioImpactSnapshot({
+  exposure,
+  privacyMode,
+  selectedCurrency,
+  onCurrencyChange,
+  showSaveDefault = false,
+  onSaveDefault,
+  isSavingDefault = false,
+  showResetCurrency = false,
+  onResetCurrency,
+}: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [showAllAdvice, setShowAllAdvice] = useState(false)
@@ -107,7 +124,46 @@ export function PortfolioImpactSnapshot({ exposure, privacyMode }: Props) {
 
   return (
     <section className="rounded-md border border-border p-3 space-y-4">
-      <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold">{t("fx_watch.overview.portfolio_impact")}</p>
+        <div className="flex items-center gap-2">
+          <label htmlFor="fx-impact-currency" className="text-xs text-muted-foreground">
+            {t("fx_watch.overview.display_currency")}
+          </label>
+          <select
+            id="fx-impact-currency"
+            value={selectedCurrency}
+            onChange={(e) => onCurrencyChange(e.target.value)}
+            className="h-7 rounded border border-border bg-background px-2 text-xs"
+          >
+            {DISPLAY_CURRENCIES.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+          {showSaveDefault && onSaveDefault ? (
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline disabled:opacity-60"
+              onClick={onSaveDefault}
+              disabled={isSavingDefault}
+            >
+              {t("fx_watch.overview.save_as_default")}
+            </button>
+          ) : null}
+          {showResetCurrency && onResetCurrency ? (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+              onClick={onResetCurrency}
+            >
+              {t("fx_watch.overview.reset_to_default")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("fx_watch.overview.currency_scope_hint")}</p>
 
       <div className={cn("rounded-md border px-3 py-2", netImpactSurfaceClass)}>
         <p className="text-xs text-muted-foreground">{t("fx_watch.overview.net_impact_title")}</p>

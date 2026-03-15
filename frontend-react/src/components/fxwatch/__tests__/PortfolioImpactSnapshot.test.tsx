@@ -55,6 +55,7 @@ function makeExposure(overrides: Partial<CurrencyExposureResponse> = {}): Curren
 
 describe("PortfolioImpactSnapshot", () => {
   it("renders neutral net impact without positive sign", () => {
+    const onCurrencyChange = vi.fn()
     render(
       <PortfolioImpactSnapshot
         exposure={makeExposure({
@@ -63,6 +64,8 @@ describe("PortfolioImpactSnapshot", () => {
           ],
         })}
         privacyMode={false}
+        selectedCurrency="USD"
+        onCurrencyChange={onCurrencyChange}
       />,
     )
 
@@ -72,7 +75,14 @@ describe("PortfolioImpactSnapshot", () => {
   })
 
   it("shows advice toggle and expands full advice list", () => {
-    render(<PortfolioImpactSnapshot exposure={makeExposure()} privacyMode={false} />)
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode={false}
+        selectedCurrency="USD"
+        onCurrencyChange={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText((content) => content.includes("Advice 1"))).toBeInTheDocument()
     expect(screen.getByText((content) => content.includes("Advice 2"))).toBeInTheDocument()
@@ -83,7 +93,14 @@ describe("PortfolioImpactSnapshot", () => {
   })
 
   it("masks sensitive values in privacy mode", () => {
-    render(<PortfolioImpactSnapshot exposure={makeExposure()} privacyMode />)
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode
+        selectedCurrency="USD"
+        onCurrencyChange={vi.fn()}
+      />,
+    )
 
     expect(screen.getAllByText("***").length).toBeGreaterThanOrEqual(3)
     expect(screen.queryByText("+90 USD")).not.toBeInTheDocument()
@@ -91,6 +108,7 @@ describe("PortfolioImpactSnapshot", () => {
   })
 
   it("renders active alert chips when alerts exist", () => {
+    const onCurrencyChange = vi.fn()
     render(
       <PortfolioImpactSnapshot
         exposure={makeExposure({
@@ -106,6 +124,8 @@ describe("PortfolioImpactSnapshot", () => {
           ],
         })}
         privacyMode={false}
+        selectedCurrency="USD"
+        onCurrencyChange={onCurrencyChange}
       />,
     )
 
@@ -113,5 +133,41 @@ describe("PortfolioImpactSnapshot", () => {
     expect(screen.getByText("USD/JPY")).toBeInTheDocument()
     expect(screen.getByText("1d")).toBeInTheDocument()
     expect(screen.getByText("+1.20%")).toBeInTheDocument()
+  })
+
+  it("calls onCurrencyChange when display currency changes", () => {
+    const onCurrencyChange = vi.fn()
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode={false}
+        selectedCurrency="USD"
+        onCurrencyChange={onCurrencyChange}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText("fx_watch.overview.display_currency"), {
+      target: { value: "JPY" },
+    })
+
+    expect(onCurrencyChange).toHaveBeenCalledWith("JPY")
+  })
+
+  it("renders scope hint and triggers reset callback", () => {
+    const onResetCurrency = vi.fn()
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode={false}
+        selectedCurrency="JPY"
+        onCurrencyChange={vi.fn()}
+        showResetCurrency
+        onResetCurrency={onResetCurrency}
+      />,
+    )
+
+    expect(screen.getByText("fx_watch.overview.currency_scope_hint")).toBeInTheDocument()
+    fireEvent.click(screen.getByText("fx_watch.overview.reset_to_default"))
+    expect(onResetCurrency).toHaveBeenCalledTimes(1)
   })
 })

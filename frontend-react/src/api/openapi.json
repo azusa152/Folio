@@ -3679,6 +3679,22 @@
         "operationId": "get_currency_exposure_currency_exposure_get",
         "parameters": [
           {
+            "name": "home_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Home Currency"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,

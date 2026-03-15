@@ -214,6 +214,26 @@ class TestTriggerXrayAlert:
         assert isinstance(data["warnings"], list)
 
 
+class TestCurrencyExposure:
+    """Contract tests for GET /currency-exposure."""
+
+    def test_should_allow_home_currency_override_via_query(self, client):
+        resp = client.get("/currency-exposure?home_currency=JPY")
+        assert resp.status_code == 200
+        assert resp.json()["home_currency"] == "JPY"
+
+    def test_should_normalize_home_currency_to_uppercase(self, client):
+        resp = client.get("/currency-exposure?home_currency=usd")
+        assert resp.status_code == 200
+        assert resp.json()["home_currency"] == "USD"
+
+    def test_should_return_422_for_unsupported_home_currency(self, client):
+        resp = client.get("/currency-exposure?home_currency=ABC")
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "INVALID_INPUT"
+
+
 class TestTriggerFxAlert:
     """Tests for POST /currency-exposure/alert."""
 
