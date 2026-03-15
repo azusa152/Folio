@@ -233,6 +233,22 @@ class TestCurrencyExposure:
         detail = resp.json()["detail"]
         assert detail["error_code"] == "INVALID_INPUT"
 
+    def test_should_include_fx_impact_breakdown_fields(self, client):
+        resp = client.get("/currency-exposure?home_currency=USD")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "net_cash_impact" in data
+        assert "net_investment_impact" in data
+        assert isinstance(data["net_cash_impact"], (int, float))
+        assert isinstance(data["net_investment_impact"], (int, float))
+        assert "fx_movements" in data
+        assert isinstance(data["fx_movements"], list)
+        for movement in data["fx_movements"]:
+            assert "impact_cash_home_value" in movement
+            assert "impact_investment_home_value" in movement
+            assert isinstance(movement["impact_cash_home_value"], (int, float))
+            assert isinstance(movement["impact_investment_home_value"], (int, float))
+
 
 class TestTriggerFxAlert:
     """Tests for POST /currency-exposure/alert."""

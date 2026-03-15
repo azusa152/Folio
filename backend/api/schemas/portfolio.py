@@ -163,6 +163,8 @@ class FXMovement(BaseModel):
     change_pct: float  # 期間內百分比變動
     direction: str  # "up" / "down" / "flat"
     impact_home_value: float = 0.0  # 估算對本幣資產價值的影響
+    impact_cash_home_value: float = 0.0  # 估算對現金部位的影響
+    impact_investment_home_value: float = 0.0  # 估算對投資部位（股票/加密貨幣）的影響
 
 
 class FXRateAlertItem(BaseModel):
@@ -186,6 +188,8 @@ class CurrencyExposureResponse(BaseModel):
     cash_breakdown: list[CurrencyBreakdown] = []
     cash_non_home_pct: float = 0.0
     total_cash_home: float = 0.0
+    net_cash_impact: float = 0.0
+    net_investment_impact: float = 0.0
     fx_movement_period: str = ""
     fx_movements: list[FXMovement]
     fx_rate_alerts: list[FXRateAlertItem] = []

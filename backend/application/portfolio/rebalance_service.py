@@ -912,6 +912,8 @@ def calculate_currency_exposure(
             "cash_breakdown": [],
             "cash_non_home_pct": 0.0,
             "total_cash_home": 0.0,
+            "net_cash_impact": 0.0,
+            "net_investment_impact": 0.0,
             "fx_movement_period": FX_HISTORY_PERIOD,
             "fx_movements": [],
             "risk_level": "low",
@@ -1019,7 +1021,16 @@ def calculate_currency_exposure(
                     "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
                 )
                 currency_value_home = currency_values.get(cur, 0.0)
+                cash_value_home = cash_currency_values.get(cur, 0.0)
+                investment_value_home = max(currency_value_home - cash_value_home, 0.0)
                 impact_home_value = round(currency_value_home * (change_pct / 100.0), 2)
+                impact_cash_home_value = round(
+                    cash_value_home * (change_pct / 100.0), 2
+                )
+                impact_investment_home_value = round(
+                    investment_value_home * (change_pct / 100.0),
+                    2,
+                )
                 fx_movements.append(
                     {
                         "pair": f"{cur}/{home_currency}",
@@ -1027,6 +1038,8 @@ def calculate_currency_exposure(
                         "change_pct": change_pct,
                         "direction": direction,
                         "impact_home_value": impact_home_value,
+                        "impact_cash_home_value": impact_cash_home_value,
+                        "impact_investment_home_value": impact_investment_home_value,
                     }
                 )
 
@@ -1083,6 +1096,14 @@ def calculate_currency_exposure(
         "cash_breakdown": cash_breakdown,
         "cash_non_home_pct": cash_non_home_pct,
         "total_cash_home": round(total_cash_home, 2),
+        "net_cash_impact": round(
+            sum(m.get("impact_cash_home_value", 0.0) for m in fx_movements),
+            2,
+        ),
+        "net_investment_impact": round(
+            sum(m.get("impact_investment_home_value", 0.0) for m in fx_movements),
+            2,
+        ),
         "fx_movement_period": FX_HISTORY_PERIOD,
         "fx_movements": fx_movements,
         "fx_rate_alerts": fx_rate_alerts_serialized,

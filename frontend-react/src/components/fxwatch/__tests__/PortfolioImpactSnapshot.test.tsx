@@ -41,10 +41,28 @@ function makeExposure(overrides: Partial<CurrencyExposureResponse> = {}): Curren
     ],
     cash_non_home_pct: 25,
     total_cash_home: 20000,
+    net_cash_impact: 25,
+    net_investment_impact: 65,
     fx_movement_period: "5d",
     fx_movements: [
-      { pair: "USD/JPY", current_rate: 150.1, change_pct: 1.2, direction: "up", impact_home_value: 120 },
-      { pair: "TWD/USD", current_rate: 0.031, change_pct: -0.6, direction: "down", impact_home_value: -30 },
+      {
+        pair: "USD/JPY",
+        current_rate: 150.1,
+        change_pct: 1.2,
+        direction: "up",
+        impact_home_value: 120,
+        impact_cash_home_value: 35,
+        impact_investment_home_value: 85,
+      },
+      {
+        pair: "TWD/USD",
+        current_rate: 0.031,
+        change_pct: -0.6,
+        direction: "down",
+        impact_home_value: -30,
+        impact_cash_home_value: -10,
+        impact_investment_home_value: -20,
+      },
     ],
     fx_rate_alerts: [],
     risk_level: "medium",
@@ -61,7 +79,15 @@ describe("PortfolioImpactSnapshot", () => {
       <PortfolioImpactSnapshot
         exposure={makeExposure({
           fx_movements: [
-            { pair: "USD/JPY", current_rate: 150.1, change_pct: 0, direction: "flat", impact_home_value: 0 },
+            {
+              pair: "USD/JPY",
+              current_rate: 150.1,
+              change_pct: 0,
+              direction: "flat",
+              impact_home_value: 0,
+              impact_cash_home_value: 0,
+              impact_investment_home_value: 0,
+            },
           ],
         })}
         privacyMode={false}
@@ -189,7 +215,27 @@ describe("PortfolioImpactSnapshot", () => {
     expect(screen.getByText("fx_watch.overview.col_pair")).toBeInTheDocument()
     expect(screen.getByText("fx_watch.overview.col_holdings_value")).toBeInTheDocument()
     expect(screen.getByText("fx_watch.overview.col_rate_change")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_cash_impact")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.col_investment_impact")).toBeInTheDocument()
     expect(screen.getByText("fx_watch.overview.col_impact")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.impact_breakdown_title")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.impact_from_cash")).toBeInTheDocument()
+    expect(screen.getByText("fx_watch.overview.impact_from_investments")).toBeInTheDocument()
     expect(screen.getAllByText("USD/JPY").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("hides impact breakdown details in privacy mode", () => {
+    render(
+      <PortfolioImpactSnapshot
+        exposure={makeExposure()}
+        privacyMode
+        selectedCurrency="USD"
+        onCurrencyChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText("fx_watch.overview.impact_breakdown_title")).not.toBeInTheDocument()
+    expect(screen.queryByText("fx_watch.overview.impact_from_cash")).not.toBeInTheDocument()
+    expect(screen.queryByText("fx_watch.overview.impact_from_investments")).not.toBeInTheDocument()
   })
 })

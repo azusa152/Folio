@@ -7325,6 +7325,16 @@
             "title": "Total Cash Home",
             "default": 0.0
           },
+          "net_cash_impact": {
+            "type": "number",
+            "title": "Net Cash Impact",
+            "default": 0.0
+          },
+          "net_investment_impact": {
+            "type": "number",
+            "title": "Net Investment Impact",
+            "default": 0.0
+          },
           "fx_movement_period": {
             "type": "string",
             "title": "Fx Movement Period",
@@ -7505,6 +7515,16 @@
           "impact_home_value": {
             "type": "number",
             "title": "Impact Home Value",
+            "default": 0.0
+          },
+          "impact_cash_home_value": {
+            "type": "number",
+            "title": "Impact Cash Home Value",
+            "default": 0.0
+          },
+          "impact_investment_home_value": {
+            "type": "number",
+            "title": "Impact Investment Home Value",
             "default": 0.0
           }
         },

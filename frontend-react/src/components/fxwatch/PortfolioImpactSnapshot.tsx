@@ -40,6 +40,8 @@ interface AttributionRow {
   holdingsValue: number
   rateChangePct: number
   impactHomeValue: number
+  cashImpactHomeValue: number
+  investmentImpactHomeValue: number
 }
 
 const ALERT_TEXT_CLASSES: Record<string, string> = {
@@ -116,17 +118,28 @@ export function PortfolioImpactSnapshot({
     const valueByCurrency = new Map(
       (exposure.breakdown ?? []).map((item) => [item.currency, item.value] as const),
     )
+    const movementByPair = new Map(topMovements.map((movement) => [movement.pair, movement] as const))
     return topMovements.map((movement) => {
       const [baseCurrency] = movement.pair.split("/")
+      const sourceMovement = movementByPair.get(movement.pair)
       return {
         pair: movement.pair,
         holdingsValue: valueByCurrency.get(baseCurrency) ?? 0,
         rateChangePct: movement.change_pct ?? 0,
         impactHomeValue: movement.impact_home_value ?? 0,
+        cashImpactHomeValue: sourceMovement?.impact_cash_home_value ?? 0,
+        investmentImpactHomeValue: sourceMovement?.impact_investment_home_value ?? 0,
       }
     })
   }, [exposure.breakdown, topMovements])
   const movementPeriodLabel = periodToLabel(exposure.fx_movement_period || "5d", t)
+  const netCashImpact = exposure.net_cash_impact ?? 0
+  const netInvestmentImpact = exposure.net_investment_impact ?? 0
+  const hasImpactBreakdown = netCashImpact !== 0 || netInvestmentImpact !== 0
+  const impactMagnitudeTotal = Math.abs(netCashImpact) + Math.abs(netInvestmentImpact)
+  const cashImpactShare = impactMagnitudeTotal > 0 ? (Math.abs(netCashImpact) / impactMagnitudeTotal) * 100 : 0
+  const investmentImpactShare =
+    impactMagnitudeTotal > 0 ? (Math.abs(netInvestmentImpact) / impactMagnitudeTotal) * 100 : 0
   const calculatedAtLabel = exposure.calculated_at
     ? new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
@@ -220,6 +233,37 @@ export function PortfolioImpactSnapshot({
           <p className="mt-1 text-xs text-muted-foreground">
             {t("fx_watch.overview.calculated_at_label", { time: calculatedAtLabel })}
           </p>
+        ) : null}
+        {!privacyMode && hasImpactBreakdown ? (
+          <div className="mt-2 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.impact_breakdown_title")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("fx_watch.overview.impact_from_cash")}{" "}
+              <span className="font-medium text-foreground">
+                {formatAmount(netCashImpact, exposure.home_currency, netCashImpact !== 0)}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t("fx_watch.overview.impact_from_investments")}{" "}
+              <span className="font-medium text-foreground">
+                {formatAmount(netInvestmentImpact, exposure.home_currency, netInvestmentImpact !== 0)}
+              </span>
+            </p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-background/80">
+              <div className="flex h-full w-full">
+                <div
+                  className="h-full bg-emerald-500/80"
+                  style={{ width: `${cashImpactShare.toFixed(2)}%` }}
+                  aria-hidden="true"
+                />
+                <div
+                  className="h-full bg-blue-500/80"
+                  style={{ width: `${investmentImpactShare.toFixed(2)}%` }}
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -349,6 +393,8 @@ export function PortfolioImpactSnapshot({
                     <th className="py-1 text-left font-medium">{t("fx_watch.overview.col_pair")}</th>
                     <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_holdings_value")}</th>
                     <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_rate_change")}</th>
+                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_cash_impact")}</th>
+                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_investment_impact")}</th>
                     <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_impact")}</th>
                   </tr>
                 </thead>
@@ -361,6 +407,24 @@ export function PortfolioImpactSnapshot({
                       </td>
                       <td className="py-1 text-right">
                         {privacyMode ? "***" : `${row.rateChangePct >= 0 ? "+" : ""}${row.rateChangePct.toFixed(2)}%`}
+                      </td>
+                      <td className="py-1 text-right">
+                        {privacyMode
+                          ? "***"
+                          : formatAmount(
+                              row.cashImpactHomeValue,
+                              exposure.home_currency,
+                              row.cashImpactHomeValue !== 0,
+                            )}
+                      </td>
+                      <td className="py-1 text-right">
+                        {privacyMode
+                          ? "***"
+                          : formatAmount(
+                              row.investmentImpactHomeValue,
+                              exposure.home_currency,
+                              row.investmentImpactHomeValue !== 0,
+                            )}
                       </td>
                       <td className="py-1 text-right">
                         {privacyMode
