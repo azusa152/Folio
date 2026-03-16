@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
+from application.portfolio.eligibility_service import check_asset_eligibility
+from application.portfolio.wrapper_service import get_all_wrapper_quotas
 from application.stock.stock_service import StockNotFoundError
 from domain.analysis import compute_daily_change_pct
 from domain.constants import (
@@ -32,6 +34,11 @@ from domain.portfolio.allocation import (
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
+from domain.portfolio.asset_location import (
+    compute_optimal_location,
+    suggest_tsumitate_migration,
+)
+from domain.portfolio.tax_wrapper import QuotaStatus
 from domain.rebalance import (
     calculate_rebalance as _pure_rebalance,
 )
@@ -248,6 +255,66 @@ def _compute_holding_market_values(
     return currency_values, cash_currency_values, ticker_agg, account_ticker_agg
 
 
+def _build_quota_status_map(
+    nisa_quotas: dict[str, dict],
+    wrappers_present: set[str],
+    total_value: float,
+) -> dict[str, QuotaStatus]:
+    quota_map: dict[str, QuotaStatus] = {}
+    for wrapper in ("nisa_growth", "nisa_tsumitate"):
+        raw = nisa_quotas.get(wrapper)
+        if not raw:
+            continue
+        quota_map[wrapper] = QuotaStatus(
+            wrapper_annual_remaining=float(raw.get("wrapper_annual_remaining", 0.0)),
+            combined_annual_remaining=float(raw.get("combined_annual_remaining", 0.0)),
+            lifetime_remaining=float(raw.get("lifetime_remaining", 0.0)),
+            growth_sub_limit_remaining=(
+                float(raw["growth_sub_limit_remaining"])
+                if raw.get("growth_sub_limit_remaining") is not None
+                else None
+            ),
+        )
+
+    if "ideco" in wrappers_present:
+        # Phase-5 bridge: iDeCo contribution cap model lands in Phase 6.
+        ideco_capacity = max(0.0, float(total_value))
+        quota_map["ideco"] = QuotaStatus(
+            wrapper_annual_remaining=ideco_capacity,
+            combined_annual_remaining=ideco_capacity,
+            lifetime_remaining=ideco_capacity,
+            growth_sub_limit_remaining=None,
+        )
+    return quota_map
+
+
+def _compute_category_eligibility_map(
+    session: Session,
+    ticker_agg: dict[str, dict],
+    categories: set[str],
+) -> tuple[dict[str, dict[str, bool]], set[str]]:
+    wrappers = ("nisa_growth", "nisa_tsumitate", "ideco")
+    eligibility_map: dict[str, dict[str, bool]] = {
+        wrapper: dict.fromkeys(categories, False) for wrapper in wrappers
+    }
+    tsumitate_eligible_tickers: set[str] = set()
+
+    for ticker, agg in ticker_agg.items():
+        category = str(agg.get("category", ""))
+        if category not in categories:
+            continue
+        for wrapper in wrappers:
+            eligibility = check_asset_eligibility(
+                session, ticker=ticker, wrapper=wrapper
+            )
+            if eligibility.eligible:
+                eligibility_map[wrapper][category] = True
+                if wrapper == "nisa_tsumitate":
+                    tsumitate_eligible_tickers.add(ticker.upper())
+
+    return eligibility_map, tsumitate_eligible_tickers
+
+
 # ===========================================================================
 # 再平衡分析
 # ===========================================================================
@@ -399,10 +466,9 @@ def _do_calculate_rebalance(
         logger.info("並行預熱 %d 檔加密貨幣報價...", len(crypto_ids))
         prewarm_crypto_prices(crypto_ids)
 
+    accounts = find_all_accounts(session)
     account_name_by_id = {
-        account.id: account.name
-        for account in find_all_accounts(session)
-        if account.id is not None
+        account.id: account.name for account in accounts if account.id is not None
     }
 
     # 4) 使用共用邏輯計算各持倉市值
@@ -514,7 +580,126 @@ def _do_calculate_rebalance(
     result["holdings_detail"] = holdings_detail
     result["display_currency"] = display_currency
 
-    # 8) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
+    # 8) Tax-aware asset location optimization (Phase 5)
+    wrappers_present = {
+        (account.tax_wrapper or "").strip().lower()
+        for account in accounts
+        if account.tax_wrapper
+    }
+    has_wrappers = bool(wrappers_present)
+    if has_wrappers:
+        today = datetime.now(UTC).date()
+        nisa_quotas = get_all_wrapper_quotas(
+            session=session,
+            user_id=DEFAULT_USER_ID,
+            year=today.year,
+            as_of=today,
+        )
+        quota_map = _build_quota_status_map(nisa_quotas, wrappers_present, total_value)
+
+        category_targets = {
+            category: round((float(pct) / 100.0) * total_value, 2)
+            for category, pct in target_config.items()
+            if float(pct) > 0
+        }
+        all_categories = set(category_targets.keys())
+        eligibility_map, tsumitate_eligible_tickers = _compute_category_eligibility_map(
+            session=session,
+            ticker_agg=ticker_agg,
+            categories=all_categories,
+        )
+
+        account_wrapper_by_id = {
+            account.id: (account.tax_wrapper or "tokutei").strip().lower()
+            for account in accounts
+            if account.id is not None
+        }
+        current_placements: dict[str, dict[str, float]] = {}
+        ticker_categories: dict[str, str] = {}
+        growth_holdings: list[dict[str, float | str]] = []
+        tokutei_holdings: list[dict[str, float | str]] = []
+        for agg in account_ticker_agg.values():
+            account_id = agg.get("account_id")
+            ticker = str(agg.get("ticker", ""))
+            category = str(agg.get("category", ""))
+            mv = float(agg.get("mv", 0.0))
+            if not ticker or mv <= 0:
+                continue
+            wrapper = account_wrapper_by_id.get(account_id, "tokutei")
+            current_placements.setdefault(ticker, {})
+            current_placements[ticker][wrapper] = (
+                float(current_placements[ticker].get(wrapper, 0.0)) + mv
+            )
+            ticker_categories[ticker] = category
+            if wrapper == "nisa_growth":
+                growth_holdings.append({"ticker": ticker, "amount": mv})
+            elif wrapper == "tokutei":
+                tokutei_holdings.append({"ticker": ticker, "amount": mv})
+
+        location_plan = compute_optimal_location(
+            category_targets=category_targets,
+            quotas=quota_map,
+            eligibility=eligibility_map,
+            current_placements=current_placements,
+            ticker_categories=ticker_categories,
+        )
+
+        tsumitate_quota = quota_map.get(
+            "nisa_tsumitate",
+            QuotaStatus(
+                wrapper_annual_remaining=0.0,
+                combined_annual_remaining=0.0,
+                lifetime_remaining=0.0,
+                growth_sub_limit_remaining=None,
+            ),
+        )
+        location_plan.tsumitate_migration = suggest_tsumitate_migration(
+            growth_holdings=growth_holdings,
+            tokutei_holdings=tokutei_holdings,
+            tsumitate_eligible=tsumitate_eligible_tickers,
+            tsumitate_quota=tsumitate_quota,
+        )
+
+        result["wrapper_allocations"] = [
+            {
+                "wrapper": item.wrapper,
+                "categories": item.categories,
+                "total": item.total,
+            }
+            for item in location_plan.wrapper_allocations
+        ]
+        result["placement_suggestions"] = [
+            {
+                "ticker": item.ticker,
+                "category": item.category,
+                "from_wrapper": item.from_wrapper,
+                "to_wrapper": item.to_wrapper,
+                "amount": item.amount,
+                "reason": item.reason,
+            }
+            for item in location_plan.suggestions
+        ]
+        result["tax_savings_estimate"] = {
+            "annual_nisa_benefit": location_plan.tax_savings_estimate.annual_nisa_benefit,
+            "annual_detax_benefit": location_plan.tax_savings_estimate.annual_detax_benefit,
+            "annual_ideco_deduction": location_plan.tax_savings_estimate.annual_ideco_deduction,
+            "total_annual": location_plan.tax_savings_estimate.total_annual,
+            "projected_10yr": location_plan.tax_savings_estimate.projected_10yr,
+            "projected_20yr": location_plan.tax_savings_estimate.projected_20yr,
+        }
+        result["tax_efficiency_score"] = location_plan.tax_efficiency_score
+        result["tsumitate_migration"] = (
+            {
+                "monthly_amount": location_plan.tsumitate_migration.monthly_amount,
+                "source_wrapper": location_plan.tsumitate_migration.source_wrapper,
+                "eligible_tickers": location_plan.tsumitate_migration.eligible_tickers,
+                "reason": location_plan.tsumitate_migration.reason,
+            }
+            if location_plan.tsumitate_migration
+            else None
+        )
+
+    # 9) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
     # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
     # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
     stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()

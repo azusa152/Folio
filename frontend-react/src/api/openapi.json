@@ -10348,6 +10348,44 @@
         "title": "PersonaTemplateResponse",
         "description": "GET /personas/templates \u56de\u50b3\u7684\u55ae\u4e00\u7bc4\u672c\u3002"
       },
+      "PlacementSuggestionItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "from_wrapper": {
+            "type": "string",
+            "title": "From Wrapper"
+          },
+          "to_wrapper": {
+            "type": "string",
+            "title": "To Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "category",
+          "from_wrapper",
+          "to_wrapper",
+          "amount",
+          "reason"
+        ],
+        "title": "PlacementSuggestionItem"
+      },
       "PreferencesRequest": {
         "properties": {
           "language": {
@@ -10987,6 +11025,65 @@
             "type": "array",
             "title": "Sector Exposure",
             "default": []
+          },
+          "wrapper_allocations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WrapperAllocationItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wrapper Allocations"
+          },
+          "placement_suggestions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PlacementSuggestionItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Suggestions"
+          },
+          "tax_savings_estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxSavingsEstimateItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tax_efficiency_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Efficiency Score"
+          },
+          "tsumitate_migration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TsumitateMigrationItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "geographic_allocation": {
             "additionalProperties": {
@@ -12128,6 +12225,44 @@
         "title": "SyncResponse",
         "description": "POST /gurus/{guru_id}/sync \u56de\u50b3\u7684\u540c\u6b65\u7d50\u679c\u3002"
       },
+      "TaxSavingsEstimateItem": {
+        "properties": {
+          "annual_nisa_benefit": {
+            "type": "number",
+            "title": "Annual Nisa Benefit"
+          },
+          "annual_detax_benefit": {
+            "type": "number",
+            "title": "Annual Detax Benefit"
+          },
+          "annual_ideco_deduction": {
+            "type": "number",
+            "title": "Annual Ideco Deduction"
+          },
+          "total_annual": {
+            "type": "number",
+            "title": "Total Annual"
+          },
+          "projected_10yr": {
+            "type": "number",
+            "title": "Projected 10Yr"
+          },
+          "projected_20yr": {
+            "type": "number",
+            "title": "Projected 20Yr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "annual_nisa_benefit",
+          "annual_detax_benefit",
+          "annual_ideco_deduction",
+          "total_annual",
+          "projected_10yr",
+          "projected_20yr"
+        ],
+        "title": "TaxSavingsEstimateItem"
+      },
       "TaxWrapperType": {
         "type": "string",
         "enum": [
@@ -12649,6 +12784,37 @@
         ],
         "title": "TransactionResponse"
       },
+      "TsumitateMigrationItem": {
+        "properties": {
+          "monthly_amount": {
+            "type": "number",
+            "title": "Monthly Amount"
+          },
+          "source_wrapper": {
+            "type": "string",
+            "title": "Source Wrapper"
+          },
+          "eligible_tickers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Eligible Tickers"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly_amount",
+          "source_wrapper",
+          "eligible_tickers",
+          "reason"
+        ],
+        "title": "TsumitateMigrationItem"
+      },
       "TwrResponse": {
         "properties": {
           "twr_pct": {
@@ -12928,6 +13094,32 @@
         "type": "object",
         "title": "WithdrawResponse",
         "description": "POST /withdraw \u56de\u50b3\u7684\u63d0\u6b3e\u8a08\u5283\u3002"
+      },
+      "WrapperAllocationItem": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "categories": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Categories"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "categories",
+          "total"
+        ],
+        "title": "WrapperAllocationItem"
       },
       "XRayAlertResponse": {
         "properties": {

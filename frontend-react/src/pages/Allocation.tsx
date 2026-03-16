@@ -148,6 +148,16 @@ export default function Allocation() {
   const hasSetup = holdings.length > 0
   const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
   const hasWrappedAccounts = (accounts ?? []).some((account) => !!account.tax_wrapper)
+  const accountByWrapper = new Map<string, { id: number; currency: string }>()
+  for (const account of accounts ?? []) {
+    if (account.id == null) continue
+    const wrapper = (account.tax_wrapper ?? "").trim().toLowerCase()
+    if (!wrapper || accountByWrapper.has(wrapper)) continue
+    accountByWrapper.set(wrapper, {
+      id: account.id,
+      currency: (account.currency || "USD").toUpperCase(),
+    })
+  }
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
@@ -241,6 +251,26 @@ export default function Allocation() {
             displayCurrency={displayCurrency}
             privacyMode={privacyMode}
             enabled={activeTab === "portfolio"}
+            onExecutePlacementSuggestion={(ticker, targetWrapper) => {
+              const target = accountByWrapper.get(targetWrapper)
+              if (!target) return
+              openTransactionSheet({
+                ticker,
+                accountId: target.id,
+                currency: target.currency,
+                transactionType: "BUY",
+              })
+            }}
+            onSetupTsumitateMigration={(tickers) => {
+              const target = accountByWrapper.get("nisa_tsumitate")
+              if (!target || tickers.length === 0) return
+              openTransactionSheet({
+                ticker: tickers[0],
+                accountId: target.id,
+                currency: target.currency,
+                transactionType: "BUY",
+              })
+            }}
           />
         </TabsContent>
 

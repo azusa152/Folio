@@ -5,6 +5,19 @@ from domain.portfolio.allocation import (  # noqa: F401
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
+from domain.portfolio.asset_location import (  # noqa: F401
+    EXPECTED_ANNUAL_RETURN,
+    NISA_PRIORITY_RANK,
+    AssetLocationPlan,
+    PlacementSuggestion,
+    TaxSavingsEstimate,
+    TsumitateMigrationPlan,
+    WrapperAllocation,
+    compute_optimal_location,
+    compute_tax_efficiency_score,
+    estimate_tax_savings,
+    suggest_tsumitate_migration,
+)
 from domain.portfolio.detax import (  # noqa: F401
     DETAX_MIN_BENEFIT_JPY,
     DeTaxOpportunity,

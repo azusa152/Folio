@@ -2134,6 +2134,20 @@
     "estimated_saving": "预计节税：{{amount}}",
     "disclaimer": "DeTAX 是递延纳税，不是免税。请咨询专业税务顾问。"
   },
+  "location": {
+    "title": "资产配置位置优化",
+    "efficiency_score": "税务效率评分",
+    "score_optimal": "最优 — 高成长资产已优先放入免税账户",
+    "score_good": "良好 — 仍有小幅优化空间",
+    "score_needs_work": "需关注 — 仍有显著节税空间",
+    "move_suggestion": "将 {{amount}} 的 {{category}} 从 {{from}} 调整到 {{to}}",
+    "tax_savings": "预计年度节税",
+    "projected_10yr": "10 年节税预测",
+    "projected_20yr": "20 年节税预测",
+    "tsumitate_migration": "可设置每月定投迁移",
+    "tsumitate_reason": "每月将 {{amount}} 从 {{source}} 转入定投额度，以降低费率",
+    "setup_monthly_migration": "设置每月迁移"
+  },
   "smart_actions": {
     "ticker_placeholder": "代码",
     "amount_placeholder": "金额",

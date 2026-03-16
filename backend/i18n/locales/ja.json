@@ -418,5 +418,19 @@
     "title": "損益通算（DeTAX）候補",
     "estimated_saving": "推定節税額: {{amount}}",
     "disclaimer": "DeTAXは課税の繰り延べであり、非課税化ではありません。税務は専門家にご相談ください。"
+  },
+  "location": {
+    "title": "アセットロケーション最適化",
+    "efficiency_score": "税効率スコア",
+    "score_optimal": "最適 — 高成長資産が非課税枠に配置されています",
+    "score_good": "良好 — 軽微な最適化余地があります",
+    "score_needs_work": "要改善 — 大きな節税余地があります",
+    "move_suggestion": "{{category}}を{{from}}から{{to}}へ{{amount}}移動",
+    "tax_savings": "推定年間節税額",
+    "projected_10yr": "10年後の節税見込み",
+    "projected_20yr": "20年後の節税見込み",
+    "tsumitate_migration": "毎月のつみたて移行が可能です",
+    "tsumitate_reason": "{{source}}から毎月{{amount}}をつみたてへ移し、信託報酬を抑える",
+    "setup_monthly_migration": "毎月移行を設定"
   }
 }

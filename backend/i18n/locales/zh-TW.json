@@ -418,5 +418,19 @@
     "title": "稅損收割機會",
     "estimated_saving": "預估節稅：{{amount}}",
     "disclaimer": "DeTAX 是遞延課稅，並非免稅。請諮詢專業稅務顧問。"
+  },
+  "location": {
+    "title": "資產配置位置優化",
+    "efficiency_score": "稅務效率分數",
+    "score_optimal": "最佳 — 高成長資產已優先放入免稅帳戶",
+    "score_good": "良好 — 仍有小幅優化空間",
+    "score_needs_work": "需注意 — 仍有明顯節稅空間",
+    "move_suggestion": "將 {{amount}} 的 {{category}} 從 {{from}} 調整至 {{to}}",
+    "tax_savings": "預估年度節稅",
+    "projected_10yr": "10 年節稅預估",
+    "projected_20yr": "20 年節稅預估",
+    "tsumitate_migration": "可設定每月定期定額移轉",
+    "tsumitate_reason": "每月將 {{amount}} 從 {{source}} 轉入定期定額，以降低費率",
+    "setup_monthly_migration": "設定每月移轉"
   }
 }

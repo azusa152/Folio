@@ -418,5 +418,19 @@
     "title": "Tax-Loss Harvesting Opportunity",
     "estimated_saving": "Estimated tax saving: {{amount}}",
     "disclaimer": "DeTAX defers taxes — it does not eliminate them. Consult a tax advisor."
+  },
+  "location": {
+    "title": "Asset Location Optimization",
+    "efficiency_score": "Tax Efficiency Score",
+    "score_optimal": "Optimal — your high-growth assets are tax-sheltered",
+    "score_good": "Good — minor optimization opportunities",
+    "score_needs_work": "Needs attention — significant tax savings available",
+    "move_suggestion": "Move {{amount}} of {{category}} from {{from}} to {{to}}",
+    "tax_savings": "Estimated annual tax savings",
+    "projected_10yr": "10-year projected savings",
+    "projected_20yr": "20-year projected savings",
+    "tsumitate_migration": "Monthly Tsumitate migration available",
+    "tsumitate_reason": "Move {{amount}}/month from {{source}} to Tsumitate for lower fees",
+    "setup_monthly_migration": "Set up monthly migration"
   }
 }
