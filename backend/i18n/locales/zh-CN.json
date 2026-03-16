@@ -40,6 +40,7 @@
     "accounts_summary": "已配置 {count} 个账户",
     "analytics_summary": "投资组合风险指标已计算",
     "insights_summary": "已生成 {count} 条投资组合洞察",
+    "quota_summary": "已获取 {count} 个账户的 NISA 额度状态",
     "missing_required_params": "缺少必要参数",
     "interpretation": {
       "signal_ready": "信号摘要已准备完成。",
@@ -61,7 +62,8 @@
       "transaction_recorded": "交易已记录。",
       "accounts_ready": "账户摘要已准备完成。",
       "analytics_ready": "夏普比率：{sharpe}，最大回撤：{max_dd}。",
-      "insights_ready": "投资组合洞察已准备完成。"
+      "insights_ready": "投资组合洞察已准备完成。",
+      "quota_ready": "NISA 额度状态已准备完成。"
     }
   },
   "stock": {

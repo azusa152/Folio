@@ -30,6 +30,11 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Account service: `backend/application/portfolio/account_service.py`
 - Analytics service: `backend/application/portfolio/analytics_service.py`
 - Insight service: `backend/application/portfolio/insight_service.py`
+- Tax wrapper domain: `backend/domain/portfolio/tax_wrapper.py`, `backend/domain/portfolio/eligibility.py`, `backend/domain/portfolio/asset_location.py`
+- Tax wrapper services: `backend/application/portfolio/wrapper_service.py`, `backend/application/portfolio/eligibility_service.py`, `backend/application/portfolio/routing_service.py`
+- Tax wrapper routes: `backend/api/routes/wrapper_routes.py`
+- Tax wrapper schemas: `backend/api/schemas/wrapper.py`
+- Eligible asset seed: `backend/scripts/seed_eligible_assets.py`
 - Ledger migration: `backend/scripts/migrate_ledger.py`
 - Domain analytics: `backend/domain/analysis/drawdown.py`, `backend/domain/analysis/risk_metrics.py`
 
@@ -38,6 +43,8 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Discover webhook capabilities first: `POST /webhook` with `{"action":"help"}`
 - Branch on `error_code`, not localized `detail`
 - Prefer `format: "concise"` when token budget matters
+- For NISA/iDeCo quota status, use webhook `quota`
+- NISA quota is tracked at cost basis (簿價), not market value
 - Use `docs/agents/folio/SKILL.md` for compact action usage
 - Use `docs/agents/folio/reference.md` only when detailed field-level specs are needed
 

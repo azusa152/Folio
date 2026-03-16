@@ -40,6 +40,7 @@
     "accounts_summary": "{count} accounts configured",
     "analytics_summary": "Portfolio risk metrics computed",
     "insights_summary": "Generated {count} portfolio insights",
+    "quota_summary": "NISA quota status is ready for {count} wrappers",
     "missing_required_params": "Missing required parameters",
     "interpretation": {
       "signal_ready": "Signal snapshot is ready.",
@@ -61,7 +62,8 @@
       "transaction_recorded": "Transaction has been recorded.",
       "accounts_ready": "Account summary is ready.",
       "analytics_ready": "Sharpe ratio: {sharpe}, max drawdown: {max_dd}.",
-      "insights_ready": "Portfolio insights are ready."
+      "insights_ready": "Portfolio insights are ready.",
+      "quota_ready": "NISA quota status is ready."
     }
   },
   "stock": {

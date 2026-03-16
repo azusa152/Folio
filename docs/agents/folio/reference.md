@@ -330,6 +330,66 @@ Array of insight objects:
 
 ---
 
+## Tax Wrapper Endpoints (NISA / iDeCo)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/wrappers/quota` | All NISA/iDeCo quota statuses (annual, combined, lifetime, growth sub-limit) |
+| `GET` | `/wrappers/restoration-forecast` | Pending NISA quota restorations with effective dates |
+| `GET` | `/wrappers/{wrapper}/check-eligibility?ticker=X` | Check if a ticker is eligible for a specific wrapper |
+| `GET` | `/wrappers/{wrapper}/eligible-assets?search=X` | List eligible assets for a wrapper (searchable) |
+| `POST` | `/wrappers/suggest-routing` | Suggest optimal wrapper split for a purchase |
+| `GET` | `/wrappers/detax` | Find DeTAX (tax-loss harvesting) opportunities in Tokutei |
+
+### Wrapper Types
+
+| Type | Tax Treatment | Description |
+|------|---------------|-------------|
+| `tokutei` | Taxable (20.315%) | 特定口座 — standard taxable account |
+| `nisa_tsumitate` | Tax-free | つみたて投資枠 — annual 1.2M, FSA-approved funds only |
+| `nisa_growth` | Tax-free | 成長投資枠 — annual 2.4M, stocks/ETFs/MFs (excl. leveraged) |
+| `ideco` | Tax-deferred | iDeCo — contributions deductible, locked until age 60 |
+| `ippan` | Taxable | 一般口座 — general account |
+
+### Quota Response Fields
+
+- `wrapper_annual_remaining`: remaining annual quota for this wrapper (JPY)
+- `combined_annual_remaining`: remaining combined Tsumitate+Growth annual (max 3.6M)
+- `lifetime_remaining`: remaining shared lifetime quota (max 18M)
+- `growth_sub_limit_remaining`: remaining Growth sub-limit (max 12M within 18M)
+- `restoration_policy`: `next_year` (2024-2025) or `same_day` (2026+)
+
+### Routing Request
+
+```json
+{"ticker": "VTI", "total_amount": 3000000}
+```
+
+Response: list of `{wrapper, amount, reason}` — NISA-first, overflow to Tokutei.
+
+### DeTAX Response Fields
+
+- `total_estimated_savings`: total estimated tax saving (JPY)
+- `opportunities[].ticker`: ticker with unrealized loss
+- `opportunities[].estimated_tax_saved`: estimated tax saving from harvesting
+- `opportunities[].sell_quantity`: suggested sell quantity
+
+### Webhook Action: `quota`
+
+Request: `{"action": "quota"}`
+
+Returns: quota status for all configured wrappers and restoration forecast.
+Supports `format: "concise"`.
+
+### Error Codes (Tax Wrapper)
+
+| Code | Meaning |
+|------|---------|
+| `QUOTA_EXCEEDED` | Purchase would exceed NISA/iDeCo quota (detail specifies which limit) |
+| `ASSET_NOT_ELIGIBLE` | Asset not eligible for the selected wrapper (includes `suggested_wrapper`) |
+
+---
+
 ## Service Operations
 
 Run all `make` commands from the Folio project root using the `exec` tool.

@@ -1,6 +1,6 @@
 ---
 name: folio
-description: Self-hosted investment tracking for stocks, portfolio, ledger-driven positions, FX monitoring, and guru 13F analysis. Use when asked about portfolio status, stock analysis, market sentiment, alerts, FX timing, smart withdrawal, or superinvestor positions. Backend must be running at http://localhost:8000.
+description: Self-hosted investment tracking for stocks, portfolio, ledger-driven positions, FX monitoring, guru 13F analysis, and Japanese tax-advantaged accounts (NISA/iDeCo). Use when asked about portfolio status, stock analysis, market sentiment, alerts, FX timing, smart withdrawal, NISA quota, tax optimization, or superinvestor positions. Backend must be running at http://localhost:8000.
 homepage: http://localhost:8000/docs
 metadata: { "openclaw": { "requires": { "bins": ["docker", "curl"] }, "primaryEnv": "FOLIO_API_KEY", "emoji": "📊" } }
 ---
@@ -79,6 +79,7 @@ Verbosity (top-level `format` field in request body):
 - `accounts` - list accounts with holdings count
 - `analytics` - risk metrics: Sharpe, Sortino, max drawdown (`start`, `end`)
 - `insights` - natural language portfolio insights (`display_currency`)
+- `quota` - NISA/iDeCo quota status (annual/lifetime remaining, restoration forecast)
 
 ## Recommended Workflows
 
@@ -87,6 +88,8 @@ Verbosity (top-level `format` field in request body):
 - Need cash: `withdraw {amount, currency}`
 - Asset review: `dashboard` -> `analytics` -> `insights` -> `transactions` with `ticker`
 - Record trade: `add_transaction {ticker}` -> `transactions` with `ticker` to confirm (BUY/SELL auto-settle both cash and stock positions)
+- NISA check: `quota` -> `dashboard` (review quota then allocation)
+- Tax optimization: `quota` -> `insights` -> review DeTAX suggestions in dashboard
 
 All position mutations now go through the transaction API; holdings are a derived position cache.
 

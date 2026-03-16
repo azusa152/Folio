@@ -24,6 +24,10 @@ from application.portfolio.transaction_service import (
     create_transaction,
     list_transactions,
 )
+from application.portfolio.wrapper_service import (
+    get_all_wrapper_quotas,
+    get_restoration_forecast,
+)
 from application.scan.scan_service import list_price_alerts, run_scan
 from application.stock.filing_service import sync_all_gurus
 from application.stock.stock_service import (
@@ -34,6 +38,7 @@ from application.stock.stock_service import (
 )
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
+    DEFAULT_USER_ID,
     DEFAULT_WEBHOOK_THESIS,
     ERROR_INTERNAL_ERROR,
     ERROR_INVALID_INPUT,
@@ -146,6 +151,8 @@ def handle_webhook(
                     "sell_decision": "withdraw {amount, currency}",
                     "asset_review": "dashboard -> analytics -> insights -> transactions {ticker}",
                     "record_trade": "add_transaction {ticker} -> transactions {ticker}",
+                    "nisa_check": "quota -> dashboard",
+                    "tax_optimization": "quota -> insights",
                 },
                 "model_hint": t("webhook.help_model_hint", lang=lang),
             },
@@ -694,6 +701,35 @@ def handle_webhook(
             ),
             params=params,
             data=metrics,
+        )
+
+    if action == "quota":
+        as_of = date_type.today()
+        year_raw = params.get("year")
+        try:
+            year = int(year_raw) if year_raw is not None else as_of.year
+        except (TypeError, ValueError):
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        quotas = get_all_wrapper_quotas(session, DEFAULT_USER_ID, year, as_of)
+        forecast = get_restoration_forecast(session, DEFAULT_USER_ID)
+        return _wrap_response(
+            success=True,
+            message=t("webhook.quota_summary", lang=lang, count=len(quotas)),
+            interpretation=t("webhook.interpretation.quota_ready", lang=lang),
+            params=params,
+            data={
+                "year": year,
+                "as_of": as_of.isoformat(),
+                "restoration_policy": forecast.get("restoration_policy"),
+                "quotas": quotas,
+                "restoration_forecast": forecast,
+            },
         )
 
     if action == "insights":

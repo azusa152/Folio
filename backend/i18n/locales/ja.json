@@ -40,6 +40,7 @@
     "accounts_summary": "{count} 件のアカウントが設定されています",
     "analytics_summary": "ポートフォリオのリスク指標を算出しました",
     "insights_summary": "{count} 件のポートフォリオインサイトを生成しました",
+    "quota_summary": "{count} 件の口座について NISA 枠の状況を取得しました",
     "missing_required_params": "必須パラメータが不足しています",
     "interpretation": {
       "signal_ready": "シグナル概要の準備ができました。",
@@ -61,7 +62,8 @@
       "transaction_recorded": "取引を記録しました。",
       "accounts_ready": "アカウント概要の準備ができました。",
       "analytics_ready": "シャープレシオ: {sharpe}、最大ドローダウン: {max_dd}。",
-      "insights_ready": "ポートフォリオインサイトの準備ができました。"
+      "insights_ready": "ポートフォリオインサイトの準備ができました。",
+      "quota_ready": "NISA 枠の状況を取得しました。"
     }
   },
   "stock": {

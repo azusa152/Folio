@@ -569,6 +569,14 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
             "display_currency": "str (optional — default USD)",
         },
     },
+    "quota": {
+        "description": "NISA/iDeCo 額度狀態查詢",
+        "requires_ticker": False,
+        "description_en": "NISA/iDeCo quota status (annual/lifetime remaining, restoration forecast)",
+        "params": {
+            "year": "int (optional — fiscal year, default current year)",
+        },
+    },
 }
 
 # ---------------------------------------------------------------------------

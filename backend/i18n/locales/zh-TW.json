@@ -40,6 +40,7 @@
     "accounts_summary": "已設定 {count} 個帳戶",
     "analytics_summary": "投資組合風險指標已計算",
     "insights_summary": "已產生 {count} 條投資組合洞察",
+    "quota_summary": "已取得 {count} 個口座的 NISA 額度狀態",
     "missing_required_params": "缺少必要參數",
     "interpretation": {
       "signal_ready": "訊號摘要已準備完成。",
@@ -61,7 +62,8 @@
       "transaction_recorded": "交易已記錄。",
       "accounts_ready": "帳戶摘要已準備完成。",
       "analytics_ready": "夏普比率：{sharpe}，最大回撤：{max_dd}。",
-      "insights_ready": "投資組合洞察已準備完成。"
+      "insights_ready": "投資組合洞察已準備完成。",
+      "quota_ready": "NISA 額度狀態已準備完成。"
     }
   },
   "stock": {
