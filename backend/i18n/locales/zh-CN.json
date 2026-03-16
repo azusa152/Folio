@@ -394,5 +394,15 @@
     "quota_exceeded": "此笔买入将超过您的 NISA 额度上限。",
     "quota_exceeded_annual": "已超过年度投资额度。",
     "quota_exceeded_lifetime": "已超过终身免税额度。"
+  },
+  "eligibility": {
+    "not_eligible": "该资产不符合所选税务账户的可投规则。",
+    "not_in_tsumitate_approved_list": "不在 NISA 定投额度的核准基金名单中。",
+    "not_in_growth_approved_list": "不在 NISA 成长额度的核准资产名单中。",
+    "excluded_flag": "该资产属于 NISA 成长额度排除范围（杠杆、每月分配、反向或监管观察）。",
+    "trust_period_too_short": "信托期限不足 20 年。",
+    "not_in_ideco_lineup": "不在您券商的 iDeCo 产品清单中。",
+    "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
+    "try_instead": "请改用 {{wrapper}}。"
   }
 }

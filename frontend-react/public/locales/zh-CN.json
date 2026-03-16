@@ -2106,5 +2106,19 @@
       "policy_next_year": "恢复：次年",
       "policy_same_day": "恢复：当日"
     }
+  },
+  "eligibility": {
+    "checking": "正在检查可投资格...",
+    "eligible": "可投资",
+    "not_eligible": "不可投资",
+    "switch_to_suggested_account": "切换到 {{wrapper}} 账户",
+    "no_suggested_account": "未找到可用的 {{wrapper}} 账户。",
+    "not_in_tsumitate_approved_list": "不在 NISA 定投额度核准名单中。",
+    "not_in_growth_approved_list": "不在 NISA 成长额度核准资产名单中。",
+    "excluded_flag": "该资产不符合 NISA 成长额度规则。",
+    "trust_period_too_short": "信托期限不足 20 年。",
+    "not_in_ideco_lineup": "不在您的 iDeCo 产品清单中。",
+    "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
+    "try_instead": "可改用 {{wrapper}}。"
   }
 }

@@ -147,6 +147,24 @@ def _run_migrations() -> None:
         "CREATE INDEX IF NOT EXISTS ix_contrib_user_wrapper_year ON contributionledgerentry (user_id, tax_wrapper, fiscal_year);",
         "CREATE INDEX IF NOT EXISTS ix_contrib_transaction ON contributionledgerentry (transaction_id);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_contrib_transaction_entry_type ON contributionledgerentry (transaction_id, entry_type) WHERE transaction_id IS NOT NULL;",
+        # Eligible asset master for wrapper placement validation.
+        (
+            "CREATE TABLE IF NOT EXISTS eligibleasset ("
+            "id INTEGER PRIMARY KEY, "
+            "tax_wrapper VARCHAR NOT NULL, "
+            "ticker VARCHAR NOT NULL, "
+            "fund_name VARCHAR NOT NULL DEFAULT '', "
+            "asset_type VARCHAR NOT NULL DEFAULT 'mutual_fund', "
+            "broker VARCHAR, "
+            "trust_fee_pct REAL, "
+            "is_active BOOLEAN NOT NULL DEFAULT 1, "
+            "updated_at DATETIME NOT NULL"
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_ticker ON eligibleasset (tax_wrapper, ticker);",
+        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
     ]
 
     with engine.connect() as conn:

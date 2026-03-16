@@ -19,6 +19,11 @@ from application.portfolio.crypto_service import (  # noqa: F401
     get_crypto_price_for_ticker,
     search_crypto_coins,
 )
+from application.portfolio.eligibility_service import (  # noqa: F401
+    check_asset_eligibility,
+    get_eligible_assets,
+    refresh_eligible_assets,
+)
 from application.portfolio.fx_watch_service import (  # noqa: F401
     check_fx_watches,
     create_watch,

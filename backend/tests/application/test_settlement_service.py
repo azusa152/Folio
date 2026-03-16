@@ -15,6 +15,7 @@ from domain.constants import DEFAULT_USER_ID, ERROR_INSUFFICIENT_BALANCE
 from domain.entities import (
     Account,
     ContributionLedgerEntry,
+    EligibleAsset,
     Holding,
     Stock,
     Transaction,
@@ -43,6 +44,28 @@ def _create_nisa_account(session: Session, wrapper: str) -> Account:
     session.commit()
     session.refresh(account)
     return account
+
+
+def _create_eligible_asset(
+    session: Session,
+    *,
+    wrapper: str,
+    ticker: str,
+    broker: str | None = None,
+    asset_type: str = "stock",
+) -> EligibleAsset:
+    item = EligibleAsset(
+        tax_wrapper=wrapper,
+        ticker=ticker,
+        fund_name=ticker,
+        asset_type=asset_type,
+        broker=broker,
+        is_active=True,
+    )
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
 
 
 def _create_cash_holding(session: Session, account_id: int, amount: float) -> Holding:
@@ -781,6 +804,12 @@ def test_verify_positions_should_detect_discrepancy(db_session: Session):
 def test_nisa_buy_should_reject_when_quota_exceeded(db_session: Session):
     account = _create_nisa_account(db_session, "nisa_tsumitate")
     _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="AAPL",
+        asset_type="mutual_fund",
+    )
 
     # Preload near annual limit.
     db_session.add(
@@ -814,6 +843,74 @@ def test_nisa_buy_should_reject_when_quota_exceeded(db_session: Session):
 
     assert exc.value.status_code == 422
     assert exc.value.detail["error_code"] == "QUOTA_EXCEEDED"
+
+
+def test_nisa_buy_should_reject_when_asset_not_eligible(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="0331418A",
+        asset_type="mutual_fund",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 1_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "ASSET_NOT_ELIGIBLE"
+    assert "eligibility.not_in_tsumitate_approved_list" in exc.value.detail["reasons"]
+    assert exc.value.detail["suggested_wrapper"] == "nisa_growth"
+
+
+def test_nisa_growth_buy_should_reject_when_not_in_growth_approved_list(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="7203.T",
+        asset_type="stock",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 1_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "ASSET_NOT_ELIGIBLE"
+    assert "eligibility.not_in_growth_approved_list" in exc.value.detail["reasons"]
+    assert exc.value.detail["suggested_wrapper"] == "tokutei"
 
 
 def test_nisa_buy_and_sell_should_record_contribution_and_restoration(

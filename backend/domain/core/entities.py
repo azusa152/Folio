@@ -288,6 +288,51 @@ class ContributionLedgerEntry(SQLModel, table=True):
     )
 
 
+class EligibleAsset(SQLModel, table=True):
+    """NISA / iDeCo 対象資産マスター。"""
+
+    __table_args__ = (
+        Index(
+            "uq_eligible_wrapper_ticker_broker",
+            "tax_wrapper",
+            "ticker",
+            "broker",
+            unique=True,
+        ),
+        Index(
+            "uq_eligible_wrapper_ticker_null_broker",
+            "tax_wrapper",
+            "ticker",
+            unique=True,
+            sqlite_where=text("broker IS NULL"),
+        ),
+        Index("ix_eligible_wrapper_ticker", "tax_wrapper", "ticker"),
+        Index("ix_eligible_wrapper_broker", "tax_wrapper", "broker"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    tax_wrapper: str = Field(description="対象ラッパー種別")
+    ticker: str = Field(description="資産コード（ファンドコード or ティッカー）")
+    fund_name: str = Field(default="", description="ファンド名称")
+    asset_type: str = Field(
+        default="mutual_fund",
+        description="資産種別（mutual_fund / etf / stock / reit）",
+    )
+    broker: str | None = Field(
+        default=None,
+        description="証券会社（iDeCo用。NULLなら全社共通）",
+    )
+    trust_fee_pct: float | None = Field(
+        default=None,
+        description="信託報酬率（%）",
+    )
+    is_active: bool = Field(default=True, description="有効フラグ")
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
+
+
 class UserTelegramSettings(SQLModel, table=True):
     """使用者的 Telegram 通知設定（支援自訂 Bot）。"""
 

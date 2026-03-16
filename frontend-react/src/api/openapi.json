@@ -6643,6 +6643,192 @@
           }
         }
       }
+    },
+    "/wrappers/{wrapper}/check-eligibility": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Check Eligibility Endpoint",
+        "operationId": "check_eligibility_endpoint_wrappers__wrapper__check_eligibility_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "broker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Broker"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/eligible-assets": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "List Eligible Assets",
+        "operationId": "list_eligible_assets_wrappers__wrapper__eligible_assets_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "broker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Broker"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleAssetsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7666,6 +7852,119 @@
           "peak_value"
         ],
         "title": "DrawdownPointResponse"
+      },
+      "EligibilityCheckResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "suggested_wrapper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Wrapper"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "wrapper",
+          "eligible",
+          "reasons"
+        ],
+        "title": "EligibilityCheckResponse"
+      },
+      "EligibleAssetItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "fund_name": {
+            "type": "string",
+            "title": "Fund Name"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "broker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker"
+          },
+          "trust_fee_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Fee Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "fund_name",
+          "asset_type"
+        ],
+        "title": "EligibleAssetItem"
+      },
+      "EligibleAssetsResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EligibleAssetItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "count",
+          "items"
+        ],
+        "title": "EligibleAssetsResponse"
       },
       "FXAlertResponse": {
         "properties": {

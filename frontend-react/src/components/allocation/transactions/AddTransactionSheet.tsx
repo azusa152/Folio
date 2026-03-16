@@ -3,13 +3,16 @@ import { Building2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
+import { useWrapperEligibility } from "@/api/hooks/useWrappers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
+import { EligibilityBadge } from "@/components/common/EligibilityBadge"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { CATEGORY_ICON_SHORT, DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
 import { getErrorMessage } from "@/lib/utils"
 
@@ -27,6 +30,7 @@ interface Props {
 
 export type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 type StockCategory = (typeof STOCK_CATEGORIES)[number]
+const ELIGIBILITY_CHECK_WRAPPERS = new Set(["nisa_tsumitate", "nisa_growth", "ideco"])
 
 interface FieldErrors {
   account?: string
@@ -91,12 +95,17 @@ export function AddTransactionSheet({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [insufficientBalance, setInsufficientBalance] = useState<{ available: number; required: number } | null>(null)
+  const debouncedTicker = useDebouncedValue(ticker, 400)
 
   const selectedAccountId = accountId ? Number(accountId) : null
   const { data: cashBalances } = useAccountCashBalances(selectedAccountId, open)
   const selectedCurrencyCashBalance =
     (cashBalances ?? []).find((balance) => balance.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
+  const selectedWrapper =
+    typeof selectedAccount?.tax_wrapper === "string"
+      ? selectedAccount.tax_wrapper.trim().toLowerCase()
+      : ""
   const hasNoAccounts = (accounts ?? []).length === 0
   const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
   const isNewToRadar = useMemo(() => {
@@ -107,6 +116,28 @@ export function AddTransactionSheet({
     return !(radarStocks ?? []).some((stock) => stock.ticker.toUpperCase() === normalizedTicker)
   }, [isCashMovement, isRadarStocksLoading, radarStocks, ticker])
   const requiresAccount = true
+  const shouldCheckEligibility =
+    open &&
+    transactionType === "BUY" &&
+    !isCashMovement &&
+    ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) &&
+    !!debouncedTicker.trim()
+  const eligibilityQuery = useWrapperEligibility(
+    selectedWrapper || undefined,
+    debouncedTicker,
+    selectedAccount?.broker || undefined,
+    shouldCheckEligibility,
+  )
+  const eligibility = eligibilityQuery.data
+  const suggestedAccount = useMemo(() => {
+    const suggestedWrapper = eligibility?.suggested_wrapper
+    if (!suggestedWrapper) return null
+    return (accounts ?? []).find((account) => {
+      if (account.id == null || account.id === selectedAccountId) return false
+      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      return wrapper === suggestedWrapper
+    })
+  }, [accounts, eligibility?.suggested_wrapper, selectedAccountId])
 
   const holdingOptions = useMemo(
     () =>
@@ -213,6 +244,26 @@ export function AddTransactionSheet({
         ? (detail as { required: number }).required
         : 0
     return { available, required }
+  }
+
+  const parseEligibilityError = (err: unknown): { reasons: string[]; suggestedWrapper?: string } | null => {
+    const detail =
+      err && typeof err === "object" && "detail" in err
+        ? (err as { detail?: unknown }).detail
+        : null
+    if (!detail || typeof detail !== "object") return null
+    const errorCode = "error_code" in detail ? (detail as { error_code?: unknown }).error_code : null
+    if (errorCode !== "ASSET_NOT_ELIGIBLE") return null
+
+    const reasons =
+      "reasons" in detail && Array.isArray((detail as { reasons?: unknown }).reasons)
+        ? ((detail as { reasons: unknown[] }).reasons.filter((r) => typeof r === "string") as string[])
+        : []
+    const suggestedWrapper =
+      "suggested_wrapper" in detail && typeof (detail as { suggested_wrapper?: unknown }).suggested_wrapper === "string"
+        ? (detail as { suggested_wrapper: string }).suggested_wrapper
+        : undefined
+    return { reasons, suggestedWrapper }
   }
 
   return (
@@ -380,10 +431,46 @@ export function AddTransactionSheet({
                 onChange={(event) => {
                   setTicker(event.target.value.toUpperCase())
                   setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                  setInsufficientBalance(null)
                 }}
                 placeholder="e.g. AAPL"
                 className="text-xs"
               />
+              {transactionType === "BUY" && selectedWrapper ? (
+                <div className="pt-1 space-y-1">
+                  <EligibilityBadge result={eligibility} loading={eligibilityQuery.isLoading} />
+                  {eligibility && !eligibility.eligible ? (
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-destructive">{t("eligibility.not_eligible")}</p>
+                      {eligibility.suggested_wrapper ? (
+                        suggestedAccount ? (
+                          <button
+                            type="button"
+                            className="text-[11px] text-primary hover:underline"
+                            onClick={() => {
+                              if (suggestedAccount.id == null) return
+                              setAccountId(String(suggestedAccount.id))
+                              const nextCurrency = (suggestedAccount.currency || currency).toUpperCase()
+                              setCurrency(nextCurrency)
+                              setInsufficientBalance(null)
+                            }}
+                          >
+                            {t("eligibility.switch_to_suggested_account", {
+                              wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
+                            })}
+                          </button>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">
+                            {t("eligibility.no_suggested_account", {
+                              wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
+                            })}
+                          </p>
+                        )
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
             </div>
           ) : null}
@@ -635,6 +722,11 @@ export function AddTransactionSheet({
             onClick={() => {
               if (!validate()) return
 
+              if (shouldCheckEligibility && eligibility && !eligibility.eligible) {
+                toast.error(t("eligibility.not_eligible"))
+                return
+              }
+
               const requiredAmount = Number(totalAmount) + Number(fee || "0")
               const availableAmount = selectedCurrencyCashBalance ?? 0
               if (
@@ -690,7 +782,21 @@ export function AddTransactionSheet({
                   },
                   onError: (err: unknown) => {
                     const insufficient = parseInsufficientBalance(err)
-                    if (insufficient) setInsufficientBalance(insufficient)
+                    if (insufficient) {
+                      setInsufficientBalance(insufficient)
+                      return
+                    }
+                    const eligibilityError = parseEligibilityError(err)
+                    if (eligibilityError) {
+                      setInsufficientBalance(null)
+                      const reasonText = eligibilityError.reasons.length
+                        ? t(eligibilityError.reasons[0], {
+                            defaultValue: eligibilityError.reasons[0],
+                          })
+                        : t("eligibility.not_eligible")
+                      toast.error(reasonText)
+                      return
+                    }
                     toast.error(getErrorMessage(err) || t("common.error"))
                   },
                 },

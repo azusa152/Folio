@@ -2106,5 +2106,19 @@
       "policy_next_year": "Restoration: next year",
       "policy_same_day": "Restoration: same day"
     }
+  },
+  "eligibility": {
+    "checking": "Checking eligibility...",
+    "eligible": "Eligible",
+    "not_eligible": "Not eligible",
+    "switch_to_suggested_account": "Switch to {{wrapper}} account",
+    "no_suggested_account": "No account available for {{wrapper}}.",
+    "not_in_tsumitate_approved_list": "Not in the approved fund list for NISA Tsumitate.",
+    "not_in_growth_approved_list": "Not in the approved asset list for NISA Growth.",
+    "excluded_flag": "This asset is excluded from NISA Growth.",
+    "trust_period_too_short": "Trust period is less than 20 years.",
+    "not_in_ideco_lineup": "Not in your broker's iDeCo lineup.",
+    "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
+    "try_instead": "Try {{wrapper}} instead."
   }
 }

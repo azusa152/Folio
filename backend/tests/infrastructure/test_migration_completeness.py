@@ -277,3 +277,29 @@ class TestMigrationCompleteness:
             "create unique index if not exists uq_contrib_transaction_entry_type" in sql
             for sql in normalized_sqls
         )
+
+    def test_eligible_asset_table_migration_should_be_declared(self):
+        """Ensure eligibleasset table/index creation SQL exists."""
+        migration_sqls = _extract_migration_sql()
+        normalized_sqls = [sql.lower() for sql in migration_sqls]
+
+        assert any(
+            "create table if not exists eligibleasset" in sql for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_eligible_wrapper_ticker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_eligible_wrapper_broker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_eligible_wrapper_ticker_broker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_eligible_wrapper_ticker_null_broker"
+            in sql
+            for sql in normalized_sqls
+        )

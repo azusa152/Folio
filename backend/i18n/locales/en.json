@@ -394,5 +394,15 @@
     "quota_exceeded": "This purchase would exceed your NISA quota limit.",
     "quota_exceeded_annual": "Annual investment limit exceeded.",
     "quota_exceeded_lifetime": "Lifetime non-taxable limit exceeded."
+  },
+  "eligibility": {
+    "not_eligible": "This asset is not eligible for the selected tax wrapper.",
+    "not_in_tsumitate_approved_list": "Not in the approved fund list for NISA Tsumitate.",
+    "not_in_growth_approved_list": "Not in the approved asset list for NISA Growth.",
+    "excluded_flag": "This asset is excluded from NISA Growth (leveraged, monthly distribution, inverse, or supervisory watch).",
+    "trust_period_too_short": "Trust period is less than 20 years.",
+    "not_in_ideco_lineup": "Not in your broker's iDeCo product lineup.",
+    "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
+    "try_instead": "Try {{wrapper}} instead."
   }
 }

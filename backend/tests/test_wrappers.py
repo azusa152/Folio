@@ -141,3 +141,28 @@ def test_nisa_buy_should_return_422_with_quota_exceeded_payload(client: TestClie
     assert "violations" in detail
     assert isinstance(detail["violations"], list)
     assert len(detail["violations"]) > 0
+
+
+def test_wrapper_check_eligibility_should_return_suggestion_for_ineligible_tsumitate(
+    client: TestClient,
+):
+    resp = client.get(
+        "/wrappers/nisa_tsumitate/check-eligibility",
+        params={"ticker": "AAPL"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["wrapper"] == "nisa_tsumitate"
+    assert payload["ticker"] == "AAPL"
+    assert payload["eligible"] is False
+    assert "eligibility.not_in_tsumitate_approved_list" in payload["reasons"]
+    assert payload["suggested_wrapper"] == "nisa_growth"
+
+
+def test_wrapper_eligible_assets_should_return_list_shape(client: TestClient):
+    resp = client.get("/wrappers/nisa_tsumitate/eligible-assets")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["wrapper"] == "nisa_tsumitate"
+    assert isinstance(payload["count"], int)
+    assert isinstance(payload["items"], list)

@@ -41,6 +41,8 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_all_transactions,
     find_cash_holding_by_account_and_currency,
     find_consensus_stocks,
+    find_eligible_assets,
+    find_eligible_tickers,
     find_filing_by_accession,
     find_filings_by_guru,
     find_fx_watch_by_id,
@@ -96,4 +98,5 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     update_fx_watch_last_alerted,
     update_guru,
     update_stock,
+    upsert_eligible_assets,
 )

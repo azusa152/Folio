@@ -5,6 +5,13 @@ from domain.portfolio.allocation import (  # noqa: F401
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
+from domain.portfolio.eligibility import (  # noqa: F401
+    EligibilityResult,
+    check_eligibility,
+    check_growth_eligibility,
+    check_ideco_eligibility,
+    check_tsumitate_eligibility,
+)
 from domain.portfolio.insights import (  # noqa: F401
     Insight,
     InsightSeverity,

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from sqlmodel import Session
 
+from application.portfolio.eligibility_service import check_asset_eligibility
 from application.portfolio.wrapper_service import (
     get_ledger_entries,
     record_contribution,
@@ -58,6 +59,8 @@ SKIP_CASH_FOR_STOCK_TYPES = {
     TransactionType.OPENING_BALANCE,
     TransactionType.ADJUSTMENT,
 }
+
+ELIGIBILITY_CHECK_WRAPPERS = {"nisa_tsumitate", "nisa_growth", "ideco"}
 
 
 def settle_transaction(
@@ -116,6 +119,28 @@ def settle_transaction(
                     "error_code": "QUOTA_EXCEEDED",
                     "detail": t("wrapper.quota_exceeded", lang=lang),
                     "violations": violations,
+                },
+            )
+
+    if (
+        wrapper in ELIGIBILITY_CHECK_WRAPPERS
+        and txn_type == TransactionType.BUY
+        and not is_cash_ticker
+    ):
+        eligibility = check_asset_eligibility(
+            session=session,
+            ticker=ticker,
+            wrapper=wrapper,
+            broker=account.broker,
+        )
+        if not eligibility.eligible:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "ASSET_NOT_ELIGIBLE",
+                    "detail": t("eligibility.not_eligible", lang=lang),
+                    "reasons": eligibility.reasons,
+                    "suggested_wrapper": eligibility.suggested_wrapper,
                 },
             )
 

@@ -7,6 +7,7 @@ Infrastructure — Repository Pattern。
 
 from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import or_
 from sqlmodel import Session, func, select
 
 from domain.constants import (
@@ -18,6 +19,7 @@ from domain.constants import (
 from domain.entities import (
     Account,
     ContributionLedgerEntry,
+    EligibleAsset,
     FXWatchConfig,
     Guru,
     GuruFiling,
@@ -1578,6 +1580,140 @@ def delete_ledger_entries_by_transaction(
     for entry in entries:
         session.delete(entry)
     return count
+
+
+def find_eligible_tickers(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+) -> set[str]:
+    """Return active eligible tickers for one wrapper (broker-aware)."""
+    stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    return {str(ticker).upper() for ticker in session.exec(stmt).all()}
+
+
+def find_eligible_assets(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    limit: int = 50,
+) -> list[EligibleAsset]:
+    """Search active eligible assets with optional broker/text filters."""
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    if search:
+        pattern = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(
+                EligibleAsset.ticker.ilike(pattern),
+                EligibleAsset.fund_name.ilike(pattern),
+            )
+        )
+    stmt = stmt.order_by(EligibleAsset.ticker).limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def upsert_eligible_assets(
+    session: Session,
+    wrapper: str,
+    rows: list[dict],
+    *,
+    broker: str | None = None,
+    autocommit: bool = True,
+) -> dict[str, int]:
+    """Idempotent bulk upsert and deactivate-missing for eligible assets."""
+    normalized_rows = []
+    for row in rows:
+        ticker = str(row.get("ticker", "")).strip().upper()
+        if not ticker:
+            continue
+        normalized_rows.append(
+            {
+                "ticker": ticker,
+                "fund_name": str(row.get("fund_name", "")).strip(),
+                "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
+                or "mutual_fund",
+                "trust_fee_pct": row.get("trust_fee_pct"),
+            }
+        )
+
+    active_tickers = {row["ticker"] for row in normalized_rows}
+    existing = session.exec(
+        select(EligibleAsset).where(
+            EligibleAsset.tax_wrapper == wrapper,
+            EligibleAsset.broker == broker,
+        )
+    ).all()
+    existing_by_ticker = {asset.ticker: asset for asset in existing}
+
+    added = 0
+    updated = 0
+    deactivated = 0
+
+    for row in normalized_rows:
+        found = existing_by_ticker.get(row["ticker"])
+        if found is None:
+            session.add(
+                EligibleAsset(
+                    tax_wrapper=wrapper,
+                    ticker=row["ticker"],
+                    fund_name=row["fund_name"],
+                    asset_type=row["asset_type"],
+                    broker=broker,
+                    trust_fee_pct=row["trust_fee_pct"],
+                    is_active=True,
+                    updated_at=datetime.now(UTC),
+                )
+            )
+            added += 1
+            continue
+
+        changed = (
+            found.fund_name != row["fund_name"]
+            or found.asset_type != row["asset_type"]
+            or found.trust_fee_pct != row["trust_fee_pct"]
+            or not found.is_active
+        )
+        if changed:
+            found.fund_name = row["fund_name"]
+            found.asset_type = row["asset_type"]
+            found.trust_fee_pct = row["trust_fee_pct"]
+            found.is_active = True
+            found.updated_at = datetime.now(UTC)
+            session.add(found)
+            updated += 1
+
+    for asset in existing:
+        if asset.ticker not in active_tickers and asset.is_active:
+            asset.is_active = False
+            asset.updated_at = datetime.now(UTC)
+            session.add(asset)
+            deactivated += 1
+
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
+
+    return {
+        "added": added,
+        "updated": updated,
+        "deactivated": deactivated,
+    }
 
 
 def save_transaction(session: Session, txn: Transaction) -> Transaction:
