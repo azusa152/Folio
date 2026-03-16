@@ -31,6 +31,27 @@ type SortKey =
   | "change_value"
   | "total_gain_value"
 
+interface GroupedHolding extends HoldingDetail {
+  accounts: string[]
+  row_key: string
+}
+
+function buildNonCashGroupKey(h: HoldingDetail): string {
+  return `${h.ticker}::${h.category}::${h.currency}`
+}
+
+function formatAccountList(accounts: string[]): { shortLabel: string; fullLabel: string } {
+  const sortedAccounts = [...accounts].sort((a, b) => a.localeCompare(b))
+  const fullLabel = sortedAccounts.join(", ")
+  if (sortedAccounts.length <= 2) {
+    return { shortLabel: fullLabel, fullLabel }
+  }
+  return {
+    shortLabel: `${sortedAccounts[0]}, ${sortedAccounts[1]} +${sortedAccounts.length - 2}`,
+    fullLabel,
+  }
+}
+
 function fmtPct(v: number, showSign = true): string {
   const sign = showSign && v >= 0 ? "+" : ""
   return `${sign}${v.toFixed(2)}%`
@@ -87,8 +108,103 @@ export function HoldingsTable({
     dir: "desc",
   })
 
+  const groupedHoldings = useMemo<GroupedHolding[]>(() => {
+    const rows: GroupedHolding[] = []
+    const nonCashMap = new Map<string, {
+      row: GroupedHolding
+      allHaveCost: boolean
+      hasAnyChangeData: boolean
+      previousMarketValue: number
+      purchaseFxRates: Set<number>
+    }>()
+
+    for (const h of holdings) {
+      const accountLabel = h.account_name ?? "—"
+      const isCash = h.category === "Cash"
+
+      if (isCash) {
+        rows.push({
+          ...h,
+          accounts: [accountLabel],
+          row_key: `${h.account_id ?? "na"}-${h.ticker}`,
+        })
+        continue
+      }
+
+      const groupKey = buildNonCashGroupKey(h)
+      const existing = nonCashMap.get(groupKey)
+      if (!existing) {
+        const purchaseFxRates = new Set<number>()
+        if (h.purchase_fx_rate != null) purchaseFxRates.add(h.purchase_fx_rate)
+        const firstRow: GroupedHolding = {
+          ...h,
+          account_id: null,
+          account_name: accountLabel,
+          accounts: [accountLabel],
+          row_key: `group-${groupKey}`,
+        }
+        nonCashMap.set(groupKey, {
+          row: firstRow,
+          allHaveCost: h.cost_total != null,
+          hasAnyChangeData: h.change_value != null || h.change_pct != null,
+          previousMarketValue: (h.market_value ?? 0) - (h.change_value ?? 0),
+          purchaseFxRates,
+        })
+        continue
+      }
+
+      const acc = existing.row
+      const accountSet = new Set([...acc.accounts, accountLabel])
+      acc.accounts = [...accountSet].sort((a, b) => a.localeCompare(b))
+      acc.account_name = acc.accounts.join(", ")
+      acc.quantity = (acc.quantity ?? 0) + (h.quantity ?? 0)
+      acc.market_value = (acc.market_value ?? 0) + (h.market_value ?? 0)
+      acc.weight_pct = (acc.weight_pct ?? 0) + (h.weight_pct ?? 0)
+
+      if (acc.cost_total != null && h.cost_total != null) {
+        acc.cost_total += h.cost_total
+      } else if (acc.cost_total == null && h.cost_total != null) {
+        acc.cost_total = h.cost_total
+      }
+      existing.allHaveCost = existing.allHaveCost && h.cost_total != null
+
+      existing.hasAnyChangeData = existing.hasAnyChangeData || h.change_value != null || h.change_pct != null
+      existing.previousMarketValue += (h.market_value ?? 0) - (h.change_value ?? 0)
+
+      if (h.purchase_fx_rate != null) existing.purchaseFxRates.add(h.purchase_fx_rate)
+    }
+
+    for (const { row, allHaveCost, hasAnyChangeData, previousMarketValue, purchaseFxRates } of nonCashMap.values()) {
+      const currentMarketValue = row.market_value ?? 0
+      const recomputedChangeValue = roundTo2(currentMarketValue - previousMarketValue)
+      row.change_value = hasAnyChangeData ? recomputedChangeValue : null
+      row.change_pct = hasAnyChangeData && previousMarketValue > 0
+        ? roundTo2((recomputedChangeValue / previousMarketValue) * 100)
+        : null
+
+      if (allHaveCost && row.cost_total != null) {
+        const gain = roundTo2(currentMarketValue - row.cost_total)
+        row.total_gain_value = gain
+        row.total_gain_pct = row.cost_total > 0 ? roundTo2((gain / row.cost_total) * 100) : null
+      } else {
+        row.cost_total = null
+        row.total_gain_value = null
+        row.total_gain_pct = null
+      }
+
+      if (purchaseFxRates.size > 1) {
+        // Mixed purchase FX rates across accounts: hide FX-return breakdown to avoid misleading math.
+        row.purchase_fx_rate = null
+      }
+
+      rows.push(row)
+    }
+
+    return rows
+  }, [holdings])
+
   const sortedHoldings = useMemo(() => {
-    const rows = [...holdings]
+    const rows = [...groupedHoldings]
     rows.sort((a, b) => {
       switch (sort.key) {
         case "ticker":
@@ -110,13 +226,13 @@ export function HoldingsTable({
       }
     })
     return rows
-  }, [holdings, sort])
+  }, [groupedHoldings, sort])
 
   const totals = useMemo(() => {
     let marketValue = 0
     let weight = 0
     let costTotal = 0
-    let hasCost = false
+    let allHaveCost = true
     let todayChange = 0
     let hasTodayChange = false
     let todayCurrentKnown = 0
@@ -124,12 +240,13 @@ export function HoldingsTable({
     let totalGainValue = 0
     let hasTotalGain = false
 
-    for (const h of holdings) {
+    for (const h of groupedHoldings) {
       marketValue += h.market_value ?? 0
       weight += h.weight_pct ?? 0
       if (h.cost_total != null) {
         costTotal += h.cost_total
-        hasCost = true
+      } else {
+        allHaveCost = false
       }
       if (h.change_value != null && h.market_value != null) {
         todayChange += h.change_value
@@ -146,20 +263,20 @@ export function HoldingsTable({
     const todayChangePct = todayPreviousKnown > 0
       ? roundTo2((todayCurrentKnown - todayPreviousKnown) / todayPreviousKnown * 100)
       : null
-    const totalGainPct = hasCost && costTotal > 0
+    const totalGainPct = allHaveCost && costTotal > 0
       ? roundTo2((totalGainValue / costTotal) * 100)
       : null
 
     return {
       marketValue: roundTo2(marketValue),
       weight: roundTo2(weight),
-      costTotal: hasCost ? roundTo2(costTotal) : null,
+      costTotal: allHaveCost ? roundTo2(costTotal) : null,
       todayChange: hasTodayChange ? roundTo2(todayChange) : null,
       todayChangePct,
-      totalGainValue: hasTotalGain ? roundTo2(totalGainValue) : null,
+      totalGainValue: allHaveCost && hasTotalGain ? roundTo2(totalGainValue) : null,
       totalGainPct,
     }
-  }, [holdings])
+  }, [groupedHoldings])
 
   const toggleSort = (key: SortKey): void => {
     setSort((current) => (
@@ -181,7 +298,7 @@ export function HoldingsTable({
     return sort.dir === "asc" ? "ascending" : "descending"
   }
 
-  if (!holdings || holdings.length === 0) {
+  if (!groupedHoldings || groupedHoldings.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("allocation.holdings.empty")}</p>
   }
 
@@ -300,11 +417,20 @@ export function HoldingsTable({
                 quantity: formatQuantity(h.quantity, { category: h.category, ticker: h.ticker }),
                 ...quantityUnit.params,
               })
+              const accountDisplay = formatAccountList(h.accounts)
 
               return (
-                <tr key={`${h.account_id ?? "na"}-${h.ticker}`} className="border-b border-border/50">
+                <tr key={h.row_key} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                  <td className="py-0.5 pr-2 text-muted-foreground">{h.account_name ?? "—"}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground">
+                    {h.accounts.length > 1 ? (
+                      <span className="text-[10px] leading-tight" title={accountDisplay.fullLabel}>
+                        {accountDisplay.shortLabel}
+                      </span>
+                    ) : (
+                      h.account_name ?? "—"
+                    )}
+                  </td>
                   <td className="py-0.5 pr-2 text-muted-foreground">
                     {t(`config.category.${h.category.toLowerCase()}`)}
                   </td>
@@ -392,15 +518,15 @@ export function HoldingsTable({
               <td className="py-1 pr-2" />
               <td className="py-1 pr-2" />
               <td className="py-1 pr-2 text-right">
-                {maskMoney(totals.marketValue, displayCurrency ?? holdings[0].currency)}
+                {maskMoney(totals.marketValue, displayCurrency ?? groupedHoldings[0].currency)}
               </td>
               <td className="py-1 pr-2 text-right">{`${totals.weight.toFixed(1)}%`}</td>
               <td className="py-1 pr-2 text-right">
-                {totals.costTotal != null ? maskMoney(totals.costTotal, displayCurrency ?? holdings[0].currency) : "—"}
+                {totals.costTotal != null ? maskMoney(totals.costTotal, displayCurrency ?? groupedHoldings[0].currency) : "—"}
               </td>
               <td className="py-1 pr-2 text-right">
                 <div className={`font-medium ${getValueClass(portfolioTodayChangeValue ?? totals.todayChange)}`}>
-                  {formatSignedMoney(portfolioTodayChangeValue ?? totals.todayChange, displayCurrency ?? holdings[0].currency, privacyMode)}
+                  {formatSignedMoney(portfolioTodayChangeValue ?? totals.todayChange, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
                 </div>
                 <div className={getValueClass(portfolioTodayChangePct ?? totals.todayChangePct)}>
                   {portfolioTodayChangePct != null || totals.todayChangePct != null
@@ -410,7 +536,7 @@ export function HoldingsTable({
               </td>
               <td className="py-1 text-right">
                 <div className={`font-medium ${getValueClass(totals.totalGainValue)}`}>
-                  {formatSignedMoney(totals.totalGainValue, displayCurrency ?? holdings[0].currency, privacyMode)}
+                  {formatSignedMoney(totals.totalGainValue, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
                 </div>
                 <div className={getValueClass(totals.totalGainPct)}>
                   {totals.totalGainPct != null ? `${t("allocation.col.total_return")}: ${fmtPct(totals.totalGainPct)}` : "—"}

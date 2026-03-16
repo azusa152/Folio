@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { HoldingsTable } from "../HoldingsTable"
@@ -29,6 +29,7 @@ function buildHolding(
   value: Partial<ComponentProps<typeof HoldingsTable>["holdings"][number]>,
 ): ComponentProps<typeof HoldingsTable>["holdings"][number] {
   return {
+    account_id: 1,
     ticker: "AAPL",
     account_name: "IB Main",
     category: "Growth",
@@ -195,5 +196,167 @@ describe("HoldingsTable", () => {
 
     expect(screen.getByText("+USD 5.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.today: +0.50%")).toBeInTheDocument()
+  })
+
+  it("merges non-cash holdings with same ticker across accounts", () => {
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({
+            account_id: 1,
+            ticker: "VTI",
+            account_name: "IBKR",
+            category: "Trend Setter",
+            quantity: 10,
+            market_value: 1000,
+            weight_pct: 40,
+            cost_total: 900,
+            change_value: 20,
+            change_pct: 2.04,
+            total_gain_value: 100,
+            total_gain_pct: 11.11,
+          }),
+          buildHolding({
+            account_id: 2,
+            ticker: "VTI",
+            account_name: "Firstrade",
+            category: "Trend Setter",
+            quantity: 5,
+            market_value: 500,
+            weight_pct: 20,
+            cost_total: 450,
+            change_value: 10,
+            change_pct: 2.04,
+            total_gain_value: 50,
+            total_gain_pct: 11.11,
+          }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    expect(screen.getAllByText("VTI")).toHaveLength(1)
+    expect(screen.getByText("Firstrade, IBKR")).toBeInTheDocument()
+    expect(screen.getAllByText("USD 1500.00")).toHaveLength(2)
+  })
+
+  it("keeps cash holdings split by account even with same ticker", () => {
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({
+            account_id: 11,
+            ticker: "USD",
+            account_name: "IBKR",
+            category: "Cash",
+            market_value: 1000,
+            cost_total: 1000,
+            change_value: 0,
+            change_pct: 0,
+            total_gain_value: 0,
+            total_gain_pct: 0,
+          }),
+          buildHolding({
+            account_id: 22,
+            ticker: "USD",
+            account_name: "Firstrade",
+            category: "Cash",
+            market_value: 500,
+            cost_total: 500,
+            change_value: 0,
+            change_pct: 0,
+            total_gain_value: 0,
+            total_gain_pct: 0,
+          }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    const usdTickerCells = screen
+      .getAllByRole("cell")
+      .map((c) => c.textContent)
+      .filter((text): text is string => text === "USD")
+    expect(usdTickerCells).toHaveLength(2)
+    expect(screen.getByText("IBKR")).toBeInTheDocument()
+    expect(screen.getByText("Firstrade")).toBeInTheDocument()
+  })
+
+  it("does not merge non-cash rows when ticker metadata differs", () => {
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({
+            ticker: "ABC",
+            category: "Growth",
+            currency: "USD",
+            account_name: "IBKR",
+          }),
+          buildHolding({
+            ticker: "ABC",
+            category: "Moat",
+            currency: "USD",
+            account_name: "Firstrade",
+          }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    expect(screen.getAllByText("ABC")).toHaveLength(2)
+  })
+
+  it("hides merged cost/total return when cost coverage is partial", () => {
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({
+            ticker: "QQQ",
+            account_name: "IBKR",
+            market_value: 1000,
+            cost_total: 900,
+            total_gain_value: 100,
+            total_gain_pct: 11.11,
+          }),
+          buildHolding({
+            ticker: "QQQ",
+            account_name: "Firstrade",
+            market_value: 500,
+            cost_total: null,
+            total_gain_value: null,
+            total_gain_pct: null,
+          }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    const qqqCell = screen.getByText("QQQ")
+    const row = qqqCell.closest("tr")
+    expect(row).not.toBeNull()
+    if (!row) return
+
+    expect(within(row).queryByText("USD 900.00")).not.toBeInTheDocument()
+    expect(within(row).getAllByText("—").length).toBeGreaterThan(0)
+  })
+
+  it("shows deterministic truncated account list for many merged accounts", () => {
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({ ticker: "SPY", account_name: "Zeta" }),
+          buildHolding({ ticker: "SPY", account_name: "Alpha", account_id: 2 }),
+          buildHolding({ ticker: "SPY", account_name: "Beta", account_id: 3 }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    expect(screen.getByText("Alpha, Beta +1")).toBeInTheDocument()
   })
 })
