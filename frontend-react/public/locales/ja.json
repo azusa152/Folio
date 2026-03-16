@@ -869,8 +869,13 @@
       "value": "評価額",
       "weight_pct": "比率%",
       "cost": "取得単価",
+      "cost_basis": "取得原価",
       "cost_tooltip": "この投資を購入するときに最初に支払った合計金額です。",
       "change_pct": "変動%",
+      "today": "本日",
+      "today_tooltip": "前営業日の終値からの変動です。",
+      "total_return": "累計損益",
+      "total_return_tooltip": "購入時点からの未実現損益です。",
       "home_return": "基準通貨: {{pct}}",
       "fx_return": "為替: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -882,7 +887,8 @@
     },
     "holdings": {
       "title": "保有ポジション詳細",
-      "empty": "保有データがありません。"
+      "empty": "保有データがありません。",
+      "total_row": "合計"
     },
     "holdings_read_only_hint": "保有ポジションは取引履歴から計算されます。ポジションの売買や調整は「口座」タブから行ってください。",
     "xray": {

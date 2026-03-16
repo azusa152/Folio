@@ -869,8 +869,13 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
+      "cost_basis": "成本基准",
       "cost_tooltip": "你最初买入这项投资时支付的总金额。",
       "change_pct": "涨跌%",
+      "today": "今日变动",
+      "today_tooltip": "相较前一交易日收盘价的变动。",
+      "total_return": "总回报",
+      "total_return_tooltip": "自买入以来的未实现盈亏。",
       "home_return": "本币: {{pct}}",
       "fx_return": "汇率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -882,7 +887,8 @@
     },
     "holdings": {
       "title": "持仓明细",
-      "empty": "无持仓数据。"
+      "empty": "无持仓数据。",
+      "total_row": "合计"
     },
     "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“账户”页签中选择账户后进行买入、卖出或仓位调整。",
     "xray": {

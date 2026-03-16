@@ -9324,6 +9324,39 @@
             ],
             "title": "Change Pct"
           },
+          "change_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Value"
+          },
+          "total_gain_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Gain Value"
+          },
+          "total_gain_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Gain Pct"
+          },
           "purchase_fx_rate": {
             "anyOf": [
               {

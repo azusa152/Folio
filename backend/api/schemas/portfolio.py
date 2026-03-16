@@ -71,6 +71,9 @@ class HoldingDetail(BaseModel):
     cost_total: float | None = None  # avg_cost * quantity * fx，以 display_currency 計
     current_price: float | None = None
     change_pct: float | None = None
+    change_value: float | None = None
+    total_gain_value: float | None = None
+    total_gain_pct: float | None = None
     purchase_fx_rate: float | None = None
     current_fx_rate: float | None = None
 

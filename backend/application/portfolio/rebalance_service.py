@@ -461,11 +461,23 @@ def _do_calculate_rebalance(
         # 計算個股日漲跌百分比（無前日資料時回傳 None → 前端顯示 N/A）
         if agg["has_prev_close"]:
             holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
+            holding_change_value = round(agg["mv"] - agg["prev_mv"], 2)
         else:
             holding_change_pct = None
+            holding_change_value = None
 
         cost_total = (
             round(agg["cost_sum"] * agg["fx"], 2) if agg["cost_qty"] > 0 else None
+        )
+        total_gain_value = (
+            round(agg["mv"] - cost_total, 2) if cost_total is not None else None
+        )
+        total_gain_pct = (
+            round((total_gain_value / cost_total) * 100, 2)
+            if total_gain_value is not None
+            and cost_total is not None
+            and cost_total > 0
+            else None
         )
 
         holdings_detail.append(
@@ -489,6 +501,9 @@ def _do_calculate_rebalance(
                 ),
                 "fx": round(agg["fx"], 6),
                 "change_pct": holding_change_pct,
+                "change_value": holding_change_value,
+                "total_gain_value": total_gain_value,
+                "total_gain_pct": total_gain_pct,
                 "purchase_fx_rate": agg.get("purchase_fx_rate"),
                 "current_fx_rate": round(agg["fx"], 6),
             }

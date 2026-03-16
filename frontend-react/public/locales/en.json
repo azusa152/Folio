@@ -869,8 +869,13 @@
       "value": "Value",
       "weight_pct": "Wt%",
       "cost": "Cost",
+      "cost_basis": "Cost Basis",
       "cost_tooltip": "The total amount you originally paid for this investment.",
       "change_pct": "Chg%",
+      "today": "Today",
+      "today_tooltip": "Change since previous market close.",
+      "total_return": "Total Return",
+      "total_return_tooltip": "Unrealized gain/loss since purchase.",
       "home_return": "Home: {{pct}}",
       "fx_return": "FX: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -882,7 +887,8 @@
     },
     "holdings": {
       "title": "Holdings Detail",
-      "empty": "No holdings data."
+      "empty": "No holdings data.",
+      "total_row": "Total"
     },
     "holdings_read_only_hint": "Holdings are now computed from transactions. Use the Accounts tab to buy, sell, or adjust positions.",
     "xray": {

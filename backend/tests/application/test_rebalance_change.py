@@ -165,11 +165,20 @@ class TestRebalancePortfolioChange:
 
         holding_detail = result["holdings_detail"][0]
         assert "change_pct" in holding_detail
+        assert "change_value" in holding_detail
+        assert "total_gain_value" in holding_detail
+        assert "total_gain_pct" in holding_detail
 
         # Current MV: 5 * 180 = 900
         # Previous MV: 5 * 175 = 875
+        # Change: 900 - 875 = 25
         # Change %: (900 - 875) / 875 * 100 = 2.86%
+        # Total gain: 900 - (5 * 150) = 150
+        # Total gain %: 150 / 750 * 100 = 20%
+        assert holding_detail["change_value"] == pytest.approx(25.0, rel=0.01)
         assert holding_detail["change_pct"] == pytest.approx(2.86, rel=0.01)
+        assert holding_detail["total_gain_value"] == pytest.approx(150.0, rel=0.01)
+        assert holding_detail["total_gain_pct"] == pytest.approx(20.0, rel=0.01)
 
     @patch("application.portfolio.rebalance_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
@@ -234,6 +243,9 @@ class TestRebalancePortfolioChange:
         assert result["total_value"] == pytest.approx(550.0, rel=0.01)
         assert result["previous_total_value"] == pytest.approx(550.0, rel=0.01)
         assert holding_detail["change_pct"] is None
+        assert holding_detail["change_value"] is None
+        assert holding_detail["total_gain_value"] == pytest.approx(50.0, rel=0.01)
+        assert holding_detail["total_gain_pct"] == pytest.approx(10.0, rel=0.01)
 
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     def test_calculate_rebalance_should_handle_zero_previous_total_value(
@@ -369,6 +381,12 @@ class TestRebalancePortfolioChange:
 
         assert nvda_holding["change_pct"] == pytest.approx(9.09, rel=0.01)
         assert aapl_holding["change_pct"] == pytest.approx(-5.56, rel=0.01)
+        assert nvda_holding["change_value"] == pytest.approx(100.0, rel=0.01)
+        assert aapl_holding["change_value"] == pytest.approx(-50.0, rel=0.01)
+        assert nvda_holding["total_gain_value"] == pytest.approx(200.0, rel=0.01)
+        assert aapl_holding["total_gain_value"] == pytest.approx(100.0, rel=0.01)
+        assert nvda_holding["total_gain_pct"] == pytest.approx(20.0, rel=0.01)
+        assert aapl_holding["total_gain_pct"] == pytest.approx(13.33, rel=0.01)
 
     @patch("application.portfolio.rebalance_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
