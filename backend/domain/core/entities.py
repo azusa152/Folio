@@ -6,7 +6,7 @@ Domain — 資料庫實體 (SQLModel Tables)。
 import json as _json
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Index
+from sqlalchemy import Index, text
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
@@ -240,6 +240,51 @@ class Transaction(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="建立時間",
+    )
+
+
+class ContributionLedgerEntry(SQLModel, table=True):
+    """NISA / iDeCo 拠出金台帳エントリ（追記のみ・不変）。"""
+
+    __table_args__ = (
+        Index(
+            "ix_contrib_user_wrapper_year",
+            "user_id",
+            "tax_wrapper",
+            "fiscal_year",
+        ),
+        Index("ix_contrib_transaction", "transaction_id"),
+        Index(
+            "uq_contrib_transaction_entry_type",
+            "transaction_id",
+            "entry_type",
+            unique=True,
+            sqlite_where=text("transaction_id IS NOT NULL"),
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    tax_wrapper: str = Field(description="税制ラッパー種別")
+    entry_type: str = Field(
+        description="エントリ種別（CONTRIBUTION / RESTORATION / ADJUSTMENT）"
+    )
+    fiscal_year: int = Field(description="対象年度（暦年）")
+    amount: float = Field(
+        description="簿価金額（JPY）。拠出=正、復活=負、調整=正負いずれか"
+    )
+    transaction_id: int | None = Field(
+        default=None,
+        foreign_key="transaction.id",
+        description="元取引ID（冪等性キー）",
+    )
+    effective_date: date = Field(
+        description="発効日（復活の場合、ポリシーにより翌年1/1 or 売却当日）"
+    )
+    note: str = Field(default="", description="備考")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="作成日時",
     )
 
 

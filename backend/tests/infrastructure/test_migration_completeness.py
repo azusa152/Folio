@@ -47,7 +47,7 @@ _ALTER_TABLE_PATTERN = re.compile(
 )
 
 _SQL_STRING_PATTERN = re.compile(
-    r'"((?:ALTER TABLE|UPDATE)\s[^"]+)"',
+    r'"((?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s[^"]+)"',
 )
 
 
@@ -255,3 +255,25 @@ class TestMigrationCompleteness:
         actual_cols = {c["name"].lower() for c in insp.get_columns("account")}
         assert "tax_wrapper" in actual_cols
         test_engine.dispose()
+
+    def test_contribution_ledger_table_migration_should_be_declared(self):
+        """Ensure contributionledgerentry table/index creation SQL exists."""
+        migration_sqls = _extract_migration_sql()
+        normalized_sqls = [sql.lower() for sql in migration_sqls]
+
+        assert any(
+            "create table if not exists contributionledgerentry" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_contrib_user_wrapper_year" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_contrib_transaction" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_contrib_transaction_entry_type" in sql
+            for sql in normalized_sqls
+        )

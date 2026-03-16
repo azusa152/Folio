@@ -2095,6 +2095,16 @@
     "taxable": "Taxable",
     "tax_deferred": "Tax-Deferred",
     "no_wrapper": "No tax wrapper",
-    "select_wrapper": "Select tax account type (optional)"
+    "select_wrapper": "Select tax account type (optional)",
+    "dashboard": {
+      "title": "NISA Quota Dashboard",
+      "lifetime_combined": "Combined lifetime quota",
+      "growth_sub_limit": "Growth sub-limit",
+      "used_remaining": "{{used}} used / {{remaining}} remaining",
+      "restoration_forecast": "Restoration forecast",
+      "restoration_empty": "No pending restorations",
+      "policy_next_year": "Restoration: next year",
+      "policy_same_day": "Restoration: same day"
+    }
   }
 }

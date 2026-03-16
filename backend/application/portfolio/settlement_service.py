@@ -10,8 +10,15 @@ from sqlalchemy import case
 from sqlmodel import func, select
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from sqlmodel import Session
 
+from application.portfolio.wrapper_service import (
+    get_ledger_entries,
+    record_contribution,
+    record_restoration,
+)
 from domain.constants import (
     DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
@@ -20,6 +27,7 @@ from domain.constants import (
 )
 from domain.entities import Holding, Transaction
 from domain.enums import StockCategory, TransactionType
+from domain.portfolio.tax_wrapper import validate_nisa_purchase
 from i18n import t
 from infrastructure import repositories as repo
 
@@ -85,8 +93,33 @@ def settle_transaction(
     txn_data["ticker"] = ticker
     currency = str(txn_data.get("currency", "USD")).upper().strip() or "USD"
     txn_data["currency"] = currency
+    txn_date: date = txn_data["transaction_date"]
     is_cash_ticker = _is_cash_ticker(ticker, currency)
     skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not is_cash_ticker
+    wrapper = (account.tax_wrapper or "").strip().lower()
+    user_id = account.user_id or DEFAULT_USER_ID
+
+    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
+        amount = abs(float(txn_data.get("total_amount", 0) or 0))
+        entries = get_ledger_entries(session, user_id)
+        violations = validate_nisa_purchase(
+            entries=entries,
+            wrapper=wrapper,
+            amount=amount,
+            year=txn_date.year,
+            as_of=txn_date,
+        )
+        if violations:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "QUOTA_EXCEEDED",
+                    "detail": t("wrapper.quota_exceeded", lang=lang),
+                    "violations": violations,
+                },
+            )
+
+    restoration_amount = 0.0
 
     if not skip_cash:
         cash_holding = repo.find_cash_holding_by_account_and_currency(
@@ -166,6 +199,7 @@ def settle_transaction(
             _update_cost_basis(stock_holding, quantity, txn_data)
             stock_holding.quantity += quantity
         elif txn_type == TransactionType.SELL:
+            restoration_amount = quantity * float(stock_holding.cost_basis or 0.0)
             _raise_if_insufficient_shares(
                 lang=lang,
                 available=stock_holding.quantity,
@@ -189,11 +223,39 @@ def settle_transaction(
 
     txn = Transaction(**txn_data)
     session.add(txn)
+    session.flush()
+    session.refresh(txn)
+
+    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
+        record_contribution(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=abs(float(txn.total_amount)),
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            effective_date=txn_date,
+            autocommit=False,
+        )
+    elif (
+        wrapper in {"nisa_tsumitate", "nisa_growth"}
+        and txn_type == TransactionType.SELL
+        and restoration_amount > 0
+    ):
+        record_restoration(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=restoration_amount,
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            sell_date=txn_date,
+            autocommit=False,
+        )
+
     if autocommit:
         session.commit()
-    else:
-        session.flush()
-    session.refresh(txn)
+        session.refresh(txn)
     return txn
 
 

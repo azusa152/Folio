@@ -2095,6 +2095,16 @@
     "taxable": "应税",
     "tax_deferred": "递延纳税",
     "no_wrapper": "无税制账户",
-    "select_wrapper": "选择税制账户类型（可选）"
+    "select_wrapper": "选择税制账户类型（可选）",
+    "dashboard": {
+      "title": "NISA 额度看板",
+      "lifetime_combined": "终身共享额度",
+      "growth_sub_limit": "成长额度子上限",
+      "used_remaining": "已用 {{used}} / 剩余 {{remaining}}",
+      "restoration_forecast": "额度恢复预测",
+      "restoration_empty": "暂无待恢复额度",
+      "policy_next_year": "恢复：次年",
+      "policy_same_day": "恢复：当日"
+    }
   }
 }

@@ -128,6 +128,25 @@ def _run_migrations() -> None:
         "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
         # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
         "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
+        # Contribution ledger: append-only quota accounting for NISA/iDeCo
+        (
+            "CREATE TABLE IF NOT EXISTS contributionledgerentry ("
+            "id INTEGER PRIMARY KEY, "
+            "user_id VARCHAR NOT NULL DEFAULT 'default', "
+            "tax_wrapper VARCHAR NOT NULL, "
+            "entry_type VARCHAR NOT NULL, "
+            "fiscal_year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "
+            "transaction_id INTEGER, "
+            "effective_date DATE NOT NULL, "
+            "note VARCHAR NOT NULL DEFAULT '', "
+            "created_at DATETIME NOT NULL, "
+            'FOREIGN KEY(transaction_id) REFERENCES "transaction"(id)'
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_contrib_user_wrapper_year ON contributionledgerentry (user_id, tax_wrapper, fiscal_year);",
+        "CREATE INDEX IF NOT EXISTS ix_contrib_transaction ON contributionledgerentry (transaction_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_contrib_transaction_entry_type ON contributionledgerentry (transaction_id, entry_type) WHERE transaction_id IS NOT NULL;",
     ]
 
     with engine.connect() as conn:

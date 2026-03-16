@@ -22,6 +22,7 @@ import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
+import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
 
 type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 
@@ -145,6 +146,7 @@ export default function Allocation() {
 
   const hasSetup = holdings.length > 0
   const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
+  const hasWrappedAccounts = (accounts ?? []).some((account) => !!account.tax_wrapper)
 
   return (
     <div className="p-3 sm:p-6 space-y-4">
@@ -292,6 +294,7 @@ export default function Allocation() {
 
         {/* Accounts tab */}
         <TabsContent value="accounts" className="mt-4 space-y-4">
+          {hasWrappedAccounts ? <QuotaDashboard enabled={activeTab === "accounts"} /> : null}
           <AccountsTab
             enabled={activeTab === "accounts"}
             onDepositToAccount={(accountId, currency) =>

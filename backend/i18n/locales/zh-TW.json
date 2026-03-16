@@ -390,6 +390,9 @@
     "taxable": "課稅",
     "tax_deferred": "遞延課稅",
     "no_wrapper": "無稅制口座",
-    "select_wrapper": "選擇稅制帳戶類型（選填）"
+    "select_wrapper": "選擇稅制帳戶類型（選填）",
+    "quota_exceeded": "此筆買入將超過您的 NISA 額度上限。",
+    "quota_exceeded_annual": "已超過年度投資額度。",
+    "quota_exceeded_lifetime": "已超過終身免稅額度。"
   }
 }

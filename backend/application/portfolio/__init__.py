@@ -60,3 +60,9 @@ from application.portfolio.transaction_service import (  # noqa: F401
     list_transactions_by_account,
     remove_transaction,
 )
+from application.portfolio.wrapper_service import (  # noqa: F401
+    get_all_wrapper_quotas,
+    get_restoration_forecast,
+    record_contribution,
+    record_restoration,
+)

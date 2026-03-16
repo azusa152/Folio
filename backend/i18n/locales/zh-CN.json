@@ -390,6 +390,9 @@
     "taxable": "应税",
     "tax_deferred": "递延纳税",
     "no_wrapper": "无税制账户",
-    "select_wrapper": "选择税制账户类型（可选）"
+    "select_wrapper": "选择税制账户类型（可选）",
+    "quota_exceeded": "此笔买入将超过您的 NISA 额度上限。",
+    "quota_exceeded_annual": "已超过年度投资额度。",
+    "quota_exceeded_lifetime": "已超过终身免税额度。"
   }
 }

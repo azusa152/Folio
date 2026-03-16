@@ -390,6 +390,9 @@
     "taxable": "Taxable",
     "tax_deferred": "Tax-Deferred",
     "no_wrapper": "No tax wrapper",
-    "select_wrapper": "Select tax account type (optional)"
+    "select_wrapper": "Select tax account type (optional)",
+    "quota_exceeded": "This purchase would exceed your NISA quota limit.",
+    "quota_exceeded_annual": "Annual investment limit exceeded.",
+    "quota_exceeded_lifetime": "Lifetime non-taxable limit exceeded."
   }
 }

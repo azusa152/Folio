@@ -6510,6 +6510,139 @@
           }
         }
       }
+    },
+    "/wrappers/quota": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Quota Status",
+        "operationId": "quota_status_wrappers_quota_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllQuotasResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/restoration-forecast": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Restoration Forecast",
+        "operationId": "restoration_forecast_wrappers_restoration_forecast_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestorationForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6859,6 +6992,38 @@
         ],
         "title": "ActivityFeedItem",
         "description": "\u55ae\u4e00\u80a1\u7968\u7684\u8cb7\u5165\u6216\u8ce3\u51fa\u6d3b\u52d5\u6458\u8981\u3002"
+      },
+      "AllQuotasResponse": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of"
+          },
+          "restoration_policy": {
+            "type": "string",
+            "title": "Restoration Policy"
+          },
+          "quotas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/QuotaStatusResponse"
+            },
+            "type": "object",
+            "title": "Quotas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "as_of",
+          "restoration_policy",
+          "quotas"
+        ],
+        "title": "AllQuotasResponse"
       },
       "BackfillStatusResponse": {
         "properties": {
@@ -10159,6 +10324,71 @@
         "title": "QuarterResult",
         "description": "Per-quarter return result in guru backtest."
       },
+      "QuotaStatusResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "wrapper_annual_remaining": {
+            "type": "number",
+            "title": "Wrapper Annual Remaining"
+          },
+          "combined_annual_remaining": {
+            "type": "number",
+            "title": "Combined Annual Remaining"
+          },
+          "lifetime_remaining": {
+            "type": "number",
+            "title": "Lifetime Remaining"
+          },
+          "growth_sub_limit_remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Sub Limit Remaining"
+          },
+          "wrapper_annual_used": {
+            "type": "number",
+            "title": "Wrapper Annual Used"
+          },
+          "combined_annual_used": {
+            "type": "number",
+            "title": "Combined Annual Used"
+          },
+          "lifetime_used": {
+            "type": "number",
+            "title": "Lifetime Used"
+          },
+          "growth_sub_limit_used": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Sub Limit Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "wrapper_annual_remaining",
+          "combined_annual_remaining",
+          "lifetime_remaining",
+          "wrapper_annual_used",
+          "combined_annual_used",
+          "lifetime_used"
+        ],
+        "title": "QuotaStatusResponse"
+      },
       "ReactivateRequest": {
         "properties": {
           "category": {
@@ -10474,6 +10704,67 @@
         ],
         "title": "ResonanceTickerResponse",
         "description": "GET /resonance/{ticker} \u56de\u50b3\u7684\u5927\u5e2b\u5171\u9cf4\u8cc7\u6599\u3002"
+      },
+      "RestorationForecastItem": {
+        "properties": {
+          "tax_wrapper": {
+            "type": "string",
+            "title": "Tax Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective Date"
+          },
+          "source_transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Transaction Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tax_wrapper",
+          "amount",
+          "effective_date"
+        ],
+        "title": "RestorationForecastItem"
+      },
+      "RestorationForecastResponse": {
+        "properties": {
+          "pending": {
+            "items": {
+              "$ref": "#/components/schemas/RestorationForecastItem"
+            },
+            "type": "array",
+            "title": "Pending"
+          },
+          "total_pending": {
+            "type": "number",
+            "title": "Total Pending"
+          },
+          "restoration_policy": {
+            "type": "string",
+            "title": "Restoration Policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "total_pending",
+          "restoration_policy"
+        ],
+        "title": "RestorationForecastResponse"
       },
       "RiskMetricsResponse": {
         "properties": {

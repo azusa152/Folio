@@ -12,7 +12,13 @@ from application.portfolio.transaction_service import (
     remove_transaction,
 )
 from domain.constants import DEFAULT_USER_ID, ERROR_INSUFFICIENT_BALANCE
-from domain.entities import Account, Holding, Stock, Transaction
+from domain.entities import (
+    Account,
+    ContributionLedgerEntry,
+    Holding,
+    Stock,
+    Transaction,
+)
 from domain.enums import StockCategory
 
 
@@ -24,6 +30,15 @@ def _create_account(session: Session) -> Account:
         account_type="brokerage",
         currency="USD",
     )
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+
+def _create_nisa_account(session: Session, wrapper: str) -> Account:
+    account = _create_account(session)
+    account.tax_wrapper = wrapper
     session.add(account)
     session.commit()
     session.refresh(account)
@@ -761,3 +776,90 @@ def test_verify_positions_should_detect_discrepancy(db_session: Session):
     assert discrepancies[0]["account_id"] == account.id
     assert discrepancies[0]["ticker"] == "USD"
     assert discrepancies[0]["is_cash"] is True
+
+
+def test_nisa_buy_should_reject_when_quota_exceeded(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+
+    # Preload near annual limit.
+    db_session.add(
+        ContributionLedgerEntry(
+            user_id=DEFAULT_USER_ID,
+            tax_wrapper="nisa_tsumitate",
+            entry_type="CONTRIBUTION",
+            fiscal_year=2026,
+            amount=1_150_000.0,
+            effective_date=date(2026, 1, 10),
+        )
+    )
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 100_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "QUOTA_EXCEEDED"
+
+
+def test_nisa_buy_and_sell_should_record_contribution_and_restoration(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 10_000.0)
+
+    created_buy = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+    created_sell = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "SELL",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 11),
+        },
+        "en",
+    )
+
+    entries = db_session.exec(
+        select(ContributionLedgerEntry).order_by(ContributionLedgerEntry.id)
+    ).all()
+    assert len(entries) == 2
+    assert entries[0].entry_type == "CONTRIBUTION"
+    assert entries[0].transaction_id == created_buy["id"]
+    assert entries[0].amount == 200.0
+    assert entries[1].entry_type == "RESTORATION"
+    assert entries[1].transaction_id == created_sell["id"]
+    assert entries[1].amount == -100.0

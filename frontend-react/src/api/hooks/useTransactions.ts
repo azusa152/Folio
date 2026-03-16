@@ -26,6 +26,8 @@ const TRANSACTION_INVALIDATION_KEYS = [
   ["account-positions"],
   ["account-transactions"],
   ["stocks"],
+  ["wrapper-quota"],
+  ["wrapper-restoration"],
 ] as const
 
 function invalidateTransactionDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {

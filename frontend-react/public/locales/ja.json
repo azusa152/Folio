@@ -2095,6 +2095,16 @@
     "taxable": "課税",
     "tax_deferred": "所得控除",
     "no_wrapper": "税制口座指定なし",
-    "select_wrapper": "税制口座を選択（任意）"
+    "select_wrapper": "税制口座を選択（任意）",
+    "dashboard": {
+      "title": "NISA枠ダッシュボード",
+      "lifetime_combined": "生涯共通枠",
+      "growth_sub_limit": "成長投資枠サブ上限",
+      "used_remaining": "使用 {{used}} / 残り {{remaining}}",
+      "restoration_forecast": "復活予定",
+      "restoration_empty": "復活予定はありません",
+      "policy_next_year": "復活: 翌年",
+      "policy_same_day": "復活: 当日"
+    }
   }
 }

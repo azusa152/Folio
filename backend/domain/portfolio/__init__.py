@@ -21,6 +21,12 @@ from domain.portfolio.stress_test import (  # noqa: F401
     classify_pain_level,
     generate_advice,
 )
+from domain.portfolio.tax_wrapper import (  # noqa: F401
+    QuotaStatus,
+    compute_restoration_effective_date,
+    get_available_quota,
+    validate_nisa_purchase,
+)
 from domain.portfolio.withdrawal import (  # noqa: F401
     HoldingData,
     SellRecommendation,

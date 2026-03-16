@@ -390,6 +390,9 @@
     "taxable": "課税",
     "tax_deferred": "所得控除",
     "no_wrapper": "税制口座指定なし",
-    "select_wrapper": "税制口座を選択（任意）"
+    "select_wrapper": "税制口座を選択（任意）",
+    "quota_exceeded": "この買付はNISA枠の上限を超えます。",
+    "quota_exceeded_annual": "年間投資枠を超えています。",
+    "quota_exceeded_lifetime": "生涯非課税枠を超えています。"
   }
 }

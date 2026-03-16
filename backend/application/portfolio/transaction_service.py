@@ -145,6 +145,8 @@ def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
         )
     if txn.account_id is not None:
         reverse_settlement(session, txn, lang)
+        if txn.id is not None:
+            repo.delete_ledger_entries_by_transaction(session, txn.id)
         session.delete(txn)
         session.commit()
     else:
@@ -328,6 +330,8 @@ def _replace_account_transactions(session: Session, account_id: int, lang: str) 
     )
     for txn in existing_transactions_sorted:
         reverse_settlement(session, txn, lang)
+        if txn.id is not None:
+            repo.delete_ledger_entries_by_transaction(session, txn.id)
     return repo.delete_transactions_by_account(session, account_id)
 
 
