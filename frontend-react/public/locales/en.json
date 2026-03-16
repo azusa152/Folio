@@ -876,6 +876,7 @@
       "today_tooltip": "Change since previous market close.",
       "total_return": "Total Return",
       "total_return_tooltip": "Unrealized gain/loss since purchase.",
+      "unrealized_pl_tooltip": "Paper gain/loss since purchase.",
       "home_return": "Home: {{pct}}",
       "fx_return": "FX: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"

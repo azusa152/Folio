@@ -876,6 +876,7 @@
       "today_tooltip": "相較前一個收盤價的變動。",
       "total_return": "總報酬",
       "total_return_tooltip": "自買入以來的未實現損益。",
+      "unrealized_pl_tooltip": "自買入以來的帳面損益。",
       "home_return": "本幣: {{pct}}",
       "fx_return": "匯率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"

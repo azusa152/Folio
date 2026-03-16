@@ -876,6 +876,7 @@
       "today_tooltip": "前営業日の終値からの変動です。",
       "total_return": "累計損益",
       "total_return_tooltip": "購入時点からの未実現損益です。",
+      "unrealized_pl_tooltip": "購入時点からの含み損益です。",
       "home_return": "基準通貨: {{pct}}",
       "fx_return": "為替: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"

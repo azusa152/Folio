@@ -876,6 +876,7 @@
       "today_tooltip": "相较前一交易日收盘价的变动。",
       "total_return": "总回报",
       "total_return_tooltip": "自买入以来的未实现盈亏。",
+      "unrealized_pl_tooltip": "自买入以来的账面盈亏。",
       "home_return": "本币: {{pct}}",
       "fx_return": "汇率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"

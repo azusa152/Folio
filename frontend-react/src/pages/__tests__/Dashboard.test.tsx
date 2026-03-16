@@ -2,7 +2,11 @@ import { render } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import Dashboard from "../Dashboard"
 
-const mockInsightCard = vi.fn(() => <div data-testid="insight-card" />)
+let capturedInsightCardProps: unknown = null
+const mockInsightCard = vi.fn((props: unknown) => {
+  capturedInsightCardProps = props
+  return <div data-testid="insight-card" />
+})
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -120,10 +124,12 @@ vi.mock("@/components/dashboard/HoldingBreakdown", () => ({
 
 describe("Dashboard insights loading", () => {
   it("passes loading=true to InsightCard while stocks are loading", () => {
+    capturedInsightCardProps = null
     render(<Dashboard />)
 
     expect(mockInsightCard).toHaveBeenCalled()
-    const firstCallProps = mockInsightCard.mock.calls[0][0] as {
+    expect(capturedInsightCardProps).not.toBeNull()
+    const firstCallProps = capturedInsightCardProps as {
       insights?: unknown[]
       isLoading?: boolean
     }
