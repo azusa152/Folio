@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react"
 import { Building2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import client from "@/api/client"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
-import { useWrapperEligibility } from "@/api/hooks/useWrappers"
+import { useSuggestRouting, useWrapperEligibility } from "@/api/hooks/useWrappers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -63,6 +65,7 @@ export function AddTransactionSheet({
   onOpenAccounts,
 }: Props) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const addTransactionMutation = useAddTransaction()
   const { data: holdings } = useHoldings()
   const { data: radarStocks, isLoading: isRadarStocksLoading } = useRadarStocks()
@@ -95,6 +98,7 @@ export function AddTransactionSheet({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [insufficientBalance, setInsufficientBalance] = useState<{ available: number; required: number } | null>(null)
+  const [splitSubmitting, setSplitSubmitting] = useState(false)
   const debouncedTicker = useDebouncedValue(ticker, 400)
 
   const selectedAccountId = accountId ? Number(accountId) : null
@@ -122,6 +126,18 @@ export function AddTransactionSheet({
     !isCashMovement &&
     ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) &&
     !!debouncedTicker.trim()
+  const shouldSuggestRouting =
+    open &&
+    transactionType === "BUY" &&
+    !isCashMovement &&
+    !!debouncedTicker.trim() &&
+    !!totalAmount &&
+    Number(totalAmount) > 0
+  const routingSuggestionQuery = useSuggestRouting(
+    debouncedTicker,
+    Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : null,
+    shouldSuggestRouting,
+  )
   const eligibilityQuery = useWrapperEligibility(
     selectedWrapper || undefined,
     debouncedTicker,
@@ -138,6 +154,33 @@ export function AddTransactionSheet({
       return wrapper === suggestedWrapper
     })
   }, [accounts, eligibility?.suggested_wrapper, selectedAccountId])
+  const routingSuggestedAccounts = useMemo(() => {
+    const byWrapper = new Map<string, { id: number; currency: string }>()
+    for (const account of accounts ?? []) {
+      if (account.id == null) continue
+      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      if (!wrapper || byWrapper.has(wrapper)) continue
+      byWrapper.set(wrapper, {
+        id: account.id,
+        currency: (account.currency || "USD").toUpperCase(),
+      })
+    }
+    return byWrapper
+  }, [accounts])
+  const splitRoutingPlan = useMemo(() => {
+    const suggestions = routingSuggestionQuery.data?.suggestions ?? []
+    return suggestions
+      .map((item) => ({
+        wrapper: item.wrapper,
+        amount: Number(item.amount),
+        account: routingSuggestedAccounts.get(item.wrapper) ?? null,
+      }))
+      .filter((item) => item.amount > 0)
+  }, [routingSuggestionQuery.data?.suggestions, routingSuggestedAccounts])
+  const canSplitPurchase =
+    transactionType === "BUY" &&
+    splitRoutingPlan.length >= 2 &&
+    splitRoutingPlan.every((item) => item.account != null)
 
   const holdingOptions = useMemo(
     () =>
@@ -264,6 +307,126 @@ export function AddTransactionSheet({
         ? (detail as { suggested_wrapper: string }).suggested_wrapper
         : undefined
     return { reasons, suggestedWrapper }
+  }
+
+  const invalidateTransactionQueries = () => {
+    const keys = [
+      ["transactions"],
+      ["holdings"],
+      ["rebalance"],
+      ["drawdown"],
+      ["risk-metrics"],
+      ["currency-exposure"],
+      ["stress-test"],
+      ["snapshots"],
+      ["account-cash-balances"],
+      ["accounts"],
+      ["account-summary"],
+      ["account-positions"],
+      ["account-transactions"],
+      ["stocks"],
+      ["wrapper-quota"],
+      ["wrapper-restoration"],
+    ]
+    keys.forEach((queryKey) => {
+      queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+    })
+  }
+
+  const createSplitTransactions = async () => {
+    if (!canSplitPurchase) return
+    if (!validate()) return
+    if (shouldCheckEligibility && eligibility && !eligibility.eligible) {
+      toast.error(t("eligibility.not_eligible"))
+      return
+    }
+
+    const totalAmountNumber = Number(totalAmount)
+    const quantityNumber = Number(quantity)
+    const feeNumber = Number(fee || "0")
+    if (!Number.isFinite(totalAmountNumber) || totalAmountNumber <= 0) return
+    if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) return
+
+    const normalizedTicker = ticker.trim().toUpperCase()
+    let remainingAmount = totalAmountNumber
+    let remainingQuantity = quantityNumber
+    let remainingFee = feeNumber
+
+    const payloads = splitRoutingPlan.map((item, index) => {
+      const isLast = index === splitRoutingPlan.length - 1
+      const ratio = totalAmountNumber > 0 ? item.amount / totalAmountNumber : 0
+      const splitAmount = isLast ? remainingAmount : Number(item.amount.toFixed(2))
+      const splitQuantity = isLast
+        ? Number(remainingQuantity.toFixed(6))
+        : Number((quantityNumber * ratio).toFixed(6))
+      const splitFee = isLast ? remainingFee : Number((feeNumber * ratio).toFixed(2))
+      remainingAmount = Number((remainingAmount - splitAmount).toFixed(2))
+      remainingQuantity = Number((remainingQuantity - splitQuantity).toFixed(6))
+      remainingFee = Number((remainingFee - splitFee).toFixed(2))
+      const account = item.account
+      return {
+        account_id: account ? account.id : Number(accountId),
+        holding_id: holdingId ? Number(holdingId) : undefined,
+        ticker: normalizedTicker,
+        transaction_type: "BUY" as const,
+        quantity: splitQuantity,
+        price: price ? Number(price) : undefined,
+        total_amount: splitAmount,
+        currency: account ? account.currency : currency,
+        fx_rate: fxRate ? Number(fxRate) : undefined,
+        fee: splitFee,
+        note: note.trim(),
+        thesis: thesis.trim() || undefined,
+        category: isNewToRadar ? category : undefined,
+        transaction_date: transactionDate,
+      }
+    })
+
+    setSplitSubmitting(true)
+    const createdTransactionIds: number[] = []
+    try {
+      for (const payload of payloads) {
+        const created = await addTransactionMutation.mutateAsync(payload)
+        if (created.id != null) {
+          createdTransactionIds.push(Number(created.id))
+        }
+      }
+      invalidateTransactionQueries()
+      toast.success(t("smart_actions.split_success", { count: payloads.length }))
+      resetForm({ keepDefaultTicker: true, keepDefaultHoldingId: true })
+      onClose()
+    } catch (err) {
+      if (createdTransactionIds.length > 0) {
+        for (const txnId of [...createdTransactionIds].reverse()) {
+          const { error } = await client.DELETE("/transactions/{txn_id}", {
+            params: { path: { txn_id: txnId } },
+          })
+          if (error) {
+            toast.error(t("smart_actions.split_rollback_failed"))
+            break
+          }
+        }
+        invalidateTransactionQueries()
+      }
+      const insufficient = parseInsufficientBalance(err)
+      if (insufficient) {
+        setInsufficientBalance(insufficient)
+        return
+      }
+      const eligibilityError = parseEligibilityError(err)
+      if (eligibilityError) {
+        const reasonText = eligibilityError.reasons.length
+          ? t(eligibilityError.reasons[0], {
+              defaultValue: eligibilityError.reasons[0],
+            })
+          : t("eligibility.not_eligible")
+        toast.error(reasonText)
+        return
+      }
+      toast.error(getErrorMessage(err) || t("common.error"))
+    } finally {
+      setSplitSubmitting(false)
+    }
   }
 
   return (
@@ -436,7 +599,7 @@ export function AddTransactionSheet({
                 placeholder="e.g. AAPL"
                 className="text-xs"
               />
-              {transactionType === "BUY" && selectedWrapper ? (
+              {transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) ? (
                 <div className="pt-1 space-y-1">
                   <EligibilityBadge result={eligibility} loading={eligibilityQuery.isLoading} />
                   {eligibility && !eligibility.eligible ? (
@@ -468,6 +631,59 @@ export function AddTransactionSheet({
                         )
                       ) : null}
                     </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {transactionType === "BUY" && routingSuggestionQuery.data?.suggestions?.length ? (
+                <div className="pt-1 space-y-1">
+                  <p className="text-[11px] font-medium">{t("routing.suggest_title")}</p>
+                  <div className="space-y-1">
+                    {routingSuggestionQuery.data.suggestions.map((item, idx) => {
+                      const suggested = routingSuggestedAccounts.get(item.wrapper)
+                      return (
+                        <div
+                          key={`${item.wrapper}-${idx}`}
+                          className="rounded-md border border-border bg-muted/20 px-2 py-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span>{t(`wrapper.${item.wrapper}`, { defaultValue: item.wrapper })}</span>
+                            <span>{Math.round(item.amount).toLocaleString()}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(item.reason, { defaultValue: item.reason })}
+                          </p>
+                          {suggested ? (
+                            <button
+                              type="button"
+                              className="text-[11px] text-primary hover:underline"
+                              onClick={() => {
+                                setAccountId(String(suggested.id))
+                                setCurrency(suggested.currency)
+                                setInsufficientBalance(null)
+                              }}
+                            >
+                              {t("smart_actions.apply_suggestion")}
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {canSplitPurchase ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      disabled={splitSubmitting || addTransactionMutation.isPending}
+                      onClick={() => {
+                        createSplitTransactions().catch(() => {
+                          // createSplitTransactions handles all user feedback paths.
+                        })
+                      }}
+                    >
+                      {t("smart_actions.split_purchase")}
+                    </Button>
                   ) : null}
                 </div>
               ) : null}
@@ -718,7 +934,7 @@ export function AddTransactionSheet({
           <Button
             className="w-full"
             size="sm"
-            disabled={addTransactionMutation.isPending || (requiresAccount && selectedAccountId == null)}
+            disabled={splitSubmitting || addTransactionMutation.isPending || (requiresAccount && selectedAccountId == null)}
             onClick={() => {
               if (!validate()) return
 

@@ -2120,5 +2120,28 @@
     "not_in_ideco_lineup": "Not in your broker's iDeCo lineup.",
     "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
     "try_instead": "Try {{wrapper}} instead."
+  },
+  "routing": {
+    "nisa_growth_tax_free": "Buy in NISA Growth (tax-free gains)",
+    "nisa_tsumitate_tax_free": "Buy in NISA Tsumitate (tax-free gains)",
+    "ideco_tax_deferred": "Buy in iDeCo (tax-deductible contribution)",
+    "tokutei_overflow": "Remaining in Tokutei (standard taxable)",
+    "suggest_title": "Optimal purchase routing"
+  },
+  "detax": {
+    "harvest_loss": "Sell and rebuy to realize loss for tax offsetting",
+    "title": "Tax-Loss Harvesting Opportunity",
+    "estimated_saving": "Estimated tax saving: {{amount}}",
+    "disclaimer": "DeTAX defers taxes — it does not eliminate them. Consult a tax advisor."
+  },
+  "smart_actions": {
+    "ticker_placeholder": "Ticker",
+    "amount_placeholder": "Amount",
+    "apply_suggestion": "Apply suggestion",
+    "review_button": "Review",
+    "why_toggle": "Why this suggestion?",
+    "split_purchase": "Split purchase",
+    "split_success": "Created {{count}} split buy transactions",
+    "split_rollback_failed": "Split purchase partially failed; automatic rollback did not fully complete."
   }
 }

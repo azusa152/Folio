@@ -7,13 +7,20 @@ from sqlmodel import Session
 
 from api.schemas.wrapper import (
     AllQuotasResponse,
+    DeTaxResponse,
     EligibilityCheckResponse,
     EligibleAssetsResponse,
     RestorationForecastResponse,
+    RoutingSuggestRequest,
+    RoutingSuggestResponse,
 )
 from application.portfolio.eligibility_service import (
     check_asset_eligibility,
     get_eligible_assets,
+)
+from application.portfolio.routing_service import (
+    get_detax_suggestions,
+    suggest_transaction_routing,
 )
 from application.portfolio.wrapper_service import (
     get_all_wrapper_quotas,
@@ -105,5 +112,54 @@ def list_eligible_assets(
                 "trust_fee_pct": asset.trust_fee_pct,
             }
             for asset in assets
+        ],
+    }
+
+
+@router.post("/wrappers/suggest-routing", response_model=RoutingSuggestResponse)
+def suggest_routing(
+    body: RoutingSuggestRequest,
+    session: Session = Depends(get_session),
+):
+    suggestions = suggest_transaction_routing(
+        session=session,
+        ticker=body.ticker,
+        total_amount=body.total_amount,
+        user_id=DEFAULT_USER_ID,
+    )
+    return {
+        "ticker": body.ticker.strip().upper(),
+        "total_amount": float(body.total_amount),
+        "suggestions": [
+            {
+                "wrapper": item.wrapper,
+                "amount": item.amount,
+                "reason": item.reason,
+            }
+            for item in suggestions
+        ],
+    }
+
+
+@router.get("/wrappers/detax", response_model=DeTaxResponse)
+def detax_opportunities(session: Session = Depends(get_session)):
+    opportunities = get_detax_suggestions(
+        session=session,
+        user_id=DEFAULT_USER_ID,
+    )
+    return {
+        "total_estimated_savings": round(
+            sum(item.estimated_tax_saved for item in opportunities), 2
+        ),
+        "opportunities": [
+            {
+                "ticker": item.ticker,
+                "account_id": item.account_id,
+                "unrealized_loss": item.unrealized_loss,
+                "estimated_tax_saved": item.estimated_tax_saved,
+                "sell_quantity": item.sell_quantity,
+                "reason": item.reason,
+            }
+            for item in opportunities
         ],
     }

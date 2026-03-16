@@ -50,6 +50,10 @@ from application.portfolio.rebalance_service import (  # noqa: F401
     send_fx_alerts,
     send_xray_warnings,
 )
+from application.portfolio.routing_service import (  # noqa: F401
+    get_detax_suggestions,
+    suggest_transaction_routing,
+)
 from application.portfolio.snapshot_service import (  # noqa: F401
     get_snapshot_range,
     get_snapshots,

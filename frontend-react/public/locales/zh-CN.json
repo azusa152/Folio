@@ -2120,5 +2120,28 @@
     "not_in_ideco_lineup": "不在您的 iDeCo 产品清单中。",
     "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
     "try_instead": "可改用 {{wrapper}}。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",
+    "nisa_tsumitate_tax_free": "优先在 NISA 定投额度买入（收益免税）",
+    "ideco_tax_deferred": "在 iDeCo 买入（缴费可税前扣除）",
+    "tokutei_overflow": "剩余金额在特定账户买入（常规纳税）",
+    "suggest_title": "最优买入路由建议"
+  },
+  "detax": {
+    "harvest_loss": "先卖后买实现亏损，用于抵扣税负",
+    "title": "税损收割机会",
+    "estimated_saving": "预计节税：{{amount}}",
+    "disclaimer": "DeTAX 是递延纳税，不是免税。请咨询专业税务顾问。"
+  },
+  "smart_actions": {
+    "ticker_placeholder": "代码",
+    "amount_placeholder": "金额",
+    "apply_suggestion": "应用建议",
+    "review_button": "查看",
+    "why_toggle": "为什么这样建议？",
+    "split_purchase": "拆分买入",
+    "split_success": "已创建 {{count}} 笔拆分买入交易",
+    "split_rollback_failed": "拆分买入部分失败，且自动回滚未能完全完成。"
   }
 }

@@ -2120,5 +2120,28 @@
     "not_in_ideco_lineup": "この銘柄はiDeCo商品ラインナップにありません。",
     "invalid_asset_type": "この資産タイプはNISA成長投資枠の対象外です。",
     "try_instead": "{{wrapper}} をお試しください。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "NISA成長投資枠で買付（運用益非課税）",
+    "nisa_tsumitate_tax_free": "つみたて投資枠で買付（運用益非課税）",
+    "ideco_tax_deferred": "iDeCoで買付（掛金所得控除）",
+    "tokutei_overflow": "残額は特定口座で買付（通常課税）",
+    "suggest_title": "最適な買付ルーティング"
+  },
+  "detax": {
+    "harvest_loss": "売却・再購入で損失を実現し、損益通算に活用",
+    "title": "損益通算（DeTAX）候補",
+    "estimated_saving": "推定節税額: {{amount}}",
+    "disclaimer": "DeTAXは課税の繰り延べであり、非課税化ではありません。税務は専門家にご相談ください。"
+  },
+  "smart_actions": {
+    "ticker_placeholder": "ティッカー",
+    "amount_placeholder": "金額",
+    "apply_suggestion": "この提案を適用",
+    "review_button": "確認",
+    "why_toggle": "この提案の理由",
+    "split_purchase": "買付を分割して作成",
+    "split_success": "分割買付を {{count}} 件作成しました",
+    "split_rollback_failed": "分割買付の一部が失敗し、自動ロールバックを完了できませんでした。"
   }
 }

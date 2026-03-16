@@ -2,8 +2,10 @@ import { useQuery } from "@tanstack/react-query"
 import client from "@/api/client"
 import type {
   AllQuotasResponse,
+  DeTaxResponse,
   EligibilityCheckResponse,
   EligibleAssetsResponse,
+  RoutingSuggestResponse,
   RestorationForecastResponse,
 } from "@/api/types/wrapper"
 
@@ -96,6 +98,46 @@ export function useEligibleAssets(
       return data as EligibleAssetsResponse
     },
     enabled: (options?.enabled ?? true) && !!normalizedWrapper,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useSuggestRouting(
+  ticker: string | null | undefined,
+  totalAmount: number | null | undefined,
+  enabled = true,
+) {
+  const normalizedTicker = (ticker ?? "").trim().toUpperCase()
+  const normalizedAmount =
+    typeof totalAmount === "number" && Number.isFinite(totalAmount)
+      ? totalAmount
+      : 0
+  return useQuery<RoutingSuggestResponse>({
+    queryKey: ["wrapper-suggest-routing", normalizedTicker, normalizedAmount],
+    queryFn: async () => {
+      const { data, error } = await client.POST("/wrappers/suggest-routing", {
+        body: {
+          ticker: normalizedTicker,
+          total_amount: normalizedAmount,
+        },
+      })
+      if (error) throw error
+      return data as RoutingSuggestResponse
+    },
+    enabled: enabled && !!normalizedTicker && normalizedAmount > 0,
+    staleTime: 15 * 1000,
+  })
+}
+
+export function useDeTaxSuggestions(enabled = true) {
+  return useQuery<DeTaxResponse>({
+    queryKey: ["detax"],
+    queryFn: async () => {
+      const { data, error } = await client.GET("/wrappers/detax")
+      if (error) throw error
+      return data as DeTaxResponse
+    },
+    enabled,
     staleTime: 30 * 1000,
   })
 }

@@ -156,10 +156,15 @@ from api.schemas.transaction import (  # noqa: F401
 )
 from api.schemas.wrapper import (  # noqa: F401
     AllQuotasResponse,
+    DeTaxOpportunityItem,
+    DeTaxResponse,
     EligibilityCheckResponse,
     EligibleAssetItem,
     EligibleAssetsResponse,
     QuotaStatusResponse,
     RestorationForecastItem,
     RestorationForecastResponse,
+    RoutingSuggestionItem,
+    RoutingSuggestRequest,
+    RoutingSuggestResponse,
 )

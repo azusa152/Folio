@@ -21,6 +21,7 @@ def _make_holding(
     currency: str = "USD",
     is_cash: bool = False,
     fx_rate: float = 1.0,
+    tax_wrapper: str | None = None,
 ) -> HoldingData:
     """建立測試用 HoldingData。"""
     price = current_price if current_price is not None else (cost_basis or 0.0)
@@ -35,6 +36,7 @@ def _make_holding(
         currency=currency,
         is_cash=is_cash,
         fx_rate=fx_rate,
+        tax_wrapper=tax_wrapper,
     )
 
 
@@ -461,3 +463,49 @@ class TestMissingData:
         # Assert
         assert len(plan.recommendations) >= 1
         assert plan.total_sell_value == pytest.approx(500.0, abs=5.0)
+
+
+class TestWrapperSellPriorityMode:
+    def test_rebalance_regular_should_exclude_nisa_wrappers(self):
+        tokutei = _make_holding(
+            ticker="TOKU",
+            category="Growth",
+            quantity=1,
+            current_price=100.0,
+            tax_wrapper="tokutei",
+        )
+        nisa = _make_holding(
+            ticker="NISA",
+            category="Growth",
+            quantity=10,
+            current_price=100.0,
+            tax_wrapper="nisa_growth",
+        )
+        plan = plan_withdrawal(
+            500.0,
+            [tokutei, nisa],
+            {"Growth": 0.0},
+            1100.0,
+            {"Growth": 100.0},
+            mode="rebalance_regular",
+        )
+        assert all(rec.ticker != "NISA" for rec in plan.recommendations)
+
+    def test_rebalance_emergency_should_allow_nisa_wrappers(self):
+        nisa = _make_holding(
+            ticker="NISA",
+            category="Growth",
+            quantity=10,
+            current_price=100.0,
+            tax_wrapper="nisa_growth",
+        )
+        plan = plan_withdrawal(
+            500.0,
+            [nisa],
+            {"Growth": 0.0},
+            1000.0,
+            {"Growth": 100.0},
+            mode="rebalance_emergency",
+        )
+        assert len(plan.recommendations) > 0
+        assert plan.recommendations[0].ticker == "NISA"

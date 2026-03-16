@@ -23,6 +23,7 @@ import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
+import { SmartActionCards } from "@/components/allocation/wrappers/SmartActionCards"
 
 type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 
@@ -275,6 +276,22 @@ export default function Allocation() {
         <TabsContent value="actions" className="mt-4 space-y-6">
           {actionsExpanded ? (
             <>
+              <SmartActionCards
+                enabled={activeTab === "actions"}
+                onApplyRouting={(ticker, accountId, currency) =>
+                  openTransactionSheet({
+                    ticker,
+                    accountId,
+                    currency,
+                    transactionType: "BUY",
+                  })}
+                onReviewDetax={(accountId, currency) =>
+                  openTransactionSheet({
+                    accountId,
+                    currency,
+                    transactionType: "SELL",
+                  })}
+              />
               <SmartWithdrawal privacyMode={privacyMode} />
               <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setActionsExpanded(false)}>
                 <ChevronDown className="h-3.5 w-3.5" />

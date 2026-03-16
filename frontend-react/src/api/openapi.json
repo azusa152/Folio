@@ -6829,6 +6829,114 @@
           }
         }
       }
+    },
+    "/wrappers/suggest-routing": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Suggest Routing",
+        "operationId": "suggest_routing_wrappers_suggest_routing_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutingSuggestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingSuggestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/detax": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Detax Opportunities",
+        "operationId": "detax_opportunities_wrappers_detax_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeTaxResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7810,6 +7918,65 @@
         "type": "object",
         "title": "DashboardResponse",
         "description": "GET /gurus/dashboard \u5b8c\u6574\u56de\u61c9\u3002"
+      },
+      "DeTaxOpportunityItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "unrealized_loss": {
+            "type": "number",
+            "title": "Unrealized Loss"
+          },
+          "estimated_tax_saved": {
+            "type": "number",
+            "title": "Estimated Tax Saved"
+          },
+          "sell_quantity": {
+            "type": "number",
+            "title": "Sell Quantity"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "account_id",
+          "unrealized_loss",
+          "estimated_tax_saved",
+          "sell_quantity",
+          "reason"
+        ],
+        "title": "DeTaxOpportunityItem"
+      },
+      "DeTaxResponse": {
+        "properties": {
+          "total_estimated_savings": {
+            "type": "number",
+            "title": "Total Estimated Savings"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/DeTaxOpportunityItem"
+            },
+            "type": "array",
+            "title": "Opportunities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_estimated_savings",
+          "opportunities"
+        ],
+        "title": "DeTaxResponse"
       },
       "DeactivateRequest": {
         "properties": {
@@ -11125,6 +11292,73 @@
           "trading_days"
         ],
         "title": "RiskMetricsResponse"
+      },
+      "RoutingSuggestRequest": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "total_amount"
+        ],
+        "title": "RoutingSuggestRequest"
+      },
+      "RoutingSuggestResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/RoutingSuggestionItem"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "total_amount",
+          "suggestions"
+        ],
+        "title": "RoutingSuggestResponse"
+      },
+      "RoutingSuggestionItem": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "amount",
+          "reason"
+        ],
+        "title": "RoutingSuggestionItem"
       },
       "ScanSignal": {
         "type": "string",

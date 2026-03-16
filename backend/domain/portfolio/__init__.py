@@ -5,6 +5,11 @@ from domain.portfolio.allocation import (  # noqa: F401
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
+from domain.portfolio.detax import (  # noqa: F401
+    DETAX_MIN_BENEFIT_JPY,
+    DeTaxOpportunity,
+    find_detax_opportunities,
+)
 from domain.portfolio.eligibility import (  # noqa: F401
     EligibilityResult,
     check_eligibility,
@@ -22,6 +27,10 @@ from domain.portfolio.rebalance import (  # noqa: F401
     calculate_rebalance,
     compute_portfolio_health_score,
 )
+from domain.portfolio.routing import (  # noqa: F401
+    RoutingSuggestion,
+    suggest_purchase_routing,
+)
 from domain.portfolio.stress_test import (  # noqa: F401
     calculate_portfolio_beta,
     calculate_stress_test,
@@ -35,6 +44,8 @@ from domain.portfolio.tax_wrapper import (  # noqa: F401
     validate_nisa_purchase,
 )
 from domain.portfolio.withdrawal import (  # noqa: F401
+    REBALANCE_EMERGENCY_THRESHOLD,
+    WRAPPER_SELL_PRIORITY,
     HoldingData,
     SellRecommendation,
     WithdrawalPlan,

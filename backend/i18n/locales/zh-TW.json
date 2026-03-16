@@ -404,5 +404,19 @@
     "not_in_ideco_lineup": "不在您券商的 iDeCo 商品名單中。",
     "invalid_asset_type": "此資產類型不符合 NISA 成長投資枠規則。",
     "try_instead": "請改用 {{wrapper}}。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "優先在 NISA 成長投資枠買入（收益免稅）",
+    "nisa_tsumitate_tax_free": "優先在 NISA 定期定額買入（收益免稅）",
+    "ideco_tax_deferred": "在 iDeCo 買入（提撥可所得扣除）",
+    "tokutei_overflow": "剩餘金額於特定口座買入（一般課稅）",
+    "suggest_title": "最佳買入路由建議",
+    "why_toggle": "為何這樣建議？"
+  },
+  "detax": {
+    "harvest_loss": "先賣後買實現虧損，用於損益通算",
+    "title": "稅損收割機會",
+    "estimated_saving": "預估節稅：{{amount}}",
+    "disclaimer": "DeTAX 是遞延課稅，並非免稅。請諮詢專業稅務顧問。"
   }
 }

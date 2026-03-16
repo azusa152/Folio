@@ -166,3 +166,114 @@ def test_wrapper_eligible_assets_should_return_list_shape(client: TestClient):
     assert payload["wrapper"] == "nisa_tsumitate"
     assert isinstance(payload["count"], int)
     assert isinstance(payload["items"], list)
+
+
+def test_wrappers_suggest_routing_should_split_growth_and_tokutei(client: TestClient):
+    # Create a wrapped account so routing has candidate wrappers.
+    growth_account_id = _create_nisa_account(client, "nisa_growth")
+    _deposit(client, growth_account_id, 500_000.0)
+    assert growth_account_id > 0
+
+    routing_resp = client.post(
+        "/wrappers/suggest-routing",
+        json={"ticker": "AAPL", "total_amount": 3_000_000.0},
+    )
+    assert routing_resp.status_code == 200
+    payload = routing_resp.json()
+    assert payload["ticker"] == "AAPL"
+    assert payload["total_amount"] == 3_000_000.0
+    assert [item["wrapper"] for item in payload["suggestions"]] == [
+        "nisa_growth",
+        "tokutei",
+    ]
+    assert payload["suggestions"][0]["amount"] == 2_400_000.0
+    assert payload["suggestions"][1]["amount"] == 600_000.0
+
+
+def test_wrappers_detax_should_return_computed_tax_saving(
+    client: TestClient,
+    monkeypatch,
+):
+    from application.portfolio import routing_service
+
+    def _fake_price(ticker: str):
+        return {"price": 50.0 if ticker == "BBB" else 200.0}
+
+    monkeypatch.setattr(routing_service, "get_technical_signals", _fake_price)
+
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Tokutei Test",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "tax_wrapper": "tokutei",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "price": 250_000.0,
+            "total_amount": 250_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-01-01",
+        },
+    )
+    assert deposit_resp.status_code == 201
+    buy_aaa = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAA",
+            "transaction_type": "BUY",
+            "quantity": 500,
+            "price": 100.0,
+            "total_amount": 50_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-01-02",
+        },
+    )
+    assert buy_aaa.status_code == 201
+    sell_aaa = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAA",
+            "transaction_type": "SELL",
+            "quantity": 500,
+            "price": 200.0,
+            "total_amount": 100_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-01-03",
+        },
+    )
+    assert sell_aaa.status_code == 201
+    buy_bbb = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "BBB",
+            "transaction_type": "BUY",
+            "quantity": 500,
+            "price": 100.0,
+            "total_amount": 50_000.0,
+            "currency": "USD",
+            "transaction_date": "2026-01-04",
+        },
+    )
+    assert buy_bbb.status_code == 201
+
+    detax_resp = client.get("/wrappers/detax")
+    assert detax_resp.status_code == 200
+    payload = detax_resp.json()
+    assert payload["total_estimated_savings"] == 5_078.75
+    assert len(payload["opportunities"]) == 1
+    assert payload["opportunities"][0]["ticker"] == "BBB"
+    assert payload["opportunities"][0]["estimated_tax_saved"] == 5_078.75

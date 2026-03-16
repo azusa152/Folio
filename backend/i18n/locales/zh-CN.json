@@ -404,5 +404,19 @@
     "not_in_ideco_lineup": "不在您券商的 iDeCo 产品清单中。",
     "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
     "try_instead": "请改用 {{wrapper}}。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",
+    "nisa_tsumitate_tax_free": "优先在 NISA 定投额度买入（收益免税）",
+    "ideco_tax_deferred": "在 iDeCo 买入（缴费可税前扣除）",
+    "tokutei_overflow": "剩余金额在特定账户买入（常规纳税）",
+    "suggest_title": "最优买入路由建议",
+    "why_toggle": "为什么这样建议？"
+  },
+  "detax": {
+    "harvest_loss": "先卖后买实现亏损，用于抵扣税负",
+    "title": "税损收割机会",
+    "estimated_saving": "预计节税：{{amount}}",
+    "disclaimer": "DeTAX 是递延纳税，不是免税。请咨询专业税务顾问。"
   }
 }

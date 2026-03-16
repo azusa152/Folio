@@ -1386,6 +1386,11 @@ def calculate_withdrawal(
     # 4) 計算各持倉市值，建立 HoldingData 列表
     category_values: dict[str, float] = {}
     holdings_data: list[HoldingData] = []
+    account_wrapper_map = {
+        int(account.id): (account.tax_wrapper or "").strip().lower()
+        for account in find_all_accounts(session, active_only=True)
+        if account.id is not None
+    }
 
     for h in holdings:
         fx = fx_rates.get(h.currency, 1.0)
@@ -1427,6 +1432,9 @@ def calculate_withdrawal(
                 currency=h.currency,
                 is_cash=h.is_cash,
                 fx_rate=fx,
+                tax_wrapper=account_wrapper_map.get(int(h.account_id))
+                if h.account_id is not None
+                else None,
             )
         )
 

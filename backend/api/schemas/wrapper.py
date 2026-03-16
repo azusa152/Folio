@@ -57,3 +57,34 @@ class EligibleAssetsResponse(BaseModel):
     wrapper: str
     count: int
     items: list[EligibleAssetItem]
+
+
+class RoutingSuggestionItem(BaseModel):
+    wrapper: str
+    amount: float
+    reason: str
+
+
+class RoutingSuggestRequest(BaseModel):
+    ticker: str
+    total_amount: float
+
+
+class RoutingSuggestResponse(BaseModel):
+    ticker: str
+    total_amount: float
+    suggestions: list[RoutingSuggestionItem]
+
+
+class DeTaxOpportunityItem(BaseModel):
+    ticker: str
+    account_id: int
+    unrealized_loss: float
+    estimated_tax_saved: float
+    sell_quantity: float
+    reason: str
+
+
+class DeTaxResponse(BaseModel):
+    total_estimated_savings: float
+    opportunities: list[DeTaxOpportunityItem]
