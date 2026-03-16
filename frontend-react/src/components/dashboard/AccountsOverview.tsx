@@ -37,9 +37,19 @@ interface AccountRow {
   remainingCount: number
   accountGainLoss: number | null
   accountCostTotal: number
+  categoryBreakdown: Array<{
+    category: "stocks" | "cash" | "crypto" | "bonds" | "commodities" | "other"
+    value: number
+    pct: number
+    customLabel?: string
+  }>
+  dailyChange: number | null
+  dailyChangePct: number | null
+  dailyChangeCoveragePct: number | null
 }
 
 const ACCOUNT_COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DC2626", "#EA580C", "#4F46E5"]
+const DAILY_CHANGE_MIN_COVERAGE_PCT = 70
 
 function AccountTypeIcon({ accountType }: { accountType: string }) {
   if (accountType === "brokerage" || accountType === "retirement") {
@@ -62,6 +72,48 @@ function formatCashBalances(
   return balances
     .map((item) => formatCurrency(item.balance, item.currency))
     .join(" / ")
+}
+
+function toCategoryBucket(category: string | undefined): {
+  category: "stocks" | "cash" | "crypto" | "bonds" | "commodities" | "other"
+  customLabel?: string
+} {
+  const normalized = (category ?? "").trim().toLowerCase().replace(/[\s_]+/g, "_")
+  if (normalized === "cash") return { category: "cash" }
+  if (normalized === "crypto") return { category: "crypto" }
+  if (normalized === "bond" || normalized === "fixed_income") return { category: "bonds" }
+  if (normalized === "commodity" || normalized === "commodities") return { category: "commodities" }
+
+  const stockLike = new Set([
+    "equity",
+    "etf",
+    "growth",
+    "moat",
+    "trend_setter",
+    "trendsetter",
+  ])
+  if (stockLike.has(normalized)) return { category: "stocks" }
+
+  if (category && category.trim().length > 0) {
+    return { category: "other", customLabel: category }
+  }
+  return { category: "stocks" }
+}
+
+function isCashHolding(holding: HoldingDetail): boolean {
+  return toCategoryBucket(holding.category).category === "cash"
+}
+
+function categoryLabel(
+  t: (key: string) => string,
+  bucket: AccountRow["categoryBreakdown"][number],
+): string {
+  if (bucket.category === "stocks") return t("dashboard.accounts_overview.stocks_category")
+  if (bucket.category === "cash") return t("dashboard.accounts_overview.cash_category")
+  if (bucket.category === "crypto") return t("dashboard.accounts_overview.crypto_category")
+  if (bucket.category === "bonds") return t("dashboard.accounts_overview.bonds_category")
+  if (bucket.category === "commodities") return t("dashboard.accounts_overview.commodities_category")
+  return t("dashboard.accounts_overview.other_category")
 }
 
 export function AccountsOverview({
@@ -95,12 +147,16 @@ export function AccountsOverview({
     for (const holding of rebalance?.holdings_detail ?? []) {
       if (holding.account_id == null) continue
       const accountHoldings = holdingsByAccount.get(holding.account_id) ?? []
-      accountHoldings.push(holding)
+      if (!isCashHolding(holding)) {
+        accountHoldings.push(holding)
+      }
       holdingsByAccount.set(holding.account_id, accountHoldings)
-      positionValueByAccount.set(
-        holding.account_id,
-        (positionValueByAccount.get(holding.account_id) ?? 0) + (holding.market_value ?? 0),
-      )
+      if (!isCashHolding(holding)) {
+        positionValueByAccount.set(
+          holding.account_id,
+          (positionValueByAccount.get(holding.account_id) ?? 0) + (holding.market_value ?? 0),
+        )
+      }
     }
 
     const mapped = accountSummary
@@ -119,6 +175,7 @@ export function AccountsOverview({
           convertedCash += balance.balance * rate
         }
         const totalValue = (positionValueByAccount.get(account.id) ?? 0) + convertedCash
+        const positionValue = positionValueByAccount.get(account.id) ?? 0
         const accountHoldings = [...(holdingsByAccount.get(account.id) ?? [])].sort(
           (a, b) => (b.market_value ?? 0) - (a.market_value ?? 0),
         )
@@ -127,13 +184,71 @@ export function AccountsOverview({
         let accountGainLoss = 0
         let accountCostTotal = 0
         let hasCostData = false
+        let accountDailyChange = 0
+        let hasDailyData = false
+        let dailyCoveredCurrentValue = 0
+        let dailyCoveredPreviousValue = 0
+        const categoryByKey = new Map<string, { category: AccountRow["categoryBreakdown"][number]["category"]; value: number; customLabel?: string }>()
         for (const holding of accountHoldings) {
+          const bucket = toCategoryBucket(holding.category)
+          const bucketKey = bucket.category
+          const currentBucket = categoryByKey.get(bucketKey)
+          if (currentBucket) {
+            currentBucket.value += holding.market_value ?? 0
+          } else {
+            categoryByKey.set(bucketKey, {
+              category: bucket.category,
+              value: holding.market_value ?? 0,
+              customLabel: bucket.customLabel,
+            })
+          }
+
           const costTotal = holding.cost_total
           if (costTotal == null || costTotal <= 0) continue
           hasCostData = true
           accountCostTotal += costTotal
           accountGainLoss += (holding.market_value ?? 0) - costTotal
         }
+        for (const holding of accountHoldings) {
+          if (!Number.isFinite(holding.change_pct) || !Number.isFinite(holding.market_value)) continue
+          const changePct = holding.change_pct ?? 0
+          const denominator = 100 + changePct
+          if (Math.abs(denominator) < 1e-9) continue
+          const currentValue = holding.market_value ?? 0
+          const previousValue = currentValue / (1 + changePct / 100)
+          const deltaValue = currentValue - previousValue
+          if (!Number.isFinite(deltaValue) || !Number.isFinite(previousValue) || previousValue < 0) continue
+          hasDailyData = true
+          accountDailyChange += deltaValue
+          dailyCoveredCurrentValue += currentValue
+          dailyCoveredPreviousValue += previousValue
+        }
+        if (convertedCash > 0) {
+          const cashBucket = categoryByKey.get("cash")
+          if (cashBucket) {
+            cashBucket.value += convertedCash
+          } else {
+            categoryByKey.set("cash", { category: "cash", value: convertedCash })
+          }
+        }
+        const categoryBreakdown = [...categoryByKey.values()]
+          .filter((entry) => entry.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .map((entry) => ({
+            category: entry.category,
+            value: entry.value,
+            pct: totalValue > 0 ? (entry.value / totalValue) * 100 : 0,
+            customLabel: entry.customLabel,
+          }))
+        const previousValue = totalValue - accountDailyChange
+        const dailyCoveragePct = positionValue > 0
+          ? (dailyCoveredCurrentValue / positionValue) * 100
+          : 0
+        const dailyChangePct = hasDailyData && previousValue > 0
+          && dailyCoveredPreviousValue > 0
+          && dailyCoveragePct >= DAILY_CHANGE_MIN_COVERAGE_PCT
+          ? (accountDailyChange / dailyCoveredPreviousValue) * 100
+          : null
 
         return {
           id: account.id,
@@ -150,6 +265,10 @@ export function AccountsOverview({
           remainingCount,
           accountGainLoss: hasCostData ? accountGainLoss : null,
           accountCostTotal,
+          categoryBreakdown,
+          dailyChange: hasDailyData ? accountDailyChange : null,
+          dailyChangePct,
+          dailyChangeCoveragePct: hasDailyData ? dailyCoveragePct : null,
         }
       })
 
@@ -332,6 +451,7 @@ export function AccountsOverview({
               const accountReturnPct = row.accountGainLoss != null && row.accountCostTotal > 0
                 ? (row.accountGainLoss / row.accountCostTotal) * 100
                 : null
+              const showStandaloneCash = row.topHoldings.length === 0 && row.remainingCount === 0
 
               return (
                 <Collapsible key={row.id} open={expandedRowIds.has(row.id)} onOpenChange={(isOpen) => setExpanded(row.id, isOpen)}>
@@ -399,6 +519,83 @@ export function AccountsOverview({
                     )}
 
                     <div className="mt-2 space-y-1.5 text-xs">
+                      <div className="space-y-1.5 rounded-md border border-border/60 p-2">
+                        <p className="font-medium text-foreground">
+                          {t("dashboard.accounts_overview.value_breakdown_label")}
+                        </p>
+                        <ul className="space-y-1">
+                          {row.categoryBreakdown.map((bucket) => (
+                            <li key={`${row.id}-${bucket.category}-${bucket.customLabel ?? "default"}`} className="space-y-1">
+                              <div className="flex items-center justify-between gap-2 text-[11px]">
+                                <span
+                                  className="truncate text-muted-foreground"
+                                  title={bucket.category === "other" ? bucket.customLabel : undefined}
+                                >
+                                  {categoryLabel(t, bucket)}
+                                </span>
+                                <span className="shrink-0 tabular-nums text-foreground">
+                                  {isPrivate ? "***" : maskMoney(bucket.value, displayCurrency)}{" "}
+                                  <span className="text-muted-foreground">({bucket.pct.toFixed(0)}%)</span>
+                                </span>
+                              </div>
+                              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${Math.max(0, Math.min(bucket.pct, 100))}%`,
+                                    backgroundColor: row.color,
+                                  }}
+                                  aria-hidden
+                                />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {row.dailyChange != null && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                          <span
+                            className={`tabular-nums ${row.dailyChange >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                          >
+                            {isPrivate
+                              ? "***"
+                              : `${row.dailyChange >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.dailyChange), displayCurrency)}${row.dailyChangePct == null ? "" : ` (${row.dailyChangePct >= 0 ? "+" : ""}${row.dailyChangePct.toFixed(1)}%)`}`}
+                          </span>
+                        </div>
+                      )}
+                      {row.dailyChange != null && row.dailyChangePct == null && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t("dashboard.accounts_overview.today_change_estimated", {
+                            coverage: Math.round(row.dailyChangeCoveragePct ?? 0),
+                          })}
+                        </p>
+                      )}
+                      {row.dailyChange == null && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            {t("dashboard.accounts_overview.today_change_unavailable")}
+                          </span>
+                        </div>
+                      )}
+
+                      {row.accountGainLoss != null && accountReturnPct != null && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">
+                            {t("dashboard.accounts_overview.unrealized_pnl")}
+                          </span>
+                          <span
+                            className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                          >
+                            {isPrivate
+                              ? "***"
+                              : `${row.accountGainLoss >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.accountGainLoss), displayCurrency)} (${accountReturnPct >= 0 ? "+" : ""}${accountReturnPct.toFixed(1)}%)`}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-medium text-foreground">
                           {t("dashboard.accounts_overview.top_positions_label")}
@@ -471,26 +668,13 @@ export function AccountsOverview({
                       )}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
-                      <span className="text-muted-foreground">
-                        {t("dashboard.accounts_overview.cash_label")}:
-                      </span>
-                      <span className="tabular-nums text-foreground">
-                        {cashSummary}
-                      </span>
-                    </div>
-
-                    {row.accountGainLoss != null && accountReturnPct != null && (
-                      <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                    {showStandaloneCash && (
+                      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
                         <span className="text-muted-foreground">
-                          {t("dashboard.accounts_overview.account_gain_loss")}
+                          {t("dashboard.accounts_overview.cash_label")}:
                         </span>
-                        <span
-                          className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
-                        >
-                          {isPrivate
-                            ? "***"
-                            : `${row.accountGainLoss >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.accountGainLoss), displayCurrency)} (${accountReturnPct >= 0 ? "+" : ""}${accountReturnPct.toFixed(1)}%)`}
+                        <span className="tabular-nums text-foreground">
+                          {cashSummary}
                         </span>
                       </div>
                     )}

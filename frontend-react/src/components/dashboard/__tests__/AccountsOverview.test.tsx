@@ -282,7 +282,6 @@ describe("AccountsOverview", () => {
 
     const rebalance = {
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "USD", market_value: 1100, weight_pct: 11, quantity: 1250.5, category: "Cash", currency: "USD", cost_total: 1100 },
         { account_id: 1, account_name: "Broker A", ticker: "BTC", market_value: 900, weight_pct: 9, quantity: 0.12345678, category: "Crypto", currency: "USD", cost_total: 870 },
         { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 700, weight_pct: 7, quantity: 3, category: "Growth", currency: "USD", cost_total: 650 },
         { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 400, weight_pct: 4, quantity: 2, category: "Moat", currency: "USD", cost_total: 390 },
@@ -294,15 +293,16 @@ describe("AccountsOverview", () => {
     fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
 
     expect(screen.getByText("dashboard.accounts_overview.top_positions_label")).toBeInTheDocument()
-    expect(screen.getByText("USD")).toBeInTheDocument()
-    expect(screen.getByText("1,250.50 USD")).toBeInTheDocument()
     expect(screen.getByText("BTC")).toBeInTheDocument()
     expect(screen.getByText("0.12345678 BTC")).toBeInTheDocument()
     expect(screen.getByText("AAPL")).toBeInTheDocument()
     expect(screen.getByText("3 shares")).toBeInTheDocument()
-    expect(screen.queryByText("MSFT")).not.toBeInTheDocument()
-    expect(screen.getByText("dashboard.accounts_overview.more_positions")).toBeInTheDocument()
-    expect(screen.getByText("dashboard.accounts_overview.account_gain_loss")).toBeInTheDocument()
+    expect(screen.getByText("MSFT")).toBeInTheDocument()
+    expect(screen.queryByText("dashboard.accounts_overview.more_positions")).not.toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.unrealized_pnl")).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.value_breakdown_label")).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.cash_category")).toBeInTheDocument()
+    expect(screen.queryByText("dashboard.accounts_overview.cash_label:")).not.toBeInTheDocument()
 
     const links = screen.getAllByRole("link", { name: "dashboard.accounts_overview.view_positions" })
     expect(links.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1")).toBe(true)
@@ -332,6 +332,204 @@ describe("AccountsOverview", () => {
     expect(screen.getByText("-$150.00 (-15.0%)")).toBeInTheDocument()
   })
 
+  it("shows daily change when holdings include change_pct", () => {
+    const accountSummary = [
+      {
+        account: { id: 12, name: "Daily Account", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["AAPL"],
+        cash_balances: [{ currency: "USD", balance: 150 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        {
+          account_id: 12,
+          account_name: "Daily Account",
+          ticker: "AAPL",
+          market_value: 1100,
+          weight_pct: 10,
+          quantity: 2,
+          category: "Growth",
+          currency: "USD",
+          change_pct: 10,
+        },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Daily Account.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
+    expect(screen.getByText("+$100.00 (+10.0%)")).toBeInTheDocument()
+  })
+
+  it("hides daily change when holdings have no change_pct data", () => {
+    const accountSummary = [
+      {
+        account: { id: 13, name: "No Daily Change", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["MSFT"],
+        cash_balances: [{ currency: "USD", balance: 100 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        {
+          account_id: 13,
+          account_name: "No Daily Change",
+          ticker: "MSFT",
+          market_value: 900,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+        },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /No Daily Change.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.today_change_unavailable")).toBeInTheDocument()
+  })
+
+  it("shows today amount as estimate when daily coverage is limited", () => {
+    const accountSummary = [
+      {
+        account: { id: 14, name: "Partial Coverage", broker: "IB", account_type: "brokerage" },
+        holdings_count: 2,
+        tickers: ["AAPL", "MSFT"],
+        cash_balances: [{ currency: "USD", balance: 0 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        {
+          account_id: 14,
+          account_name: "Partial Coverage",
+          ticker: "AAPL",
+          market_value: 1100,
+          weight_pct: 10,
+          quantity: 2,
+          category: "Growth",
+          currency: "USD",
+          change_pct: 10,
+        },
+        {
+          account_id: 14,
+          account_name: "Partial Coverage",
+          ticker: "MSFT",
+          market_value: 900,
+          weight_pct: 9,
+          quantity: 1,
+          category: "Moat",
+          currency: "USD",
+        },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Partial Coverage.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
+    expect(screen.getByText("+$100.00")).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.today_change_estimated")).toBeInTheDocument()
+  })
+
+  it("uses localized other category label instead of raw backend category name", () => {
+    const accountSummary = [
+      {
+        account: { id: 15, name: "Other Category Account", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["XYZ"],
+        cash_balances: [{ currency: "USD", balance: 0 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        {
+          account_id: 15,
+          account_name: "Other Category Account",
+          ticker: "XYZ",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "SpecialBucket",
+          currency: "USD",
+          change_pct: 1.5,
+        },
+        {
+          account_id: 15,
+          account_name: "Other Category Account",
+          ticker: "ABC",
+          market_value: 300,
+          weight_pct: 3,
+          quantity: 1,
+          category: "LegacyAlt",
+          currency: "USD",
+        },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    fireEvent.click(screen.getByRole("button", { name: /Other Category Account.*dashboard\.accounts_overview\.toggle_details/ }))
+
+    expect(screen.getAllByText("dashboard.accounts_overview.other_category")).toHaveLength(1)
+    expect(screen.queryByText("SpecialBucket")).not.toBeInTheDocument()
+    expect(screen.queryByText("LegacyAlt")).not.toBeInTheDocument()
+  })
+
+  it("does not double count cash when both cash holding and cash_balances are present", () => {
+    const accountSummary = [
+      {
+        account: { id: 16, name: "No Double Cash", broker: "IB", account_type: "brokerage" },
+        holdings_count: 1,
+        tickers: ["AAPL"],
+        cash_balances: [{ currency: "USD", balance: 500 }],
+      },
+    ] as unknown as AccountSummaryItem[]
+
+    const rebalance = {
+      holdings_detail: [
+        {
+          account_id: 16,
+          account_name: "No Double Cash",
+          ticker: "AAPL",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+        },
+        {
+          account_id: 16,
+          account_name: "No Double Cash",
+          ticker: "USD",
+          market_value: 500,
+          weight_pct: 5,
+          quantity: 500,
+          category: "Cash",
+          currency: "USD",
+        },
+      ],
+    } as unknown as RebalanceResponse
+
+    renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
+
+    expect(screen.getAllByText("$1,500.00").length).toBeGreaterThan(0)
+    expect(screen.queryByText("$2,000.00")).not.toBeInTheDocument()
+  })
+
   it("shows no-positions message when account has no holdings", () => {
     const accountSummary = [
       {
@@ -346,6 +544,7 @@ describe("AccountsOverview", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Cash Account.*dashboard\.accounts_overview\.toggle_details/ }))
     expect(screen.getByText(/dashboard\.accounts_overview\.no_positions/)).toBeInTheDocument()
+    expect(screen.getByText("dashboard.accounts_overview.cash_label:")).toBeInTheDocument()
   })
 
   it("masks expanded position values in privacy mode", () => {
