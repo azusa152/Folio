@@ -5,11 +5,22 @@ Config — 從環境變數覆寫 domain 常數。
 
 import os
 
-from domain import constants
+ELIGIBLE_TSUMITATE_URL = "https://www.fsa.go.jp/policy/nisa2/products/index.html"
+ELIGIBLE_GROWTH_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
+ELIGIBLE_SYNC_INTERVAL_HOURS = 168
 
 
 def init_settings() -> None:
     """Override domain constants from environment. Call once at startup."""
-    data_dir = os.getenv("DATA_DIR")
-    if data_dir:
-        constants.DATA_DIR = data_dir
+    global ELIGIBLE_GROWTH_URL, ELIGIBLE_SYNC_INTERVAL_HOURS, ELIGIBLE_TSUMITATE_URL
+    ELIGIBLE_TSUMITATE_URL = os.getenv(
+        "ELIGIBLE_TSUMITATE_URL",
+        ELIGIBLE_TSUMITATE_URL,
+    )
+    ELIGIBLE_GROWTH_URL = os.getenv(
+        "ELIGIBLE_GROWTH_URL",
+        ELIGIBLE_GROWTH_URL,
+    )
+    ELIGIBLE_SYNC_INTERVAL_HOURS = int(
+        os.getenv("ELIGIBLE_SYNC_INTERVAL_HOURS", str(ELIGIBLE_SYNC_INTERVAL_HOURS))
+    )

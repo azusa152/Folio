@@ -61,6 +61,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_thesis_history,
     find_transaction_by_id,
     find_user_preferences,
+    get_eligible_assets_metadata,
     get_max_thesis_version,
     save_filing,
     save_guru,

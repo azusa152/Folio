@@ -7,6 +7,7 @@ from domain.core.entities import (  # noqa: F401
     Account,
     ContributionLedgerEntry,
     EligibleAsset,
+    EligibleAssetSyncState,
     FXWatchConfig,
     Guru,
     GuruFiling,

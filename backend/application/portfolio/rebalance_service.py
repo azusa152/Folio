@@ -619,13 +619,18 @@ def _do_calculate_rebalance(
         growth_holdings: list[dict[str, float | str]] = []
         tokutei_holdings: list[dict[str, float | str]] = []
         for agg in account_ticker_agg.values():
-            account_id = agg.get("account_id")
+            raw_account_id = agg.get("account_id")
             ticker = str(agg.get("ticker", ""))
             category = str(agg.get("category", ""))
             mv = float(agg.get("mv", 0.0))
             if not ticker or mv <= 0:
                 continue
-            wrapper = account_wrapper_by_id.get(account_id, "tokutei")
+            account_id = raw_account_id if isinstance(raw_account_id, int) else None
+            wrapper = (
+                account_wrapper_by_id.get(account_id, "tokutei")
+                if account_id is not None
+                else "tokutei"
+            )
             current_placements.setdefault(ticker, {})
             current_placements[ticker][wrapper] = (
                 float(current_placements[ticker].get(wrapper, 0.0)) + mv

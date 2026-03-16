@@ -82,6 +82,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_transaction_by_id,
     find_transactions_by_account,
     find_user_preferences,
+    get_eligible_assets_metadata,
     get_max_thesis_version,
     log_notification_sent,
     save_account,

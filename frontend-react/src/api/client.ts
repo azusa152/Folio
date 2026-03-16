@@ -32,4 +32,32 @@ const timeoutMiddleware: Middleware = {
 client.use(authMiddleware)
 client.use(timeoutMiddleware)
 
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timerId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const upstreamSignal = init?.signal
+  if (upstreamSignal) {
+    upstreamSignal.addEventListener("abort", () => controller.abort(), { once: true })
+  }
+
+  const headers = new Headers(init?.headers)
+  const apiKey = import.meta.env.VITE_API_KEY
+  if (apiKey) {
+    headers.set("X-API-Key", apiKey)
+  }
+
+  try {
+    return await fetch(input, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timerId)
+  }
+}
+
 export default client

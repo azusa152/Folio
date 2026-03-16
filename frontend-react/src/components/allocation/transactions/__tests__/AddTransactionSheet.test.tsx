@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AddTransactionSheet } from "../AddTransactionSheet"
 
-const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState } = vi.hoisted(() => ({
+const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState, wrapperState } = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -11,6 +11,9 @@ const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState 
   radarState: {
     stocks: [] as Array<{ ticker: string }>,
     isLoading: false,
+  },
+  wrapperState: {
+    eligibleItems: [] as Array<{ ticker: string; fund_name: string; trust_fee_pct?: number }>,
   },
 }))
 
@@ -50,11 +53,21 @@ vi.mock("@/api/hooks/useAccounts", () => ({
   }),
 }))
 
+vi.mock("@/api/hooks/useWrappers", () => ({
+  useWrapperEligibility: () => ({ data: undefined, isLoading: false }),
+  useSuggestRouting: () => ({ data: undefined, isLoading: false }),
+  useEligibleAssets: () => ({
+    data: { items: wrapperState.eligibleItems },
+    isLoading: false,
+  }),
+}))
+
 describe("AddTransactionSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     radarState.stocks = []
     radarState.isLoading = false
+    wrapperState.eligibleItems = []
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       value: vi.fn(),
       writable: true,
@@ -267,6 +280,7 @@ describe("AddTransactionSheet", () => {
     expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("transactions.form.category")).not.toBeInTheDocument()
   })
+
 
   it("submits default category for new-to-radar ticker", () => {
     const queryClient = new QueryClient()

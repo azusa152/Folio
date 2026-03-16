@@ -1,15 +1,21 @@
 """Tax wrapper quota routes."""
 
+import tempfile
 from datetime import date
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+import httpx
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlmodel import Session
 
 from api.schemas.wrapper import (
     AllQuotasResponse,
     DeTaxResponse,
     EligibilityCheckResponse,
+    EligibleAssetsMetadataResponse,
+    EligibleAssetsRefreshResponse,
     EligibleAssetsResponse,
+    EligibleAssetsUploadResponse,
     RestorationForecastResponse,
     RoutingSuggestRequest,
     RoutingSuggestResponse,
@@ -17,6 +23,11 @@ from api.schemas.wrapper import (
 from application.portfolio.eligibility_service import (
     check_asset_eligibility,
     get_eligible_assets,
+    get_eligible_assets_metadata,
+    refresh_eligible_assets,
+)
+from application.portfolio.eligible_sync_service import (
+    sync_wrapper_from_official_source,
 )
 from application.portfolio.routing_service import (
     get_detax_suggestions,
@@ -26,10 +37,20 @@ from application.portfolio.wrapper_service import (
     get_all_wrapper_quotas,
     get_restoration_forecast,
 )
-from domain.constants import DEFAULT_USER_ID, NISA_RESTORATION_POLICY
+from domain.constants import (
+    DEFAULT_LANGUAGE,
+    DEFAULT_USER_ID,
+    ERROR_INVALID_INPUT,
+    NISA_RESTORATION_POLICY,
+)
+from i18n import t
 from infrastructure.database import get_session
 
 router = APIRouter(tags=["wrapper"])
+
+
+def _error_detail(error_code: str, message_key: str) -> dict[str, str]:
+    return {"error_code": error_code, "detail": t(message_key, lang=DEFAULT_LANGUAGE)}
 
 
 @router.get("/wrappers/quota", response_model=AllQuotasResponse)
@@ -113,6 +134,130 @@ def list_eligible_assets(
             }
             for asset in assets
         ],
+    }
+
+
+@router.get(
+    "/wrappers/{wrapper}/eligible-assets/metadata",
+    response_model=EligibleAssetsMetadataResponse,
+)
+def eligible_assets_metadata(
+    wrapper: str,
+    session: Session = Depends(get_session),
+):
+    metadata = get_eligible_assets_metadata(session=session, wrapper=wrapper)
+    return metadata
+
+
+@router.post(
+    "/wrappers/{wrapper}/eligible-assets/refresh",
+    response_model=EligibleAssetsRefreshResponse,
+)
+def refresh_eligible_assets_endpoint(
+    wrapper: str,
+    session: Session = Depends(get_session),
+):
+    normalized_wrapper = wrapper.strip().lower()
+    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                ERROR_INVALID_INPUT, "eligibility.refresh_unsupported_wrapper"
+            ),
+        )
+    try:
+        stats = sync_wrapper_from_official_source(session, normalized_wrapper)
+    except (ValueError, httpx.HTTPError):
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
+            ),
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
+            ),
+        ) from None
+    metadata = get_eligible_assets_metadata(session, normalized_wrapper)
+    return {
+        "wrapper": normalized_wrapper,
+        "source": "official_sync",
+        "stats": stats,
+        "metadata": metadata,
+    }
+
+
+@router.post(
+    "/wrappers/{wrapper}/eligible-assets/upload",
+    response_model=EligibleAssetsUploadResponse,
+)
+async def upload_eligible_assets(
+    wrapper: str,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    normalized_wrapper = wrapper.strip().lower()
+    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                ERROR_INVALID_INPUT, "eligibility.upload_unsupported_wrapper"
+            ),
+        )
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in {".csv", ".xlsx"}:
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                ERROR_INVALID_INPUT, "eligibility.upload_invalid_format"
+            ),
+        )
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=_error_detail(
+                ERROR_INVALID_INPUT, "eligibility.upload_file_too_large"
+            ),
+        )
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+    try:
+        try:
+            stats = refresh_eligible_assets(
+                session=session,
+                wrapper=normalized_wrapper,
+                file_path=tmp_path,
+                source="manual_upload",
+                autocommit=True,
+            )
+        except (ValueError, httpx.HTTPError):
+            raise HTTPException(
+                status_code=422,
+                detail=_error_detail(
+                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
+                ),
+            ) from None
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail=_error_detail(
+                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
+                ),
+            ) from None
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+    metadata = get_eligible_assets_metadata(session, normalized_wrapper)
+    return {
+        "wrapper": normalized_wrapper,
+        "filename": file.filename or "",
+        "source": "manual_upload",
+        "stats": stats,
+        "metadata": metadata,
     }
 
 

@@ -3,6 +3,8 @@ Domain — 集中管理所有常數與閾值。
 避免散落在各模組中的 magic numbers / magic strings。
 """
 
+import os
+
 # ---------------------------------------------------------------------------
 # Technical Indicator Parameters
 # ---------------------------------------------------------------------------
@@ -74,12 +76,12 @@ PREWARM_REFRESH_INTERVAL = 240  # 4 minutes
 # ---------------------------------------------------------------------------
 # Persistent Data Directory — root for all app-written state files
 # ---------------------------------------------------------------------------
-DATA_DIR = "/app/data"
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 
 # ---------------------------------------------------------------------------
 # Disk Cache (L2) — 持久化快取，容器重啟後仍可使用
 # ---------------------------------------------------------------------------
-DISK_CACHE_DIR = "/app/data/yf_cache"
+DISK_CACHE_DIR = os.getenv("DISK_CACHE_DIR", f"{DATA_DIR}/yf_cache")
 DISK_CACHE_SIZE_LIMIT = 100 * 1024 * 1024  # 100 MB
 
 # Disk Cache TTLs（比 L1 更長，作為冷啟動 fallback）

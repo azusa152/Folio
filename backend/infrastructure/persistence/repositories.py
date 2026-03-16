@@ -20,6 +20,7 @@ from domain.entities import (
     Account,
     ContributionLedgerEntry,
     EligibleAsset,
+    EligibleAssetSyncState,
     FXWatchConfig,
     Guru,
     GuruFiling,
@@ -1633,6 +1634,7 @@ def upsert_eligible_assets(
     rows: list[dict],
     *,
     broker: str | None = None,
+    source: str = "unknown",
     autocommit: bool = True,
 ) -> dict[str, int]:
     """Idempotent bulk upsert and deactivate-missing for eligible assets."""
@@ -1709,10 +1711,54 @@ def upsert_eligible_assets(
     else:
         session.flush()
 
+    if not broker:
+        sync_state = session.get(EligibleAssetSyncState, wrapper)
+        now = datetime.now(UTC)
+        if sync_state is None:
+            session.add(
+                EligibleAssetSyncState(
+                    tax_wrapper=wrapper,
+                    source=source,
+                    last_refreshed_at=now,
+                    updated_at=now,
+                )
+            )
+        else:
+            sync_state.source = source
+            sync_state.last_refreshed_at = now
+            sync_state.updated_at = now
+            session.add(sync_state)
+        if autocommit:
+            session.commit()
+        else:
+            session.flush()
+
     return {
         "added": added,
         "updated": updated,
         "deactivated": deactivated,
+    }
+
+
+def get_eligible_assets_metadata(
+    session: Session,
+    wrapper: str,
+) -> dict[str, object]:
+    """Get active count and sync metadata for one wrapper."""
+    normalized_wrapper = wrapper.strip().lower()
+    count_stmt = select(func.count()).where(
+        EligibleAsset.tax_wrapper == normalized_wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    active_count = int(session.exec(count_stmt).first() or 0)
+    sync_state = session.get(EligibleAssetSyncState, normalized_wrapper)
+    last_refreshed_at = sync_state.last_refreshed_at if sync_state else None
+    source = sync_state.source if sync_state else "unknown"
+    return {
+        "wrapper": normalized_wrapper,
+        "count": active_count,
+        "last_refreshed_at": last_refreshed_at,
+        "source": source,
     }
 
 

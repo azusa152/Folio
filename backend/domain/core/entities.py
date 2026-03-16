@@ -333,6 +333,21 @@ class EligibleAsset(SQLModel, table=True):
     )
 
 
+class EligibleAssetSyncState(SQLModel, table=True):
+    """NISA対象資産マスターの同期状態（ラッパー単位）。"""
+
+    tax_wrapper: str = Field(primary_key=True, description="対象ラッパー種別")
+    source: str = Field(default="unknown", description="更新ソース")
+    last_refreshed_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="最終更新日時",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
+
+
 class UserTelegramSettings(SQLModel, table=True):
     """使用者的 Telegram 通知設定（支援自訂 Bot）。"""
 

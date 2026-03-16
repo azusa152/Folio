@@ -64,17 +64,26 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     # 種入系統預設大師（冪等）
     from application.guru.guru_service import seed_default_gurus
     from application.portfolio.account_service import ensure_default_account
+    from application.portfolio.eligibility_service import (
+        seed_default_eligible_assets_if_empty,
+    )
+    from application.portfolio.eligible_sync_service import start_eligible_sync_loop
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
         ensure_default_account(_session)
+        seeded = seed_default_eligible_assets_if_empty(_session)
+        if seeded:
+            logger.info("NISA eligible asset snapshots seeded: %s", seeded)
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.scan.prewarm_service import prewarm_all_caches
 
     threading.Thread(target=prewarm_all_caches, daemon=True).start()
     logger.info("背景快取預熱已啟動。")
+    start_eligible_sync_loop()
+    logger.info("NISA eligible-list 週期同步已啟動。")
 
     yield
     logger.info("Folio 後端關閉中...")

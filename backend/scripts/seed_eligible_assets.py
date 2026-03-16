@@ -33,8 +33,9 @@ def run(
         stats = refresh_eligible_assets(
             session=session,
             wrapper=wrapper,
-            csv_path=csv_path,
+            file_path=csv_path,
             broker=broker,
+            source="manual_upload",
             autocommit=not dry_run,
         )
         if dry_run:

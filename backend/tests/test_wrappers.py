@@ -1,5 +1,6 @@
 """Contract tests for wrapper quota APIs."""
 
+import httpx
 from fastapi.testclient import TestClient
 
 
@@ -166,6 +167,166 @@ def test_wrapper_eligible_assets_should_return_list_shape(client: TestClient):
     assert payload["wrapper"] == "nisa_tsumitate"
     assert isinstance(payload["count"], int)
     assert isinstance(payload["items"], list)
+
+
+def test_wrapper_eligible_assets_upload_should_accept_csv(client: TestClient):
+    csv_content = (
+        b"ticker,fund_name,asset_type,trust_fee_pct\n"
+        b"03311187,eMAXIS Slim S&P500,mutual_fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_content, "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+    payload = upload_resp.json()
+    assert payload["wrapper"] == "nisa_tsumitate"
+    assert payload["source"] == "manual_upload"
+    assert payload["stats"]["added"] >= 1
+
+
+def test_wrapper_eligible_assets_metadata_should_return_sync_info(client: TestClient):
+    csv_content = (
+        b"ticker,fund_name,asset_type,trust_fee_pct\n"
+        b"03311187,eMAXIS Slim S&P500,mutual_fund,0.0814\n"
+    )
+    client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_content, "text/csv")},
+    )
+
+    metadata_resp = client.get("/wrappers/nisa_tsumitate/eligible-assets/metadata")
+    assert metadata_resp.status_code == 200
+    payload = metadata_resp.json()
+    assert payload["wrapper"] == "nisa_tsumitate"
+    assert payload["count"] >= 1
+    assert payload["source"] in {
+        "manual_upload",
+        "csv_seed",
+        "official_sync",
+        "unknown",
+    }
+
+
+def test_wrapper_eligible_assets_refresh_should_return_stats(
+    client: TestClient, monkeypatch
+):
+    from api.routes import wrapper_routes
+
+    def _fake_sync(session, wrapper: str):
+        return {"added": 1, "updated": 0, "deactivated": 0}
+
+    monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
+    refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
+    assert refresh_resp.status_code == 200
+    payload = refresh_resp.json()
+    assert payload["wrapper"] == "nisa_growth"
+    assert payload["source"] == "official_sync"
+    assert payload["stats"]["added"] == 1
+
+
+def test_wrapper_eligible_assets_upload_should_return_structured_error_on_invalid_extension(
+    client: TestClient,
+):
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.txt", b"bad", "text/plain")},
+    )
+    assert upload_resp.status_code == 422
+    detail = upload_resp.json()["detail"]
+    assert detail["error_code"] == "INVALID_INPUT"
+
+
+def test_wrapper_eligible_assets_upload_should_reject_unsupported_wrapper(
+    client: TestClient,
+):
+    upload_resp = client.post(
+        "/wrappers/tokutei/eligible-assets/upload",
+        files={"file": ("eligible.csv", b"ticker,fund_name\n", "text/csv")},
+    )
+    assert upload_resp.status_code == 422
+    detail = upload_resp.json()["detail"]
+    assert detail["error_code"] == "INVALID_INPUT"
+
+
+def test_wrapper_eligible_assets_upload_should_return_structured_error_on_empty_source(
+    client: TestClient,
+):
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", b"ticker,fund_name\n", "text/csv")},
+    )
+    assert upload_resp.status_code == 422
+    detail = upload_resp.json()["detail"]
+    assert detail["error_code"] == "ELIGIBILITY_UPLOAD_FAILED"
+
+
+def test_wrapper_eligible_assets_refresh_should_return_structured_error_on_parse_failure(
+    client: TestClient,
+    monkeypatch,
+):
+    from api.routes import wrapper_routes
+
+    def _fake_sync(_session, _wrapper: str):
+        raise ValueError("empty parse")
+
+    monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
+    refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
+    assert refresh_resp.status_code == 422
+    detail = refresh_resp.json()["detail"]
+    assert detail["error_code"] == "ELIGIBILITY_REFRESH_FAILED"
+
+
+def test_wrapper_eligible_assets_refresh_should_map_http_errors_to_structured_error(
+    client: TestClient,
+    monkeypatch,
+):
+    from api.routes import wrapper_routes
+
+    def _fake_sync(_session, _wrapper: str):
+        request = httpx.Request("GET", "https://example.com/source.xlsx")
+        raise httpx.RequestError("network failed", request=request)
+
+    monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
+    refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
+    assert refresh_resp.status_code == 422
+    detail = refresh_resp.json()["detail"]
+    assert detail["error_code"] == "ELIGIBILITY_REFRESH_FAILED"
+
+
+def test_wrapper_eligible_assets_refresh_should_map_runtime_errors_to_structured_error(
+    client: TestClient,
+    monkeypatch,
+):
+    from api.routes import wrapper_routes
+
+    def _fake_sync(_session, _wrapper: str):
+        raise RuntimeError("unexpected parser crash")
+
+    monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
+    refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
+    assert refresh_resp.status_code == 422
+    detail = refresh_resp.json()["detail"]
+    assert detail["error_code"] == "ELIGIBILITY_REFRESH_FAILED"
+
+
+def test_wrapper_eligible_assets_upload_should_map_runtime_errors_to_structured_error(
+    client: TestClient,
+    monkeypatch,
+):
+    from api.routes import wrapper_routes
+
+    def _fake_refresh(*_args, **_kwargs):
+        raise RuntimeError("unexpected parser crash")
+
+    monkeypatch.setattr(wrapper_routes, "refresh_eligible_assets", _fake_refresh)
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", b"ticker,fund_name\n", "text/csv")},
+    )
+    assert upload_resp.status_code == 422
+    detail = upload_resp.json()["detail"]
+    assert detail["error_code"] == "ELIGIBILITY_UPLOAD_FAILED"
 
 
 def test_wrappers_suggest_routing_should_split_growth_and_tokutei(client: TestClient):

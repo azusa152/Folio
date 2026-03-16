@@ -7,6 +7,12 @@ export type RestorationForecastResponse = components["schemas"]["RestorationFore
 export type EligibilityCheckResponse = components["schemas"]["EligibilityCheckResponse"]
 export type EligibleAssetItem = components["schemas"]["EligibleAssetItem"]
 export type EligibleAssetsResponse = components["schemas"]["EligibleAssetsResponse"]
+export type EligibleAssetsMetadataResponse =
+  components["schemas"]["EligibleAssetsMetadataResponse"]
+export type EligibleAssetsRefreshStats = components["schemas"]["EligibleAssetsRefreshStats"]
+export type EligibleAssetsRefreshResponse =
+  components["schemas"]["EligibleAssetsRefreshResponse"]
+export type EligibleAssetsUploadResponse = components["schemas"]["EligibleAssetsUploadResponse"]
 export type RoutingSuggestionItem = components["schemas"]["RoutingSuggestionItem"]
 export type RoutingSuggestRequest = components["schemas"]["RoutingSuggestRequest"]
 export type RoutingSuggestResponse = components["schemas"]["RoutingSuggestResponse"]

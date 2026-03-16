@@ -247,7 +247,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry
+.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -278,6 +278,9 @@ purge-legacy: .venv-check ## Purge orphaned/zero-qty legacy holding data (run af
 
 purge-legacy-dry: .venv-check ## Dry-run purge (preview without commit)
 	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings --dry-run
+
+refresh-eligible: .venv-check ## Refresh NISA eligible assets from official sources
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs DATA_DIR=/tmp/folio_data uv run python -m scripts.refresh_eligible_assets --wrapper all
 
 # ---------------------------------------------------------------------------
 #  Utilities

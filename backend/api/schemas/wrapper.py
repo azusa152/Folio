@@ -1,6 +1,6 @@
 """Tax wrapper API schemas."""
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -57,6 +57,34 @@ class EligibleAssetsResponse(BaseModel):
     wrapper: str
     count: int
     items: list[EligibleAssetItem]
+
+
+class EligibleAssetsMetadataResponse(BaseModel):
+    wrapper: str
+    count: int
+    last_refreshed_at: datetime | None = None
+    source: str
+
+
+class EligibleAssetsRefreshStats(BaseModel):
+    added: int
+    updated: int
+    deactivated: int
+
+
+class EligibleAssetsRefreshResponse(BaseModel):
+    wrapper: str
+    source: str
+    stats: EligibleAssetsRefreshStats
+    metadata: EligibleAssetsMetadataResponse
+
+
+class EligibleAssetsUploadResponse(BaseModel):
+    wrapper: str
+    filename: str
+    source: str
+    stats: EligibleAssetsRefreshStats
+    metadata: EligibleAssetsMetadataResponse
 
 
 class RoutingSuggestionItem(BaseModel):

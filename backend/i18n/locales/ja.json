@@ -405,7 +405,13 @@
     "trust_period_too_short": "信託期間が20年未満です。",
     "not_in_ideco_lineup": "この銘柄はご利用証券会社のiDeCo商品ラインナップにありません。",
     "invalid_asset_type": "この資産タイプはNISA成長投資枠の対象外です。",
-    "try_instead": "{{wrapper}} をご利用ください。"
+    "try_instead": "{{wrapper}} をご利用ください。",
+    "refresh_unsupported_wrapper": "公式リスト更新はNISA口座のみ対応しています。",
+    "upload_unsupported_wrapper": "対象資産リストのアップロードはNISA口座のみ対応しています。",
+    "refresh_failed": "ソースデータを安全に解析できず、更新に失敗しました。",
+    "upload_invalid_format": "アップロード可能な形式は .csv と .xlsx のみです。",
+    "upload_file_too_large": "ファイルサイズが大きすぎます（最大10MB）。",
+    "upload_failed": "ソースデータを安全に解析できず、アップロード処理に失敗しました。"
   },
   "routing": {
     "nisa_growth_tax_free": "NISA成長投資枠で買付（運用益非課税）",

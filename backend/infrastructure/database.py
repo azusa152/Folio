@@ -165,6 +165,15 @@ def _run_migrations() -> None:
         "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
+        # Eligible asset sync metadata.
+        (
+            "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("
+            "tax_wrapper VARCHAR PRIMARY KEY, "
+            "source VARCHAR NOT NULL DEFAULT 'unknown', "
+            "last_refreshed_at DATETIME NOT NULL, "
+            "updated_at DATETIME NOT NULL"
+            ");"
+        ),
     ]
 
     with engine.connect() as conn:

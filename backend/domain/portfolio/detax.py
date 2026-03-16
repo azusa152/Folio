@@ -10,6 +10,13 @@ from domain.core.constants import TOKUTEI_TAX_RATE
 DETAX_MIN_BENEFIT_JPY = 4_000
 
 
+def _holding_loss_amount(holding: HoldingLike) -> float:
+    # Caller guarantees both fields are present for filtered holdings.
+    assert holding.cost_basis is not None
+    assert holding.current_price is not None
+    return (holding.cost_basis - holding.current_price) * holding.quantity
+
+
 class HoldingLike(Protocol):
     ticker: str
     account_id: int | None
@@ -48,15 +55,14 @@ def find_detax_opportunities(
         and h.current_price is not None
         and h.current_price < h.cost_basis
     ]
-    losers.sort(
-        key=lambda h: (h.cost_basis - h.current_price) * h.quantity,
-        reverse=True,
-    )
+    losers.sort(key=_holding_loss_amount, reverse=True)
 
     for holding in losers:
         if remaining_gains <= 0:
             break
 
+        assert holding.cost_basis is not None
+        assert holding.current_price is not None
         loss_per_unit = float(holding.cost_basis - holding.current_price)
         total_loss = loss_per_unit * float(holding.quantity)
         harvestable = min(total_loss, remaining_gains)

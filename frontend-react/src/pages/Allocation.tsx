@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
+import {
+  useEligibleAssetsMetadata,
+  useRefreshEligibleAssets,
+  useUploadEligibleAssets,
+} from "@/api/hooks/useWrappers"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
@@ -50,11 +56,22 @@ export default function Allocation() {
   const [transactionDefaultAccountId, setTransactionDefaultAccountId] = useState<number | undefined>(undefined)
   const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionSheetType | undefined>(undefined)
   const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(undefined)
+  const [uploadWrapper, setUploadWrapper] = useState<"nisa_tsumitate" | "nisa_growth">(
+    "nisa_tsumitate",
+  )
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
   const handledDashboardActionRef = useRef<string | null>(null)
 
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
   const { data: accounts, isLoading: accountsLoading } = useAccounts()
+  const hasWrappedAccounts = (accounts ?? []).some((account) => !!account.tax_wrapper)
+  const tsumitateMetaQuery = useEligibleAssetsMetadata("nisa_tsumitate", {
+    enabled: hasWrappedAccounts,
+  })
+  const growthMetaQuery = useEligibleAssetsMetadata("nisa_growth", { enabled: hasWrappedAccounts })
+  const refreshEligibleMutation = useRefreshEligibleAssets()
+  const uploadEligibleMutation = useUploadEligibleAssets()
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
@@ -147,7 +164,6 @@ export default function Allocation() {
 
   const hasSetup = holdings.length > 0
   const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
-  const hasWrappedAccounts = (accounts ?? []).some((account) => !!account.tax_wrapper)
   const accountByWrapper = new Map<string, { id: number; currency: string }>()
   for (const account of accounts ?? []) {
     if (account.id == null) continue
@@ -157,6 +173,33 @@ export default function Allocation() {
       id: account.id,
       currency: (account.currency || "USD").toUpperCase(),
     })
+  }
+
+  const handleRefreshEligibleData = (wrapper: "nisa_tsumitate" | "nisa_growth") => {
+    refreshEligibleMutation.mutate(wrapper, {
+      onSuccess: () => {
+        toast.success(t("eligibility.refresh_success"))
+      },
+      onError: () => {
+        toast.error(t("eligibility.refresh_failed"))
+      },
+    })
+  }
+
+  const handleUploadEligibleData = () => {
+    if (!uploadFile) return
+    uploadEligibleMutation.mutate(
+      { wrapper: uploadWrapper, file: uploadFile },
+      {
+        onSuccess: () => {
+          toast.success(t("eligibility.upload_success"))
+          setUploadFile(null)
+        },
+        onError: () => {
+          toast.error(t("eligibility.upload_failed"))
+        },
+      },
+    )
   }
 
   return (
@@ -170,6 +213,18 @@ export default function Allocation() {
             <p className="text-xs text-muted-foreground inline-flex items-center gap-1 mt-0.5">
               <Clock3 className="h-3.5 w-3.5" />
               {t("common.last_updated_relative", { time: updatedAgo })}
+            </p>
+          ) : null}
+          {hasWrappedAccounts ? (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t("eligibility.last_updated_compact", {
+                tsumitate: tsumitateMetaQuery.data?.last_refreshed_at
+                  ? new Date(tsumitateMetaQuery.data.last_refreshed_at).toLocaleDateString()
+                  : "—",
+                growth: growthMetaQuery.data?.last_refreshed_at
+                  ? new Date(growthMetaQuery.data.last_refreshed_at).toLocaleDateString()
+                  : "—",
+              })}
             </p>
           ) : null}
         </div>
@@ -380,6 +435,95 @@ export default function Allocation() {
               <TerminologySettings />
             </div>
           </section>
+
+          {hasWrappedAccounts ? (
+            <section className="space-y-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t("eligibility.data_management_title")}
+              </p>
+              <div className="rounded-md border border-border p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t("eligibility.data_management_hint")}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="rounded border border-border p-2">
+                    <p className="font-medium">{t("wrapper.nisa_tsumitate")}</p>
+                    <p className="text-muted-foreground">
+                      {t("eligibility.data_count_label", {
+                        count: tsumitateMetaQuery.data?.count ?? 0,
+                      })}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {t("eligibility.data_last_updated_label", {
+                        date: tsumitateMetaQuery.data?.last_refreshed_at
+                          ? new Date(tsumitateMetaQuery.data.last_refreshed_at).toLocaleString()
+                          : "—",
+                      })}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 text-xs"
+                      disabled={refreshEligibleMutation.isPending}
+                      onClick={() => handleRefreshEligibleData("nisa_tsumitate")}
+                    >
+                      {t("eligibility.refresh_now")}
+                    </Button>
+                  </div>
+                  <div className="rounded border border-border p-2">
+                    <p className="font-medium">{t("wrapper.nisa_growth")}</p>
+                    <p className="text-muted-foreground">
+                      {t("eligibility.data_count_label", {
+                        count: growthMetaQuery.data?.count ?? 0,
+                      })}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {t("eligibility.data_last_updated_label", {
+                        date: growthMetaQuery.data?.last_refreshed_at
+                          ? new Date(growthMetaQuery.data.last_refreshed_at).toLocaleString()
+                          : "—",
+                      })}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 text-xs"
+                      disabled={refreshEligibleMutation.isPending}
+                      onClick={() => handleRefreshEligibleData("nisa_growth")}
+                    >
+                      {t("eligibility.refresh_now")}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2 border-t border-border pt-3">
+                  <p className="text-xs font-medium">{t("eligibility.upload_title")}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={uploadWrapper}
+                      onChange={(e) => setUploadWrapper(e.target.value as "nisa_tsumitate" | "nisa_growth")}
+                      className="text-xs border border-border rounded px-2 py-2 min-h-[36px] bg-background"
+                    >
+                      <option value="nisa_tsumitate">{t("wrapper.nisa_tsumitate")}</option>
+                      <option value="nisa_growth">{t("wrapper.nisa_growth")}</option>
+                    </select>
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                      className="text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      disabled={!uploadFile || uploadEligibleMutation.isPending}
+                      onClick={handleUploadEligibleData}
+                    >
+                      {t("eligibility.upload_button")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="space-y-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
