@@ -6,6 +6,7 @@ Infrastructure — Repository Pattern。
 """
 
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import or_
 from sqlmodel import Session, func, select
@@ -1638,20 +1639,20 @@ def upsert_eligible_assets(
     autocommit: bool = True,
 ) -> dict[str, int]:
     """Idempotent bulk upsert and deactivate-missing for eligible assets."""
-    normalized_rows = []
+    # Deduplicate by ticker before processing; last occurrence wins.
+    deduped: dict[str, dict[str, Any]] = {}
     for row in rows:
         ticker = str(row.get("ticker", "")).strip().upper()
         if not ticker:
             continue
-        normalized_rows.append(
-            {
-                "ticker": ticker,
-                "fund_name": str(row.get("fund_name", "")).strip(),
-                "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
-                or "mutual_fund",
-                "trust_fee_pct": row.get("trust_fee_pct"),
-            }
-        )
+        deduped[ticker] = {
+            "ticker": ticker,
+            "fund_name": str(row.get("fund_name", "")).strip(),
+            "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
+            or "mutual_fund",
+            "trust_fee_pct": row.get("trust_fee_pct"),
+        }
+    normalized_rows = list(deduped.values())
 
     active_tickers = {row["ticker"] for row in normalized_rows}
     existing = session.exec(

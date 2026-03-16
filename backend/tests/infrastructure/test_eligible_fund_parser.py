@@ -61,6 +61,67 @@ def test_parse_tsumitate_xlsx_should_extract_rows(tmp_path: Path):
     assert rows[0]["fund_name"] == "SBI・iシェアーズ・TOPIXインデックス・ファンド"
 
 
+def test_parse_tsumitate_xlsx_multi_sheet_different_layouts(tmp_path: Path):
+    xlsx_path = tmp_path / "tsumitate-multi-sheet.xlsx"
+    wb = Workbook()
+
+    index_sheet = wb.active
+    assert index_sheet is not None
+    index_sheet.title = "指定インデックス投資信託"
+    index_sheet.append([46010])
+    index_sheet.append(["金融庁"])
+    index_sheet.append(["つみたて投資枠対象商品届出一覧（対象資産別）"])
+    index_sheet.append(["【指定インデックス投資信託】"])
+    index_sheet.append(
+        [
+            "単一指数・複数指数の区分(※1)",
+            "国内型・海外型の区分(※2)",
+            "指定指数の名称又は指定指数の数(※3)",
+            "ファンド名称(※4)",
+            "運用会社",
+        ]
+    )
+    index_sheet.append(
+        [
+            "単一指数（株式型）",
+            "国内型",
+            "TOPIX",
+            "SBI・iシェアーズ・TOPIXインデックス・ファンド",
+            "SBIアセットマネジメント",
+        ]
+    )
+
+    active_sheet = wb.create_sheet("指定インデックス投資信託以外")
+    active_sheet.append([46010])
+    active_sheet.append(["金融庁"])
+    active_sheet.append(["つみたて投資枠対象商品届出一覧（対象資産別）"])
+    active_sheet.append(["【指定インデックス投資信託以外】"])
+    active_sheet.append(
+        [
+            "国内型・海外型の区分(※1)",
+            "投資の対象としていた資産の区分(※2)",
+            "ファンド名称(※3)",
+            "運用会社",
+        ]
+    )
+    active_sheet.append(
+        [
+            "国内型",
+            "株式",
+            "年金積立 Jグロース",
+            "レオス・キャピタルワークス㈱",
+        ]
+    )
+    wb.save(xlsx_path)
+
+    rows = parse_tsumitate_xlsx(xlsx_path)
+    tickers = [row["ticker"] for row in rows]
+    assert "SBI・iシェアーズ・TOPIXインデックス・ファンド" in tickers
+    assert "年金積立 Jグロース" in tickers
+    assert "レオス・キャピタルワークス㈱" not in tickers
+    assert len(tickers) == len(set(tickers))
+
+
 def test_parse_growth_xlsx_should_extract_rows(tmp_path: Path):
     xlsx_path = tmp_path / "growth.xlsx"
     wb = Workbook()

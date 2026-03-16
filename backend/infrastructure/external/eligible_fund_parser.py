@@ -94,11 +94,21 @@ def parse_eligible_assets_csv(
 
 
 def _iter_rows(path: str | Path) -> list[list[Any]]:
+    """Return all rows from all sheets flattened (used for single-sheet files)."""
     wb = load_workbook(filename=path, data_only=True, read_only=True)
     rows: list[list[Any]] = []
     for sheet in wb.worksheets:
         rows.extend(list(values) for values in sheet.iter_rows(values_only=True))
     return rows
+
+
+def _iter_sheets(path: str | Path) -> list[list[list[Any]]]:
+    """Return rows per sheet as a list of row-lists (one entry per sheet)."""
+    wb = load_workbook(filename=path, data_only=True, read_only=True)
+    return [
+        [list(row) for row in sheet.iter_rows(values_only=True)]
+        for sheet in wb.worksheets
+    ]
 
 
 def _find_header_index(
@@ -130,24 +140,21 @@ def _normalize_growth_listed_code(raw_code: str) -> str:
     return code
 
 
-def parse_tsumitate_xlsx(path: str | Path) -> list[dict[str, Any]]:
-    """Parse FSA Tsumitate XLSX into normalized eligible-asset rows.
-
-    Note: FSA source does not expose a machine ticker/fund code column.
-    We store `fund_name` as ticker surrogate to keep list/picker usable.
-    """
-    rows = _iter_rows(path)
-    header_idx = _find_header_index(rows, ("ファンド名称", "運用会社"))
+def _parse_tsumitate_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
+    """Parse one sheet from an FSA Tsumitate XLSX into normalized rows."""
+    header_idx = _find_header_index(sheet_rows, ("ファンド名称", "運用会社"))
     if header_idx is None:
         return []
-    header = [_normalize_key(str(v)) if v is not None else "" for v in rows[header_idx]]
+    header = [
+        _normalize_key(str(v)) if v is not None else "" for v in sheet_rows[header_idx]
+    ]
     try:
         name_col_idx = next(i for i, h in enumerate(header) if "ファンド名称" in h)
     except StopIteration:
         return []
 
     parsed: list[dict[str, Any]] = []
-    for row in rows[header_idx + 1 :]:
+    for row in sheet_rows[header_idx + 1 :]:
         if len(row) <= name_col_idx:
             continue
         fund_name = str(row[name_col_idx] or "").strip()
@@ -164,13 +171,32 @@ def parse_tsumitate_xlsx(path: str | Path) -> list[dict[str, Any]]:
     return parsed
 
 
-def parse_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
-    """Parse Growth NISA XLSX into normalized eligible-asset rows."""
-    rows = _iter_rows(path)
-    header_idx = _find_header_index(rows, ("ファンド名称",))
+def parse_tsumitate_xlsx(path: str | Path) -> list[dict[str, Any]]:
+    """Parse FSA Tsumitate XLSX into normalized eligible-asset rows.
+
+    The FSA file contains multiple sheets (index funds, active funds, ETFs), each
+    with its own header row and column layout.  We parse every sheet independently
+    so the correct fund-name column is detected per sheet.
+
+    Note: FSA source does not expose a machine ticker/fund code column.
+    We store `fund_name` as ticker surrogate to keep list/picker usable.
+    """
+    all_sheets = _iter_sheets(path)
+    seen: dict[str, dict[str, Any]] = {}
+    for sheet_rows in all_sheets:
+        for row in _parse_tsumitate_sheet(sheet_rows):
+            seen[row["ticker"]] = row
+    return list(seen.values())
+
+
+def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
+    """Parse one sheet from a Growth NISA XLSX into normalized rows."""
+    header_idx = _find_header_index(sheet_rows, ("ファンド名称",))
     if header_idx is None:
         return []
-    header = [_normalize_key(str(v)) if v is not None else "" for v in rows[header_idx]]
+    header = [
+        _normalize_key(str(v)) if v is not None else "" for v in sheet_rows[header_idx]
+    ]
 
     def _index_of(keyword: str) -> int | None:
         for i, h in enumerate(header):
@@ -188,7 +214,7 @@ def parse_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
         return []
 
     parsed: list[dict[str, Any]] = []
-    for row in rows[header_idx + 1 :]:
+    for row in sheet_rows[header_idx + 1 :]:
         if len(row) <= max(name_idx, code_idx):
             continue
         fund_name = str(row[name_idx] or "").strip()
@@ -215,6 +241,16 @@ def parse_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
             }
         )
     return parsed
+
+
+def parse_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
+    """Parse Growth NISA XLSX into normalized eligible-asset rows."""
+    all_sheets = _iter_sheets(path)
+    seen: dict[str, dict[str, Any]] = {}
+    for sheet_rows in all_sheets:
+        for row in _parse_growth_sheet(sheet_rows):
+            seen[row["ticker"]] = row
+    return list(seen.values())
 
 
 def detect_and_parse(
