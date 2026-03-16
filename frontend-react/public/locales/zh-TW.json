@@ -8,7 +8,7 @@
     "radar": "投資雷達",
     "backtest": "訊號回測",
     "allocation": "個人資產配置",
-    "fx_watch": "外匯監控",
+    "fx_watch": "外匯總覽",
     "smart_money": "大師足跡"
   },
   "common": {
@@ -43,7 +43,13 @@
     "error_render": "發生錯誤",
     "retry": "重試",
     "offline_banner": "目前離線中，資料可能不是最新。",
-    "last_updated_relative": "上次更新 {{time}}"
+    "last_updated_relative": "上次更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 股",
+      "units": "{{quantity}} 單位",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "快速命令面板",
@@ -130,7 +136,7 @@
       "other": "其他"
     },
     "account_type": {
-      "brokerage": "券商帳戶",
+      "brokerage": "投資帳戶",
       "retirement": "退休帳戶（IRA/401k）",
       "savings": "儲蓄帳戶",
       "crypto": "加密貨幣交易所",
@@ -368,7 +374,13 @@
     },
     "accounts_overview": {
       "title": "帳戶總覽",
+      "header_total_label": "投資組合總額",
       "view_all": "查看全部帳戶",
+      "distribution_label": "依帳戶分布",
+      "distribution_help": "顯示你的投資組合總額在各帳戶之間的占比。",
+      "distribution_help_aria": "說明帳戶分布",
+      "legend_more": "另外 {{count}} 個",
+      "toggle_details": "切換帳戶詳細資訊",
       "positions_count": "{{count}} 個部位",
       "cash_label": "現金",
       "no_cash": "無現金",
@@ -381,7 +393,22 @@
       "empty_cta": "建立帳戶",
       "error_title": "無法載入帳戶摘要",
       "error_description": "請重新整理後再試一次。",
-      "stacked_bar_aria": "各帳戶投資組合金額分佈"
+      "stacked_bar_aria": "各帳戶投資組合金額分佈",
+      "value_breakdown_label": "資產組成",
+      "stocks_category": "股票",
+      "cash_category": "現金",
+      "crypto_category": "加密資產",
+      "bonds_category": "債券",
+      "commodities_category": "商品",
+      "other_category": "其他資產",
+      "today_change": "今日",
+      "today_change_estimated": "依可用市場資料估算（覆蓋率 {{coverage}}%）",
+      "today_change_unavailable": "暫無資料",
+      "top_positions_label": "持倉",
+      "more_positions": "還有 {{count}} 個持倉",
+      "no_positions": "目前沒有持倉",
+      "unrealized_pnl": "未實現損益",
+      "view_positions": "查看全部"
     },
     "show_advanced": "顯示深入分析",
     "hide_advanced": "隱藏深入分析"
@@ -673,12 +700,12 @@
     "caption": "部位管理 · 再平衡分析 · Telegram 通知",
     "sop": {
       "title": "📖 個人資產配置：使用說明書",
-      "content": "### 頁面總覽\\n\\n資產配置頁面已改為**帳本驅動（Ledger-driven）**：交易是唯一事實來源，持倉表是計算後的部位視圖。\\n\\n---\\n\\n### 核心流程\\n\\n1. 設定目標配置\\n2. 建立或選擇帳戶\\n3. 記錄交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n部位會依交易自動計算。\\n\\n---\\n\\n### 部位建立與調整\\n\\n- 新增初始部位會建立 **OPENING_BALANCE** 交易。\\n- 持倉表為**唯讀部位視圖**。\\n- 需要調整數量或現金時，請使用**記錄交易**。\\n\\n---\\n\\n### 分析分頁\\n\\n再平衡、匯率曝險、提款、壓力測試都以帳本推導出的部位為基礎。\\n\\n### CSV 匯入\\n\\nCSV/TSV 匯入會逐列建立 `OPENING_BALANCE` 交易，再由帳本重建部位。"
+      "content": "### 頁面總覽\\n\\n資產配置頁面現在會透過交易自動追蹤你的資產。交易是主要依據，持倉表則是根據交易計算出的目前持有狀態。\\n\\n---\\n\\n### 核心流程\\n\\n1. 設定目標配置\\n2. 建立或選擇帳戶\\n3. 記錄交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n每次記錄交易後，持倉都會自動更新。\\n\\n---\\n\\n### 部位建立與調整\\n\\n- 新增初始部位會建立 **OPENING_BALANCE** 交易。\\n- 持倉表是**目前持有狀態的唯讀檢視**。\\n- 若要調整數量或現金，請使用**記錄交易**（不要直接改持倉表）。\\n\\n---\\n\\n### 分析分頁\\n\\n再平衡、匯率曝險、提款、壓力測試都會使用交易紀錄計算出的持倉資料。\\n\\n### CSV 匯入\\n\\nCSV/TSV 匯入會逐列建立 `OPENING_BALANCE` 交易，再依這些交易重建持倉。"
     },
     "sop_csv_note": "CSV/TSV 匯入會為每一列建立 OPENING_BALANCE 交易，支援欄位對應與預覽後再匯入。",
     "quick_start": {
       "title": "快速上手：3 步驟完成開戶到下單",
-      "step1": "在「帳戶」分頁建立券商帳戶。",
+      "step1": "在「帳戶」分頁建立投資帳戶。",
       "step2": "用帳戶卡片的「存入資金」或在交易分頁用 DEPOSIT 存入現金。",
       "step3": "以同一帳戶記錄 BUY 交易，系統會自動更新現金與股票部位。"
     },
@@ -708,7 +735,7 @@
       "import_success": "CSV 匯入完成。",
       "import_error": "CSV 匯入失敗，請檢查欄位對應與錯誤列。",
       "replace_mode": "覆蓋既有持倉",
-      "replace_mode_warning": "此操作會先清空目前持倉，再匯入新資料。",
+      "replace_mode_warning": "此操作會刪除目前持倉，再以匯入資料取代，且無法復原。",
       "step_select": "1. 選擇檔案",
       "step_map": "2. 欄位對應",
       "step_preview": "3. 預覽與匯入",
@@ -732,8 +759,8 @@
       "mode_append": "追加（不刪除既有資料）",
       "select_account_for_replace": "使用「覆蓋帳戶」模式前請先選擇帳戶。",
       "confirm_destructive_required": "使用覆蓋模式匯入前，請先勾選確認框。",
-      "confirm_replace_all": "我了解此操作將刪除所有既有持倉並替換。",
-      "confirm_replace_account": "我了解此操作將刪除所選帳戶的所有持倉並替換。",
+      "confirm_replace_all": "我了解此操作將刪除所有既有持倉，並以本次匯入資料取代，且無法復原。",
+      "confirm_replace_account": "我了解此操作將刪除所選帳戶的所有持倉，並以本次匯入資料取代，且無法復原。",
       "parse_warnings": "解析警告：{{count}}",
       "parse_warnings_title": "CSV 解析警告",
       "parse_warning_item": "第 {{row}} 列（{{code}}）：{{message}}"
@@ -842,7 +869,13 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
+      "cost_basis": "成本基礎",
+      "cost_tooltip": "你當初買進這項投資所花的總金額。",
       "change_pct": "漲跌%",
+      "today": "今日變動",
+      "today_tooltip": "相較前一個收盤價的變動。",
+      "total_return": "總報酬",
+      "total_return_tooltip": "自買入以來的未實現損益。",
       "home_return": "本幣: {{pct}}",
       "fx_return": "匯率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -854,7 +887,8 @@
     },
     "holdings": {
       "title": "持倉明細",
-      "empty": "無持倉資料。"
+      "empty": "無持倉資料。",
+      "total_row": "合計"
     },
     "holdings_read_only_hint": "持倉現在由交易紀錄計算而來。請到「帳戶」分頁選擇帳戶後進行買入、賣出或調整部位。",
     "xray": {
@@ -885,6 +919,7 @@
     },
     "geo": {
       "title": "地區配置",
+      "cash_included_hint": "此圖包含現金，並依幣別對應地區計算。",
       "us": "美國",
       "tw": "台灣",
       "jp": "日本",
@@ -911,6 +946,7 @@
     "clear_filter": "清除篩選",
     "fx": {
       "title": "💱 外幣曝險",
+      "open_dashboard": "前往外匯總覽",
       "home_currency": "主要貨幣",
       "save_home": "儲存",
       "cash_chart": "💵 現金曝險",
@@ -920,7 +956,11 @@
       "alert_button": "📨 發送外匯警報",
       "col_pair": "貨幣對",
       "col_rate": "匯率",
-      "col_change": "變動"
+      "col_change": "變動",
+      "col_impact": "影響",
+      "empty_movements": "目前沒有可顯示的匯率變動。",
+      "empty_alerts": "目前沒有匯率警報。",
+      "empty_advice": "目前沒有建議。"
     },
     "stress": {
       "title": "🧪 壓力測試",
@@ -993,6 +1033,52 @@
       "add_help": "新增外匯監控配置",
       "refresh_cooldown": "更新匯率 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "總覽",
+      "watches": "監控清單",
+      "exposure": "曝險"
+    },
+    "overview": {
+      "portfolio_impact": "投資組合影響快照",
+      "display_currency": "顯示幣別",
+      "save_as_default": "儲存為預設",
+      "default_saved": "已更新預設幣別",
+      "reset_to_default": "重設",
+      "currency_scope_hint": "除非您儲存為預設，否則這只會影響此畫面的顯示。",
+      "impact_period": "此數值依據{{period}}的匯率變動估算",
+      "period_5d": "過去 5 個交易日",
+      "period_1mo": "過去 1 個月",
+      "period_3mo": "過去 3 個月",
+      "period_recent": "近期期間",
+      "calculated_at_label": "計算時間：{{time}}",
+      "impact_attribution_title": "這個數字怎麼算出來",
+      "col_pair": "幣別對",
+      "col_holdings_value": "您的持有金額",
+      "col_rate_change": "匯率變動",
+      "col_cash_impact": "現金影響金額",
+      "col_investment_impact": "投資部位影響金額",
+      "col_impact": "影響金額",
+      "impact_breakdown_title": "影響拆解",
+      "impact_from_cash": "來自現金持有:",
+      "impact_from_investments": "來自投資部位（股票/加密貨幣）:",
+      "cash_non_home": "非本幣現金占比：{{pct}}%",
+      "net_impact_title": "匯率淨影響",
+      "net_impact_positive": "近期匯率變動讓您的投資組合增加 {{amount}} {{currency}}",
+      "net_impact_negative": "近期匯率變動讓您的投資組合減少 {{amount}} {{currency}}",
+      "net_impact_neutral": "近期沒有明顯的匯率影響",
+      "risk_title": "匯率風險等級",
+      "risk_low": "匯率風險：低",
+      "risk_medium": "匯率風險：中",
+      "risk_high": "匯率風險：高",
+      "foreign_exposure": "您的投資組合有 {{pct}}% 為外幣資產",
+      "currency_breakdown": "幣別分布",
+      "top_movements": "對投資組合影響最大的匯率變動",
+      "advice_title": "您可以怎麼做",
+      "advice_show_more": "查看更多建議",
+      "active_alerts": "目前匯率警報",
+      "other_currencies": "其他",
+      "privacy_hidden": "已啟用隱私模式，數值已隱藏。"
+    },
     "empty": {
       "message": "📭 尚未設定任何監控配置，請點擊上方「➕ 新增」按鈕開始",
       "hint": "💡 最常用的監控配置：USD/TWD（美元兌台幣），可追蹤換匯時機。"
@@ -1028,6 +1114,16 @@
       "alert_on_high_help": "當匯率接近近期高點時發送警報",
       "alert_on_consecutive": "啟用連續上漲警報",
       "alert_on_consecutive_help": "當匯率連續上漲達門檻時發送警報",
+      "quick_mode": "快速模式",
+      "advanced_mode": "進階模式",
+      "preset_travel": "旅遊換匯",
+      "preset_long_term": "長期監控",
+      "target_rate": "目標匯率",
+      "target_rate_placeholder": "選填（例如 32.0000）",
+      "target_direction": "觸發條件",
+      "target_direction_placeholder": "選擇方向",
+      "target_direction_above": "高於目標時提醒",
+      "target_direction_below": "低於目標時提醒",
       "reminder_hours": "提醒間隔（小時）",
       "reminder_hours_help": "避免重複通知，同一配置在此時間內不重複警報",
       "save": "💾 儲存變更",
@@ -1035,12 +1131,16 @@
       "cancel": "❌ 取消",
       "error_same_currency": "⚠️ 基礎貨幣與報價貨幣不能相同",
       "error_no_alert": "⚠️ 至少要啟用一項警報條件",
-      "error_reminder_hours": "⚠️ 提醒間隔必須介於 1 到 168 小時。"
+      "error_reminder_hours": "⚠️ 提醒間隔必須介於 1 到 168 小時。",
+      "error_target_rate": "⚠️ 目標匯率需為正數。",
+      "error_target_direction": "⚠️ 設定目標匯率時請選擇方向。"
     },
     "analysis": {
       "title": "📊 分析原因",
       "waiting": "⏳ 等待分析...",
       "loading": "⏳ 分析中...",
+      "show_details": "顯示技術細節",
+      "hide_details": "隱藏技術細節",
       "trend_direction": "趨勢方向",
       "trend_rising": "上升",
       "trend_falling": "下降",
@@ -1058,13 +1158,22 @@
       "1w": "1週",
       "1m": "1月",
       "2m": "2月",
-      "3m": "3月"
+      "3m": "3月",
+      "6m": "6月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "警報",
+      "good_time": "適合換匯",
+      "watch": "值得觀察",
+      "declining": "匯率回落中",
       "normal": "正常",
       "inactive": "已停用",
       "loading": "載入中..."
+    },
+    "target": {
+      "hit": "已達目標",
+      "away": "距離目標 {{pct}}%"
     },
     "indicator": {
       "near_high": "接近 {{days}} 日高點",
@@ -1098,6 +1207,8 @@
       "recent_high": "• 近期高點: {{days}} 日",
       "consecutive": "• 連續上漲: {{days}} 日",
       "interval": "• 間隔: {{hours}} 小時",
+      "target": "• 目標: {{direction}} {{rate}}",
+      "target_none": "• 目標: 未設定",
       "high_alert": "• 高點警報: {{icon}}",
       "consec_alert": "• 上漲警報: {{icon}}",
       "last_alert_time": "• 最後警報: {{time}}",
@@ -1108,6 +1219,7 @@
       "period_label": "趨勢區間",
       "hover_template": "%{x}<br>匯率: %{y}",
       "high_annotation": "{{days}} 日高點: {{high}}",
+      "target_annotation": "目標 {{target}}（距離 {{distance}}%）",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} 匯率走勢",
@@ -1750,16 +1862,16 @@
     },
     "empty_state": {
       "title": "請先建立帳戶",
-      "description": "在記錄交易前，請先建立券商或銀行帳戶。只需幾秒鐘即可完成。",
+      "description": "在記錄交易前，請先建立投資或銀行帳戶。只需幾秒鐘即可完成。",
       "create_account": "建立帳戶"
     },
     "form": {
       "title": "新增交易紀錄",
       "type": "交易類型",
-      "account": "券商帳戶",
+      "account": "投資帳戶",
       "account_optional": "選填（不綁定帳戶）",
       "account_required": "請選擇帳戶",
-      "account_empty_hint": "目前還沒有券商帳戶。",
+      "account_empty_hint": "目前還沒有投資帳戶。",
       "create_account": "前往帳戶分頁建立帳戶",
       "available_cash": "可用現金（{{currency}}）：{{amount}}",
       "proceeds_hint": "賣出/股息款項將匯入 {{account}} 現金餘額。",
@@ -1796,7 +1908,7 @@
       "error_fx_rate": "匯率必須大於 0。",
       "error_fee": "手續費不可小於 0。",
       "deposit_success_trade": "資金已入帳，要立即記錄買入嗎？",
-      "buy_no_account_banner": "請先建立券商帳戶，才能追蹤交易與現金結算。",
+      "buy_no_account_banner": "請先建立投資帳戶，才能追蹤交易與資金變化。",
       "buy_no_balance_hint": "此帳戶目前沒有可用資金，請先存入現金。"
     },
     "toast": {
@@ -1819,7 +1931,7 @@
       "mode_replace_account": "覆蓋所選帳戶的所有交易",
       "select_account_for_replace": "請先選擇帳戶才能使用覆蓋模式。",
       "confirm_destructive_required": "使用覆蓋模式匯入前，請先勾選確認。",
-      "confirm_replace_account": "我了解這會刪除所選帳戶中的所有交易，並以本次匯入資料取代。",
+      "confirm_replace_account": "我了解這會刪除所選帳戶中的所有交易，並以本次匯入資料取代，且無法復原。",
       "mapping_date": "日期",
       "mapping_type": "類型",
       "mapping_ticker": "Ticker",
@@ -1862,7 +1974,7 @@
     }
   },
   "accounts": {
-    "title": "券商帳戶",
+    "title": "投資帳戶",
     "caption": "帳戶是管理部位與交易的中心。每個帳戶追蹤現金餘額與股票部位。",
     "add": "新增帳戶",
     "empty": {

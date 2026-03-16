@@ -8,7 +8,7 @@
     "radar": "Investment Radar",
     "backtest": "Signal Backtest",
     "allocation": "Asset Allocation",
-    "fx_watch": "FX Watch",
+    "fx_watch": "FX Monitor",
     "smart_money": "Smart Money"
   },
   "common": {
@@ -43,7 +43,13 @@
     "error_render": "Something went wrong",
     "retry": "Retry",
     "offline_banner": "You are offline. Data may not be current.",
-    "last_updated_relative": "Last updated {{time}}"
+    "last_updated_relative": "Last updated {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} shares",
+      "units": "{{quantity}} units",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "Command Palette",
@@ -130,7 +136,7 @@
       "other": "Other"
     },
     "account_type": {
-      "brokerage": "Brokerage",
+      "brokerage": "Investment Account",
       "retirement": "Retirement (IRA/401k)",
       "savings": "Savings",
       "crypto": "Crypto Exchange",
@@ -368,7 +374,13 @@
     },
     "accounts_overview": {
       "title": "Accounts",
+      "header_total_label": "Portfolio total",
       "view_all": "View all accounts",
+      "distribution_label": "Distribution by account",
+      "distribution_help": "Shows how your total portfolio value is split across accounts.",
+      "distribution_help_aria": "Explain account distribution",
+      "legend_more": "+{{count}} more",
+      "toggle_details": "Toggle account details",
       "positions_count": "{{count}} positions",
       "cash_label": "Cash",
       "no_cash": "No cash",
@@ -381,7 +393,22 @@
       "empty_cta": "Create Account",
       "error_title": "Unable to load account summary",
       "error_description": "Please refresh and try again.",
-      "stacked_bar_aria": "Portfolio value distribution across accounts"
+      "stacked_bar_aria": "Portfolio value distribution across accounts",
+      "value_breakdown_label": "Value breakdown",
+      "stocks_category": "Stocks",
+      "cash_category": "Cash",
+      "crypto_category": "Crypto",
+      "bonds_category": "Bonds",
+      "commodities_category": "Commodities",
+      "other_category": "Other assets",
+      "today_change": "Today",
+      "today_change_estimated": "Estimated from available market data ({{coverage}}% coverage)",
+      "today_change_unavailable": "Not available",
+      "top_positions_label": "Positions",
+      "more_positions": "+{{count}} more positions",
+      "no_positions": "No positions yet",
+      "unrealized_pnl": "Unrealized P&L",
+      "view_positions": "View all"
     },
     "show_advanced": "Show deep dive",
     "hide_advanced": "Hide deep dive"
@@ -673,12 +700,12 @@
     "caption": "Positions · Rebalance · Telegram Notifications",
     "sop": {
       "title": "📖 Asset Allocation: User Manual",
-      "content": "### Page Overview\\n\\nAsset Allocation is now **ledger-driven**: transactions are the source of truth, and holdings are a materialized position view.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nPositions are computed from those transactions automatically.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only position view**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all operate on the ledger-derived positions.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds positions from the ledger."
+      "content": "### Page Overview\\n\\nAsset Allocation now tracks everything through your transactions. Transactions are the source of truth, and holdings are your current balances calculated from them.\\n\\n---\\n\\n### Core Workflow\\n\\n1. Set your target allocation profile.\\n2. Create or select an account.\\n3. Record transactions (DEPOSIT, BUY, SELL, DIVIDEND, ADJUSTMENT, TRANSFER_IN, TRANSFER_OUT).\\n\\nYour holdings update automatically after each transaction.\\n\\n---\\n\\n### Position Entry and Editing\\n\\n- Adding an initial position creates an **OPENING_BALANCE** transaction.\\n- The holdings table is a **read-only view of your current holdings**.\\n- To change quantity or cash, use **Record Transaction** (not inline holdings edits).\\n\\n---\\n\\n### Analysis Tabs\\n\\nRebalance, currency exposure, withdrawal, and stress test all use holdings calculated from your transaction history.\\n\\n### CSV Import\\n\\nCSV/TSV import creates `OPENING_BALANCE` transactions per row, then rebuilds your holdings from those transactions."
     },
     "sop_csv_note": "CSV/TSV import creates OPENING_BALANCE transactions per row, with column mapping and preview before import.",
     "quick_start": {
       "title": "Quick Start: Account to Trade in 3 Steps",
-      "step1": "Create a brokerage account in the Accounts tab.",
+      "step1": "Create an investment account in the Accounts tab.",
       "step2": "Deposit cash with the account-level Deposit button or from Transactions as DEPOSIT.",
       "step3": "Record a BUY transaction with the same account; both cash and stock positions settle automatically."
     },
@@ -708,7 +735,7 @@
       "import_success": "CSV import completed successfully.",
       "import_error": "CSV import failed. Please review mappings and row errors.",
       "replace_mode": "Replace existing holdings",
-      "replace_mode_warning": "This will clear current holdings and replace them with imported rows.",
+      "replace_mode_warning": "This will delete existing holdings and replace them with imported rows. This cannot be undone.",
       "step_select": "1. Select File",
       "step_map": "2. Map Columns",
       "step_preview": "3. Preview & Import",
@@ -732,8 +759,8 @@
       "mode_append": "Append (add without removing)",
       "select_account_for_replace": "Select an account to use replace-account mode.",
       "confirm_destructive_required": "Please check the confirmation box before importing in a destructive mode.",
-      "confirm_replace_all": "I understand this will delete ALL existing holdings and replace them.",
-      "confirm_replace_account": "I understand this will delete all holdings in the selected account and replace them.",
+      "confirm_replace_all": "I understand this will delete ALL existing holdings and replace them with this import. This cannot be undone.",
+      "confirm_replace_account": "I understand this will delete all holdings in the selected account and replace them with this import. This cannot be undone.",
       "parse_warnings": "Parser warnings: {{count}}",
       "parse_warnings_title": "CSV parser warnings",
       "parse_warning_item": "Row {{row}} ({{code}}): {{message}}"
@@ -842,7 +869,13 @@
       "value": "Value",
       "weight_pct": "Wt%",
       "cost": "Cost",
+      "cost_basis": "Cost Basis",
+      "cost_tooltip": "The total amount you originally paid for this investment.",
       "change_pct": "Chg%",
+      "today": "Today",
+      "today_tooltip": "Change since previous market close.",
+      "total_return": "Total Return",
+      "total_return_tooltip": "Unrealized gain/loss since purchase.",
       "home_return": "Home: {{pct}}",
       "fx_return": "FX: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -854,7 +887,8 @@
     },
     "holdings": {
       "title": "Holdings Detail",
-      "empty": "No holdings data."
+      "empty": "No holdings data.",
+      "total_row": "Total"
     },
     "holdings_read_only_hint": "Holdings are now computed from transactions. Use the Accounts tab to buy, sell, or adjust positions.",
     "xray": {
@@ -885,6 +919,7 @@
     },
     "geo": {
       "title": "Geographic Allocation",
+      "cash_included_hint": "Includes cash by currency region.",
       "us": "United States",
       "tw": "Taiwan",
       "jp": "Japan",
@@ -911,6 +946,7 @@
     "clear_filter": "Clear filter",
     "fx": {
       "title": "💱 Currency Exposure",
+      "open_dashboard": "Open FX dashboard",
       "home_currency": "Home Currency",
       "save_home": "Save",
       "cash_chart": "💵 Cash Exposure",
@@ -920,7 +956,11 @@
       "alert_button": "📨 Send FX Alert",
       "col_pair": "Pair",
       "col_rate": "Rate",
-      "col_change": "Change"
+      "col_change": "Change",
+      "col_impact": "Impact",
+      "empty_movements": "No FX movement data available.",
+      "empty_alerts": "No FX alerts at the moment.",
+      "empty_advice": "No FX advice available."
     },
     "stress": {
       "title": "🧪 Stress Test",
@@ -993,6 +1033,52 @@
       "add_help": "Add new FX monitor",
       "refresh_cooldown": "Refresh rates ({{seconds}}s)"
     },
+    "tab": {
+      "overview": "Overview",
+      "watches": "Watches",
+      "exposure": "Exposure"
+    },
+    "overview": {
+      "portfolio_impact": "Portfolio impact snapshot",
+      "display_currency": "Display currency",
+      "save_as_default": "Save as default",
+      "default_saved": "Default currency updated",
+      "reset_to_default": "Reset",
+      "currency_scope_hint": "This changes the FX view only unless you save it as default.",
+      "impact_period": "Based on exchange rate changes over the {{period}}",
+      "period_5d": "past 5 trading days",
+      "period_1mo": "past month",
+      "period_3mo": "past 3 months",
+      "period_recent": "recent period",
+      "calculated_at_label": "Calculated at {{time}}",
+      "impact_attribution_title": "How this was calculated",
+      "col_pair": "Pair",
+      "col_holdings_value": "Your holdings",
+      "col_rate_change": "Rate change",
+      "col_cash_impact": "Cash impact",
+      "col_investment_impact": "Investment impact",
+      "col_impact": "Impact",
+      "impact_breakdown_title": "Impact breakdown",
+      "impact_from_cash": "From cash holdings:",
+      "impact_from_investments": "From investments (stocks/crypto):",
+      "cash_non_home": "Non-home cash ratio: {{pct}}%",
+      "net_impact_title": "Net FX impact",
+      "net_impact_positive": "Recent FX changes added {{amount}} {{currency}} to your portfolio",
+      "net_impact_negative": "Recent FX changes reduced your portfolio by {{amount}} {{currency}}",
+      "net_impact_neutral": "No significant FX impact recently",
+      "risk_title": "FX risk level",
+      "risk_low": "Low FX risk",
+      "risk_medium": "Moderate FX risk",
+      "risk_high": "High FX risk",
+      "foreign_exposure": "{{pct}}% of your portfolio is in foreign currencies",
+      "currency_breakdown": "Currency breakdown",
+      "top_movements": "Biggest FX impact on your portfolio",
+      "advice_title": "What you can do",
+      "advice_show_more": "Show more advice",
+      "active_alerts": "Active FX alerts",
+      "other_currencies": "Other",
+      "privacy_hidden": "Sensitive values are hidden in privacy mode."
+    },
     "empty": {
       "message": "📭 No monitors configured. Click \"➕ Add\" above to start.",
       "hint": "💡 Common setup: USD/TWD to track optimal exchange timing."
@@ -1028,6 +1114,16 @@
       "alert_on_high_help": "Alert when rate approaches recent high",
       "alert_on_consecutive": "Enable Consecutive Up Alert",
       "alert_on_consecutive_help": "Alert when rate has consecutive up days",
+      "quick_mode": "Quick mode",
+      "advanced_mode": "Advanced mode",
+      "preset_travel": "Travel prep",
+      "preset_long_term": "Long-term monitoring",
+      "target_rate": "Target rate",
+      "target_rate_placeholder": "Optional (e.g. 32.0000)",
+      "target_direction": "Trigger when",
+      "target_direction_placeholder": "Select direction",
+      "target_direction_above": "Rate is above target",
+      "target_direction_below": "Rate is below target",
       "reminder_hours": "Reminder Interval (hours)",
       "reminder_hours_help": "Cooldown to avoid duplicate alerts",
       "save": "💾 Save Changes",
@@ -1035,12 +1131,16 @@
       "cancel": "❌ Cancel",
       "error_same_currency": "⚠️ Base and quote currency cannot be the same",
       "error_no_alert": "⚠️ At least one alert condition must be enabled",
-      "error_reminder_hours": "⚠️ Reminder interval must be between 1 and 168 hours."
+      "error_reminder_hours": "⚠️ Reminder interval must be between 1 and 168 hours.",
+      "error_target_rate": "⚠️ Target rate must be a positive number.",
+      "error_target_direction": "⚠️ Select target direction when target rate is set."
     },
     "analysis": {
       "title": "📊 Analysis Reason",
       "waiting": "⏳ Waiting for analysis...",
       "loading": "⏳ Analyzing...",
+      "show_details": "Show technical details",
+      "hide_details": "Hide technical details",
       "trend_direction": "Trend direction",
       "trend_rising": "Rising",
       "trend_falling": "Falling",
@@ -1058,13 +1158,22 @@
       "1w": "1W",
       "1m": "1M",
       "2m": "2M",
-      "3m": "3M"
+      "3m": "3M",
+      "6m": "6M",
+      "1y": "1Y"
     },
     "badge": {
       "alert": "Alert",
+      "good_time": "Good time to exchange",
+      "watch": "Worth watching",
+      "declining": "Rate declining",
       "normal": "Normal",
       "inactive": "Inactive",
       "loading": "Loading..."
+    },
+    "target": {
+      "hit": "Target reached",
+      "away": "{{pct}}% away from target"
     },
     "indicator": {
       "near_high": "Near {{days}}d high",
@@ -1098,6 +1207,8 @@
       "recent_high": "• Recent high: {{days}} days",
       "consecutive": "• Consecutive up: {{days}} days",
       "interval": "• Interval: {{hours}} hours",
+      "target": "• Target: {{direction}} {{rate}}",
+      "target_none": "• Target: not set",
       "high_alert": "• High alert: {{icon}}",
       "consec_alert": "• Up alert: {{icon}}",
       "last_alert_time": "• Last alert: {{time}}",
@@ -1108,6 +1219,7 @@
       "period_label": "Trend Period",
       "hover_template": "%{x}<br>Rate: %{y}",
       "high_annotation": "{{days}}-day high: {{high}}",
+      "target_annotation": "Target {{target}} ({{distance}}% away)",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} Rate Chart",
@@ -1750,16 +1862,16 @@
     },
     "empty_state": {
       "title": "Create an account first",
-      "description": "You need a brokerage or bank account before recording transactions. It only takes a few seconds.",
+      "description": "You need an investment or bank account before recording transactions. It only takes a few seconds.",
       "create_account": "Create Account"
     },
     "form": {
       "title": "Record Transaction",
       "type": "Transaction Type",
-      "account": "Brokerage account",
+      "account": "Investment account",
       "account_optional": "Optional (no account)",
       "account_required": "Select an account",
-      "account_empty_hint": "No brokerage accounts yet.",
+      "account_empty_hint": "No investment accounts yet.",
       "create_account": "Create an account in the Accounts tab",
       "available_cash": "Available cash ({{currency}}): {{amount}}",
       "proceeds_hint": "Proceeds will be added to {{account}} cash balance.",
@@ -1796,7 +1908,7 @@
       "error_fx_rate": "FX rate must be greater than 0.",
       "error_fee": "Fee must be 0 or greater.",
       "deposit_success_trade": "Funds added. Record a trade?",
-      "buy_no_account_banner": "Create a brokerage account to track trades and cash settlement.",
+      "buy_no_account_banner": "Create an investment account to track trades and balance updates.",
       "buy_no_balance_hint": "No funds yet. Deposit cash to this account first."
     },
     "toast": {
@@ -1819,7 +1931,7 @@
       "mode_replace_account": "Replace all transactions in selected account",
       "select_account_for_replace": "Select an account to use replace mode.",
       "confirm_destructive_required": "Please check the confirmation box before importing in replace mode.",
-      "confirm_replace_account": "I understand this will delete all transactions in the selected account and replace them.",
+      "confirm_replace_account": "I understand this will delete all existing transactions in the selected account and replace them with this import. This cannot be undone.",
       "mapping_date": "Date",
       "mapping_type": "Type",
       "mapping_ticker": "Ticker",
@@ -1862,7 +1974,7 @@
     }
   },
   "accounts": {
-    "title": "Brokerage Accounts",
+    "title": "Investment Accounts",
     "caption": "Accounts are the central hub for managing positions and transactions. Each account tracks cash balances and stock positions.",
     "add": "Add Account",
     "empty": {

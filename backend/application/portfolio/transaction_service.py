@@ -45,7 +45,11 @@ def list_transactions(
         end_date=end_date,
         limit=limit,
     )
-    return [_to_dict(txn) for txn in txns]
+    holding_meta_cache: dict[int, tuple[str | None, bool | None]] = {}
+    return [
+        _to_dict(txn, session=session, holding_meta_cache=holding_meta_cache)
+        for txn in txns
+    ]
 
 
 def list_transactions_by_account(
@@ -68,7 +72,11 @@ def list_transactions_by_account(
     txns = repo.find_transactions_by_account(
         session, account_id, limit=limit, offset=offset
     )
-    return [_to_dict(txn) for txn in txns]
+    holding_meta_cache: dict[int, tuple[str | None, bool | None]] = {}
+    return [
+        _to_dict(txn, session=session, holding_meta_cache=holding_meta_cache)
+        for txn in txns
+    ]
 
 
 def create_transaction(
@@ -122,7 +130,7 @@ def create_transaction(
         saved.ticker,
         saved.transaction_type,
     )
-    return _to_dict(saved, auto_radar=auto_radar)
+    return _to_dict(saved, session=session, auto_radar=auto_radar)
 
 
 def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
@@ -154,7 +162,7 @@ def get_transaction(session: Session, txn_id: int, lang: str) -> dict:
                 "detail": t("transaction.not_found", lang=lang),
             },
         )
-    return _to_dict(txn)
+    return _to_dict(txn, session=session)
 
 
 def import_transactions(
@@ -259,7 +267,31 @@ def export_transactions_csv_rows(
     return rows
 
 
-def _to_dict(txn: Transaction, *, auto_radar: bool = False) -> dict:
+def _to_dict(
+    txn: Transaction,
+    *,
+    session: Session,
+    auto_radar: bool = False,
+    holding_meta_cache: dict[int, tuple[str | None, bool | None]] | None = None,
+) -> dict:
+    category: str | None = None
+    is_cash: bool | None = None
+    if txn.holding_id is not None:
+        cache_key = txn.holding_id
+        if holding_meta_cache is not None and cache_key in holding_meta_cache:
+            category, is_cash = holding_meta_cache[cache_key]
+        else:
+            holding = repo.find_holding_by_id(session, txn.holding_id)
+            if holding is not None:
+                category = (
+                    holding.category.value
+                    if hasattr(holding.category, "value")
+                    else str(holding.category)
+                )
+                is_cash = bool(holding.is_cash)
+            if holding_meta_cache is not None:
+                holding_meta_cache[cache_key] = (category, is_cash)
+
     return {
         "id": txn.id,
         "user_id": txn.user_id,
@@ -277,6 +309,8 @@ def _to_dict(txn: Transaction, *, auto_radar: bool = False) -> dict:
         "transaction_date": txn.transaction_date.isoformat(),
         "created_at": txn.created_at.isoformat(),
         "auto_radar": auto_radar,
+        "category": category,
+        "is_cash": is_cash,
     }
 
 

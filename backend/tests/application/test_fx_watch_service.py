@@ -19,6 +19,8 @@ def _make_watch(
     alert_on_recent_high=True,
     alert_on_consecutive_increase=True,
     reminder_interval_hours=24,
+    target_rate=None,
+    target_direction=None,
     is_active=True,
     last_alerted_at=None,
     user_id="default",
@@ -34,6 +36,8 @@ def _make_watch(
     w.alert_on_recent_high = alert_on_recent_high
     w.alert_on_consecutive_increase = alert_on_consecutive_increase
     w.reminder_interval_hours = reminder_interval_hours
+    w.target_rate = target_rate
+    w.target_direction = target_direction
     w.is_active = is_active
     w.last_alerted_at = last_alerted_at
     return w
@@ -54,6 +58,10 @@ def _make_timing_result(should_alert=True, **overrides):
         "consecutive_threshold": 3,
         "alert_on_recent_high": True,
         "alert_on_consecutive_increase": True,
+        "target_rate": None,
+        "target_direction": None,
+        "target_hit": False,
+        "target_distance_pct": None,
         "should_alert": should_alert,
         "recommendation_zh": "建議考慮換匯：USD → TWD（近期高點 + 連續上漲）",
         "reasoning_zh": "USD/TWD 已接近 30 日高點 (32.0000)，且連續上漲 3 日。",
@@ -123,6 +131,30 @@ class TestCreateWatch:
         mock_repo_create.assert_called_once()
         assert result == expected
 
+    @patch(f"{MODULE}.create_fx_watch")
+    @patch(f"{MODULE}.logger")
+    def test_create_watch_should_persist_target_fields(
+        self, _mock_logger, mock_repo_create
+    ):
+        from application.portfolio.fx_watch_service import create_watch
+
+        mock_repo_create.return_value = _make_watch(
+            target_rate=31.25, target_direction="above"
+        )
+        session = MagicMock()
+
+        create_watch(
+            session,
+            base_currency="USD",
+            quote_currency="TWD",
+            target_rate=31.25,
+            target_direction="above",
+        )
+
+        created_entity = mock_repo_create.call_args[0][1]
+        assert created_entity.target_rate == 31.25
+        assert created_entity.target_direction == "above"
+
 
 class TestGetAllWatches:
     """Tests for get_all_watches service function."""
@@ -183,6 +215,45 @@ class TestUpdateWatch:
         # recent_high_days should remain unchanged
         assert watch.recent_high_days == 30
         mock_update.assert_called_once()
+
+    @patch(f"{MODULE}.update_fx_watch")
+    @patch(f"{MODULE}.find_fx_watch_by_id")
+    @patch(f"{MODULE}.logger")
+    def test_should_clear_target_fields_when_explicit_null(
+        self, _logger, mock_find, mock_update
+    ):
+        from application.portfolio.fx_watch_service import update_watch
+
+        watch = _make_watch(target_rate=31.5, target_direction="above")
+        mock_find.return_value = watch
+        mock_update.return_value = watch
+
+        update_watch(MagicMock(), watch_id=1, target_rate=None, target_direction=None)
+
+        assert watch.target_rate is None
+        assert watch.target_direction is None
+
+    @patch(f"{MODULE}.update_fx_watch")
+    @patch(f"{MODULE}.find_fx_watch_by_id")
+    @patch(f"{MODULE}.logger")
+    def test_should_keep_target_fields_when_unset(
+        self, _logger, mock_find, mock_update
+    ):
+        from application.portfolio.fx_watch_service import _UNSET, update_watch
+
+        watch = _make_watch(target_rate=31.5, target_direction="above")
+        mock_find.return_value = watch
+        mock_update.return_value = watch
+
+        update_watch(
+            MagicMock(),
+            watch_id=1,
+            target_rate=_UNSET,
+            target_direction=_UNSET,
+        )
+
+        assert watch.target_rate == 31.5
+        assert watch.target_direction == "above"
 
 
 class TestRemoveWatch:
@@ -322,6 +393,8 @@ class TestCheckFXWatches:
             consecutive_increase_days=5,
             alert_on_recent_high=False,
             alert_on_consecutive_increase=True,
+            target_rate=32.2,
+            target_direction="below",
         )
         mock_find.return_value = [watch]
         mock_history.return_value = MOCK_HISTORY
@@ -337,6 +410,8 @@ class TestCheckFXWatches:
             consecutive_threshold=5,
             alert_on_recent_high=False,
             alert_on_consecutive_increase=True,
+            target_rate=32.2,
+            target_direction="below",
         )
 
 

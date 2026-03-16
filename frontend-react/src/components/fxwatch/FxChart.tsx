@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import {
   AreaSeries,
+  BaselineSeries,
   CrosshairMode,
   LineStyle,
   type IChartApi,
@@ -15,11 +16,14 @@ const PERIOD_OPTIONS = [
   { key: "1M", labelKey: "fx_watch.period.1m", days: 30 },
   { key: "2M", labelKey: "fx_watch.period.2m", days: 60 },
   { key: "3M", labelKey: "fx_watch.period.3m", days: 90 },
+  { key: "6M", labelKey: "fx_watch.period.6m", days: 180 },
+  { key: "1Y", labelKey: "fx_watch.period.1y", days: 365 },
 ]
 
 interface Props {
   data: FxHistoryPoint[]
   recentHighDays: number
+  targetRate?: number | null
 }
 
 function computeChangePct(slice: FxHistoryPoint[]): number | null {
@@ -30,7 +34,7 @@ function computeChangePct(slice: FxHistoryPoint[]): number | null {
   return ((last - first) / first) * 100
 }
 
-export function FxChart({ data, recentHighDays }: Props) {
+export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
   const { t } = useTranslation()
   const [period, setPeriod] = useState("1M")
 
@@ -87,9 +91,74 @@ export function FxChart({ data, recentHighDays }: Props) {
           axisLabelTextColor: "#fff",
         })
       }
+
+      if (typeof targetRate === "number" && Number.isFinite(targetRate) && targetRate > 0) {
+        const currentRate = sliced[sliced.length - 1]?.close ?? 0
+        const distancePct =
+          targetRate > 0 ? Math.abs(((targetRate - currentRate) / targetRate) * 100) : 0
+        series.createPriceLine({
+          price: targetRate,
+          color: "#2563eb",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: t("fx_watch.chart.target_annotation", {
+            target: targetRate.toFixed(4),
+            distance: distancePct.toFixed(2),
+          }),
+          lineVisible: true,
+          axisLabelColor: "#2563eb",
+          axisLabelTextColor: "#fff",
+        })
+
+        if (currentRate > 0 && distancePct > 0) {
+          const proximityBand = chart.addSeries(BaselineSeries, {
+            baseValue: { type: "price", price: targetRate },
+            topLineColor: "rgba(37,99,235,0)",
+            topFillColor1: "rgba(37,99,235,0.14)",
+            topFillColor2: "rgba(37,99,235,0.04)",
+            bottomLineColor: "rgba(37,99,235,0)",
+            bottomFillColor1: "rgba(37,99,235,0.14)",
+            bottomFillColor2: "rgba(37,99,235,0.04)",
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          })
+          proximityBand.setData(
+            sliced.map((d) => ({
+              time: d.date as `${number}-${number}-${number}`,
+              value: currentRate,
+            })),
+          )
+        }
+      }
+
+      const trailingYear = data.slice(-365)
+      if (trailingYear.length > 0) {
+        const trailingYearHigh = Math.max(...trailingYear.map((d) => d.close))
+        const trailingYearLow = Math.min(...trailingYear.map((d) => d.close))
+        series.createPriceLine({
+          price: trailingYearHigh,
+          color: "#7c3aed",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: "",
+          lineVisible: true,
+        })
+        series.createPriceLine({
+          price: trailingYearLow,
+          color: "#64748b",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: "",
+          lineVisible: true,
+        })
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sliced, recentHighDays],
+    [sliced, recentHighDays, targetRate, data],
   )
 
   if (!data || data.length < 5) {

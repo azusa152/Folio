@@ -8,7 +8,7 @@
     "radar": "投资雷达",
     "backtest": "信号回测",
     "allocation": "个人资产配置",
-    "fx_watch": "外汇监控",
+    "fx_watch": "外汇总览",
     "smart_money": "大师足迹"
   },
   "common": {
@@ -43,7 +43,13 @@
     "error_render": "发生错误",
     "retry": "重试",
     "offline_banner": "当前离线中，数据可能不是最新。",
-    "last_updated_relative": "上次更新 {{time}}"
+    "last_updated_relative": "上次更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 股",
+      "units": "{{quantity}} 单位",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "快捷命令面板",
@@ -130,7 +136,7 @@
       "other": "其他"
     },
     "account_type": {
-      "brokerage": "证券账户",
+      "brokerage": "投资账户",
       "retirement": "退休账户（IRA/401k）",
       "savings": "储蓄账户",
       "crypto": "加密货币交易所",
@@ -368,7 +374,13 @@
     },
     "accounts_overview": {
       "title": "账户总览",
+      "header_total_label": "投资组合总额",
       "view_all": "查看全部账户",
+      "distribution_label": "按账户分布",
+      "distribution_help": "显示你的投资组合总额在各账户之间的占比。",
+      "distribution_help_aria": "说明账户分布",
+      "legend_more": "另有 {{count}} 个",
+      "toggle_details": "切换账户详情",
       "positions_count": "{{count}} 个仓位",
       "cash_label": "现金",
       "no_cash": "无现金",
@@ -381,7 +393,22 @@
       "empty_cta": "创建账户",
       "error_title": "无法加载账户摘要",
       "error_description": "请刷新后重试。",
-      "stacked_bar_aria": "各账户投资组合金额分布"
+      "stacked_bar_aria": "各账户投资组合金额分布",
+      "value_breakdown_label": "资产构成",
+      "stocks_category": "股票",
+      "cash_category": "现金",
+      "crypto_category": "加密资产",
+      "bonds_category": "债券",
+      "commodities_category": "商品",
+      "other_category": "其他资产",
+      "today_change": "今日",
+      "today_change_estimated": "基于可用市场数据估算（覆盖率 {{coverage}}%）",
+      "today_change_unavailable": "暂无数据",
+      "top_positions_label": "持仓",
+      "more_positions": "还有 {{count}} 个持仓",
+      "no_positions": "暂无持仓",
+      "unrealized_pnl": "未实现盈亏",
+      "view_positions": "查看全部"
     },
     "show_advanced": "显示深入分析",
     "hide_advanced": "隐藏深入分析"
@@ -673,12 +700,12 @@
     "caption": "仓位管理 · 再平衡分析 · Telegram 通知",
     "sop": {
       "title": "📖 个人资产配置：使用说明书",
-      "content": "### 页面总览\\n\\n资产配置页面已改为**账本驱动（Ledger-driven）**：交易是唯一事实来源，持仓表是计算后的仓位视图。\\n\\n---\\n\\n### 核心流程\\n\\n1. 设定目标配置\\n2. 创建或选择账户\\n3. 记录交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n仓位会根据交易自动计算。\\n\\n---\\n\\n### 仓位创建与调整\\n\\n- 新增初始仓位会创建 **OPENING_BALANCE** 交易。\\n- 持仓表为**只读仓位视图**。\\n- 需要调整数量或现金时，请使用**记录交易**。\\n\\n---\\n\\n### 分析分页\\n\\n再平衡、汇率曝险、提款、压力测试均基于账本推导出的仓位。\\n\\n### CSV 导入\\n\\nCSV/TSV 导入会按行创建 `OPENING_BALANCE` 交易，再从账本重建仓位。"
+      "content": "### 页面总览\\n\\n资产配置页面现在会通过交易自动追踪你的资产。交易是主要依据，持仓表则是根据交易计算出的当前持有情况。\\n\\n---\\n\\n### 核心流程\\n\\n1. 设定目标配置\\n2. 创建或选择账户\\n3. 记录交易（DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT）\\n\\n每次记录交易后，持仓都会自动更新。\\n\\n---\\n\\n### 仓位创建与调整\\n\\n- 新增初始仓位会创建 **OPENING_BALANCE** 交易。\\n- 持仓表是**当前持有情况的只读视图**。\\n- 需要调整数量或现金时，请使用**记录交易**（不要直接改持仓表）。\\n\\n---\\n\\n### 分析分页\\n\\n再平衡、汇率曝险、提款、压力测试都会使用交易记录计算出的持仓数据。\\n\\n### CSV 导入\\n\\nCSV/TSV 导入会按行创建 `OPENING_BALANCE` 交易，再根据这些交易重建持仓。"
     },
     "sop_csv_note": "CSV/TSV 导入会为每一行创建 OPENING_BALANCE 交易，支持字段映射与预览后再导入。",
     "quick_start": {
       "title": "快速上手：3 步完成开户到下单",
-      "step1": "在“账户”分页创建券商账户。",
+      "step1": "在“账户”分页创建投资账户。",
       "step2": "使用账户卡片的“存入资金”或在交易分页用 DEPOSIT 存入现金。",
       "step3": "使用同一账户记录 BUY 交易，系统会自动更新现金与股票仓位。"
     },
@@ -708,7 +735,7 @@
       "import_success": "CSV 导入完成。",
       "import_error": "CSV 导入失败，请检查字段映射与错误行。",
       "replace_mode": "覆盖现有持仓",
-      "replace_mode_warning": "此操作会先清空当前持仓，再导入新数据。",
+      "replace_mode_warning": "此操作会删除当前持仓，再用导入数据替换，且无法撤销。",
       "step_select": "1. 选择文件",
       "step_map": "2. 字段映射",
       "step_preview": "3. 预览并导入",
@@ -732,8 +759,8 @@
       "mode_append": "追加（不删除现有数据）",
       "select_account_for_replace": "使用“覆盖账户”模式前请先选择账户。",
       "confirm_destructive_required": "使用覆盖模式导入前，请先勾选确认框。",
-      "confirm_replace_all": "我了解此操作将删除所有现有持仓并替换。",
-      "confirm_replace_account": "我了解此操作将删除所选账户的所有持仓并替换。",
+      "confirm_replace_all": "我了解此操作将删除所有现有持仓，并用本次导入数据替换，且无法撤销。",
+      "confirm_replace_account": "我了解此操作将删除所选账户的所有持仓，并用本次导入数据替换，且无法撤销。",
       "parse_warnings": "解析警告：{{count}}",
       "parse_warnings_title": "CSV 解析警告",
       "parse_warning_item": "第 {{row}} 行（{{code}}）：{{message}}"
@@ -842,7 +869,13 @@
       "value": "市值",
       "weight_pct": "比重%",
       "cost": "成本",
+      "cost_basis": "成本基准",
+      "cost_tooltip": "你最初买入这项投资时支付的总金额。",
       "change_pct": "涨跌%",
+      "today": "今日变动",
+      "today_tooltip": "相较前一交易日收盘价的变动。",
+      "total_return": "总回报",
+      "total_return_tooltip": "自买入以来的未实现盈亏。",
       "home_return": "本币: {{pct}}",
       "fx_return": "汇率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -854,7 +887,8 @@
     },
     "holdings": {
       "title": "持仓明细",
-      "empty": "无持仓数据。"
+      "empty": "无持仓数据。",
+      "total_row": "合计"
     },
     "holdings_read_only_hint": "持仓现在由交易记录自动计算。请在“账户”页签中选择账户后进行买入、卖出或仓位调整。",
     "xray": {
@@ -885,6 +919,7 @@
     },
     "geo": {
       "title": "地区配置",
+      "cash_included_hint": "该图包含现金，并按币种对应地区统计。",
       "us": "美国",
       "tw": "台湾",
       "jp": "日本",
@@ -911,6 +946,7 @@
     "clear_filter": "清除筛选",
     "fx": {
       "title": "💱 外币敞口",
+      "open_dashboard": "打开外汇看板",
       "home_currency": "主要货币",
       "save_home": "保存",
       "cash_chart": "💵 现金敞口",
@@ -920,7 +956,11 @@
       "alert_button": "📨 发送外汇警报",
       "col_pair": "货币对",
       "col_rate": "汇率",
-      "col_change": "变动"
+      "col_change": "变动",
+      "col_impact": "影响",
+      "empty_movements": "暂无可显示的汇率变动。",
+      "empty_alerts": "当前没有汇率警报。",
+      "empty_advice": "当前没有建议。"
     },
     "stress": {
       "title": "🧪 压力测试",
@@ -993,6 +1033,52 @@
       "add_help": "新增外汇监控配置",
       "refresh_cooldown": "更新汇率 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "总览",
+      "watches": "监控列表",
+      "exposure": "敞口"
+    },
+    "overview": {
+      "portfolio_impact": "组合影响快照",
+      "display_currency": "显示币种",
+      "save_as_default": "保存为默认",
+      "default_saved": "默认币种已更新",
+      "reset_to_default": "重置",
+      "currency_scope_hint": "除非保存为默认，否则此变更只影响当前页面显示。",
+      "impact_period": "该数值基于{{period}}的汇率变化估算",
+      "period_5d": "过去 5 个交易日",
+      "period_1mo": "过去 1 个月",
+      "period_3mo": "过去 3 个月",
+      "period_recent": "近期区间",
+      "calculated_at_label": "计算时间：{{time}}",
+      "impact_attribution_title": "这个数字如何计算",
+      "col_pair": "货币对",
+      "col_holdings_value": "您的持仓金额",
+      "col_rate_change": "汇率变化",
+      "col_cash_impact": "现金影响金额",
+      "col_investment_impact": "投资仓位影响金额",
+      "col_impact": "影响金额",
+      "impact_breakdown_title": "影响拆解",
+      "impact_from_cash": "来自现金持有:",
+      "impact_from_investments": "来自投资仓位（股票/加密货币）:",
+      "cash_non_home": "非本币现金占比：{{pct}}%",
+      "net_impact_title": "汇率净影响",
+      "net_impact_positive": "近期汇率变化让您的组合增加 {{amount}} {{currency}}",
+      "net_impact_negative": "近期汇率变化让您的组合减少 {{amount}} {{currency}}",
+      "net_impact_neutral": "近期没有明显的汇率影响",
+      "risk_title": "汇率风险等级",
+      "risk_low": "汇率风险：低",
+      "risk_medium": "汇率风险：中",
+      "risk_high": "汇率风险：高",
+      "foreign_exposure": "您的组合有 {{pct}}% 为外币资产",
+      "currency_breakdown": "币种分布",
+      "top_movements": "对组合影响最大的汇率变化",
+      "advice_title": "您可以怎么做",
+      "advice_show_more": "查看更多建议",
+      "active_alerts": "当前汇率警报",
+      "other_currencies": "其他",
+      "privacy_hidden": "已启用隐私模式，数值已隐藏。"
+    },
     "empty": {
       "message": "📭 尚未设定任何监控配置，请点击上方「➕ 新增」按钮开始",
       "hint": "💡 最常用的监控配置：USD/TWD（美元兑台币），可追踪换汇时机。"
@@ -1028,6 +1114,16 @@
       "alert_on_high_help": "当汇率接近近期高点时发送警报",
       "alert_on_consecutive": "启用连续上涨警报",
       "alert_on_consecutive_help": "当汇率连续上涨达门槛时发送警报",
+      "quick_mode": "快速模式",
+      "advanced_mode": "高级模式",
+      "preset_travel": "旅行换汇",
+      "preset_long_term": "长期监控",
+      "target_rate": "目标汇率",
+      "target_rate_placeholder": "可选（例如 7.2000）",
+      "target_direction": "触发条件",
+      "target_direction_placeholder": "选择方向",
+      "target_direction_above": "高于目标时提醒",
+      "target_direction_below": "低于目标时提醒",
       "reminder_hours": "提醒间隔（小时）",
       "reminder_hours_help": "避免重复通知，同一配置在此时间内不重复警报",
       "save": "💾 保存变更",
@@ -1035,12 +1131,16 @@
       "cancel": "❌ 取消",
       "error_same_currency": "⚠️ 基础货币与报价货币不能相同",
       "error_no_alert": "⚠️ 至少要启用一项警报条件",
-      "error_reminder_hours": "⚠️ 提醒间隔必须介于 1 到 168 小时。"
+      "error_reminder_hours": "⚠️ 提醒间隔必须介于 1 到 168 小时。",
+      "error_target_rate": "⚠️ 目标汇率必须为正数。",
+      "error_target_direction": "⚠️ 设置目标汇率时请选择方向。"
     },
     "analysis": {
       "title": "📊 分析原因",
       "waiting": "⏳ 等待分析...",
       "loading": "⏳ 分析中...",
+      "show_details": "显示技术细节",
+      "hide_details": "隐藏技术细节",
       "trend_direction": "趋势方向",
       "trend_rising": "上升",
       "trend_falling": "下降",
@@ -1058,13 +1158,22 @@
       "1w": "1周",
       "1m": "1月",
       "2m": "2月",
-      "3m": "3月"
+      "3m": "3月",
+      "6m": "6月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "警报",
+      "good_time": "适合换汇",
+      "watch": "值得关注",
+      "declining": "汇率回落中",
       "normal": "正常",
       "inactive": "已停用",
       "loading": "加载中..."
+    },
+    "target": {
+      "hit": "已达到目标",
+      "away": "距离目标 {{pct}}%"
     },
     "indicator": {
       "near_high": "接近 {{days}} 日高点",
@@ -1098,6 +1207,8 @@
       "recent_high": "• 近期高点: {{days}} 日",
       "consecutive": "• 连续上涨: {{days}} 日",
       "interval": "• 间隔: {{hours}} 小时",
+      "target": "• 目标: {{direction}} {{rate}}",
+      "target_none": "• 目标: 未设置",
       "high_alert": "• 高点警报: {{icon}}",
       "consec_alert": "• 上涨警报: {{icon}}",
       "last_alert_time": "• 最后警报: {{time}}",
@@ -1108,6 +1219,7 @@
       "period_label": "趋势区间",
       "hover_template": "%{x}<br>汇率: %{y}",
       "high_annotation": "{{days}}日高点: {{high}}",
+      "target_annotation": "目标 {{target}}（距离 {{distance}}%）",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} 汇率走势",
@@ -1750,16 +1862,16 @@
     },
     "empty_state": {
       "title": "请先创建账户",
-      "description": "在记录交易前，请先创建券商或银行账户。只需几秒钟即可完成。",
+      "description": "在记录交易前，请先创建投资或银行账户。只需几秒钟即可完成。",
       "create_account": "创建账户"
     },
     "form": {
       "title": "新增交易记录",
       "type": "交易类型",
-      "account": "券商账户",
+      "account": "投资账户",
       "account_optional": "选填（不绑定账户）",
       "account_required": "请选择账户",
-      "account_empty_hint": "当前还没有券商账户。",
+      "account_empty_hint": "当前还没有投资账户。",
       "create_account": "前往账户分页创建账户",
       "available_cash": "可用现金（{{currency}}）：{{amount}}",
       "proceeds_hint": "卖出/股息款项将计入 {{account}} 现金余额。",
@@ -1796,7 +1908,7 @@
       "error_fx_rate": "汇率必须大于 0。",
       "error_fee": "手续费不可小于 0。",
       "deposit_success_trade": "资金已入账，要立即记录买入吗？",
-      "buy_no_account_banner": "请先创建券商账户，才能追踪交易与现金结算。",
+      "buy_no_account_banner": "请先创建投资账户，才能追踪交易与资金变化。",
       "buy_no_balance_hint": "该账户当前没有可用资金，请先存入现金。"
     },
     "toast": {
@@ -1819,7 +1931,7 @@
       "mode_replace_account": "覆盖所选账户的全部交易",
       "select_account_for_replace": "请先选择账户再使用覆盖模式。",
       "confirm_destructive_required": "使用覆盖模式导入前，请先勾选确认。",
-      "confirm_replace_account": "我已了解这将删除所选账户中的所有交易，并用本次导入内容替换。",
+      "confirm_replace_account": "我已了解这将删除所选账户中的所有交易，并用本次导入内容替换，且无法撤销。",
       "mapping_date": "日期",
       "mapping_type": "类型",
       "mapping_ticker": "Ticker",
@@ -1862,7 +1974,7 @@
     }
   },
   "accounts": {
-    "title": "券商账户",
+    "title": "投资账户",
     "caption": "账户是管理仓位与交易的中心。每个账户追踪现金余额与股票仓位。",
     "add": "新增账户",
     "empty": {

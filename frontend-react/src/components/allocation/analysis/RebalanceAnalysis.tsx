@@ -212,6 +212,8 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
         holdings={data.holdings_detail}
         privacyMode={privacyMode}
         displayCurrency={displayCurrency}
+        portfolioTodayChangeValue={data.total_value_change}
+        portfolioTodayChangePct={data.total_value_change_pct}
       />
 
       <hr className="border-border" />

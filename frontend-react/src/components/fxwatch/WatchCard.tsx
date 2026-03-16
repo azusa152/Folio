@@ -77,9 +77,23 @@ function safeSignalStrength(
   return "none"
 }
 
+function getPlainSignalState(
+  analysis: FxAnalysis | undefined,
+  trendDirection: FxAnalysis["trend_direction"],
+): "good" | "watch" | "declining" | "none" {
+  if (!analysis) return "none"
+  if (trendDirection === "falling" && analysis.is_recent_high) return "declining"
+  if (analysis.should_alert && analysis.signal_strength === "strong") return "good"
+  if (analysis.should_alert || analysis.signal_strength === "moderate" || analysis.signal_strength === "weak") {
+    return "watch"
+  }
+  return "none"
+}
+
 export function WatchCard({ watch, analysis, analysisLoading = false, sparklineData }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
 
   const toggle = useToggleFxWatch()
@@ -120,25 +134,29 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
   }
   const trendDirection = safeTrendDirection(analysis?.trend_direction)
   const signalStrength = safeSignalStrength(analysis?.signal_strength)
+  const plainState = getPlainSignalState(analysis, trendDirection)
+  const targetDirectionLabel = watch.target_direction
+    ? watch.target_direction === "above"
+      ? t("fx_watch.form.target_direction_above")
+      : t("fx_watch.form.target_direction_below")
+    : null
 
   // Badge variant
-  const badgeVariant = !watch.is_active
-    ? "secondary"
-    : signalStrength === "strong"
-      ? "destructive"
-      : signalStrength === "moderate"
-        ? "default"
-        : "outline"
+  const badgeVariant = !watch.is_active ? "secondary" : plainState === "good" ? "default" : "outline"
 
   const badgeLabel = !watch.is_active
     ? t("fx_watch.badge.inactive")
     : analysisLoading && !analysis
       ? t("fx_watch.badge.loading")
-      : analysis?.should_alert
-        ? t("fx_watch.badge.alert")
-        : analysis
-          ? t("fx_watch.badge.normal")
-          : t("common.unavailable")
+      : plainState === "good"
+        ? t("fx_watch.badge.good_time")
+        : plainState === "watch"
+          ? t("fx_watch.badge.watch")
+          : plainState === "declining"
+            ? t("fx_watch.badge.declining")
+            : analysis
+              ? t("fx_watch.badge.normal")
+              : t("common.unavailable")
 
   const borderAccent = analysis?.should_alert
     ? "border-l-4 border-l-destructive"
@@ -211,6 +229,22 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                       {t("fx_watch.indicator.below_high", {
                         pct: analysis.distance_from_high_pct.toFixed(2),
                       })}
+                    </span>
+                  )}
+                  {analysis.target_rate && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5",
+                        analysis.target_hit
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+                      )}
+                    >
+                      {analysis.target_hit
+                        ? t("fx_watch.target.hit")
+                        : t("fx_watch.target.away", {
+                            pct: (analysis.target_distance_pct ?? 0).toFixed(2),
+                          })}
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -292,7 +326,11 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                 {/* Left: chart */}
                 <div>
                   {(sparklineData ?? historyData) ? (
-                    <FxChart data={(sparklineData ?? historyData)!} recentHighDays={watch.recent_high_days} />
+                    <FxChart
+                      data={(sparklineData ?? historyData)!}
+                      recentHighDays={watch.recent_high_days}
+                      targetRate={analysis?.target_rate}
+                    />
                   ) : historyLoading ? (
                     <Skeleton className="h-[220px] w-full" />
                   ) : null}
@@ -311,6 +349,39 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                       </div>
                     ) : analysis ? (
                       <div className="space-y-2">
+                        {analysis.target_hit && analysis.target_rate && (
+                          <div className="rounded-md border border-emerald-300/60 bg-emerald-500/10 px-2.5 py-2 text-emerald-700 dark:text-emerald-300">
+                            <p className="font-medium">
+                              {t("fx_watch.target.hit")} - {analysis.target_rate.toFixed(4)}
+                            </p>
+                            <p className="mt-1 text-[11px] leading-snug">{analysis.recommendation}</p>
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "rounded-md px-2.5 py-2 text-xs",
+                            plainState === "good" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                            plainState === "watch" && "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                            plainState === "declining" && "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+                            plainState === "none" && "bg-muted/40 text-muted-foreground",
+                          )}
+                        >
+                          {analysis.recommendation}
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setShowDetails((v) => !v)}
+                        >
+                          {showDetails
+                            ? t("fx_watch.analysis.hide_details")
+                            : t("fx_watch.analysis.show_details")}
+                        </Button>
+
+                        {showDetails && (
+                          <>
                         {/* Near high indicator */}
                         <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
                           <span className="text-muted-foreground">
@@ -392,6 +463,8 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                         <p className="text-muted-foreground leading-snug">
                           {analysis.reasoning}
                         </p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <p className="text-muted-foreground">{t("fx_watch.analysis.waiting")}</p>
@@ -409,6 +482,14 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
                       <GlossaryTerm termKey="reminder_interval">
                         {t("fx_watch.settings.interval", { hours: watch.reminder_interval_hours })}
                       </GlossaryTerm>
+                    </p>
+                    <p>
+                      {watch.target_rate && watch.target_direction
+                        ? t("fx_watch.settings.target", {
+                            direction: targetDirectionLabel,
+                            rate: watch.target_rate.toFixed(4),
+                          })
+                        : t("fx_watch.settings.target_none")}
                     </p>
                     <p>{t("fx_watch.settings.high_alert", { icon: watch.alert_on_recent_high ? "✅" : "❌" })}</p>
                     <p>{t("fx_watch.settings.consec_alert", { icon: watch.alert_on_consecutive_increase ? "✅" : "❌" })}</p>

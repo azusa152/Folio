@@ -71,6 +71,9 @@ class HoldingDetail(BaseModel):
     cost_total: float | None = None  # avg_cost * quantity * fx，以 display_currency 計
     current_price: float | None = None
     change_pct: float | None = None
+    change_value: float | None = None
+    total_gain_value: float | None = None
+    total_gain_pct: float | None = None
     purchase_fx_rate: float | None = None
     current_fx_rate: float | None = None
 
@@ -162,6 +165,9 @@ class FXMovement(BaseModel):
     current_rate: float
     change_pct: float  # 期間內百分比變動
     direction: str  # "up" / "down" / "flat"
+    impact_home_value: float = 0.0  # 估算對本幣資產價值的影響
+    impact_cash_home_value: float = 0.0  # 估算對現金部位的影響
+    impact_investment_home_value: float = 0.0  # 估算對投資部位（股票/加密貨幣）的影響
 
 
 class FXRateAlertItem(BaseModel):
@@ -185,6 +191,9 @@ class CurrencyExposureResponse(BaseModel):
     cash_breakdown: list[CurrencyBreakdown] = []
     cash_non_home_pct: float = 0.0
     total_cash_home: float = 0.0
+    net_cash_impact: float = 0.0
+    net_investment_impact: float = 0.0
+    fx_movement_period: str = ""
     fx_movements: list[FXMovement]
     fx_rate_alerts: list[FXRateAlertItem] = []
     risk_level: str  # "low" / "medium" / "high"

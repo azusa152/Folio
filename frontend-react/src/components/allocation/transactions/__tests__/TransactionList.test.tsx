@@ -6,7 +6,18 @@ const mockDeleteMutate = vi.fn()
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      if (key === "common.quantity_unit.shares" && options?.quantity != null) {
+        return `${String(options.quantity)} shares`
+      }
+      if (key === "common.quantity_unit.crypto" && options?.quantity != null && options?.ticker != null) {
+        return `${String(options.quantity)} ${String(options.ticker)}`
+      }
+      if (key === "common.quantity_unit.currency" && options?.quantity != null && options?.ticker != null) {
+        return `${String(options.quantity)} ${String(options.ticker)}`
+      }
+      return key
+    },
   }),
 }))
 
@@ -78,13 +89,83 @@ describe("TransactionList", () => {
             created_at: "2026-03-11T00:00:00Z",
             holding_id: 2,
             auto_radar: false,
+            category: "Crypto",
+            is_cash: false,
           },
         ]}
       />,
     )
 
-    expect(screen.getByText("0.00012345")).toBeInTheDocument()
+    expect(screen.getByText("0.000123 ETH-USD")).toBeInTheDocument()
     expect(screen.queryByText("0.00")).not.toBeInTheDocument()
+  })
+
+  it("uses currency unit for dividend transactions", () => {
+    render(
+      <TransactionList
+        isLoading={false}
+        accounts={[{ id: 10, name: "IB Main", broker: "IB" } as never]}
+        transactions={[
+          {
+            id: 45,
+            user_id: "default",
+            account_id: 10,
+            ticker: "AAPL",
+            transaction_type: "DIVIDEND",
+            quantity: 25,
+            price: null,
+            total_amount: 25,
+            currency: "USD",
+            fx_rate: null,
+            fee: 0,
+            note: "",
+            transaction_date: "2026-03-11",
+            created_at: "2026-03-11T00:00:00Z",
+            holding_id: 3,
+            auto_radar: false,
+            category: "Growth",
+            is_cash: false,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText("25 USD")).toBeInTheDocument()
+    expect(screen.queryByText("25 shares")).not.toBeInTheDocument()
+  })
+
+  it("uses ticker unit for crypto buy transactions", () => {
+    render(
+      <TransactionList
+        isLoading={false}
+        accounts={[{ id: 10, name: "IB Main", broker: "IB" } as never]}
+        transactions={[
+          {
+            id: 46,
+            user_id: "default",
+            account_id: 10,
+            ticker: "BTC",
+            transaction_type: "BUY",
+            quantity: 0.12345678,
+            price: 50000,
+            total_amount: 6172.839,
+            currency: "USD",
+            fx_rate: null,
+            fee: 0,
+            note: "",
+            transaction_date: "2026-03-11",
+            created_at: "2026-03-11T00:00:00Z",
+            holding_id: 4,
+            auto_radar: false,
+            category: "Crypto",
+            is_cash: false,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText("0.12345678 BTC")).toBeInTheDocument()
+    expect(screen.queryByText("0.12345678 shares")).not.toBeInTheDocument()
   })
 
   it("renders currency symbols for price and total", () => {

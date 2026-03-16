@@ -5,8 +5,11 @@ Tests webhook, telegram, and preferences endpoints for exception handling.
 
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
 from domain.constants import (
     DEFAULT_LANGUAGE,
+    ERROR_INVALID_INPUT,
     ERROR_PREFERENCES_UPDATE_FAILED,
     ERROR_TELEGRAM_SEND_FAILED,
     GENERIC_PREFERENCES_ERROR,
@@ -56,6 +59,23 @@ def test_webhook_action_help(client):
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
+
+
+def test_webhook_http_exception_preserves_error_code(client):
+    """Webhook endpoint should preserve machine-readable error_code from HTTPException."""
+    with patch("api.routes.stock_routes.handle_webhook") as mock_handle:
+        mock_handle.side_effect = HTTPException(
+            status_code=422,
+            detail={"error_code": ERROR_INVALID_INPUT, "detail": "Invalid payload"},
+        )
+
+        response = client.post("/webhook", json={"action": "help"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["error_code"] == ERROR_INVALID_INPUT
+        assert data["message"] == "Invalid payload"
 
 
 def test_telegram_test_send_exception_sanitized(client):

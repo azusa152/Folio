@@ -7,6 +7,9 @@ import {
   RADAR_CATEGORIES,
   CATEGORY_ICON_SHORT,
   CATEGORY_COLOR_MAP,
+  CASH_CURRENCY_OPTIONS,
+  DISPLAY_CURRENCIES,
+  CURRENCY_TO_REGION,
 } from "../constants";
 
 describe("SCAN_SIGNAL_ICONS", () => {
@@ -112,5 +115,17 @@ describe("CATEGORY_ICON_SHORT and CATEGORY_COLOR_MAP", () => {
     for (const color of Object.values(CATEGORY_COLOR_MAP)) {
       expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
     }
+  });
+});
+
+describe("currency and geographic constants", () => {
+  it("CURRENCY_TO_REGION keys should match CASH_CURRENCY_OPTIONS", () => {
+    expect(new Set(Object.keys(CURRENCY_TO_REGION))).toEqual(
+      new Set(CASH_CURRENCY_OPTIONS),
+    );
+  });
+
+  it("CASH_CURRENCY_OPTIONS and DISPLAY_CURRENCIES should stay aligned", () => {
+    expect(CASH_CURRENCY_OPTIONS).toEqual(DISPLAY_CURRENCIES);
   });
 });

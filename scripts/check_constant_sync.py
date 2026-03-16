@@ -168,6 +168,7 @@ def check_currencies() -> list[str]:
     errors = []
     backend = extract_python_list(BACKEND_CONSTANTS, "SUPPORTED_CURRENCIES")
     backend_set = set(backend)
+    backend_currency_region = extract_python_dict(BACKEND_CONSTANTS, "CURRENCY_REGION_MAP")
 
     frontend_fx = list(extract_ts_array(FRONTEND_CONSTANTS, "FX_CURRENCY_OPTIONS"))
     frontend_cash = list(extract_ts_array(FRONTEND_CONSTANTS, "CASH_CURRENCY_OPTIONS"))
@@ -218,6 +219,28 @@ def check_currencies() -> list[str]:
             f"CURRENCY_TO_REGION keys mismatch:\n"
             f"  expected from SUPPORTED_CURRENCIES: {sorted(backend_set)}\n"
             f"  actual CURRENCY_TO_REGION keys:     {sorted(currency_to_region.keys())}"
+        )
+
+    if backend_set != set(backend_currency_region.keys()):
+        errors.append(
+            f"CURRENCY_REGION_MAP keys mismatch:\n"
+            f"  expected from SUPPORTED_CURRENCIES: {sorted(backend_set)}\n"
+            f"  actual CURRENCY_REGION_MAP keys:    {sorted(backend_currency_region.keys())}"
+        )
+
+    if backend_currency_region != currency_to_region:
+        only_backend = {
+            k: v for k, v in backend_currency_region.items() if currency_to_region.get(k) != v
+        }
+        only_frontend = {
+            k: v for k, v in currency_to_region.items() if backend_currency_region.get(k) != v
+        }
+        errors.append(
+            f"Currency region mapping mismatch:\n"
+            f"  backend  CURRENCY_REGION_MAP: {backend_currency_region}\n"
+            f"  frontend CURRENCY_TO_REGION:  {currency_to_region}\n"
+            f"  differing backend entries:    {only_backend}\n"
+            f"  differing frontend entries:   {only_frontend}"
         )
 
     expected_regions = set(currency_to_region.values()) | {"Other"}

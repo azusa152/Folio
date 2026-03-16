@@ -420,6 +420,12 @@ class FXWatchConfig(SQLModel, table=True):
     alert_on_consecutive_increase: bool = Field(
         default=True, description="是否啟用連續上漲警報"
     )
+    target_rate: float | None = Field(
+        default=None, description="目標匯率（達標時觸發警報）"
+    )
+    target_direction: str | None = Field(
+        default=None, description="目標方向：above / below"
+    )
     reminder_interval_hours: int = Field(
         default=24, description="提醒間隔（小時），避免重複通知"
     )

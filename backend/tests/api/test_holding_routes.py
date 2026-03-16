@@ -108,6 +108,34 @@ class TestRebalanceResponse:
         assert "US" in data["geographic_allocation"]
         assert "Equity" in data["asset_class_allocation"]
 
+    def test_should_include_non_usd_cash_currency_region_in_geographic_allocation(
+        self, client
+    ):
+        account_id = _seed_equity_holding(client, ticker="NVDA")
+        sgd_deposit = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": "SGD",
+                "transaction_type": "DEPOSIT",
+                "quantity": 1,
+                "total_amount": 1000.0,
+                "currency": "SGD",
+                "transaction_date": "2026-03-12",
+            },
+        )
+        assert sgd_deposit.status_code == 201
+        profile_resp = client.post("/profiles", json=_PROFILE_PAYLOAD)
+        assert profile_resp.status_code in (200, 201)
+
+        resp = client.get("/rebalance")
+        assert resp.status_code == 200
+        geographic = resp.json()["geographic_allocation"]
+        assert "US" in geographic
+        assert "SG" in geographic
+        assert geographic["US"] > 0
+        assert geographic["SG"] > 0
+
     def test_holdings_detail_should_split_same_ticker_by_account(self, client):
         account_a = _seed_equity_holding(client, ticker="AAPL", quantity=2)
         account_b = _seed_equity_holding(client, ticker="AAPL", quantity=3)
@@ -184,6 +212,42 @@ class TestTriggerXrayAlert:
         assert "warnings" in data
         assert "message" in data
         assert isinstance(data["warnings"], list)
+
+
+class TestCurrencyExposure:
+    """Contract tests for GET /currency-exposure."""
+
+    def test_should_allow_home_currency_override_via_query(self, client):
+        resp = client.get("/currency-exposure?home_currency=JPY")
+        assert resp.status_code == 200
+        assert resp.json()["home_currency"] == "JPY"
+
+    def test_should_normalize_home_currency_to_uppercase(self, client):
+        resp = client.get("/currency-exposure?home_currency=usd")
+        assert resp.status_code == 200
+        assert resp.json()["home_currency"] == "USD"
+
+    def test_should_return_422_for_unsupported_home_currency(self, client):
+        resp = client.get("/currency-exposure?home_currency=ABC")
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "INVALID_INPUT"
+
+    def test_should_include_fx_impact_breakdown_fields(self, client):
+        resp = client.get("/currency-exposure?home_currency=USD")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "net_cash_impact" in data
+        assert "net_investment_impact" in data
+        assert isinstance(data["net_cash_impact"], (int, float))
+        assert isinstance(data["net_investment_impact"], (int, float))
+        assert "fx_movements" in data
+        assert isinstance(data["fx_movements"], list)
+        for movement in data["fx_movements"]:
+            assert "impact_cash_home_value" in movement
+            assert "impact_investment_home_value" in movement
+            assert isinstance(movement["impact_cash_home_value"], (int, float))
+            assert isinstance(movement["impact_investment_home_value"], (int, float))
 
 
 class TestTriggerFxAlert:

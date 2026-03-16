@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Download, Upload } from "lucide-react"
+import { Download, Info, Upload } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -17,9 +17,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useTransactions } from "@/api/hooks/useTransactions"
 import { ACCOUNT_TYPES } from "@/lib/constants"
-import { formatPrice, formatQuantity } from "@/lib/format"
+import { formatPrice, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -467,40 +473,63 @@ export function AccountsTab({
                         <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
                         <th className="text-left py-1.5 pr-2">{t("accounts.detail.category")}</th>
                         <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
-                        <th className="text-right py-1.5 pr-2">{t("accounts.detail.cost_basis")}</th>
+                        <th className="text-right py-1.5 pr-2">
+                          <div className="inline-flex items-center justify-end gap-1">
+                            <span>{t("accounts.detail.cost_basis")}</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info
+                                    className="h-3 w-3 cursor-help text-muted-foreground"
+                                    aria-label={t("allocation.col.cost_tooltip")}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[220px]">{t("allocation.col.cost_tooltip")}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </th>
                         <th className="text-left py-1.5 pr-2">{t("transactions.form.currency")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(selectedAccountPositions ?? []).map((position) => (
-                        <tr key={position.id} className="border-b border-border/50">
-                          <td className="py-1.5 pr-2 font-medium">{position.ticker}</td>
-                          <td className="py-1.5 pr-2">
-                            <div className="flex items-center gap-1.5">
-                              <Badge variant="secondary" className="text-[11px]">
-                                {t(`config.category.${String(position.category).toLowerCase()}`)}
-                              </Badge>
-                              {position.is_cash ? (
-                                <Badge variant="outline" className="text-[11px]">
-                                  {t("accounts.detail.cash_position")}
+                      {(selectedAccountPositions ?? []).map((position) => {
+                        const quantityUnit = getQuantityUnitKey(position.category, position.ticker)
+                        const quantityText = t(quantityUnit.key, {
+                          quantity: formatQuantity(position.quantity, {
+                            category: position.category,
+                            ticker: position.ticker,
+                          }),
+                          ...quantityUnit.params,
+                        })
+
+                        return (
+                          <tr key={position.id} className="border-b border-border/50">
+                            <td className="py-1.5 pr-2 font-medium">{position.ticker}</td>
+                            <td className="py-1.5 pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="secondary" className="text-[11px]">
+                                  {t(`config.category.${String(position.category).toLowerCase()}`)}
                                 </Badge>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="py-1.5 pr-2 text-right">
-                            {formatQuantity(position.quantity, {
-                              category: position.category,
-                              ticker: position.ticker,
-                            })}
-                          </td>
-                          <td className="py-1.5 pr-2 text-right">
-                            {position.cost_basis != null
-                              ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
-                              : "—"}
-                          </td>
-                          <td className="py-1.5 pr-2">{position.currency}</td>
-                        </tr>
-                      ))}
+                                {position.is_cash ? (
+                                  <Badge variant="outline" className="text-[11px]">
+                                    {t("accounts.detail.cash_position")}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="py-1.5 pr-2 text-right">{quantityText}</td>
+                            <td className="py-1.5 pr-2 text-right">
+                              {position.cost_basis != null
+                                ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
+                                : "—"}
+                            </td>
+                            <td className="py-1.5 pr-2">{position.currency}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

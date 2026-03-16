@@ -44,12 +44,12 @@ _CASH_HOLDING = {
 }
 
 _CASH_TW_HOLDING = {
-    "ticker": "USD.TW",
+    "ticker": "TWD",
     "category": "Cash",
     "quantity": 1_000_000,
     "cost_basis": 1.0,
     "broker": "Firstrade",
-    "currency": "USD",
+    "currency": "TWD",
     "account_type": "US",
     "is_cash": True,
 }
@@ -349,9 +349,11 @@ class TestXRayResponseContract:
 
         assert resp.status_code == 404
 
-    def test_sector_equity_pct_and_geo_should_exclude_cash(self, client):
-        """Sector equity pct and geographic allocation should not be diluted by cash."""
-        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_TW_HOLDING, _BOND_TW_HOLDING])
+    def test_sector_equity_pct_should_exclude_cash_and_geo_should_include_cash_region(
+        self, client
+    ):
+        """Sector stays equity-only; TW geo entry comes from TWD cash mapping."""
+        _setup_portfolio(client, [_STOCK_HOLDING, _CASH_TW_HOLDING])
 
         resp = client.get("/rebalance")
 
@@ -363,6 +365,7 @@ class TestXRayResponseContract:
         assert total_equity_pct == 100
         assert all(item["weight_pct"] < 100 for item in data["sector_exposure"])
 
-        assert set(data["geographic_allocation"].keys()) == {"US", "TW"}
+        assert "US" in data["geographic_allocation"]
+        assert "TW" in data["geographic_allocation"]
         assert data["geographic_allocation"]["US"] > 0
         assert data["geographic_allocation"]["TW"] > 0

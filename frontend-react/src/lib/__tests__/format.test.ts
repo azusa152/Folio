@@ -4,6 +4,9 @@ import {
   formatMarketCap,
   formatPercent,
   formatPrice,
+  getQuantityUnitKey,
+  getTransactionQuantityUnitKey,
+  formatQuantity,
   formatRatio,
   isMarketOpen,
 } from "../format"
@@ -159,5 +162,87 @@ describe("fundamental format helpers", () => {
 
   it("formats percent from decimal value", () => {
     expect(formatPercent(0.1234)).toBe("+12.3%")
+  })
+})
+
+describe("getQuantityUnitKey", () => {
+  it("returns shares unit for equity categories", () => {
+    expect(getQuantityUnitKey("Growth", "AAPL")).toEqual({
+      key: "common.quantity_unit.shares",
+      params: {},
+    })
+  })
+
+  it("returns currency unit for cash with ticker", () => {
+    expect(getQuantityUnitKey("Cash", "USD")).toEqual({
+      key: "common.quantity_unit.currency",
+      params: { ticker: "USD" },
+    })
+  })
+
+  it("returns crypto unit for crypto with ticker", () => {
+    expect(getQuantityUnitKey("Crypto", "BTC")).toEqual({
+      key: "common.quantity_unit.crypto",
+      params: { ticker: "BTC" },
+    })
+  })
+
+  it("returns units for bonds", () => {
+    expect(getQuantityUnitKey("Bond", "TLT")).toEqual({
+      key: "common.quantity_unit.units",
+      params: {},
+    })
+  })
+
+  it("falls back to units when ticker is missing for cash and crypto", () => {
+    expect(getQuantityUnitKey("Cash")).toEqual({
+      key: "common.quantity_unit.units",
+      params: {},
+    })
+    expect(getQuantityUnitKey("Crypto")).toEqual({
+      key: "common.quantity_unit.units",
+      params: {},
+    })
+  })
+})
+
+describe("formatQuantity", () => {
+  it("keeps up to 4 decimals for equity categories", () => {
+    expect(formatQuantity(239.8767, { category: "Growth", ticker: "VTI" })).toBe("239.8767")
+    expect(formatQuantity(3, { category: "Growth", ticker: "AAPL" })).toBe("3")
+  })
+
+  it("uses 2 decimals for cash quantities", () => {
+    expect(formatQuantity(1428.3, { category: "Cash", ticker: "USD" })).toBe("1,428.30")
+  })
+})
+
+describe("getTransactionQuantityUnitKey", () => {
+  it("uses currency unit for dividend", () => {
+    expect(
+      getTransactionQuantityUnitKey({
+        transactionType: "DIVIDEND",
+        category: "Growth",
+        ticker: "AAPL",
+        currency: "USD",
+      }),
+    ).toEqual({
+      key: "common.quantity_unit.currency",
+      params: { ticker: "USD" },
+    })
+  })
+
+  it("uses category-aware unit for buy/sell", () => {
+    expect(
+      getTransactionQuantityUnitKey({
+        transactionType: "BUY",
+        category: "Crypto",
+        ticker: "BTC",
+        currency: "USD",
+      }),
+    ).toEqual({
+      key: "common.quantity_unit.crypto",
+      params: { ticker: "BTC" },
+    })
   })
 })

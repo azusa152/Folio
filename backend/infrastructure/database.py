@@ -123,6 +123,9 @@ def _run_migrations() -> None:
         "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
         # UserPreferences: terminology display mode (Phase 7)
         "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
+        # FX Watch: target-rate alert support
+        "ALTER TABLE fxwatchconfig ADD COLUMN target_rate REAL;",
+        "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
     ]
 
     with engine.connect() as conn:

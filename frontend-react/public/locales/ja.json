@@ -8,7 +8,7 @@
     "radar": "投資レーダー",
     "backtest": "バックテスト",
     "allocation": "資産配分",
-    "fx_watch": "為替ウォッチ",
+    "fx_watch": "FXモニター",
     "smart_money": "スマートマネー"
   },
   "common": {
@@ -43,7 +43,13 @@
     "error_render": "エラーが発生しました",
     "retry": "再試行",
     "offline_banner": "オフラインです。データが最新ではない可能性があります。",
-    "last_updated_relative": "最終更新 {{time}}"
+    "last_updated_relative": "最終更新 {{time}}",
+    "quantity_unit": {
+      "shares": "{{quantity}} 株",
+      "units": "{{quantity}} 口",
+      "crypto": "{{quantity}} {{ticker}}",
+      "currency": "{{quantity}} {{ticker}}"
+    }
   },
   "command_palette": {
     "title": "コマンドパレット",
@@ -130,7 +136,7 @@
       "other": "その他"
     },
     "account_type": {
-      "brokerage": "証券口座",
+      "brokerage": "投資口座",
       "retirement": "退職年金口座(IRA/401k)",
       "savings": "預金口座",
       "crypto": "暗号資産取引所",
@@ -368,7 +374,13 @@
     },
     "accounts_overview": {
       "title": "口座",
+      "header_total_label": "ポートフォリオ合計",
       "view_all": "すべての口座を表示",
+      "distribution_label": "口座ごとの配分",
+      "distribution_help": "ポートフォリオ合計が各口座にどう配分されているかを表示します。",
+      "distribution_help_aria": "口座配分の説明を表示",
+      "legend_more": "他 {{count}} 件",
+      "toggle_details": "口座詳細を切り替え",
       "positions_count": "{{count}} 件のポジション",
       "cash_label": "現金",
       "no_cash": "現金なし",
@@ -381,7 +393,22 @@
       "empty_cta": "口座を作成",
       "error_title": "口座サマリーを読み込めませんでした",
       "error_description": "ページを更新して再試行してください。",
-      "stacked_bar_aria": "口座別のポートフォリオ金額配分"
+      "stacked_bar_aria": "口座別のポートフォリオ金額配分",
+      "value_breakdown_label": "資産内訳",
+      "stocks_category": "株式",
+      "cash_category": "現金",
+      "crypto_category": "暗号資産",
+      "bonds_category": "債券",
+      "commodities_category": "コモディティ",
+      "other_category": "その他資産",
+      "today_change": "本日",
+      "today_change_estimated": "利用可能な市場データに基づく推定（カバー率 {{coverage}}%）",
+      "today_change_unavailable": "利用不可",
+      "top_positions_label": "ポジション",
+      "more_positions": "他 {{count}} 件のポジション",
+      "no_positions": "まだポジションがありません",
+      "unrealized_pnl": "未実現損益",
+      "view_positions": "すべて表示"
     },
     "show_advanced": "詳細分析を表示",
     "hide_advanced": "詳細分析を非表示"
@@ -673,12 +700,12 @@
     "caption": "ポジション管理 · リバランス · Telegram通知",
     "sop": {
       "title": "📖 資産配分: 使用マニュアル",
-      "content": "### ページ概要\n\n資産配分ページは**台帳(Ledger)駆動**です。取引履歴が唯一の正となり、保有銘柄テーブルはそこから計算されたポジションビューです。\n\n### 基本フロー\n\n1. 目標の配分プロファイルを設定します。\n2. 口座を作成または選択します。\n3. 取引を記録します(DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT)。\n\nポジションはこれらの取引から自動計算されます。\n\n### ポジションの作成と更新\n\n- 初期ポジションの追加は、**OPENING_BALANCE** 取引を作成します。\n- 保有テーブルは**読み取り専用のポジションビュー**です。\n- 数量や現金を変更する場合は、インライン編集ではなく**取引の記録**を使用してください。\n\n### 分析タブ\n\nリバランス、通貨エクスポージャー、スマート引き出し、ストレステストはすべて台帳から導出されたポジションに基づいて計算されます。\n\n### CSVインポート\n\nCSV/TSVインポートは各行から `OPENING_BALANCE` 取引を作成し、台帳からポジションを再構築します。"
+      "content": "### ページ概要\n\n資産配分ページは、取引履歴をもとに資産を自動追跡します。取引が基準データで、保有テーブルはそこから計算された現在の保有状況です。\n\n### 基本フロー\n\n1. 目標の配分プロファイルを設定します。\n2. 口座を作成または選択します。\n3. 取引を記録します(DEPOSIT / BUY / SELL / DIVIDEND / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT)。\n\n取引を記録すると、保有状況は自動で更新されます。\n\n### ポジションの作成と更新\n\n- 初期ポジションの追加は、**OPENING_BALANCE** 取引を作成します。\n- 保有テーブルは**現在の保有状況を表示する読み取り専用ビュー**です。\n- 数量や現金を変更する場合は、インライン編集ではなく**取引の記録**を使用してください。\n\n### 分析タブ\n\nリバランス、通貨エクスポージャー、スマート引き出し、ストレステストはすべて取引履歴から計算した保有データを使います。\n\n### CSVインポート\n\nCSV/TSVインポートは各行から `OPENING_BALANCE` 取引を作成し、その取引履歴から保有データを再構築します。"
     },
     "sop_csv_note": "CSV/TSVインポートでは各行からOPENING_BALANCE取引を作成します。列マッピングとプレビュー確認後にインポートできます。",
     "quick_start": {
       "title": "クイックスタート: 3ステップで取引を開始",
-      "step1": "「口座」タブで証券口座を作成します。",
+      "step1": "「口座」タブで投資口座を作成します。",
       "step2": "口座カードの「入金」または取引タブの DEPOSIT から現金を入金します。",
       "step3": "同じ口座で BUY 取引を記録すると、現金と株式のポジションが自動で反映されます。"
     },
@@ -708,7 +735,7 @@
       "import_success": "CSVインポートが正常に完了しました。",
       "import_error": "CSVインポートに失敗しました。マッピングとエラー行を確認してください。",
       "replace_mode": "既存のポジションを置き換える",
-      "replace_mode_warning": "現在のポジションをすべて削除し、インポートデータに置き換えます。",
+      "replace_mode_warning": "現在のポジションを削除してインポートデータに置き換えます。この操作は元に戻せません。",
       "step_select": "1. ファイルの選択",
       "step_map": "2. 列のマッピング",
       "step_preview": "3. プレビューとインポート",
@@ -732,8 +759,8 @@
       "mode_append": "追加 (既存データを削除しない)",
       "select_account_for_replace": "口座置き換えモードを使用するには口座を選択してください。",
       "confirm_destructive_required": "破壊的なモードでインポートする前に確認チェックを入れてください。",
-      "confirm_replace_all": "この操作で既存の全ポジションデータが削除され、置き換えられることを理解しました。",
-      "confirm_replace_account": "この操作で選択した口座のポジションデータがすべて削除され、置き換えられることを理解しました。",
+      "confirm_replace_all": "この操作で既存の全ポジションデータが削除され、今回のインポート内容で置き換えられること、また元に戻せないことを理解しました。",
+      "confirm_replace_account": "この操作で選択した口座のポジションデータがすべて削除され、今回のインポート内容で置き換えられること、また元に戻せないことを理解しました。",
       "parse_warnings": "解析の警告: {{count}}",
       "parse_warnings_title": "CSV解析の警告",
       "parse_warning_item": "{{row}}行目 ({{code}}): {{message}}"
@@ -842,7 +869,13 @@
       "value": "評価額",
       "weight_pct": "比率%",
       "cost": "取得単価",
+      "cost_basis": "取得原価",
+      "cost_tooltip": "この投資を購入するときに最初に支払った合計金額です。",
       "change_pct": "変動%",
+      "today": "本日",
+      "today_tooltip": "前営業日の終値からの変動です。",
+      "total_return": "累計損益",
+      "total_return_tooltip": "購入時点からの未実現損益です。",
       "home_return": "基準通貨: {{pct}}",
       "fx_return": "為替: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -854,7 +887,8 @@
     },
     "holdings": {
       "title": "保有ポジション詳細",
-      "empty": "保有データがありません。"
+      "empty": "保有データがありません。",
+      "total_row": "合計"
     },
     "holdings_read_only_hint": "保有ポジションは取引履歴から計算されます。ポジションの売買や調整は「口座」タブから行ってください。",
     "xray": {
@@ -885,6 +919,7 @@
     },
     "geo": {
       "title": "地域別配分",
+      "cash_included_hint": "このチャートは現金も含み、通貨に対応する地域で集計します。",
       "us": "米国",
       "tw": "台湾",
       "jp": "日本",
@@ -911,6 +946,7 @@
     "clear_filter": "フィルターをクリア",
     "fx": {
       "title": "💱 通貨エクスポージャー",
+      "open_dashboard": "FXダッシュボードを開く",
       "home_currency": "基準通貨",
       "save_home": "保存",
       "cash_chart": "💵 現金エクスポージャー",
@@ -920,7 +956,11 @@
       "alert_button": "📨 為替アラートを送信",
       "col_pair": "通貨ペア",
       "col_rate": "レート",
-      "col_change": "変動"
+      "col_change": "変動",
+      "col_impact": "影響額",
+      "empty_movements": "表示できる為替変動はありません。",
+      "empty_alerts": "現在、為替アラートはありません。",
+      "empty_advice": "現在、アドバイスはありません。"
     },
     "stress": {
       "title": "🧪 ストレステスト",
@@ -993,6 +1033,52 @@
       "add_help": "新しい為替監視を追加します",
       "refresh_cooldown": "レート更新 ({{seconds}}秒)"
     },
+    "tab": {
+      "overview": "概要",
+      "watches": "監視リスト",
+      "exposure": "エクスポージャー"
+    },
+    "overview": {
+      "portfolio_impact": "ポートフォリオ影響スナップショット",
+      "display_currency": "表示通貨",
+      "save_as_default": "デフォルトに保存",
+      "default_saved": "デフォルト通貨を更新しました",
+      "reset_to_default": "リセット",
+      "currency_scope_hint": "保存するまで、この変更はこの画面の表示にのみ適用されます。",
+      "impact_period": "{{period}}の為替変動に基づく試算です",
+      "period_5d": "過去5営業日",
+      "period_1mo": "過去1か月",
+      "period_3mo": "過去3か月",
+      "period_recent": "直近期間",
+      "calculated_at_label": "計算時刻: {{time}}",
+      "impact_attribution_title": "計算の内訳",
+      "col_pair": "通貨ペア",
+      "col_holdings_value": "保有額",
+      "col_rate_change": "為替変化率",
+      "col_cash_impact": "現金の影響額",
+      "col_investment_impact": "投資部位の影響額",
+      "col_impact": "影響額",
+      "impact_breakdown_title": "内訳",
+      "impact_from_cash": "現金保有の影響:",
+      "impact_from_investments": "投資部位（株式/暗号資産）の影響:",
+      "cash_non_home": "非基準通貨キャッシュ比率: {{pct}}%",
+      "net_impact_title": "為替の純影響",
+      "net_impact_positive": "最近の為替変動により、ポートフォリオに {{amount}} {{currency}} のプラス影響がありました",
+      "net_impact_negative": "最近の為替変動により、ポートフォリオは {{amount}} {{currency}} 減少しました",
+      "net_impact_neutral": "直近で大きな為替影響はありません",
+      "risk_title": "為替リスクレベル",
+      "risk_low": "為替リスク: 低",
+      "risk_medium": "為替リスク: 中",
+      "risk_high": "為替リスク: 高",
+      "foreign_exposure": "ポートフォリオの {{pct}}% は外貨建てです",
+      "currency_breakdown": "通貨内訳",
+      "top_movements": "ポートフォリオへの為替影響（上位）",
+      "advice_title": "できること",
+      "advice_show_more": "アドバイスをもっと見る",
+      "active_alerts": "有効な為替アラート",
+      "other_currencies": "その他",
+      "privacy_hidden": "プライバシーモードで数値を非表示にしています。"
+    },
     "empty": {
       "message": "📭 監視設定がありません。上の「➕ 追加」ボタンから開始してください。",
       "hint": "💡 よく使われる設定: USD/JPY (米ドル/日本円) で最適な両替タイミングを追跡します。"
@@ -1028,6 +1114,16 @@
       "alert_on_high_help": "レートが直近の高値に接近した際にアラートを送信します",
       "alert_on_consecutive": "連続上昇アラートを有効にする",
       "alert_on_consecutive_help": "連続上昇日数が閾値に達した際にアラートを送信します",
+      "quick_mode": "クイックモード",
+      "advanced_mode": "詳細モード",
+      "preset_travel": "旅行準備",
+      "preset_long_term": "長期モニタリング",
+      "target_rate": "目標レート",
+      "target_rate_placeholder": "任意 (例: 150.0000)",
+      "target_direction": "トリガー条件",
+      "target_direction_placeholder": "方向を選択",
+      "target_direction_above": "目標より上で通知",
+      "target_direction_below": "目標より下で通知",
       "reminder_hours": "リマインダー間隔 (時間)",
       "reminder_hours_help": "重複通知を防ぐため、一度アラートが鳴った後、この時間内は再通知しません",
       "save": "💾 変更を保存",
@@ -1035,12 +1131,16 @@
       "cancel": "❌ キャンセル",
       "error_same_currency": "⚠️ ベース通貨とクォート通貨を同じにすることはできません",
       "error_no_alert": "⚠️ 少なくとも1つのアラート条件を有効にする必要があります",
-      "error_reminder_hours": "⚠️ リマインダー間隔は1から168時間の間で設定してください"
+      "error_reminder_hours": "⚠️ リマインダー間隔は1から168時間の間で設定してください",
+      "error_target_rate": "⚠️ 目標レートは正の数で入力してください。",
+      "error_target_direction": "⚠️ 目標レートを設定する場合は方向を選択してください。"
     },
     "analysis": {
       "title": "📊 分析理由",
       "waiting": "⏳ 分析待機中...",
       "loading": "⏳ 分析中...",
+      "show_details": "テクニカル詳細を表示",
+      "hide_details": "テクニカル詳細を非表示",
       "trend_direction": "トレンド方向",
       "trend_rising": "上昇",
       "trend_falling": "下降",
@@ -1058,13 +1158,22 @@
       "1w": "1週間",
       "1m": "1ヶ月",
       "2m": "2ヶ月",
-      "3m": "3ヶ月"
+      "3m": "3ヶ月",
+      "6m": "6ヶ月",
+      "1y": "1年"
     },
     "badge": {
       "alert": "アラート",
+      "good_time": "両替の好機",
+      "watch": "要ウォッチ",
+      "declining": "レート下落中",
       "normal": "正常",
       "inactive": "無効",
       "loading": "読込中..."
+    },
+    "target": {
+      "hit": "目標到達",
+      "away": "目標まで {{pct}}%"
     },
     "indicator": {
       "near_high": "{{days}}日高値に接近",
@@ -1098,6 +1207,8 @@
       "recent_high": "• 直近高値: {{days}}日",
       "consecutive": "• 連続上昇: {{days}}日",
       "interval": "• 通知間隔: {{hours}}時間",
+      "target": "• 目標: {{direction}} {{rate}}",
+      "target_none": "• 目標: 未設定",
       "high_alert": "• 高値アラート: {{icon}}",
       "consec_alert": "• 上昇アラート: {{icon}}",
       "last_alert_time": "• 最終アラート: {{time}}",
@@ -1108,6 +1219,7 @@
       "period_label": "トレンド期間",
       "hover_template": "%{x}<br>レート: %{y}",
       "high_annotation": "{{days}}日高値: {{high}}",
+      "target_annotation": "目標 {{target}} (あと {{distance}}%)",
       "period_change": "{{period}}: {{change}}"
     },
     "chart_title": "📈 {{base}}/{{quote}} レート推移",
@@ -1750,16 +1862,16 @@
     },
     "empty_state": {
       "title": "まずアカウントを作成",
-      "description": "取引を記録するには、証券口座または銀行口座が必要です。数秒で作成できます。",
+      "description": "取引を記録するには、投資口座または銀行口座が必要です。数秒で作成できます。",
       "create_account": "アカウントを作成"
     },
     "form": {
       "title": "取引を記録",
       "type": "取引種別",
-      "account": "証券口座",
+      "account": "投資口座",
       "account_optional": "任意 (口座を指定しない)",
       "account_required": "口座を選択",
-      "account_empty_hint": "証券口座がまだありません。",
+      "account_empty_hint": "投資口座がまだありません。",
       "create_account": "口座タブで口座を作成する",
       "available_cash": "利用可能現金 ({{currency}}): {{amount}}",
       "proceeds_hint": "売却/配当の入金は {{account}} の現金残高に反映されます。",
@@ -1796,7 +1908,7 @@
       "error_fx_rate": "為替レートは0より大きい値を入力してください。",
       "error_fee": "手数料は0以上で入力してください。",
       "deposit_success_trade": "入金が完了しました。続けて買付を記録しますか？",
-      "buy_no_account_banner": "取引と現金決済を追跡するには、先に証券口座を作成してください。",
+      "buy_no_account_banner": "取引と残高の動きを追跡するには、先に投資口座を作成してください。",
       "buy_no_balance_hint": "この口座に利用可能な資金がありません。先に現金を入金してください。"
     },
     "toast": {
@@ -1819,7 +1931,7 @@
       "mode_replace_account": "選択口座の全取引を置き換え",
       "select_account_for_replace": "置き換えモードを使うには口座を選択してください。",
       "confirm_destructive_required": "置き換えモードでインポートする前に確認チェックを入れてください。",
-      "confirm_replace_account": "選択した口座の全取引が削除され、インポート内容で置き換わることを理解しました。",
+      "confirm_replace_account": "選択した口座の全取引が削除され、今回のインポート内容で置き換わること、また元に戻せないことを理解しました。",
       "mapping_date": "日付",
       "mapping_type": "種別",
       "mapping_ticker": "ティッカー",
@@ -1862,7 +1974,7 @@
     }
   },
   "accounts": {
-    "title": "証券口座",
+    "title": "投資口座",
     "caption": "口座はポジションと取引を管理するハブです。各口座の現金残高と株式ポジションを追跡します。",
     "add": "口座を追加",
     "empty": {

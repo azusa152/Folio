@@ -14,6 +14,7 @@ from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    FX_HISTORY_PERIOD,
     REBALANCE_CACHE_MAXSIZE,
     REBALANCE_CACHE_TTL,
     XRAY_SINGLE_STOCK_WARN_PCT,
@@ -27,6 +28,7 @@ from domain.fx_analysis import (
     determine_fx_risk_level,
 )
 from domain.portfolio.allocation import (
+    classify_cash_region,
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
@@ -459,11 +461,23 @@ def _do_calculate_rebalance(
         # 計算個股日漲跌百分比（無前日資料時回傳 None → 前端顯示 N/A）
         if agg["has_prev_close"]:
             holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
+            holding_change_value = round(agg["mv"] - agg["prev_mv"], 2)
         else:
             holding_change_pct = None
+            holding_change_value = None
 
         cost_total = (
             round(agg["cost_sum"] * agg["fx"], 2) if agg["cost_qty"] > 0 else None
+        )
+        total_gain_value = (
+            round(agg["mv"] - cost_total, 2) if cost_total is not None else None
+        )
+        total_gain_pct = (
+            round((total_gain_value / cost_total) * 100, 2)
+            if total_gain_value is not None
+            and cost_total is not None
+            and cost_total > 0
+            else None
         )
 
         holdings_detail.append(
@@ -487,6 +501,9 @@ def _do_calculate_rebalance(
                 ),
                 "fx": round(agg["fx"], 6),
                 "change_pct": holding_change_pct,
+                "change_value": holding_change_value,
+                "total_gain_value": total_gain_value,
+                "total_gain_pct": total_gain_pct,
                 "purchase_fx_rate": agg.get("purchase_fx_rate"),
                 "current_fx_rate": round(agg["fx"], 6),
             }
@@ -786,12 +803,21 @@ def _do_calculate_rebalance(
         if v > 0
     ]
 
-    # 11) 地理區域配置（基於 ticker 後綴判別市場）
-    holding_market_data = [
-        {"ticker": ticker, "market_value": agg["mv"]}
-        for ticker, agg in ticker_agg.items()
-        if agg["mv"] > 0 and agg["category"] != StockCategory.CASH
-    ]
+    # 11) 地理區域配置（股票按 ticker 後綴，現金按幣別）
+    holding_market_data: list[dict] = []
+    for ticker, agg in ticker_agg.items():
+        if agg["mv"] <= 0:
+            continue
+        if agg["category"] == StockCategory.CASH:
+            holding_market_data.append(
+                {
+                    "region": classify_cash_region(agg.get("currency", ticker)),
+                    "market_value": agg["mv"],
+                }
+            )
+            continue
+
+        holding_market_data.append({"ticker": ticker, "market_value": agg["mv"]})
     result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
 
     # 12) 資產類別配置（Folio 分類 → 標準資產類別）
@@ -901,6 +927,9 @@ def calculate_currency_exposure(
             "cash_breakdown": [],
             "cash_non_home_pct": 0.0,
             "total_cash_home": 0.0,
+            "net_cash_impact": 0.0,
+            "net_investment_impact": 0.0,
+            "fx_movement_period": FX_HISTORY_PERIOD,
             "fx_movements": [],
             "risk_level": "low",
             "advice": [
@@ -1006,12 +1035,26 @@ def calculate_currency_exposure(
                 direction = (
                     "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
                 )
+                currency_value_home = currency_values.get(cur, 0.0)
+                cash_value_home = cash_currency_values.get(cur, 0.0)
+                investment_value_home = max(currency_value_home - cash_value_home, 0.0)
+                impact_home_value = round(currency_value_home * (change_pct / 100.0), 2)
+                impact_cash_home_value = round(
+                    cash_value_home * (change_pct / 100.0), 2
+                )
+                impact_investment_home_value = round(
+                    investment_value_home * (change_pct / 100.0),
+                    2,
+                )
                 fx_movements.append(
                     {
                         "pair": f"{cur}/{home_currency}",
                         "current_rate": last_close,
                         "change_pct": change_pct,
                         "direction": direction,
+                        "impact_home_value": impact_home_value,
+                        "impact_cash_home_value": impact_cash_home_value,
+                        "impact_investment_home_value": impact_investment_home_value,
                     }
                 )
 
@@ -1068,6 +1111,15 @@ def calculate_currency_exposure(
         "cash_breakdown": cash_breakdown,
         "cash_non_home_pct": cash_non_home_pct,
         "total_cash_home": round(total_cash_home, 2),
+        "net_cash_impact": round(
+            sum(m.get("impact_cash_home_value", 0.0) for m in fx_movements),
+            2,
+        ),
+        "net_investment_impact": round(
+            sum(m.get("impact_investment_home_value", 0.0) for m in fx_movements),
+            2,
+        ),
+        "fx_movement_period": FX_HISTORY_PERIOD,
         "fx_movements": fx_movements,
         "fx_rate_alerts": fx_rate_alerts_serialized,
         "risk_level": risk_level,
@@ -1191,9 +1243,30 @@ def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
     if lang is None:
         lang = get_user_language(session)
 
+    home_currency = exposure.get("home_currency", "TWD")
+    cash_breakdown = exposure.get("cash_breakdown", [])
+    cash_by_cur = {
+        row.get("currency"): row.get("value", 0.0)
+        for row in cash_breakdown
+        if row.get("currency")
+    }
+
     # 匯率變動警報（三層級偵測）
     for alert_data in exposure.get("fx_rate_alerts", []):
         pair = alert_data["pair"]
+        base_currency = pair.split("/")[0]
+        cash_amt = float(cash_by_cur.get(base_currency, 0.0) or 0.0)
+        cash_note = (
+            t(
+                "rebalance.cash_impact",
+                lang=lang,
+                currency=base_currency,
+                amount=cash_amt,
+                home=home_currency,
+            )
+            if cash_amt > 0
+            else ""
+        )
         type_label_key = FX_ALERT_LABEL.get(
             alert_data["alert_type"], alert_data["alert_type"]
         )
@@ -1217,7 +1290,7 @@ def check_fx_alerts(session: Session, lang: str | None = None) -> list[str]:
                 period=period,
                 change_pct=alert_data["change_pct"],
                 rate=alert_data["current_rate"],
-                cash_note="",
+                cash_note=cash_note,
             ).rstrip()
         )
 

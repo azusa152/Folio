@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FX_CURRENCY_OPTIONS } from "@/lib/constants"
 import { useCreateFxWatch } from "@/api/hooks/useFxWatch"
+import { useCurrencyExposure } from "@/api/hooks/useAllocation"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -20,17 +21,58 @@ interface Props {
 
 export function AddWatchDialog({ open, onClose }: Props) {
   const { t } = useTranslation()
+  const { data: exposure } = useCurrencyExposure(open)
 
-  const [base, setBase] = useState(FX_CURRENCY_OPTIONS[0])
-  const [quote, setQuote] = useState(FX_CURRENCY_OPTIONS[1])
+  const [mode, setMode] = useState<"quick" | "advanced">("quick")
+  const [base, setBase] = useState(FX_CURRENCY_OPTIONS[0] ?? "USD")
+  const [quote, setQuote] = useState(FX_CURRENCY_OPTIONS[1] ?? "TWD")
   const [recentHighDays, setRecentHighDays] = useState(30)
   const [consecutiveDays, setConsecutiveDays] = useState(3)
   const [alertOnHigh, setAlertOnHigh] = useState(true)
   const [alertOnConsecutive, setAlertOnConsecutive] = useState(true)
   const [reminderHours, setReminderHours] = useState(24)
+  const [targetRateInput, setTargetRateInput] = useState("")
+  const [targetDirection, setTargetDirection] = useState<"above" | "below" | "">("")
   const [error, setError] = useState<string | null>(null)
 
   const create = useCreateFxWatch()
+  const homeCurrency = exposure?.home_currency ?? "TWD"
+  const topForeignCurrency = useMemo(
+    () => exposure?.breakdown.find((b) => !b.is_home)?.currency,
+    [exposure],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMode("quick")
+    setBase(topForeignCurrency ?? "USD")
+    setQuote(homeCurrency)
+    setRecentHighDays(30)
+    setConsecutiveDays(3)
+    setAlertOnHigh(true)
+    setAlertOnConsecutive(true)
+    setReminderHours(24)
+    setTargetRateInput("")
+    setTargetDirection("")
+    setError(null)
+  }, [open, homeCurrency, topForeignCurrency])
+
+  const applyPreset = (preset: "travel" | "long_term") => {
+    if (preset === "travel") {
+      setRecentHighDays(14)
+      setConsecutiveDays(2)
+      setReminderHours(12)
+      setAlertOnHigh(true)
+      setAlertOnConsecutive(true)
+      return
+    }
+    setRecentHighDays(45)
+    setConsecutiveDays(3)
+    setReminderHours(24)
+    setAlertOnHigh(true)
+    setAlertOnConsecutive(true)
+  }
 
   const handleSubmit = () => {
     setError(null)
@@ -46,6 +88,17 @@ export function AddWatchDialog({ open, onClose }: Props) {
       setError(t("fx_watch.form.error_reminder_hours"))
       return
     }
+    const parsedTargetRate = targetRateInput.trim() ? Number(targetRateInput) : null
+    if (parsedTargetRate !== null && (!Number.isFinite(parsedTargetRate) || parsedTargetRate <= 0)) {
+      setError(t("fx_watch.form.error_target_rate"))
+      return
+    }
+    if (parsedTargetRate !== null && targetDirection === "") {
+      setError(t("fx_watch.form.error_target_direction"))
+      return
+    }
+    const normalizedTargetDirection =
+      parsedTargetRate === null ? null : targetDirection || null
     create.mutate(
       {
         base_currency: base,
@@ -54,6 +107,8 @@ export function AddWatchDialog({ open, onClose }: Props) {
         consecutive_increase_days: consecutiveDays,
         alert_on_recent_high: alertOnHigh,
         alert_on_consecutive_increase: alertOnConsecutive,
+        target_rate: parsedTargetRate,
+        target_direction: normalizedTargetDirection,
         reminder_interval_hours: reminderHours,
       },
       {
@@ -76,6 +131,40 @@ export function AddWatchDialog({ open, onClose }: Props) {
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
+          <div className="flex items-center gap-2">
+            <button
+              className={`rounded-md border px-2.5 py-1 text-xs ${mode === "quick" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
+              onClick={() => setMode("quick")}
+              type="button"
+            >
+              {t("fx_watch.form.quick_mode")}
+            </button>
+            <button
+              className={`rounded-md border px-2.5 py-1 text-xs ${mode === "advanced" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
+              onClick={() => setMode("advanced")}
+              type="button"
+            >
+              {t("fx_watch.form.advanced_mode")}
+            </button>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => applyPreset("travel")}
+              className="text-xs rounded-md border border-border px-2 py-1 hover:bg-muted"
+            >
+              {t("fx_watch.form.preset_travel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset("long_term")}
+              className="text-xs rounded-md border border-border px-2 py-1 hover:bg-muted"
+            >
+              {t("fx_watch.form.preset_long_term")}
+            </button>
+          </div>
+
           {/* Currency pair */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -106,49 +195,85 @@ export function AddWatchDialog({ open, onClose }: Props) {
             </div>
           </div>
 
-          <hr className="border-border" />
-
-          {/* Sliders */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="add-recent-high-days" className="text-xs text-muted-foreground">
-                {t("fx_watch.form.recent_high_days")}: {recentHighDays}
+              <label htmlFor="add-target-rate" className="text-xs text-muted-foreground">
+                {t("fx_watch.form.target_rate")}
               </label>
               <input
-                id="add-recent-high-days"
-                type="range"
-                min={5}
-                max={90}
-                step={5}
-                value={recentHighDays}
-                onChange={(e) => setRecentHighDays(Number(e.target.value))}
-                aria-valuemin={5}
-                aria-valuemax={90}
-                aria-valuenow={recentHighDays}
-                className="w-full mt-0.5"
+                id="add-target-rate"
+                type="number"
+                step="0.0001"
+                min="0"
+                value={targetRateInput}
+                onChange={(e) => setTargetRateInput(e.target.value)}
+                placeholder={t("fx_watch.form.target_rate_placeholder")}
+                className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
               />
             </div>
             <div>
-              <label htmlFor="add-consecutive-days" className="text-xs text-muted-foreground">
-                {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
-              </label>
-              <input
-                id="add-consecutive-days"
-                type="range"
-                min={2}
-                max={10}
-                step={1}
-                value={consecutiveDays}
-                onChange={(e) => setConsecutiveDays(Number(e.target.value))}
-                aria-valuemin={2}
-                aria-valuemax={10}
-                aria-valuenow={consecutiveDays}
-                className="w-full mt-0.5"
-              />
+              <label className="text-xs text-muted-foreground">{t("fx_watch.form.target_direction")}</label>
+              <Select value={targetDirection} onValueChange={(v: "above" | "below") => setTargetDirection(v)}>
+                <SelectTrigger className="text-xs h-8 mt-0.5">
+                  <SelectValue placeholder={t("fx_watch.form.target_direction_placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="above" className="text-xs">
+                    {t("fx_watch.form.target_direction_above")}
+                  </SelectItem>
+                  <SelectItem value="below" className="text-xs">
+                    {t("fx_watch.form.target_direction_below")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <hr className="border-border" />
+          {mode === "advanced" && (
+            <>
+              <hr className="border-border" />
+
+              {/* Sliders */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="add-recent-high-days" className="text-xs text-muted-foreground">
+                    {t("fx_watch.form.recent_high_days")}: {recentHighDays}
+                  </label>
+                  <input
+                    id="add-recent-high-days"
+                    type="range"
+                    min={5}
+                    max={90}
+                    step={5}
+                    value={recentHighDays}
+                    onChange={(e) => setRecentHighDays(Number(e.target.value))}
+                    aria-valuemin={5}
+                    aria-valuemax={90}
+                    aria-valuenow={recentHighDays}
+                    className="w-full mt-0.5"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="add-consecutive-days" className="text-xs text-muted-foreground">
+                    {t("fx_watch.form.consecutive_days")}: {consecutiveDays}
+                  </label>
+                  <input
+                    id="add-consecutive-days"
+                    type="range"
+                    min={2}
+                    max={10}
+                    step={1}
+                    value={consecutiveDays}
+                    onChange={(e) => setConsecutiveDays(Number(e.target.value))}
+                    aria-valuemin={2}
+                    aria-valuemax={10}
+                    aria-valuenow={consecutiveDays}
+                    className="w-full mt-0.5"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Alert checkboxes */}
           <div className="grid grid-cols-2 gap-3">

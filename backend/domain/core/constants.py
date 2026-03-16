@@ -487,6 +487,9 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": False,
         "params": {
             "ticker": "str (optional — filter by ticker)",
+            "account_id": "int (optional — filter by account)",
+            "start": "str (optional — YYYY-MM-DD start date)",
+            "end": "str (optional — YYYY-MM-DD end date)",
             "limit": "int (optional — default 10, max 50)",
         },
     },
@@ -494,7 +497,8 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Record a new transaction",
         "requires_ticker": True,
         "params": {
-            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL)",
+            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)",
+            "account_id": "int (required — account identifier)",
             "quantity": "float (required)",
             "price": "float (optional — per-unit price)",
             "total_amount": "float (required — total transaction value)",
@@ -894,3 +898,16 @@ TICKER_MARKET_MAP: dict[str, str] = {
     ".HK": "HK",
 }
 DEFAULT_MARKET = "US"
+
+# Cash currency geographic mapping (currency → market code)
+CURRENCY_REGION_MAP: dict[str, str] = {
+    "USD": "US",
+    "TWD": "TW",
+    "JPY": "JP",
+    "HKD": "HK",
+    "EUR": "EU",
+    "GBP": "UK",
+    "CNY": "CN",
+    "SGD": "SG",
+    "THB": "TH",
+}

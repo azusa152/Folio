@@ -42,6 +42,7 @@ describe("GeographicAllocation", () => {
     )
 
     expect(screen.getByText("allocation.geo.title")).toBeInTheDocument()
+    expect(screen.getByText("allocation.geo.cash_included_hint")).toBeInTheDocument()
     expect(screen.getByTestId("bar-chart")).toBeInTheDocument()
   })
 

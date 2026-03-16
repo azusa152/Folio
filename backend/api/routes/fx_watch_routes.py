@@ -23,6 +23,7 @@ from api.schemas import (
     MessageResponse,
 )
 from application.portfolio.fx_watch_service import (
+    _UNSET,
     check_fx_watches,
     create_watch,
     get_all_watches,
@@ -101,6 +102,8 @@ def _to_watch_response(w: FXWatchConfig) -> FXWatchResponse:
         consecutive_increase_days=w.consecutive_increase_days,
         alert_on_recent_high=w.alert_on_recent_high,
         alert_on_consecutive_increase=w.alert_on_consecutive_increase,
+        target_rate=w.target_rate,
+        target_direction=w.target_direction,
         reminder_interval_hours=w.reminder_interval_hours,
         is_active=w.is_active,
         last_alerted_at=w.last_alerted_at.isoformat() if w.last_alerted_at else None,
@@ -142,6 +145,10 @@ def _to_result_item(r: dict, lang: str) -> FXWatchCheckResultItem:
             signal_strength=timing.signal_strength,
             alert_on_recent_high=timing.alert_on_recent_high,
             alert_on_consecutive_increase=timing.alert_on_consecutive_increase,
+            target_rate=timing.target_rate,
+            target_direction=timing.target_direction,
+            target_hit=timing.target_hit,
+            target_distance_pct=timing.target_distance_pct,
             should_alert=timing.should_alert,
             scenario=scenario,
             scenario_vars=vars_,
@@ -208,6 +215,8 @@ def create_fx_watch_config(
         consecutive_increase_days=req.consecutive_increase_days,
         alert_on_recent_high=req.alert_on_recent_high,
         alert_on_consecutive_increase=req.alert_on_consecutive_increase,
+        target_rate=req.target_rate,
+        target_direction=req.target_direction,
         reminder_interval_hours=req.reminder_interval_hours,
         user_id=user_id,
     )
@@ -238,15 +247,20 @@ def update_fx_watch_config(
     - reminder_interval_hours: 提醒間隔（可選）
     - is_active: 是否啟用（可選）
     """
+    update_fields = req.model_dump(exclude_unset=True)
     watch = update_watch(
         session=session,
         watch_id=watch_id,
-        recent_high_days=req.recent_high_days,
-        consecutive_increase_days=req.consecutive_increase_days,
-        alert_on_recent_high=req.alert_on_recent_high,
-        alert_on_consecutive_increase=req.alert_on_consecutive_increase,
-        reminder_interval_hours=req.reminder_interval_hours,
-        is_active=req.is_active,
+        recent_high_days=update_fields.get("recent_high_days"),
+        consecutive_increase_days=update_fields.get("consecutive_increase_days"),
+        alert_on_recent_high=update_fields.get("alert_on_recent_high"),
+        alert_on_consecutive_increase=update_fields.get(
+            "alert_on_consecutive_increase"
+        ),
+        target_rate=update_fields.get("target_rate", _UNSET),
+        target_direction=update_fields.get("target_direction", _UNSET),
+        reminder_interval_hours=update_fields.get("reminder_interval_hours"),
+        is_active=update_fields.get("is_active"),
     )
     if not watch:
         raise HTTPException(
