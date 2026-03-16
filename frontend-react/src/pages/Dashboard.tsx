@@ -19,6 +19,7 @@ import {
   useSnapshots,
   useTwr,
   useGreatMinds,
+  useInsights,
 } from "@/api/hooks/useDashboard"
 import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
@@ -47,6 +48,7 @@ import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
+import { InsightCard } from "@/components/common/InsightCard"
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
@@ -93,6 +95,7 @@ export default function Dashboard() {
     isFetching: rebalanceFetching,
     isError: rebalanceError,
   } = useRebalance(displayCurrency)
+  const { data: insights, isLoading: insightsLoading } = useInsights(displayCurrency, !stocksLoading)
 
   // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
   // requests above can claim FastAPI threadpool workers first.
@@ -259,6 +262,10 @@ export default function Dashboard() {
         isLoading={heroLoading}
         isRefreshing={heroRefreshing}
       />
+
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
+        <InsightCard insights={insights ?? []} maxVisible={3} isLoading={stocksLoading || insightsLoading} />
+      </LazySection>
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
         <HoldingBreakdown rebalance={rebalance} isLoading={heroLoading} />

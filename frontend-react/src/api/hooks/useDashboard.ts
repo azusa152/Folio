@@ -9,6 +9,7 @@ import type {
   TwrResponse,
   GreatMindsResponse,
   LastScanResponse,
+  InsightResponse,
   Holding,
   ProfileResponse,
   SignalActivityItem,
@@ -162,6 +163,22 @@ export function useSignalActivity() {
       return data as unknown as SignalActivityItem[]
     },
     staleTime: 120 * 1000,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useInsights(displayCurrency: string, enabled = true) {
+  return useQuery({
+    queryKey: ["analytics", "insights", displayCurrency],
+    queryFn: async () => {
+      const { data, error } = await client.GET("/analytics/insights", {
+        params: { query: { display_currency: displayCurrency } },
+      })
+      if (error) throw error
+      return data as unknown as InsightResponse[]
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled,
     placeholderData: keepPreviousData,
   })
 }

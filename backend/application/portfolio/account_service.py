@@ -10,6 +10,7 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
 from domain.constants import (
     DEFAULT_ACCOUNT_NAME,
@@ -170,6 +171,7 @@ def remove_account(session: Session, account_id: int, lang: str) -> None:
     account = _get_account_or_raise(session, account_id, lang)
     repo.deactivate_account(session, account)
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     logger.info("停用帳戶：%s (id=%d)", account.name, account_id)
 
 
