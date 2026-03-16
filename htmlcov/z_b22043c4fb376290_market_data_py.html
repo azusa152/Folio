@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for infrastructure/market_data/market_data.py: 62%</title>
+    <title>Coverage for infrastructure/market_data/market_data.py: 61%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_9ff733b0.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>infrastructure&#8201;/&#8201;market_data&#8201;/&#8201;market_data.py</b>:
-            <span class="pc_cov">62%</span>
+            <span class="pc_cov">61%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">1207 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">745<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">462<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">740<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">467<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b22043c4fb376290_market_data_resolver_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-03-13 14:54 +0000
+            created at 2026-03-16 02:32 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -745,8 +745,8 @@
     <p class="run"><span class="n"><a id="t663" href="#t663">663</a></span><span class="t">    <span class="key">try</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t664" href="#t664">664</a></span><span class="t">        <span class="nam">info</span> <span class="op">=</span> <span class="nam">_yf_info</span><span class="op">(</span><span class="nam">ticker</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t665" href="#t665">665</a></span><span class="t">        <span class="key">return</span> <span class="nam">info</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">"quoteType"</span><span class="op">,</span> <span class="str">""</span><span class="op">)</span> <span class="op">==</span> <span class="str">"ETF"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t666" href="#t666">666</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t667" href="#t667">667</a></span><span class="t">        <span class="key">return</span> <span class="key">False</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t666" href="#t666">666</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t667" href="#t667">667</a></span><span class="t">        <span class="key">return</span> <span class="key">False</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t668" href="#t668">668</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t669" href="#t669">669</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t670" href="#t670">670</a></span><span class="t"><span class="op">@</span><span class="nam">_yf_retry</span>&nbsp;</span><span class="r"></span></p>
@@ -2856,9 +2856,9 @@
     <p class="run"><span class="n"><a id="t2774" href="#t2774">2774</a></span><span class="t">            <span class="key">return</span> <span class="nam">str</span><span class="op">(</span><span class="nam">sector</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t2775" href="#t2775">2775</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">"%s yfinance &#26410;&#25552;&#20379; sector&#65292;&#20351;&#29992;&#21736;&#20853;&#20540;&#12290;"</span><span class="op">,</span> <span class="nam">ticker</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t2776" href="#t2776">2776</a></span><span class="t">        <span class="key">return</span> <span class="nam">_SECTOR_NOT_FOUND</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t2777" href="#t2777">2777</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t2778" href="#t2778">2778</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">"&#28961;&#27861;&#21462;&#24471; %s sector&#65306;%s&#65292;&#20351;&#29992;&#21736;&#20853;&#20540;&#12290;"</span><span class="op">,</span> <span class="nam">ticker</span><span class="op">,</span> <span class="nam">e</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t2779" href="#t2779">2779</a></span><span class="t">        <span class="key">return</span> <span class="nam">_SECTOR_NOT_FOUND</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t2777" href="#t2777">2777</a></span><span class="t">    <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">e</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t2778" href="#t2778">2778</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">"&#28961;&#27861;&#21462;&#24471; %s sector&#65306;%s&#65292;&#20351;&#29992;&#21736;&#20853;&#20540;&#12290;"</span><span class="op">,</span> <span class="nam">ticker</span><span class="op">,</span> <span class="nam">e</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t2779" href="#t2779">2779</a></span><span class="t">        <span class="key">return</span> <span class="nam">_SECTOR_NOT_FOUND</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t2780" href="#t2780">2780</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t2781" href="#t2781">2781</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t2782" href="#t2782">2782</a></span><span class="t"><span class="key">def</span> <span class="nam">get_ticker_sector</span><span class="op">(</span><span class="nam">ticker</span><span class="op">:</span> <span class="nam">str</span><span class="op">)</span> <span class="op">-></span> <span class="nam">str</span> <span class="op">|</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -3038,7 +3038,7 @@
             <a class="nav" href="z_b22043c4fb376290_market_data_resolver_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-03-13 14:54 +0000
+            created at 2026-03-16 02:32 +0000
         </p>
     </div>
 </footer>
