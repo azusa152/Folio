@@ -6571,6 +6571,16 @@
             "title": "Account Type",
             "default": "brokerage"
           },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "currency": {
             "type": "string",
             "maxLength": 10,
@@ -6618,6 +6628,16 @@
           "account_type": {
             "type": "string",
             "title": "Account Type"
+          },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "currency": {
             "type": "string",
@@ -6732,6 +6752,16 @@
               }
             ],
             "title": "Account Type"
+          },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "currency": {
             "anyOf": [
@@ -11273,6 +11303,18 @@
         ],
         "title": "SyncResponse",
         "description": "POST /gurus/{guru_id}/sync \u56de\u50b3\u7684\u540c\u6b65\u7d50\u679c\u3002"
+      },
+      "TaxWrapperType": {
+        "type": "string",
+        "enum": [
+          "tokutei",
+          "nisa_tsumitate",
+          "nisa_growth",
+          "ideco",
+          "ippan"
+        ],
+        "title": "TaxWrapperType",
+        "description": "\u7a0e\u5236\u53e3\u5ea7\u30e9\u30c3\u30d1\u30fc\u7a2e\u5225\u3002"
       },
       "TelegramSettingsRequest": {
         "properties": {

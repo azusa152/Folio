@@ -126,6 +126,8 @@ def _run_migrations() -> None:
         # FX Watch: target-rate alert support
         "ALTER TABLE fxwatchconfig ADD COLUMN target_rate REAL;",
         "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
+        # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
+        "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
     ]
 
     with engine.connect() as conn:

@@ -379,5 +379,17 @@
   "analytics": {
     "date_range_both_required": "start と end は両方指定してください",
     "date_range_invalid_order": "start は end より前の日付にしてください"
+  },
+  "wrapper": {
+    "tokutei": "特定口座",
+    "nisa_tsumitate": "つみたて投資枠",
+    "nisa_growth": "成長投資枠",
+    "ideco": "iDeCo（個人型確定拠出年金）",
+    "ippan": "一般口座",
+    "tax_free": "非課税",
+    "taxable": "課税",
+    "tax_deferred": "所得控除",
+    "no_wrapper": "税制口座指定なし",
+    "select_wrapper": "税制口座を選択（任意）"
   }
 }

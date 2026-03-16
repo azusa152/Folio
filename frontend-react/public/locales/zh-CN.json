@@ -2084,5 +2084,17 @@
     "mode_simplified": "简化（推荐大多数用户使用）",
     "mode_expert": "专业（显示完整金融术语）",
     "terminology_hint": "控制应用中金融术语的显示方式。"
+  },
+  "wrapper": {
+    "tokutei": "特定账户（应税）",
+    "nisa_tsumitate": "NISA 定投额度",
+    "nisa_growth": "NISA 成长额度",
+    "ideco": "iDeCo（个人型确定缴费年金）",
+    "ippan": "一般账户",
+    "tax_free": "免税",
+    "taxable": "应税",
+    "tax_deferred": "递延纳税",
+    "no_wrapper": "无税制账户",
+    "select_wrapper": "选择税制账户类型（可选）"
   }
 }

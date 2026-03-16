@@ -2084,5 +2084,17 @@
     "mode_simplified": "簡化（建議大多數使用者）",
     "mode_expert": "專業（顯示完整金融術語）",
     "terminology_hint": "控制應用程式中金融術語的顯示方式。"
+  },
+  "wrapper": {
+    "tokutei": "特定口座（課稅）",
+    "nisa_tsumitate": "NISA 定期定額",
+    "nisa_growth": "NISA 成長",
+    "ideco": "iDeCo（個人型確定拠出年金）",
+    "ippan": "一般口座",
+    "tax_free": "免稅",
+    "taxable": "課稅",
+    "tax_deferred": "遞延課稅",
+    "no_wrapper": "無稅制口座",
+    "select_wrapper": "選擇稅制帳戶類型（選填）"
   }
 }

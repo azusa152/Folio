@@ -2084,5 +2084,17 @@
     "mode_simplified": "Simplified (recommended for most users)",
     "mode_expert": "Expert (full financial terminology)",
     "terminology_hint": "Controls how financial terms are displayed throughout the app."
+  },
+  "wrapper": {
+    "tokutei": "Tokutei (Taxable)",
+    "nisa_tsumitate": "NISA Tsumitate",
+    "nisa_growth": "NISA Growth",
+    "ideco": "iDeCo",
+    "ippan": "General Account",
+    "tax_free": "Tax-Free",
+    "taxable": "Taxable",
+    "tax_deferred": "Tax-Deferred",
+    "no_wrapper": "No tax wrapper",
+    "select_wrapper": "Select tax account type (optional)"
   }
 }

@@ -379,5 +379,17 @@
   "analytics": {
     "date_range_both_required": "start and end must both be provided",
     "date_range_invalid_order": "start must not be later than end"
+  },
+  "wrapper": {
+    "tokutei": "Tokutei (Taxable)",
+    "nisa_tsumitate": "NISA Tsumitate",
+    "nisa_growth": "NISA Growth",
+    "ideco": "iDeCo",
+    "ippan": "General Account",
+    "tax_free": "Tax-Free",
+    "taxable": "Taxable",
+    "tax_deferred": "Tax-Deferred",
+    "no_wrapper": "No tax wrapper",
+    "select_wrapper": "Select tax account type (optional)"
   }
 }

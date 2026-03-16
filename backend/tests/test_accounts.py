@@ -16,6 +16,7 @@ def test_account_crud(client: TestClient):
     assert data["name"] == "IB US Stocks"
     assert data["broker"] == "Interactive Brokers"
     assert data["account_type"] == "brokerage"
+    assert data["tax_wrapper"] is None
     assert data["currency"] == "USD"
     assert data["is_active"] is True
     acct_id = data["id"]
@@ -49,7 +50,11 @@ def test_account_summary(client: TestClient):
 def test_account_summary_with_holdings(client: TestClient):
     acct_resp = client.post(
         "/accounts",
-        json={"name": "SBI Japan", "broker": "SBI Securities"},
+        json={
+            "name": "SBI Japan",
+            "broker": "SBI Securities",
+            "tax_wrapper": "nisa_tsumitate",
+        },
     )
     assert acct_resp.status_code == 201
 
@@ -58,6 +63,7 @@ def test_account_summary_with_holdings(client: TestClient):
     data = resp.json()
     assert len(data) >= 1
     assert data[0]["account"]["name"] == "SBI Japan"
+    assert data[0]["account"]["tax_wrapper"] == "nisa_tsumitate"
     assert data[0]["holdings_count"] == 0
     assert data[0]["tickers"] == []
     assert data[0]["cash_balances"] == [{"currency": "USD", "balance": 0.0}]
@@ -128,6 +134,50 @@ def test_account_cash_balances_endpoint(client: TestClient):
     balances_resp = client.get(f"/accounts/{account_id}/cash-balances")
     assert balances_resp.status_code == 200
     assert balances_resp.json() == [{"currency": "USD", "balance": 750.0}]
+
+
+def test_account_should_persist_tax_wrapper(client: TestClient):
+    create_resp = client.post(
+        "/accounts",
+        json={
+            "name": "NISA Account",
+            "broker": "SBI Securities",
+            "account_type": "brokerage",
+            "tax_wrapper": "nisa_growth",
+            "currency": "JPY",
+        },
+    )
+    assert create_resp.status_code == 201
+    created = create_resp.json()
+    assert created["tax_wrapper"] == "nisa_growth"
+
+    account_id = created["id"]
+    update_resp = client.put(
+        f"/accounts/{account_id}",
+        json={
+            "tax_wrapper": "tokutei",
+        },
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["tax_wrapper"] == "tokutei"
+
+    list_resp = client.get("/accounts")
+    assert list_resp.status_code == 200
+    listed = next(item for item in list_resp.json() if item["id"] == account_id)
+    assert listed["tax_wrapper"] == "tokutei"
+
+
+def test_account_should_reject_invalid_tax_wrapper(client: TestClient):
+    resp = client.post(
+        "/accounts",
+        json={
+            "name": "Invalid Wrapper",
+            "broker": "Demo Broker",
+            "tax_wrapper": "invalid_wrapper",
+            "currency": "USD",
+        },
+    )
+    assert resp.status_code == 422
 
 
 def test_accounts_include_inactive_query(client: TestClient):

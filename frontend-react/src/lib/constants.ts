@@ -86,6 +86,36 @@ export const ACCOUNT_TYPES = [
   "loan",
   "other",
 ] as const
+
+export const TAX_WRAPPER_TYPES = [
+  "tokutei",
+  "nisa_tsumitate",
+  "nisa_growth",
+  "ideco",
+  "ippan",
+] as const
+
+export type TaxWrapperType = (typeof TAX_WRAPPER_TYPES)[number]
+
+export function isTaxWrapperType(value: string | null | undefined): value is TaxWrapperType {
+  return !!value && TAX_WRAPPER_TYPES.includes(value as TaxWrapperType)
+}
+
+export const TAX_WRAPPER_ICONS: Record<string, string> = {
+  tokutei: "📋",
+  nisa_tsumitate: "🌱",
+  nisa_growth: "📈",
+  ideco: "🏦",
+  ippan: "📄",
+}
+
+export const TAX_WRAPPER_COLOR_MAP: Record<string, string> = {
+  tokutei: "#9CA3AF",
+  nisa_tsumitate: "#10B981",
+  nisa_growth: "#3B82F6",
+  ideco: "#8B5CF6",
+  ippan: "#D1D5DB",
+}
 export const HOLDING_QUANTITY_EPSILON = 1e-8
 
 export const CURRENCY_TO_REGION: Record<string, string> = {

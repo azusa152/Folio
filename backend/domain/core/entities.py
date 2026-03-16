@@ -143,6 +143,10 @@ class Account(SQLModel, table=True):
         default="brokerage",
         description="帳戶類型（brokerage / retirement / savings / crypto）",
     )
+    tax_wrapper: str | None = Field(
+        default=None,
+        description="税制ラッパー種別（tokutei / nisa_tsumitate / nisa_growth / ideco / ippan）",
+    )
     currency: str = Field(default="USD", description="帳戶基準幣別")
     institution: str = Field(default="", description="金融機構全名（選填）")
     note: str = Field(default="", description="備註")

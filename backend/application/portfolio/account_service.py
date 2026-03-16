@@ -15,6 +15,8 @@ from domain.constants import (
     DEFAULT_ACCOUNT_NAME,
     DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
+    ERROR_INVALID_INPUT,
+    TAX_WRAPPER_OPTIONS,
 )
 from domain.entities import Account, Holding
 from domain.enums import StockCategory
@@ -37,6 +39,7 @@ def _acct_to_dict(acct: Account) -> dict:
         "name": acct.name,
         "broker": acct.broker,
         "account_type": acct.account_type,
+        "tax_wrapper": acct.tax_wrapper,
         "currency": acct.currency,
         "institution": acct.institution,
         "note": acct.note,
@@ -59,6 +62,24 @@ def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Accou
     return account
 
 
+def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
+    """Normalize and validate tax wrapper values for internal callers."""
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if not normalized:
+        return None
+    if normalized not in TAX_WRAPPER_OPTIONS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("common.validation_error", lang=lang),
+            },
+        )
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # Service functions
 # ---------------------------------------------------------------------------
@@ -74,7 +95,9 @@ def list_accounts(session: Session, include_inactive: bool = False) -> list[dict
 
 def create_account(session: Session, data: dict, lang: str) -> dict:
     """Create a new account. Returns the created account dict."""
-    account = Account(**data)
+    payload = dict(data)
+    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"), lang)
+    account = Account(**payload)
     session.add(account)
     session.flush()
 
@@ -129,7 +152,12 @@ def ensure_default_account(session: Session) -> Account:
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:
     """Partially update an existing account. Only provided fields are overwritten."""
     account = _get_account_or_raise(session, account_id, lang)
-    for key, value in data.items():
+    normalized_data = dict(data)
+    if "tax_wrapper" in normalized_data:
+        normalized_data["tax_wrapper"] = _normalize_tax_wrapper(
+            normalized_data.get("tax_wrapper"), lang
+        )
+    for key, value in normalized_data.items():
         if hasattr(account, key) and key not in ("id", "user_id", "created_at"):
             setattr(account, key, value)
     account.updated_at = datetime.now(UTC)
