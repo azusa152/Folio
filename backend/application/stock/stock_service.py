@@ -815,9 +815,47 @@ def _refresh_enriched_cache_background() -> list[dict]:
         return _compute_enriched_stocks(stocks)
 
 
+def build_nav_signals(nav_row: object, *, include_nav_date: bool = False) -> dict:
+    """Convert a MutualFundNav row into an enrichment-compatible signals dict.
+
+    Shared by stock_service (enrichment pipeline) and scan_service (scan loop).
+    """
+    prev = nav_row.nav_previous  # type: ignore[attr-defined]
+    change_pct = ((nav_row.nav - prev) / prev * 100) if prev else None  # type: ignore[attr-defined]
+    result: dict = {
+        "price": nav_row.nav,  # type: ignore[attr-defined]
+        "previous_close": prev,
+        "change_pct": change_pct,
+        "rsi": None,
+        "bias": None,
+        "bias_200": None,
+        "volume_ratio": None,
+    }
+    if include_nav_date:
+        result["nav_date"] = str(nav_row.nav_date)  # type: ignore[attr-defined]
+    return result
+
+
 def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
     """Inner computation: fetch signals/earnings/dividends for all stocks in parallel."""
     logger.info("批次取得 %d 檔股票的豐富資料...", len(stocks))
+
+    # Pre-fetch NAV data for Mutual_Fund stocks (single DB read, not per-thread)
+    nav_cache: dict[str, dict] = {}
+    mf_tickers = [
+        s.ticker
+        for s in stocks
+        if (s.category.value if hasattr(s.category, "value") else str(s.category))
+        == StockCategory.MUTUAL_FUND.value
+    ]
+    if mf_tickers:
+        with Session(engine) as nav_session:
+            for ticker in mf_tickers:
+                nav_row = repo.get_latest_nav(nav_session, ticker)
+                if nav_row:
+                    nav_cache[ticker] = build_nav_signals(
+                        nav_row, include_nav_date=True
+                    )
 
     # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
     enriched: dict[str, dict] = {}
@@ -844,6 +882,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "rsi": None,
             "market_cap": None,
             "trailing_pe": None,
+            "nav_date": None,
         }
 
     def _fetch_enrichment(
@@ -877,6 +916,8 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                 "bias_200": None,
                 "volume_ratio": None,
             }
+        elif cat_value == StockCategory.MUTUAL_FUND.value:
+            signals = nav_cache.get(ticker)
         elif cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
             signals = get_technical_signals(ticker)
 
@@ -926,6 +967,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     enriched[ticker]["price"] = (signals or {}).get("price")
                     enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
                     enriched[ticker]["rsi"] = (signals or {}).get("rsi")
+                    enriched[ticker]["nav_date"] = (signals or {}).get("nav_date")
                     # Hybrid loading: quick-scan metrics also exposed at top-level.
                     enriched[ticker]["market_cap"] = (fundamentals or {}).get(
                         "market_cap"
@@ -976,9 +1018,22 @@ def get_signals_for_ticker(ticker: str) -> dict | None:
     return signals
 
 
-def get_price_history(ticker: str) -> list[dict] | None:
-    """Fetch price history for charting."""
-    return _get_price_history(ticker)
+def get_price_history_for_ticker(session: Session, ticker: str) -> list[dict]:
+    """Resolve category once and return the appropriate price history."""
+    upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper)
+    if stock:
+        cat = (
+            stock.category.value
+            if hasattr(stock.category, "value")
+            else str(stock.category)
+        )
+        if cat == StockCategory.MUTUAL_FUND.value:
+            rows = repo.get_nav_history(session, upper)
+            return [{"date": str(r.nav_date), "close": r.nav} for r in reversed(rows)]
+        if cat in SKIP_PRICE_FETCH_CATEGORIES:
+            return []
+    return _get_price_history(upper) or []
 
 
 def get_earnings_for_ticker(ticker: str) -> dict | None:

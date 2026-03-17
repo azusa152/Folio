@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from application.formatters import format_fear_greed_label
 from application.scan.backtest_service import invalidate_backtest_cache
-from application.stock.stock_service import _get_stock_or_raise
+from application.stock.stock_service import _get_stock_or_raise, build_nav_signals
 from domain.analysis import (
     compute_bias_percentile,
     compute_signal_duration,
@@ -152,6 +152,14 @@ def run_scan(session: Session) -> dict:
     fg_label = format_fear_greed_label(fg_level, fg_score, lang=lang)
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
+    # === Pre-fetch NAV data for Mutual_Fund stocks ===
+    _nav_cache: dict[str, dict] = {}
+    for s in all_stocks:
+        if s.category == StockCategory.MUTUAL_FUND:
+            nav_row = repo.get_latest_nav(session, s.ticker)
+            if nav_row:
+                _nav_cache[s.ticker] = build_nav_signals(nav_row)
+
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
 
     def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
@@ -173,8 +181,10 @@ def run_scan(session: Session) -> dict:
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
         moat_details = moat_result.get("details", "")
 
-        # Cash 不取價格；Crypto 走價格路徑但不做 RSI/bias 計算
-        if stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
+        # Cash 不取價格；Mutual_Fund 走 NAV；Crypto 走 CoinGecko
+        if stock.category == StockCategory.MUTUAL_FUND:
+            signals = _nav_cache.get(ticker)
+        elif stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
             signals = None
         elif stock.category == StockCategory.CRYPTO:
             crypto_data = get_crypto_price(stock.coingecko_id, ticker)

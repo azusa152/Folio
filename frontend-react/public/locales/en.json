@@ -664,7 +664,9 @@
         "revenue_growth_tip": "How fast total sales are growing year-over-year.",
         "earnings_growth_tip": "How fast net earnings are growing year-over-year."
       }
-    }
+    },
+    "nav_badge": "NAV",
+    "nav_as_of": "as of {{date}}"
   },
   "backtest": {
     "title": "🧪 Signal Backtesting",

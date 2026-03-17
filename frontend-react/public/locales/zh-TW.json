@@ -664,7 +664,9 @@
         "revenue_growth_tip": "公司營收相較去年同期成長速度。",
         "earnings_growth_tip": "公司獲利相較去年同期成長速度。"
       }
-    }
+    },
+    "nav_badge": "基準價額",
+    "nav_as_of": "截至 {{date}}"
   },
   "backtest": {
     "title": "🧪 訊號回測",

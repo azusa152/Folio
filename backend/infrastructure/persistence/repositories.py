@@ -27,6 +27,7 @@ from domain.entities import (
     GuruFiling,
     GuruHolding,
     Holding,
+    MutualFundNav,
     NotificationLog,
     PriceAlert,
     RemovalLog,
@@ -1664,6 +1665,7 @@ def upsert_eligible_assets(
             "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
             or "mutual_fund",
             "trust_fee_pct": row.get("trust_fee_pct"),
+            "isin_code": row.get("isin_code"),
         }
     normalized_rows = list(deduped.values())
 
@@ -1691,6 +1693,7 @@ def upsert_eligible_assets(
                     asset_type=row["asset_type"],
                     broker=broker,
                     trust_fee_pct=row["trust_fee_pct"],
+                    isin_code=row.get("isin_code"),
                     is_active=True,
                     updated_at=datetime.now(UTC),
                 )
@@ -1698,16 +1701,20 @@ def upsert_eligible_assets(
             added += 1
             continue
 
+        new_isin = row.get("isin_code")
         changed = (
             found.fund_name != row["fund_name"]
             or found.asset_type != row["asset_type"]
             or found.trust_fee_pct != row["trust_fee_pct"]
+            or (new_isin is not None and found.isin_code != new_isin)
             or not found.is_active
         )
         if changed:
             found.fund_name = row["fund_name"]
             found.asset_type = row["asset_type"]
             found.trust_fee_pct = row["trust_fee_pct"]
+            if new_isin is not None:
+                found.isin_code = new_isin
             found.is_active = True
             found.updated_at = datetime.now(UTC)
             session.add(found)
@@ -1774,6 +1781,140 @@ def get_eligible_assets_metadata(
         "last_refreshed_at": last_refreshed_at,
         "source": source,
     }
+
+
+# ===========================================================================
+# MutualFundNav Repository
+# ===========================================================================
+
+
+def find_isin_for_ticker(session: Session, ticker: str) -> str | None:
+    """Look up ISIN code from EligibleAsset for a given ticker."""
+    normalized = ticker.upper().strip()
+    stmt = (
+        select(EligibleAsset.isin_code)
+        .where(
+            EligibleAsset.ticker == normalized,
+            EligibleAsset.is_active == True,  # noqa: E712
+            EligibleAsset.isin_code != None,  # noqa: E711
+        )
+        .limit(1)
+    )
+    return session.exec(stmt).first()
+
+
+def get_latest_nav(session: Session, fund_code: str) -> "MutualFundNav | None":
+    """Get the most recent NAV row for a fund."""
+    stmt = (
+        select(MutualFundNav)
+        .where(MutualFundNav.fund_code == fund_code.upper().strip())
+        .order_by(MutualFundNav.nav_date.desc())
+        .limit(1)
+    )
+    return session.exec(stmt).first()
+
+
+def get_nav_history(
+    session: Session, fund_code: str, *, limit: int = 365
+) -> list["MutualFundNav"]:
+    """Get NAV history for charting (newest first, up to `limit` rows)."""
+    stmt = (
+        select(MutualFundNav)
+        .where(MutualFundNav.fund_code == fund_code.upper().strip())
+        .order_by(MutualFundNav.nav_date.desc())
+        .limit(limit)
+    )
+    return list(session.exec(stmt).all())
+
+
+def upsert_nav(
+    session: Session,
+    fund_code: str,
+    isin_code: str,
+    nav: float,
+    nav_date: "date",
+    *,
+    nav_previous: float | None = None,
+    net_assets: float | None = None,
+    autocommit: bool = True,
+) -> "MutualFundNav":
+    """Insert or update a single NAV record (unique by fund_code + nav_date)."""
+    normalized = fund_code.upper().strip()
+    stmt = select(MutualFundNav).where(
+        MutualFundNav.fund_code == normalized,
+        MutualFundNav.nav_date == nav_date,
+    )
+    existing = session.exec(stmt).first()
+    now = datetime.now(UTC)
+    if existing:
+        existing.nav = nav
+        existing.nav_previous = nav_previous
+        existing.net_assets = net_assets
+        existing.isin_code = isin_code
+        existing.fetched_at = now
+        session.add(existing)
+        result = existing
+    else:
+        result = MutualFundNav(
+            fund_code=normalized,
+            isin_code=isin_code,
+            nav=nav,
+            nav_previous=nav_previous,
+            nav_date=nav_date,
+            net_assets=net_assets,
+            fetched_at=now,
+        )
+        session.add(result)
+    if autocommit:
+        session.commit()
+        session.refresh(result)
+    else:
+        session.flush()
+    return result
+
+
+def bulk_upsert_nav(
+    session: Session,
+    fund_code: str,
+    isin_code: str,
+    rows: list[dict],
+    *,
+    autocommit: bool = True,
+) -> int:
+    """Bulk upsert NAV rows. Returns count of rows written."""
+    normalized = fund_code.upper().strip()
+    existing_stmt = select(MutualFundNav).where(MutualFundNav.fund_code == normalized)
+    existing_by_date = {r.nav_date: r for r in session.exec(existing_stmt).all()}
+    now = datetime.now(UTC)
+    count = 0
+    for row in rows:
+        nav_date = row["date"]
+        found = existing_by_date.get(nav_date)
+        if found:
+            found.nav = row["nav"]
+            found.nav_previous = row.get("nav_previous")
+            found.net_assets = row.get("net_assets")
+            found.isin_code = isin_code
+            found.fetched_at = now
+            session.add(found)
+        else:
+            session.add(
+                MutualFundNav(
+                    fund_code=normalized,
+                    isin_code=isin_code,
+                    nav=row["nav"],
+                    nav_previous=row.get("nav_previous"),
+                    nav_date=nav_date,
+                    net_assets=row.get("net_assets"),
+                    fetched_at=now,
+                )
+            )
+        count += 1
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
+    return count
 
 
 def save_transaction(session: Session, txn: Transaction) -> Transaction:

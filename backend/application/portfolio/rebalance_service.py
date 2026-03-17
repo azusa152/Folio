@@ -19,6 +19,7 @@ from domain.constants import (
     FX_HISTORY_PERIOD,
     REBALANCE_CACHE_MAXSIZE,
     REBALANCE_CACHE_TTL,
+    SKIP_PRICE_FETCH_CATEGORIES,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
@@ -73,6 +74,7 @@ from infrastructure.notification import (
 from infrastructure.repositories import (
     find_all_accounts,
     find_holdings_for_active_accounts,
+    get_latest_nav,
     log_notification_sent,
 )
 from logging_config import get_logger
@@ -101,6 +103,52 @@ def invalidate_rebalance_cache() -> None:
         _rebalance_cache.clear()
 
 
+def _build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
+    """Pre-fetch latest NAV for all Mutual_Fund holdings."""
+    cache: dict[str, dict] = {}
+    for h in holdings:
+        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
+        if cat != StockCategory.MUTUAL_FUND.value or h.ticker in cache:
+            continue
+        nav_row = get_latest_nav(session, h.ticker)
+        if nav_row:
+            cache[h.ticker] = {
+                "nav": nav_row.nav,
+                "nav_previous": nav_row.nav_previous,
+            }
+    return cache
+
+
+def _resolve_holding_price(
+    h: object,
+    nav_cache: dict[str, dict],
+) -> float | None:
+    """Resolve current price for a holding based on its category.
+
+    Returns the raw price (not FX-adjusted). Returns None if unavailable
+    (caller should fall back to cost_basis).
+    """
+    cat = h.category.value if hasattr(h.category, "value") else str(h.category)  # type: ignore[attr-defined]
+    if h.is_cash:  # type: ignore[attr-defined]
+        return 1.0
+    if h.category == StockCategory.CRYPTO:  # type: ignore[attr-defined]
+        crypto_data = get_crypto_price(
+            getattr(h, "coingecko_id", None),
+            h.ticker,  # type: ignore[attr-defined]
+        )
+        p = crypto_data.get("price_usd") if crypto_data else None
+        return float(p) if isinstance(p, (int, float)) else None
+    if cat == StockCategory.MUTUAL_FUND.value:
+        nav_data = nav_cache.get(h.ticker)  # type: ignore[attr-defined]
+        p = nav_data.get("nav") if nav_data else None
+        return float(p) if isinstance(p, (int, float)) else None
+    if cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return None
+    signals = get_technical_signals(h.ticker)  # type: ignore[attr-defined]
+    p = signals.get("price") if signals else None
+    return float(p) if isinstance(p, (int, float)) else None
+
+
 # ===========================================================================
 # 共用持倉市值計算
 # ===========================================================================
@@ -110,6 +158,8 @@ def _compute_holding_market_values(
     holdings: list,
     fx_rates: dict[str, float],
     account_name_by_id: dict[int, str] | None = None,
+    *,
+    nav_cache: dict[str, dict] | None = None,
 ) -> tuple[dict[str, float], dict[str, float], dict[str, dict], dict[tuple, dict]]:
     """
     共用邏輯：計算所有持倉的當前與前一交易日市值（已換算目標幣別）。
@@ -120,6 +170,7 @@ def _compute_holding_market_values(
     - ticker_agg: {ticker: {category, currency, qty, mv, prev_mv, cost_sum, cost_qty, price, fx}}
       其中 prev_mv 為前一交易日市值，用於日漲跌計算
     """
+    _nav = nav_cache or {}
     currency_values: dict[str, float] = {}
     cash_currency_values: dict[str, float] = {}
     ticker_agg: dict[str, dict] = {}
@@ -172,13 +223,11 @@ def _compute_holding_market_values(
                 has_prev_close = True
             else:
                 previous_market_value = market_value
-        else:
-            # 非現金持倉：取得當前與前一交易日價格
-            signals = get_technical_signals(h.ticker)
-            price = signals.get("price") if signals else None
-            previous_close = signals.get("previous_close") if signals else None
+        elif cat == StockCategory.MUTUAL_FUND.value:
+            nav_data = _nav.get(h.ticker)
+            price = nav_data.get("nav") if nav_data else None
+            previous_close = nav_data.get("nav_previous") if nav_data else None
 
-            # 計算當前市值
             if price is not None and isinstance(price, (int, float)):
                 market_value = h.quantity * price * fx
             elif h.cost_basis is not None:
@@ -186,12 +235,35 @@ def _compute_holding_market_values(
             else:
                 market_value = 0.0
 
-            # 計算前一交易日市值
             if previous_close is not None and isinstance(previous_close, (int, float)):
                 previous_market_value = h.quantity * previous_close * fx
                 has_prev_close = True
             else:
-                # 無 previous_close 時回退至當前市值，使組合層級日漲跌不受影響
+                previous_market_value = market_value
+        elif cat in SKIP_PRICE_FETCH_CATEGORIES:
+            if h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis * fx
+            else:
+                market_value = 0.0
+            previous_market_value = market_value
+            has_prev_close = True
+        else:
+            # 一般持倉：取得當前與前一交易日價格
+            signals = get_technical_signals(h.ticker)
+            price = signals.get("price") if signals else None
+            previous_close = signals.get("previous_close") if signals else None
+
+            if price is not None and isinstance(price, (int, float)):
+                market_value = h.quantity * price * fx
+            elif h.cost_basis is not None:
+                market_value = h.quantity * h.cost_basis * fx
+            else:
+                market_value = 0.0
+
+            if previous_close is not None and isinstance(previous_close, (int, float)):
+                previous_market_value = h.quantity * previous_close * fx
+                has_prev_close = True
+            else:
                 previous_market_value = market_value
 
         currency_values[h.currency] = (
@@ -472,11 +544,13 @@ def _do_calculate_rebalance(
     }
 
     # 4) 使用共用邏輯計算各持倉市值
+    _nav_cache = _build_nav_cache(session, holdings)
     _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
         _compute_holding_market_values(
             holdings,
             fx_rates,
             account_name_by_id,
+            nav_cache=_nav_cache,
         )
     )
 
@@ -1162,10 +1236,12 @@ def calculate_currency_exposure(
         prewarm_crypto_prices(crypto_ids)
 
     # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
+    _nav_cache_ce = _build_nav_cache(session, holdings)
     currency_values, cash_currency_values, _ticker_agg, _account_ticker_agg = (
         _compute_holding_market_values(
             holdings,
             fx_rates,
+            nav_cache=_nav_cache_ce,
         )
     )
 
@@ -1581,32 +1657,20 @@ def calculate_withdrawal(
         for account in find_all_accounts(session, active_only=True)
         if account.id is not None
     }
+    _nav_cache_wd = _build_nav_cache(session, holdings)
 
     for h in holdings:
         fx = fx_rates.get(h.currency, 1.0)
-        price: float | None = None
+        price = _resolve_holding_price(h, _nav_cache_wd)
 
         if h.is_cash:
             market_value = h.quantity * fx
-            price = 1.0
-        elif h.category == StockCategory.CRYPTO:
-            crypto_data = get_crypto_price(getattr(h, "coingecko_id", None), h.ticker)
-            price = crypto_data.get("price_usd") if crypto_data else None
-            if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price * fx
-            elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
+        elif price is not None:
+            market_value = h.quantity * price * fx
+        elif h.cost_basis is not None:
+            market_value = h.quantity * h.cost_basis * fx
         else:
-            signals = get_technical_signals(h.ticker)
-            price = signals.get("price") if signals else None
-            if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price * fx
-            elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
+            market_value = 0.0
 
         cat = h.category.value if hasattr(h.category, "value") else str(h.category)
         category_values[cat] = category_values.get(cat, 0.0) + market_value

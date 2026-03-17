@@ -68,6 +68,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         seed_default_eligible_assets_if_empty,
     )
     from application.portfolio.eligible_sync_service import start_eligible_sync_loop
+    from application.portfolio.nav_sync_service import start_nav_sync_loop
     from application.stock.stock_service import reclassify_mutual_fund_stocks
     from infrastructure.database import engine
 
@@ -91,6 +92,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("背景快取預熱已啟動。")
     start_eligible_sync_loop()
     logger.info("NISA eligible-list 週期同步已啟動。")
+    start_nav_sync_loop()
+    logger.info("投資信託 NAV 週期同步已啟動。")
 
     yield
     logger.info("Folio 後端關閉中...")

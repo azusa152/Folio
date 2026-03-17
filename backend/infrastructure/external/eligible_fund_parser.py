@@ -210,6 +210,7 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
         code_idx = _index_of("投信協会ファンドコード")
     type_idx = _index_of("上場投信・上場投資法人の別")
     tsumitate_target_idx = _index_of("つみたて投資枠の対象・非対象")
+    isin_idx = _index_of("isinコード")
     if name_idx is None or code_idx is None:
         return []
 
@@ -229,6 +230,11 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
         is_tsumitate_target = (
             "対象" in tsumitate_flag and "非対象" not in tsumitate_flag
         )
+        isin_raw = (
+            str(row[isin_idx] or "").strip()
+            if isin_idx is not None and len(row) > isin_idx
+            else ""
+        )
         raw_asset_type = (
             str(row[type_idx] or "").strip() if type_idx is not None else ""
         )
@@ -245,6 +251,7 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
                 "asset_type": asset_type,
                 "trust_fee_pct": None,
                 "is_tsumitate_target": is_tsumitate_target,
+                "isin_code": isin_raw or None,
             }
         )
     return parsed

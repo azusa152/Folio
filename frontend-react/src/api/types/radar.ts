@@ -73,6 +73,7 @@ export interface RadarEnrichedStock {
   volume_ratio?: number
   market_cap?: number
   trailing_pe?: number
+  nav_date?: string
   signals?: RadarSignals
   fundamentals?: RadarFundamentals
   dividend?: {

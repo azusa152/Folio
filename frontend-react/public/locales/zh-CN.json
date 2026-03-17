@@ -664,7 +664,9 @@
         "revenue_growth_tip": "公司营收相较去年同期的增长速度。",
         "earnings_growth_tip": "公司利润相较去年同期的增长速度。"
       }
-    }
+    },
+    "nav_badge": "基准价额",
+    "nav_as_of": "截至 {{date}}"
   },
   "backtest": {
     "title": "🧪 信号回测",

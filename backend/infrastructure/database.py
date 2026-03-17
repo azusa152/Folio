@@ -165,6 +165,8 @@ def _run_migrations() -> None:
         "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
+        # Add isin_code to eligible asset (for toushin-lib NAV lookup).
+        "ALTER TABLE eligibleasset ADD COLUMN isin_code VARCHAR;",
         # Eligible asset sync metadata.
         (
             "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("
@@ -174,6 +176,21 @@ def _run_migrations() -> None:
             "updated_at DATETIME NOT NULL"
             ");"
         ),
+        # Mutual fund NAV cache for daily toushin-lib sync.
+        (
+            "CREATE TABLE IF NOT EXISTS mutualfundnav ("
+            "id INTEGER PRIMARY KEY, "
+            "fund_code VARCHAR NOT NULL, "
+            "isin_code VARCHAR NOT NULL, "
+            "nav REAL NOT NULL, "
+            "nav_previous REAL, "
+            "nav_date DATE NOT NULL, "
+            "net_assets REAL, "
+            "fetched_at DATETIME NOT NULL"
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_mfnav_fund_code ON mutualfundnav (fund_code);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_mfnav_fund_code_date ON mutualfundnav (fund_code, nav_date);",
     ]
 
     with engine.connect() as conn:

@@ -664,7 +664,9 @@
         "revenue_growth_tip": "売上が前年同期比でどれだけ伸びているかを示します。",
         "earnings_growth_tip": "利益が前年同期比でどれだけ伸びているかを示します。"
       }
-    }
+    },
+    "nav_badge": "基準価額",
+    "nav_as_of": "{{date}} 時点"
   },
   "backtest": {
     "title": "🧪 シグナルバックテスト",

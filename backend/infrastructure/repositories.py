@@ -6,6 +6,7 @@ Consumers using ``from infrastructure.repositories import X`` continue to work u
 from infrastructure.persistence.repositories import (  # noqa: F401
     bulk_update_display_order,
     bulk_update_scan_signals,
+    bulk_upsert_nav,
     count_consecutive_scans,
     count_recent_notifications,
     create_fx_watch,
@@ -57,6 +58,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_holdings_by_ticker_across_gurus,
     find_holdings_for_active_accounts,
     find_inactive_stocks,
+    find_isin_for_ticker,
     find_latest_filing_by_guru,
     find_latest_removal,
     find_latest_removals_batch,
@@ -83,7 +85,9 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_transactions_by_account,
     find_user_preferences,
     get_eligible_assets_metadata,
+    get_latest_nav,
     get_max_thesis_version,
+    get_nav_history,
     is_active_eligible_mutual_fund,
     log_notification_sent,
     save_account,
@@ -101,4 +105,5 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     update_guru,
     update_stock,
     upsert_eligible_assets,
+    upsert_nav,
 )

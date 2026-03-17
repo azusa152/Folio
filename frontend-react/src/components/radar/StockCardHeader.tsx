@@ -27,6 +27,8 @@ interface Props {
   currency: { symbol: string; code: string }
   marketOpen: boolean
   isCrypto: boolean
+  isMutualFund?: boolean
+  navDate?: string
   expanded: boolean
   priceHistory?: PricePoint[]
   onToggle: () => void
@@ -42,6 +44,8 @@ export const StockCardHeader = memo(function StockCardHeader({
   currency,
   marketOpen,
   isCrypto,
+  isMutualFund = false,
+  navDate,
   expanded,
   priceHistory,
   onToggle,
@@ -94,14 +98,26 @@ export const StockCardHeader = memo(function StockCardHeader({
         <span className="flex items-center gap-2 shrink-0">
           {price != null && (
             <span className="flex flex-col items-end leading-tight">
-              <span className="text-sm font-semibold tabular-nums">
-                {currency.symbol}{formatPrice(price, currency.code)}
+              <span className="flex items-center gap-1">
+                <span className="text-sm font-semibold tabular-nums">
+                  {currency.symbol}{formatPrice(price, currency.code)}
+                </span>
+                {isMutualFund && (
+                  <span className="text-[9px] rounded px-1 py-0.5 bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-medium">
+                    {t("radar.nav_badge")}
+                  </span>
+                )}
               </span>
               {changePct != null && (
                 <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
                   {isUp ? "▲" : "▼"}{" "}
                   {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
                   ({Math.abs(changePct).toFixed(2)}%{isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
+                </span>
+              )}
+              {isMutualFund && navDate && (
+                <span className="text-[10px] text-muted-foreground">
+                  {t("radar.nav_as_of", { date: navDate })}
                 </span>
               )}
             </span>

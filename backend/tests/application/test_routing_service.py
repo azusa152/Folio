@@ -206,3 +206,51 @@ def test_realized_gains_should_prorate_fee_when_sell_qty_exceeds_position():
     # Fee should be prorated: 300 * (100 / 150) = 200.
     # Realized gain = (200 - 100) * 100 - 200 = 9,800.
     assert realized == pytest.approx(9_800.0)
+
+
+@patch("application.portfolio.routing_service.get_technical_signals")
+def test_detax_should_skip_mutual_fund_holdings(
+    mock_get_technical_signals,
+    db_session: Session,
+):
+    """Mutual_Fund holdings must be skipped in detax — no yfinance call."""
+    account = _create_account(
+        db_session,
+        name="Tokutei MF",
+        broker="SBI",
+        tax_wrapper="tokutei",
+        currency="JPY",
+    )
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "JPY",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "price": 1.0,
+            "total_amount": 2_000_000.0,
+            "currency": "JPY",
+            "transaction_date": date(2026, 1, 2),
+        },
+        "en",
+    )
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "01311143",
+            "transaction_type": "BUY",
+            "quantity": 100,
+            "price": 15000.0,
+            "total_amount": 1_500_000.0,
+            "currency": "JPY",
+            "transaction_date": date(2026, 1, 3),
+            "category": "Mutual_Fund",
+        },
+        "en",
+    )
+
+    opportunities = get_detax_suggestions(db_session)
+    assert opportunities == []
+    mock_get_technical_signals.assert_not_called()

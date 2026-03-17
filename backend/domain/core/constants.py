@@ -156,7 +156,10 @@ SKIP_RSI_CATEGORIES = [
     "Crypto",
     "Mutual_Fund",
 ]  # 非 RSI 類資產不進行技術訊號掃描
-SKIP_PRICE_FETCH_CATEGORIES = ["Cash", "Mutual_Fund"]  # 不需要抓取價格的資產（如現金）
+SKIP_PRICE_FETCH_CATEGORIES = [
+    "Cash",
+    "Mutual_Fund",
+]  # 不走 yfinance 取價的資產（MF 走 NAV 日次同步，enrichment 分支在 SKIP 判斷前處理）
 SKIP_MOAT_CATEGORIES = [
     "Bond",
     "Cash",

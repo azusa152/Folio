@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from application.portfolio.eligibility_service import check_asset_eligibility
 from application.portfolio.wrapper_service import get_all_wrapper_quotas
-from domain.constants import DEFAULT_USER_ID
-from domain.enums import TransactionType
+from domain.constants import DEFAULT_USER_ID, SKIP_PRICE_FETCH_CATEGORIES
+from domain.enums import StockCategory, TransactionType
 from domain.portfolio.detax import DeTaxOpportunity, find_detax_opportunities
 from domain.portfolio.routing import RoutingSuggestion, suggest_purchase_routing
 from domain.portfolio.tax_wrapper import QuotaStatus
@@ -253,14 +253,25 @@ def get_detax_suggestions(
 
     holdings_with_prices: list[Any] = []
     for holding in tokutei_holdings:
-        signals = get_technical_signals(holding.ticker)
-        current_price = (
-            float(signals["price"])
-            if signals
-            and isinstance(signals.get("price"), (int, float))
-            and float(signals["price"]) > 0
-            else None
+        cat_val = (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
         )
+        if cat_val == StockCategory.MUTUAL_FUND.value:
+            nav_row = repo.get_latest_nav(session, holding.ticker)
+            current_price = nav_row.nav if nav_row else None
+        elif cat_val in SKIP_PRICE_FETCH_CATEGORIES:
+            continue
+        else:
+            signals = get_technical_signals(holding.ticker)
+            current_price = (
+                float(signals["price"])
+                if signals
+                and isinstance(signals.get("price"), (int, float))
+                and float(signals["price"]) > 0
+                else None
+            )
         if current_price is None:
             continue
         holdings_with_prices.append(

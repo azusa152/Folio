@@ -131,7 +131,7 @@
 | **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex（ETF 不參與情緒計算） | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
-| **投資信託 (Mutual_Fund)** | NISA/iDeCo 基金代碼（不走 yfinance 技術訊號） | 否 |
+| **投資信託 (Mutual_Fund)** | NISA/iDeCo 基金代碼（基準価額由 toushin-lib 日次同步，非 yfinance） | 否 |
 | **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
 | **現金 (Cash)** | 閒置現金（手動輸入，不進行訊號掃描） | 否 |
 
@@ -418,6 +418,10 @@ make restore FILE=backups/radar-20260214_153022.db
 ```
 
 > 注意：`make refresh-eligible`、`make migrate-ledger`、`make purge-legacy` 等資料維運指令會在 Docker 容器內執行，寫入的是 Docker volume 的資料庫（`/app/data/radar.db`，`radar-data` volume），不是 host 的 `backend/data/radar.db`。`make refresh-eligible` 會用投信協會官方清單來源同步 NISA 適格清單，並以基金代碼（非基金名稱）作為識別。
+
+#### 投資信託 基準価額（NAV）同步
+
+投資信託（Mutual_Fund）の基準価額は投信協會（toushin-lib.fwg.ne.jp）からの日次 CSV ダウンロードで取得し、`MutualFundNav` テーブルに保存します。同期間隔は `NAV_SYNC_INTERVAL_HOURS`（デフォルト 24 時間）で設定可能です。NAV は 1 日 1 回のみ更新されるため、高頻度取得は不要です。レーダーカードには "NAV" バッジと "as of YYYY-MM-DD" タイムスタンプが表示されます。
 
 #### 清理遺留資料（Ledger Migration Cleanup）
 

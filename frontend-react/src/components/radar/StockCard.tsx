@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { MARKET_OPTIONS } from "@/lib/constants"
+import { MARKET_OPTIONS, SKIP_PRICE_CATEGORIES, SKIP_MOAT_CATEGORIES } from "@/lib/constants"
 import { isMarketOpen } from "@/lib/format"
 import { usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap } from "@/api/types/radar"
@@ -45,11 +45,14 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
     return () => window.clearTimeout(timer)
   }, [expanded, index, sparklineEnabled])
 
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, expanded || sparklineEnabled)
-  const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded)
+  const skipPrice = SKIP_PRICE_CATEGORIES.has(stock.category)
+  const skipMoat = SKIP_MOAT_CATEGORIES.has(stock.category)
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, (expanded || sparklineEnabled) && !skipPrice)
+  const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded && !skipMoat)
   const isCrypto = stock.category === "Crypto"
   const showMoatChart = !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
+  const isMutualFund = stock.category === "Mutual_Fund"
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
   const sig = enrichment?.signals
   const price = sig?.price ?? enrichment?.price
@@ -57,6 +60,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   const changePct = sig?.change_pct ?? enrichment?.change_pct
   const changeAbs = price != null && prevClose != null ? price - prevClose : null
   const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
+  const navDate = enrichment?.nav_date
 
   const currency = useMemo(() => infer_currency(stock.ticker), [stock.ticker])
   const marketLabel = infer_market_label(stock.ticker)
@@ -76,6 +80,8 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
         currency={currency}
         marketOpen={marketOpen}
         isCrypto={isCrypto}
+        isMutualFund={isMutualFund}
+        navDate={navDate}
         expanded={expanded}
         priceHistory={priceHistory}
         onToggle={handleToggle}

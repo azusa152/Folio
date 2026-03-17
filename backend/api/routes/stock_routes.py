@@ -172,9 +172,12 @@ def get_signals_route(ticker: str) -> dict:
 @router.get(
     "/ticker/{ticker}/price-history", summary="Get 1-year price history for a stock"
 )
-def get_price_history_route(ticker: str) -> list[dict]:
+def get_price_history_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> list[dict]:
     """取得指定股票的收盤價歷史（1 年），用於價格趨勢圖。"""
-    return stock_service.get_price_history(ticker.upper()) or []
+    return stock_service.get_price_history_for_ticker(session, ticker)
 
 
 @router.get("/stocks/export", summary="Export watchlist as JSON")

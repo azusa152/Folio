@@ -39,23 +39,27 @@ class TestGetSignalsForTicker:
         mock_dist.assert_not_called()
 
 
-class TestGetPriceHistory:
-    def test_delegates_to_infrastructure(self) -> None:
+class TestGetPriceHistoryForTicker:
+    def test_delegates_to_yfinance_for_regular_stock(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
         mock_history = [{"date": "2024-01-01", "close": 100.0}]
         with patch(f"{STOCK_MODULE}._get_price_history", return_value=mock_history):
-            from application.stock.stock_service import get_price_history
+            from application.stock.stock_service import get_price_history_for_ticker
 
-            result = get_price_history("AAPL")
+            result = get_price_history_for_ticker(db_session, "AAPL")
 
         assert result == mock_history
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_empty_for_unknown_ticker(self, db_session) -> None:
         with patch(f"{STOCK_MODULE}._get_price_history", return_value=None):
-            from application.stock.stock_service import get_price_history
+            from application.stock.stock_service import get_price_history_for_ticker
 
-            result = get_price_history("UNKNOWN")
+            result = get_price_history_for_ticker(db_session, "UNKNOWN")
 
-        assert result is None
+        assert result == []
 
 
 class TestGetEarningsForTicker:
@@ -795,10 +799,14 @@ class TestGetEnrichedStocks:
         assert result[0]["signals"] is None
 
     def test_signals_skipped_for_mutual_fund_category(self, db_session) -> None:
-        """Mutual_Fund category stocks should not have yfinance signals fetched."""
+        """Mutual_Fund category stocks should not have yfinance signals fetched.
+
+        When no NAV data exists in the DB, signals remain None.
+        """
         from domain.entities import Stock
         from domain.enums import StockCategory
         from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
 
         save_stock(
             db_session,
@@ -806,6 +814,7 @@ class TestGetEnrichedStocks:
         )
 
         with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
             patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),

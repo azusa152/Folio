@@ -326,10 +326,34 @@ class EligibleAsset(SQLModel, table=True):
         default=None,
         description="信託報酬率（%）",
     )
+    isin_code: str | None = Field(
+        default=None,
+        description="ISINコード（投信基準価額取得用）",
+    )
     is_active: bool = Field(default=True, description="有効フラグ")
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="更新日時",
+    )
+
+
+class MutualFundNav(SQLModel, table=True):
+    """投資信託の日次基準価額（NAV）キャッシュ。"""
+
+    __table_args__ = (
+        Index("uq_mfnav_fund_code_date", "fund_code", "nav_date", unique=True),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    fund_code: str = Field(index=True, description="投信協会ファンドコード（= ticker）")
+    isin_code: str = Field(description="ISINコード")
+    nav: float = Field(description="基準価額")
+    nav_previous: float | None = Field(default=None, description="前日基準価額")
+    nav_date: date = Field(description="基準価額日付")
+    net_assets: float | None = Field(default=None, description="純資産総額（百万円）")
+    fetched_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="取得日時",
     )
 
 

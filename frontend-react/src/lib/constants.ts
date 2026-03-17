@@ -32,6 +32,9 @@ export const SCAN_SIGNAL_ICONS: Record<string, string> = {
   NORMAL: "➖",
 }
 
+export const SKIP_PRICE_CATEGORIES = new Set(["Cash"])
+export const SKIP_MOAT_CATEGORIES = new Set(["Bond", "Cash", "Crypto", "Mutual_Fund"])
+
 export const BUY_OPPORTUNITY_SIGNALS = new Set([
   "DEEP_VALUE",
   "OVERSOLD",

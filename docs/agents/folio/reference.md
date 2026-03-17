@@ -73,12 +73,16 @@ Appended to Telegram notifications only — do NOT change the signal enum value.
 
 ### None Handling
 
-When technical data is unavailable (e.g., Cash / Mutual_Fund category stocks skip yfinance signals):
+When technical data is unavailable (e.g., Cash category stocks skip yfinance signals):
 
 - RSI = None: P2, P4, P4.5, P6 (RSI part), P7 conditions are skipped
 - Bias = None: P2, P3, P4.5, P5, P6 (bias part), P7 conditions are skipped
 - `bias_200` = None: Phase 2 MA200 amplifier is skipped entirely
 - Both None: only `THESIS_BROKEN` (P1) or `NORMAL` (P8) are reachable
+
+### Mutual Fund NAV
+
+`Mutual_Fund` category stocks use daily NAV data from the Investment Trust Association (toushin-lib.fwg.ne.jp) instead of yfinance. NAV is synced in the background (default every 24h) and stored in the `MutualFundNav` table. The enrichment pipeline reads from this DB cache (no HTTP at render time). RSI and moat analysis are skipped (not applicable for daily NAV). Radar cards display a "NAV" badge and "as of YYYY-MM-DD" timestamp.
 
 ---
 
