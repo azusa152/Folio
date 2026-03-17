@@ -184,7 +184,10 @@ def create_stock(
         )
 
     if is_etf is None:
-        is_etf = detect_is_etf(ticker_upper)
+        if category == StockCategory.MUTUAL_FUND:
+            is_etf = False
+        else:
+            is_etf = detect_is_etf(ticker_upper)
 
     stock = Stock(
         ticker=ticker_upper,
@@ -1010,11 +1013,27 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def get_signals_for_ticker(ticker: str) -> dict | None:
-    """Fetch technical signals and bias distribution for a ticker."""
-    signals = get_technical_signals(ticker)
+def get_signals_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware signals routing — single entry point for all callers.
+
+    Mutual_Fund -> NAV from DB; SKIP categories -> empty; others -> yfinance.
+    """
+    upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper)
+    if stock:
+        cat = (
+            stock.category.value
+            if hasattr(stock.category, "value")
+            else str(stock.category)
+        )
+        if cat == StockCategory.MUTUAL_FUND.value:
+            nav_row = repo.get_latest_nav(session, upper)
+            return build_nav_signals(nav_row) if nav_row else {}
+        if cat in SKIP_PRICE_FETCH_CATEGORIES:
+            return {}
+    signals = get_technical_signals(upper)
     if signals:
-        signals["bias_distribution"] = get_bias_distribution(ticker)
+        signals["bias_distribution"] = get_bias_distribution(upper)
     return signals
 
 

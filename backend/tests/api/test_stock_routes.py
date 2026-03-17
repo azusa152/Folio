@@ -357,6 +357,99 @@ class TestPriceHistoryRoute:
         assert resp.status_code == 200
 
 
+class TestCreateStockMutualFund:
+    """Mutual_Fund stocks must skip detect_is_etf and trigger on-demand NAV sync."""
+
+    @patch("api.routes.stock_routes.sync_single_fund_nav")
+    def test_create_mutual_fund_should_skip_detect_is_etf(self, mock_nav_sync, client):
+        with patch("application.stock.stock_service.detect_is_etf") as mock_detect:
+            resp = client.post(
+                "/ticker",
+                json={
+                    "ticker": "0131310B",
+                    "category": "Mutual_Fund",
+                    "thesis": "NISA fund",
+                },
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["is_etf"] is False
+        mock_detect.assert_not_called()
+
+    @patch("api.routes.stock_routes.sync_single_fund_nav")
+    def test_create_mutual_fund_should_trigger_on_demand_nav_sync(
+        self, mock_nav_sync, client
+    ):
+        resp = client.post(
+            "/ticker",
+            json={
+                "ticker": "0131310B",
+                "category": "Mutual_Fund",
+                "thesis": "NISA fund",
+            },
+        )
+
+        assert resp.status_code == 200
+        mock_nav_sync.assert_called_once()
+
+    @patch("api.routes.stock_routes.sync_single_fund_nav")
+    def test_create_non_mf_should_not_trigger_nav_sync(self, mock_nav_sync, client):
+        resp = client.post(
+            "/ticker",
+            json={
+                "ticker": "AAPL",
+                "category": "Growth",
+                "thesis": "Tech stock",
+            },
+        )
+
+        assert resp.status_code == 200
+        mock_nav_sync.assert_not_called()
+
+
+class TestSignalsRoute:
+    """Tests for GET /ticker/{ticker}/signals."""
+
+    def test_signals_should_return_nav_for_mutual_fund(self, client):
+        from datetime import date
+
+        from domain.entities import MutualFundNav
+
+        with patch("api.routes.stock_routes.sync_single_fund_nav"):
+            client.post(
+                "/ticker",
+                json={
+                    "ticker": "0131310B",
+                    "category": "Mutual_Fund",
+                    "thesis": "NISA fund",
+                },
+            )
+
+        from sqlmodel import Session as SqlSession
+
+        from tests.conftest import test_engine
+
+        with SqlSession(test_engine) as s:
+            s.add(
+                MutualFundNav(
+                    fund_code="0131310B",
+                    isin_code="JP90C000HR46",
+                    nav_date=date(2026, 3, 14),
+                    nav=15432.0,
+                    nav_previous=15380.0,
+                )
+            )
+            s.commit()
+
+        with patch("application.stock.stock_service.get_technical_signals") as mock_yf:
+            resp = client.get("/ticker/0131310B/signals")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body.get("price") == 15432.0
+        mock_yf.assert_not_called()
+
+
 class TestFundamentalsRoute:
     """Tests for GET /ticker/{ticker}/fundamentals."""
 

@@ -25,6 +25,7 @@ from api.schemas import (
     WebhookResponse,
 )
 from application.guru.resonance_service import invalidate_resonance_cache
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.services import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -64,6 +65,7 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
+from domain.enums import StockCategory
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -101,6 +103,9 @@ def create_ticker_route(
             status_code=409,
             detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
         ) from e
+
+    if stock.category == StockCategory.MUTUAL_FUND:
+        sync_single_fund_nav(session, stock.ticker)
 
     _invalidate_radar_caches()
     return StockResponse(
@@ -153,10 +158,13 @@ def reorder_stocks_route(
 
 
 @router.get("/ticker/{ticker}/signals", summary="Get technical signals for a stock")
-def get_signals_route(ticker: str) -> dict:
-    """取得指定股票的技術訊號（yfinance，含快取）。"""
+def get_signals_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict:
+    """取得指定股票的技術訊號（含快取）。"""
     ticker_upper = ticker.upper()
-    signals = stock_service.get_signals_for_ticker(ticker_upper) or {}
+    signals = stock_service.get_signals_for_ticker(session, ticker_upper) or {}
     if signals and "error" not in signals:
         bias = signals.get("bias")
         volume_ratio = signals.get("volume_ratio")

@@ -1121,7 +1121,7 @@
     "/ticker/{ticker}/signals": {
       "get": {
         "summary": "Get technical signals for a stock",
-        "description": "\u53d6\u5f97\u6307\u5b9a\u80a1\u7968\u7684\u6280\u8853\u8a0a\u865f\uff08yfinance\uff0c\u542b\u5feb\u53d6\uff09\u3002",
+        "description": "\u53d6\u5f97\u6307\u5b9a\u80a1\u7968\u7684\u6280\u8853\u8a0a\u865f\uff08\u542b\u5feb\u53d6\uff09\u3002",
         "operationId": "get_signals_route_ticker__ticker__signals_get",
         "parameters": [
           {

@@ -203,7 +203,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.portfolio.rebalance_service.prewarm_etf_holdings_batch", {}),
     ("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch", {}),
     # webhook_service
-    ("application.messaging.webhook_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.messaging.webhook_service.get_signals_for_ticker", MOCK_SIGNALS),
     ("application.messaging.webhook_service.analyze_moat_trend", MOCK_MOAT),
     ("application.messaging.webhook_service.get_fear_greed_index", MOCK_FEAR_GREED),
     # notification_service

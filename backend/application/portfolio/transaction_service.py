@@ -6,6 +6,7 @@ from typing import Literal
 from fastapi import HTTPException
 from sqlmodel import Session
 
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.portfolio.settlement_service import (
     reverse_settlement,
     settle_transaction,
@@ -114,9 +115,11 @@ def create_transaction(
     auto_radar = False
     try:
         if ticker and not is_cash_ticker:
-            _, auto_radar = ensure_stock_on_radar(
+            stock_on_radar, auto_radar = ensure_stock_on_radar(
                 session, ticker, thesis=thesis, category=category
             )
+            if auto_radar and stock_on_radar.category == StockCategory.MUTUAL_FUND:
+                sync_single_fund_nav(session, stock_on_radar.ticker)
         saved = settle_transaction(session, data, lang, autocommit=autocommit)
     except Exception:
         # import_transactions continues on per-item failures; clear pending state

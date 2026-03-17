@@ -33,6 +33,67 @@ def _seed_mutual_fund(session: Session, ticker: str, isin: str) -> None:
     session.commit()
 
 
+class TestSyncSingleFundNav:
+    def test_should_upsert_nav_for_single_fund(self, db_session):
+        """On-demand sync should fetch and upsert NAV for one fund."""
+        _seed_mutual_fund(db_session, "0131310B", "JP90C000HR46")
+
+        fake_csv = [
+            {"date": date(2026, 3, 14), "nav": 15432.0, "net_assets": 1200.0},
+            {"date": date(2026, 3, 13), "nav": 15380.0, "net_assets": 1190.0},
+        ]
+
+        with patch.object(nav_sync_module, "fetch_fund_nav_csv", return_value=fake_csv):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "0131310B")
+
+        assert result is True
+
+        from sqlmodel import select
+
+        navs = list(
+            db_session.exec(
+                select(MutualFundNav).where(MutualFundNav.fund_code == "0131310B")
+            ).all()
+        )
+        assert len(navs) >= 1
+
+    def test_should_return_false_when_no_isin(self, db_session):
+        """Fund without ISIN should return False."""
+        db_session.add(
+            Stock(
+                ticker="NOISINFUND",
+                category=StockCategory.MUTUAL_FUND,
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        result = nav_sync_module.sync_single_fund_nav(db_session, "NOISINFUND")
+        assert result is False
+
+    def test_should_return_false_when_csv_empty(self, db_session):
+        """Empty CSV result should return False."""
+        _seed_mutual_fund(db_session, "0131310B", "JP90C000HR46")
+
+        with patch.object(nav_sync_module, "fetch_fund_nav_csv", return_value=None):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "0131310B")
+
+        assert result is False
+
+    def test_should_not_raise_on_fetch_error(self, db_session):
+        """Network errors should be caught gracefully."""
+        _seed_mutual_fund(db_session, "0131310B", "JP90C000HR46")
+
+        with patch.object(
+            nav_sync_module,
+            "fetch_fund_nav_csv",
+            side_effect=RuntimeError("network down"),
+        ):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "0131310B")
+
+        assert result is False
+
+
 class TestSyncMutualFundNavs:
     def test_should_upsert_nav_rows(self, db_session):
         """NAV rows from toushin-lib should be written to DB."""

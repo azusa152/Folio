@@ -19,6 +19,7 @@ from application.portfolio.analytics_service import (
 )
 from application.portfolio.fx_watch_service import send_fx_watch_alerts
 from application.portfolio.insight_service import get_portfolio_insights
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.portfolio.rebalance_service import calculate_withdrawal
 from application.portfolio.transaction_service import (
     create_transaction,
@@ -35,6 +36,7 @@ from application.stock.stock_service import (
     StockNotFoundError,
     create_stock,
     get_fundamentals_for_ticker,
+    get_signals_for_ticker,
 )
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
@@ -52,7 +54,6 @@ from i18n import get_user_language, t
 from infrastructure.market_data import (
     analyze_moat_trend,
     get_fear_greed_index,
-    get_technical_signals,
 )
 from logging_config import get_logger
 
@@ -196,7 +197,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        result = get_technical_signals(ticker)
+        result = get_signals_for_ticker(session, ticker)
         if not result or "error" in result:
             message = (
                 result.get("error", t("webhook.signals_unavailable", lang=lang))
@@ -239,7 +240,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        signals = get_technical_signals(ticker)
+        signals = get_signals_for_ticker(session, ticker)
         if not signals or "error" in signals:
             message = (
                 signals.get("error", t("webhook.signals_unavailable", lang=lang))
@@ -394,6 +395,8 @@ def handle_webhook(
             stock = create_stock(
                 session, str(t_ticker), StockCategory(cat_str), thesis, tags
             )
+            if stock.category == StockCategory.MUTUAL_FUND:
+                sync_single_fund_nav(session, stock.ticker)
             return _wrap_response(
                 success=True,
                 message=t(

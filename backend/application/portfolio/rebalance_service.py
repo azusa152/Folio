@@ -507,12 +507,14 @@ def _do_calculate_rebalance(
         {k: round(v, 4) for k, v in fx_rates.items()},
     )
 
-    # 3.5) 並行預熱：股票技術訊號 + 加密貨幣價格
+    # 3.5) 並行預熱：股票技術訊號 + 加密貨幣價格（MF 走 NAV 日次同步，不經 yfinance）
     stock_tickers = list(
         {
             h.ticker
             for h in holdings
-            if not h.is_cash and h.category != StockCategory.CRYPTO
+            if not h.is_cash
+            and h.category != StockCategory.CRYPTO
+            and h.category.value not in SKIP_PRICE_FETCH_CATEGORIES
         }
     )
     crypto_ids = list(
@@ -1211,12 +1213,14 @@ def calculate_currency_exposure(
         {k: round(v, 4) for k, v in fx_rates.items()},
     )
 
-    # 3.5) 並行預熱所有非現金持倉的技術訊號
+    # 3.5) 並行預熱所有非現金持倉的技術訊號（MF 走 NAV 日次同步，不經 yfinance）
     stock_tickers = list(
         {
             h.ticker
             for h in holdings
-            if not h.is_cash and h.category != StockCategory.CRYPTO
+            if not h.is_cash
+            and h.category != StockCategory.CRYPTO
+            and h.category.value not in SKIP_PRICE_FETCH_CATEGORIES
         }
     )
     crypto_ids = list(

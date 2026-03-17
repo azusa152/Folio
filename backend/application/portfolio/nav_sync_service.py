@@ -33,6 +33,33 @@ def _annotate_previous_nav(rows: list[dict]) -> list[dict]:
     return rows
 
 
+def sync_single_fund_nav(session: Session, ticker: str) -> bool:
+    """On-demand NAV sync for a single fund (called after stock creation).
+
+    Returns True on success, False on failure.  Never raises — callers can
+    safely fire-and-forget.
+    """
+    upper = ticker.upper()
+    isin = repo.find_isin_for_ticker(session, upper)
+    if not isin:
+        logger.debug("NAV on-demand: no ISIN found for %s, skipping.", upper)
+        return False
+
+    try:
+        csv_rows = fetch_fund_nav_csv(upper, isin)
+    except Exception as exc:
+        logger.warning("NAV on-demand fetch failed for %s: %s", upper, exc)
+        return False
+
+    if not csv_rows:
+        return False
+
+    annotated = _annotate_previous_nav(csv_rows)
+    repo.bulk_upsert_nav(session, upper, isin, annotated, autocommit=True)
+    logger.info("NAV on-demand: %s — %d rows upserted.", upper, len(annotated))
+    return True
+
+
 def sync_mutual_fund_navs() -> dict[str, int]:
     """One-shot sync: fetch NAV for all active Mutual_Fund stocks."""
     with Session(engine) as session:
@@ -45,29 +72,11 @@ def sync_mutual_fund_navs() -> dict[str, int]:
 
         synced = 0
         failed = 0
-
         for stock in mf_stocks:
-            isin = repo.find_isin_for_ticker(session, stock.ticker)
-            if not isin:
-                logger.debug("NAV sync: no ISIN found for %s, skipping.", stock.ticker)
+            if sync_single_fund_nav(session, stock.ticker):
+                synced += 1
+            else:
                 failed += 1
-                continue
-
-            csv_rows = fetch_fund_nav_csv(stock.ticker, isin)
-            if not csv_rows:
-                failed += 1
-                continue
-
-            annotated = _annotate_previous_nav(csv_rows)
-            count = repo.bulk_upsert_nav(
-                session,
-                stock.ticker,
-                isin,
-                annotated,
-                autocommit=True,
-            )
-            synced += 1
-            logger.info("NAV sync: %s — %d rows upserted.", stock.ticker, count)
 
     return {"synced": synced, "failed": failed}
 

@@ -11,7 +11,12 @@ STOCK_MODULE = "application.stock.stock_service"
 
 
 class TestGetSignalsForTicker:
-    def test_returns_signals_with_bias_distribution(self) -> None:
+    def test_returns_signals_with_bias_distribution(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         mock_signals = {"rsi": 55.0, "bias": 10.0}
         mock_dist = {"historical_biases": [1.0, 2.0], "count": 2}
         with (
@@ -20,23 +25,68 @@ class TestGetSignalsForTicker:
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
-            result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker(db_session, "AAPL")
 
         assert result is not None
         assert result["rsi"] == 55.0
         assert result["bias_distribution"] == mock_dist
 
-    def test_returns_signals_unchanged_when_signals_none(self) -> None:
+    def test_returns_signals_unchanged_when_signals_none(self, db_session) -> None:
         with (
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
             patch(f"{STOCK_MODULE}.get_bias_distribution") as mock_dist,
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
-            result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker(db_session, "AAPL")
 
         assert result is None
         mock_dist.assert_not_called()
+
+    def test_returns_nav_for_mutual_fund(self, db_session) -> None:
+        from datetime import date
+
+        from domain.entities import MutualFundNav, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131310B", category=StockCategory.MUTUAL_FUND),
+        )
+        db_session.add(
+            MutualFundNav(
+                fund_code="0131310B",
+                isin_code="JP90C000HR46",
+                nav_date=date(2026, 3, 14),
+                nav=15432.0,
+                nav_previous=15380.0,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+            from application.stock.stock_service import get_signals_for_ticker
+
+            result = get_signals_for_ticker(db_session, "0131310B")
+
+        mock_yf.assert_not_called()
+        assert result is not None
+        assert result["price"] == 15432.0
+
+    def test_returns_empty_for_skip_category(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="CASH_JPY", category="Cash"))
+
+        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+            from application.stock.stock_service import get_signals_for_ticker
+
+            result = get_signals_for_ticker(db_session, "CASH_JPY")
+
+        mock_yf.assert_not_called()
+        assert result == {}
 
 
 class TestGetPriceHistoryForTicker:

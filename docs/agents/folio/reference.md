@@ -82,7 +82,7 @@ When technical data is unavailable (e.g., Cash category stocks skip yfinance sig
 
 ### Mutual Fund NAV
 
-`Mutual_Fund` category stocks use daily NAV data from the Investment Trust Association (toushin-lib.fwg.ne.jp) instead of yfinance. NAV is synced in the background (default every 24h) and stored in the `MutualFundNav` table. The enrichment pipeline reads from this DB cache (no HTTP at render time). RSI and moat analysis are skipped (not applicable for daily NAV). Radar cards display a "NAV" badge and "as of YYYY-MM-DD" timestamp.
+`Mutual_Fund` category stocks use daily NAV data from the Investment Trust Association (toushin-lib.fwg.ne.jp) instead of yfinance. NAV is synced in the background (default every 24h) and stored in the `MutualFundNav` table. When a new mutual fund is added (via `POST /ticker`, `add_stock` webhook, or transaction auto-radar), on-demand NAV sync runs immediately so data is available without waiting for the next periodic cycle. The enrichment pipeline reads from this DB cache (no HTTP at render time). RSI and moat analysis are skipped (not applicable for daily NAV). Radar cards display a "NAV" badge and "as of YYYY-MM-DD" timestamp. The `signals` and `analyze` webhook actions return NAV-based data for `Mutual_Fund` tickers (price, change_pct) instead of yfinance errors.
 
 ---
 
