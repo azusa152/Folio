@@ -346,7 +346,7 @@ Array of insight objects:
 | Type | Tax Treatment | Description |
 |------|---------------|-------------|
 | `tokutei` | Taxable (20.315%) | 特定口座 — standard taxable account |
-| `nisa_tsumitate` | Tax-free | つみたて投資枠 — annual 1.2M, FSA-approved funds only |
+| `nisa_tsumitate` | Tax-free | つみたて投資枠 — annual 1.2M, approved funds only (tracked by `投信協会ファンドコード` / `銘柄コード`) |
 | `nisa_growth` | Tax-free | 成長投資枠 — annual 2.4M, stocks/ETFs/MFs (excl. leveraged) |
 | `ideco` | Tax-deferred | iDeCo — contributions deductible, locked until age 60 |
 | `ippan` | Taxable | 一般口座 — general account |

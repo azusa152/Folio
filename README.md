@@ -73,7 +73,7 @@
   - **NISA Center 專頁** — 集中顯示「適格資產清單／額度與恢復狀態／拠出台帳／資料更新管理」
   - **額度儀表板** — 年度投資額度・終身非課稅額度的簿價即時追蹤（支援 2026 年額度即日恢復規則）
   - **智慧購買路由** — NISA 優先自動分配，超額部分溢入特定口座
-  - **適格資產驗證** — 定期定額僅允許金融廳核准基金，成長枠自動排除槓桿/月配息型商品
+  - **適格資產驗證** — 定期定額僅允許核准基金，並以投信協會來源的 `投信協會ファンドコード` / `銘柄コード` 作為可追蹤識別碼；成長枠自動排除槓桿/月配息型商品
   - **資產配置最佳化** — 高成長資產優先配置於免稅帳戶，含稅務效率分數與節稅估算
   - **DeTAX（自動損益對沖）** — 利用特定口座含損部位進行節稅建議（WealthNavi 模式，年化 0.4–0.6% 稅負減輕）
   - **節稅模擬器** — NISA vs 特定口座 10/20/30 年複利比較圖表
@@ -416,7 +416,7 @@ make restore
 make restore FILE=backups/radar-20260214_153022.db
 ```
 
-> 注意：`make refresh-eligible`、`make migrate-ledger`、`make purge-legacy` 等資料維運指令會在 Docker 容器內執行，寫入的是 Docker volume 的資料庫（`/app/data/radar.db`，`radar-data` volume），不是 host 的 `backend/data/radar.db`。
+> 注意：`make refresh-eligible`、`make migrate-ledger`、`make purge-legacy` 等資料維運指令會在 Docker 容器內執行，寫入的是 Docker volume 的資料庫（`/app/data/radar.db`，`radar-data` volume），不是 host 的 `backend/data/radar.db`。`make refresh-eligible` 會用投信協會官方清單來源同步 NISA 適格清單，並以基金代碼（非基金名稱）作為識別。
 
 #### 清理遺留資料（Ledger Migration Cleanup）
 

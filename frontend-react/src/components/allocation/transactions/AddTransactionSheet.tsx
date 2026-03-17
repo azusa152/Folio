@@ -646,7 +646,11 @@ export function AddTransactionSheet({
                               value={`${item.ticker} ${item.fund_name}`}
                               onSelect={() => {
                                 setTicker(item.ticker.toUpperCase())
-                                setTsumitateSearchInput(item.fund_name || item.ticker)
+                                setTsumitateSearchInput(
+                                  item.fund_name
+                                    ? `${item.ticker} (${item.fund_name})`
+                                    : item.ticker,
+                                )
                                 setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
                                 setInsufficientBalance(null)
                                 setTsumitatePickerOpen(false)
@@ -662,13 +666,17 @@ export function AddTransactionSheet({
                               />
                               <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                                 <span className="truncate text-xs">
-                                  {item.fund_name || item.ticker}
+                                  {item.fund_name
+                                    ? `${item.ticker} (${item.fund_name})`
+                                    : item.ticker}
                                 </span>
-                                {item.trust_fee_pct != null ? (
-                                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                                    {item.trust_fee_pct.toFixed(3)}%
-                                  </span>
-                                ) : null}
+                                <div className="flex shrink-0 items-center gap-2">
+                                  {item.trust_fee_pct != null ? (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {item.trust_fee_pct.toFixed(3)}%
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
                             </CommandItem>
                           ))}

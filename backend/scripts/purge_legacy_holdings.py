@@ -39,12 +39,19 @@ from scripts import assert_docker_runtime
 LEGACY_TABLES = ["networthitem", "networthsnapshot"]
 
 logger = logging.getLogger(__name__)
+engine = None
 
 
 def purge(dry_run: bool = False) -> dict[str, Any]:
     from domain.constants import HOLDING_QUANTITY_EPSILON
     from domain.entities import Holding, Transaction
-    from infrastructure.database import create_db_and_tables, engine
+    from infrastructure.database import create_db_and_tables
+
+    global engine
+    if engine is None:
+        from infrastructure.database import engine as db_engine
+
+        engine = db_engine
 
     create_db_and_tables()
     stats: dict[str, Any] = {

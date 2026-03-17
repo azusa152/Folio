@@ -221,8 +221,14 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
         code_raw = str(row[code_idx] or "").strip()
         if not fund_name or not code_raw:
             continue
-        # Growth list includes Tsumitate-target flag; keep all for Growth wrapper.
-        _ = tsumitate_target_idx
+        tsumitate_flag = (
+            str(row[tsumitate_target_idx] or "").strip()
+            if tsumitate_target_idx is not None and len(row) > tsumitate_target_idx
+            else ""
+        )
+        is_tsumitate_target = (
+            "対象" in tsumitate_flag and "非対象" not in tsumitate_flag
+        )
         raw_asset_type = (
             str(row[type_idx] or "").strip() if type_idx is not None else ""
         )
@@ -238,6 +244,7 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
                 "fund_name": fund_name,
                 "asset_type": asset_type,
                 "trust_fee_pct": None,
+                "is_tsumitate_target": is_tsumitate_target,
             }
         )
     return parsed
@@ -253,6 +260,11 @@ def parse_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
     return list(seen.values())
 
 
+def parse_tsumitate_from_growth_xlsx(path: str | Path) -> list[dict[str, Any]]:
+    """Parse Tsumitate-eligible rows from toushin.or.jp Growth source XLSX."""
+    return [row for row in parse_growth_xlsx(path) if row.get("is_tsumitate_target")]
+
+
 def detect_and_parse(
     path: str | Path,
     *,
@@ -265,6 +277,9 @@ def detect_and_parse(
         return parse_eligible_assets_csv(file_path)
     if suffix == ".xlsx":
         if wrapper == "nisa_tsumitate":
+            rows = parse_tsumitate_from_growth_xlsx(file_path)
+            if rows:
+                return rows
             return parse_tsumitate_xlsx(file_path)
         return parse_growth_xlsx(file_path)
     raise ValueError(f"Unsupported file format: {suffix}")

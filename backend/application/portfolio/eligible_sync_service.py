@@ -16,8 +16,8 @@ from application.portfolio.eligibility_service import refresh_eligible_assets_fr
 from config import settings
 from infrastructure.database import engine
 from infrastructure.external.eligible_fund_parser import (
-    is_tsumitate_asset_class_xlsx,
     parse_growth_xlsx,
+    parse_tsumitate_from_growth_xlsx,
     parse_tsumitate_xlsx,
 )
 from logging_config import get_logger
@@ -65,26 +65,35 @@ def _load_tsumitate_rows() -> list[dict]:
     urls = _resolve_xlsx_urls(settings.ELIGIBLE_TSUMITATE_URL)
     if not urls:
         raise ValueError("No Tsumitate XLSX links found on configured source URL.")
+    selected = [
+        url
+        for url in urls
+        if "unlisted_fund_for_investor.xlsx" in url
+        or "listed_fund_for_investor.xlsx" in url
+    ] or urls
+    rows: list[dict] = []
     fallback_rows: list[dict] = []
-    for url in urls:
+    for url in selected:
         try:
             temp_path = _download_to_temp(url)
             try:
-                if is_tsumitate_asset_class_xlsx(temp_path):
-                    rows = parse_tsumitate_xlsx(temp_path)
-                    if rows:
-                        return rows
-                rows = parse_tsumitate_xlsx(temp_path)
-                if len(rows) > len(fallback_rows):
-                    fallback_rows = rows
+                rows.extend(parse_tsumitate_from_growth_xlsx(temp_path))
+                legacy_rows = parse_tsumitate_xlsx(temp_path)
+                if len(legacy_rows) > len(fallback_rows):
+                    fallback_rows = legacy_rows
             finally:
                 temp_path.unlink(missing_ok=True)
         except Exception as exc:
             logger.warning("Skipping Tsumitate source candidate (%s): %s", url, exc)
             continue
+    if rows:
+        deduped: dict[str, dict] = {}
+        for row in rows:
+            deduped[row["ticker"]] = row
+        return list(deduped.values())
     if fallback_rows:
         logger.warning(
-            "Tsumitate asset-class signature not found; falling back to largest parsed sheet."
+            "Tsumitate target flag not found; falling back to legacy FSA-style parser."
         )
         return fallback_rows
     raise ValueError("No parseable rows found in Tsumitate source XLSX links.")

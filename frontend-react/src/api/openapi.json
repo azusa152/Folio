@@ -12934,7 +12934,7 @@
           },
           "ticker": {
             "type": "string",
-            "maxLength": 20,
+            "maxLength": 50,
             "minLength": 1,
             "title": "Ticker"
           },
@@ -13065,7 +13065,7 @@
           },
           "ticker": {
             "type": "string",
-            "maxLength": 20,
+            "maxLength": 50,
             "minLength": 1,
             "title": "Ticker"
           },

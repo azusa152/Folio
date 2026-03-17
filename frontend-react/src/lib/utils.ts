@@ -68,6 +68,14 @@ export function getErrorMessage(err: unknown): string {
     const obj = err as Record<string, unknown>
     if ("detail" in obj) {
       if (typeof obj.detail === "string") return obj.detail
+      if (Array.isArray(obj.detail)) {
+        const [first] = obj.detail
+        if (typeof first === "string") return first
+        if (typeof first === "object" && first !== null) {
+          const detailItem = first as Record<string, unknown>
+          if (typeof detailItem.msg === "string") return detailItem.msg
+        }
+      }
       if (typeof obj.detail === "object" && obj.detail !== null) {
         const detail = obj.detail as Record<string, unknown>
         if (typeof detail.detail === "string") return detail.detail

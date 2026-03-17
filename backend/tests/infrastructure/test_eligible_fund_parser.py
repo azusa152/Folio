@@ -6,6 +6,7 @@ from infrastructure.external.eligible_fund_parser import (
     detect_and_parse,
     parse_eligible_assets_csv,
     parse_growth_xlsx,
+    parse_tsumitate_from_growth_xlsx,
     parse_tsumitate_xlsx,
 )
 
@@ -162,6 +163,64 @@ def test_parse_growth_xlsx_should_extract_rows(tmp_path: Path):
     assert len(rows) == 1
     assert rows[0]["ticker"] == "1498.T"
     assert rows[0]["asset_type"] == "etf"
+    assert rows[0]["is_tsumitate_target"] is False
+
+
+def test_parse_tsumitate_from_growth_xlsx_should_filter_target_rows(tmp_path: Path):
+    xlsx_path = tmp_path / "growth-with-tsumitate-flag.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.append(["一般投資家向け成長投資枠対象商品リスト（非上場ファンド）"])
+    ws.append(
+        [
+            "リスト更新日",
+            "追加・変更の別",
+            "投信協会ファンドコード",
+            "ファンド名称",
+            "運用会社名",
+            "設定日",
+            "償還日",
+            "成長投資枠取扱可能日",
+            "決算回数",
+            "つみたて投資枠の対象・非対象",
+        ]
+    )
+    ws.append(
+        [
+            20230621,
+            "追加",
+            "AY311189",
+            "ａｕスマート・ベーシック（安定）",
+            "ａｕアセットマネジメント株式会社",
+            20180919,
+            None,
+            20240104,
+            "年1回",
+            "対象",
+        ]
+    )
+    ws.append(
+        [
+            20230621,
+            "追加",
+            "4431207B",
+            "ＢＮＰパリバ・ブラジル・ファンド（株式型）",
+            "ＢＮＰパリバ・アセットマネジメント株式会社",
+            20071116,
+            None,
+            20240104,
+            "年2回",
+            "非対象",
+        ]
+    )
+    wb.save(xlsx_path)
+
+    rows = parse_tsumitate_from_growth_xlsx(xlsx_path)
+    assert len(rows) == 1
+    assert rows[0]["ticker"] == "AY311189"
+    assert rows[0]["fund_name"] == "ａｕスマート・ベーシック（安定）"
+    assert rows[0]["is_tsumitate_target"] is True
 
 
 def test_detect_and_parse_should_route_by_extension(tmp_path: Path):
@@ -174,3 +233,44 @@ def test_detect_and_parse_should_route_by_extension(tmp_path: Path):
     rows = detect_and_parse(csv_path, wrapper="nisa_growth")
     assert len(rows) == 1
     assert rows[0]["ticker"] == "1306.T"
+
+
+def test_detect_and_parse_should_prefer_growth_format_for_tsumitate(tmp_path: Path):
+    xlsx_path = tmp_path / "tsumitate-via-growth-format.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.append(["一般投資家向け成長投資枠対象商品リスト（非上場ファンド）"])
+    ws.append(
+        [
+            "リスト更新日",
+            "追加・変更の別",
+            "投信協会ファンドコード",
+            "ファンド名称",
+            "運用会社名",
+            "設定日",
+            "償還日",
+            "成長投資枠取扱可能日",
+            "決算回数",
+            "つみたて投資枠の対象・非対象",
+        ]
+    )
+    ws.append(
+        [
+            20230621,
+            "追加",
+            "89311199",
+            "ＳＢＩ・Ｖ・Ｓ＆Ｐ５００インデックス・ファンド",
+            "ＳＢＩアセットマネジメント株式会社",
+            20190926,
+            None,
+            20240104,
+            "年1回",
+            "対象",
+        ]
+    )
+    wb.save(xlsx_path)
+
+    rows = detect_and_parse(xlsx_path, wrapper="nisa_tsumitate")
+    assert len(rows) == 1
+    assert rows[0]["ticker"] == "89311199"

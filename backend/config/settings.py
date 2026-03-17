@@ -5,7 +5,7 @@ Config — 從環境變數覆寫 domain 常數。
 
 import os
 
-ELIGIBLE_TSUMITATE_URL = "https://www.fsa.go.jp/policy/nisa2/products/index.html"
+ELIGIBLE_TSUMITATE_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
 ELIGIBLE_GROWTH_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
 ELIGIBLE_SYNC_INTERVAL_HOURS = 168
 

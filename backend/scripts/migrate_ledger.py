@@ -31,6 +31,7 @@ from sqlmodel import Session, select
 from scripts import assert_docker_runtime
 
 logger = logging.getLogger(__name__)
+engine = None
 
 
 def _create_default_account(session: Session):
@@ -89,7 +90,13 @@ def _get_or_prepare_default_account(session: Session):
 def migrate(dry_run: bool = False) -> dict[str, int]:
     from domain.entities import Holding, Transaction
     from domain.enums import TransactionType
-    from infrastructure.database import create_db_and_tables, engine
+    from infrastructure.database import create_db_and_tables
+
+    global engine
+    if engine is None:
+        from infrastructure.database import engine as db_engine
+
+        engine = db_engine
 
     create_db_and_tables()
     stats: dict[str, int] = {
