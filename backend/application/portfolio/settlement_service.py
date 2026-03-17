@@ -420,12 +420,14 @@ def _is_cash_ticker(ticker: str, currency: str) -> bool:
 
 
 def _infer_category(session: Session, txn_data: dict) -> StockCategory:
-    """Infer category by radar stock first, then payload fallback."""
+    """Infer category by radar stock first, eligible fund master, then payload fallback."""
     ticker = str(txn_data.get("ticker", "")).upper().strip()
     if ticker:
         stock = repo.find_stock_by_ticker(session, ticker)
         if stock:
             return stock.category
+        if repo.is_active_eligible_mutual_fund(session, ticker):
+            return StockCategory.MUTUAL_FUND
 
     raw = str(txn_data.get("category", StockCategory.GROWTH.value))
     try:
@@ -625,3 +627,41 @@ def verify_positions(session: Session) -> list[dict]:
             )
 
     return discrepancies
+
+
+# ---------------------------------------------------------------------------
+# Mutual-Fund Holding reclassification (data healing)
+# ---------------------------------------------------------------------------
+
+
+def reclassify_mutual_fund_holdings(
+    session: Session, *, autocommit: bool = True
+) -> int:
+    """Fix Holdings whose ticker is an eligible mutual fund but category is wrong.
+
+    Mirrors ``stock_service.reclassify_mutual_fund_stocks`` for the Holding table.
+    Should be called at startup and after each NISA eligible-list sync.
+    """
+    from logging_config import get_logger
+
+    _logger = get_logger(__name__)
+
+    holdings = list(
+        session.exec(
+            select(Holding).where(
+                Holding.is_cash == False,  # noqa: E712
+                Holding.category != StockCategory.MUTUAL_FUND,
+            )
+        ).all()
+    )
+    updated = 0
+    for h in holdings:
+        if repo.is_active_eligible_mutual_fund(session, h.ticker):
+            h.category = StockCategory.MUTUAL_FUND
+            session.add(h)
+            updated += 1
+    if updated:
+        if autocommit:
+            session.commit()
+        _logger.info("Reclassified %d holdings to Mutual_Fund.", updated)
+    return updated

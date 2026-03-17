@@ -1024,18 +1024,12 @@ def get_signals_for_ticker(session: Session, ticker: str) -> dict | None:
     Mutual_Fund -> NAV from DB; SKIP categories -> empty; others -> yfinance.
     """
     upper = ticker.upper()
-    stock = repo.find_stock_by_ticker(session, upper)
-    if stock:
-        cat = (
-            stock.category.value
-            if hasattr(stock.category, "value")
-            else str(stock.category)
-        )
-        if cat == StockCategory.MUTUAL_FUND.value:
-            nav_row = repo.get_latest_nav(session, upper)
-            return build_nav_signals(nav_row) if nav_row else {}
-        if cat in SKIP_PRICE_FETCH_CATEGORIES:
-            return {}
+    cat = _resolve_stock_category(session, upper)
+    if cat == StockCategory.MUTUAL_FUND.value:
+        nav_row = repo.get_latest_nav(session, upper)
+        return build_nav_signals(nav_row) if nav_row else {}
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return {}
     signals = get_technical_signals(upper)
     if signals:
         signals["bias_distribution"] = get_bias_distribution(upper)
@@ -1045,31 +1039,33 @@ def get_signals_for_ticker(session: Session, ticker: str) -> dict | None:
 def get_price_history_for_ticker(session: Session, ticker: str) -> list[dict]:
     """Resolve category once and return the appropriate price history."""
     upper = ticker.upper()
-    stock = repo.find_stock_by_ticker(session, upper)
-    if stock:
-        cat = (
-            stock.category.value
-            if hasattr(stock.category, "value")
-            else str(stock.category)
-        )
-        if cat == StockCategory.MUTUAL_FUND.value:
-            rows = repo.get_nav_history(session, upper)
-            return [{"date": str(r.nav_date), "close": r.nav} for r in reversed(rows)]
-        if cat in SKIP_PRICE_FETCH_CATEGORIES:
-            return []
+    cat = _resolve_stock_category(session, upper)
+    if cat == StockCategory.MUTUAL_FUND.value:
+        rows = repo.get_nav_history(session, upper)
+        return [{"date": str(r.nav_date), "close": r.nav} for r in reversed(rows)]
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return []
     return _get_price_history(upper) or []
 
 
 def _resolve_stock_category(session: Session, ticker: str) -> str | None:
-    """Look up a stock's category value string, or None if not on radar."""
-    stock = repo.find_stock_by_ticker(session, ticker.upper())
-    if not stock:
-        return None
-    return (
-        stock.category.value
-        if hasattr(stock.category, "value")
-        else str(stock.category)
-    )
+    """Look up a stock's category from Stock table, falling back to Holding table."""
+    upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper)
+    if stock:
+        return (
+            stock.category.value
+            if hasattr(stock.category, "value")
+            else str(stock.category)
+        )
+    holding = repo.find_holding_by_ticker(session, upper)
+    if holding:
+        return (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
+        )
+    return None
 
 
 def get_earnings_for_ticker(session: Session, ticker: str) -> dict | None:

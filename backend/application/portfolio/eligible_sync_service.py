@@ -159,6 +159,18 @@ def refresh_official_wrappers() -> dict[str, dict[str, int]]:
     return result
 
 
+def _reclassify_after_sync() -> None:
+    """Reclassify stocks and holdings after eligible-list refresh."""
+    from application.portfolio.settlement_service import (
+        reclassify_mutual_fund_holdings,
+    )
+    from application.stock.stock_service import reclassify_mutual_fund_stocks
+
+    with Session(engine) as session:
+        reclassify_mutual_fund_stocks(session)
+        reclassify_mutual_fund_holdings(session)
+
+
 def _eligible_sync_loop() -> None:
     interval_hours = max(settings.ELIGIBLE_SYNC_INTERVAL_HOURS, 0)
     if interval_hours <= 0:
@@ -178,6 +190,10 @@ def _eligible_sync_loop() -> None:
             logger.info("NISA eligible-list periodic sync succeeded: %s", stats)
         except Exception as exc:
             logger.warning("NISA eligible-list periodic sync failed: %s", exc)
+        try:
+            _reclassify_after_sync()
+        except Exception as exc:
+            logger.warning("Post-sync MF reclassification failed: %s", exc)
 
 
 def start_eligible_sync_loop() -> None:

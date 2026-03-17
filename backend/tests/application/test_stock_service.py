@@ -994,3 +994,77 @@ class TestReclassifyMutualFundStocks:
         unchanged = db_session.get(Stock, "AAPL")
         assert unchanged is not None
         assert unchanged.category == StockCategory.GROWTH
+
+
+# ===========================================================================
+# _resolve_stock_category — Holding table fallback
+# ===========================================================================
+
+
+class TestResolveStockCategoryFallback:
+    """Verify _resolve_stock_category checks Holding table when Stock is absent."""
+
+    def test_returns_category_from_holding_when_stock_not_found(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+        from domain.constants import DEFAULT_USER_ID
+        from domain.entities import Holding
+        from domain.enums import StockCategory
+
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=1,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        result = _resolve_stock_category(db_session, "0131217A")
+
+        assert result == "Mutual_Fund"
+
+    def test_prefers_stock_table_over_holding(self, db_session) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+        from domain.constants import DEFAULT_USER_ID
+        from domain.entities import Holding, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=1,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        result = _resolve_stock_category(db_session, "0131217A")
+
+        assert result == "Growth"
+
+    def test_returns_none_when_ticker_not_found_anywhere(self, db_session) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+
+        result = _resolve_stock_category(db_session, "UNKNOWN_TICKER")
+
+        assert result is None

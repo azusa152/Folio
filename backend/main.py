@@ -69,6 +69,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     )
     from application.portfolio.eligible_sync_service import start_eligible_sync_loop
     from application.portfolio.nav_sync_service import start_nav_sync_loop
+    from application.portfolio.settlement_service import (
+        reclassify_mutual_fund_holdings,
+    )
     from application.stock.stock_service import reclassify_mutual_fund_stocks
     from infrastructure.database import engine
 
@@ -83,6 +86,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info(
                 "Reclassified %d active stocks to Mutual_Fund.",
                 reclassified,
+            )
+        reclassified_h = reclassify_mutual_fund_holdings(_session)
+        if reclassified_h:
+            logger.info(
+                "Reclassified %d holdings to Mutual_Fund.",
+                reclassified_h,
             )
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）

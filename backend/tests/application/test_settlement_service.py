@@ -960,3 +960,152 @@ def test_nisa_buy_and_sell_should_record_contribution_and_restoration(
     assert entries[1].entry_type == "RESTORATION"
     assert entries[1].transaction_id == created_sell["id"]
     assert entries[1].amount == -100.0
+
+
+# ---------------------------------------------------------------------------
+# reclassify_mutual_fund_holdings
+# ---------------------------------------------------------------------------
+
+
+class TestReclassifyMutualFundHoldings:
+    def test_reclassifies_growth_holdings_matching_eligible_fund(
+        self, db_session: Session
+    ):
+        from application.portfolio.settlement_service import (
+            reclassify_mutual_fund_holdings,
+        )
+
+        account = _create_account(db_session)
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                quantity=100,
+                account_id=account.id,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                quantity=10,
+                account_id=account.id,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_holdings(db_session)
+
+        assert updated == 1
+        holdings = db_session.exec(
+            select(Holding).where(Holding.ticker == "0131217A")
+        ).all()
+        assert all(h.category == StockCategory.MUTUAL_FUND for h in holdings)
+        aapl = db_session.exec(select(Holding).where(Holding.ticker == "AAPL")).first()
+        assert aapl is not None
+        assert aapl.category == StockCategory.GROWTH
+
+    def test_skips_holdings_already_mutual_fund(self, db_session: Session):
+        from application.portfolio.settlement_service import (
+            reclassify_mutual_fund_holdings,
+        )
+
+        account = _create_account(db_session)
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=account.id,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_holdings(db_session)
+
+        assert updated == 0
+
+
+# ---------------------------------------------------------------------------
+# _infer_category eligible fund fallback
+# ---------------------------------------------------------------------------
+
+
+class TestInferCategoryEligibleFund:
+    def test_infers_mutual_fund_from_eligible_master(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="01313139",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        result = _infer_category(db_session, {"ticker": "01313139"})
+
+        assert result == StockCategory.MUTUAL_FUND
+
+    def test_prefers_radar_stock_over_eligible_master(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        db_session.add(
+            Stock(
+                ticker="01313139",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="01313139",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        result = _infer_category(db_session, {"ticker": "01313139"})
+
+        assert result == StockCategory.GROWTH
+
+    def test_falls_back_to_payload_when_no_match(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        result = _infer_category(db_session, {"ticker": "UNKNOWN", "category": "Bond"})
+
+        assert result == StockCategory.BOND

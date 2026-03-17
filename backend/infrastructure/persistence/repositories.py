@@ -1334,6 +1334,13 @@ def find_stock_holding_by_account_and_ticker(
     return session.exec(nocase_stmt).first()
 
 
+def find_holding_by_ticker(session: Session, ticker: str) -> Holding | None:
+    """Return the first Holding matching the ticker (any account), or None."""
+    return session.exec(
+        select(Holding).where(Holding.ticker == ticker.upper().strip()).limit(1)
+    ).first()
+
+
 def save_holding(session: Session, holding: Holding) -> Holding:
     """新增或更新持倉（含 refresh）。"""
     session.add(holding)
