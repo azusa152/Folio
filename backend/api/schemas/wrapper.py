@@ -130,9 +130,24 @@ class DeTaxOpportunityItem(BaseModel):
     reason: str
 
 
+class NavSyncFailedDetail(BaseModel):
+    ticker: str
+    reason: str
+
+
+class NavSyncPreRefreshStatus(BaseModel):
+    attempted: bool
+    success: bool
+    wrappers_synced: list[str]
+    error: str | None = None
+
+
 class NavSyncResponse(BaseModel):
     synced: int
     failed: int
+    failed_tickers: list[str]
+    failed_details: list[NavSyncFailedDetail]
+    pre_refresh: NavSyncPreRefreshStatus | None = None
 
 
 class DeTaxResponse(BaseModel):

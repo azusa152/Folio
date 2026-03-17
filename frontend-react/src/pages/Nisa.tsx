@@ -47,7 +47,31 @@ export default function Nisa() {
   const handleSyncNav = () => {
     syncNavMutation.mutate(undefined, {
       onSuccess: (data) => {
-        toast.success(t("nisa.nav_sync.success", { synced: data.synced, failed: data.failed }))
+        const preRefreshNote =
+          data.pre_refresh && !data.pre_refresh.success
+            ? ` ${t("nisa.nav_sync.pre_refresh_skipped")}`
+            : ""
+        if (data.failed > 0) {
+          const detailPreview = data.failed_details
+            .slice(0, 3)
+            .map(
+              (item) =>
+                `${item.ticker}(${t(`nisa.nav_sync.reason_${item.reason}`, { defaultValue: item.reason })})`,
+            )
+            .join(", ")
+          toast.warning(
+            t("nisa.nav_sync.partial", {
+              synced: data.synced,
+              failed: data.failed,
+              details: detailPreview,
+            }) + preRefreshNote,
+          )
+        } else {
+          toast.success(
+            t("nisa.nav_sync.success", { synced: data.synced, failed: data.failed }) +
+              preRefreshNote,
+          )
+        }
         setCooldownRemaining(NAV_SYNC_COOLDOWN_SECONDS)
         setCooldownUntil(Math.floor(Date.now() / 1000) + NAV_SYNC_COOLDOWN_SECONDS)
       },

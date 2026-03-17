@@ -31,6 +31,7 @@ def test_load_tsumitate_rows_should_use_tsumitate_target_filter(monkeypatch):
             {"ticker": Path(path).name, "fund_name": "X", "asset_type": "mutual_fund"}
         ],
     )
+    monkeypatch.setattr(eligible_sync_service, "parse_growth_xlsx", lambda _path: [])
 
     rows = eligible_sync_service._load_tsumitate_rows()
     assert rows[0]["ticker"] == "unlisted_fund_for_investor.xlsx"
@@ -56,6 +57,7 @@ def test_load_tsumitate_rows_should_skip_failed_candidate_and_continue(monkeypat
             {"ticker": "GOOD", "fund_name": "Good Fund", "asset_type": "mutual_fund"}
         ],
     )
+    monkeypatch.setattr(eligible_sync_service, "parse_growth_xlsx", lambda _path: [])
 
     rows = eligible_sync_service._load_tsumitate_rows()
     assert rows[0]["ticker"] == "GOOD"
@@ -88,9 +90,57 @@ def test_load_tsumitate_rows_should_fallback_to_legacy_fsa_parser(monkeypatch):
             }
         ],
     )
+    monkeypatch.setattr(eligible_sync_service, "parse_growth_xlsx", lambda _path: [])
 
     rows = eligible_sync_service._load_tsumitate_rows()
     assert rows[0]["ticker"] == "SBI・iシェアーズ・TOPIXインデックス・ファンド"
+
+
+def test_load_tsumitate_rows_should_recover_ticker_and_isin_on_exact_name_match(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        eligible_sync_service,
+        "_resolve_xlsx_urls",
+        lambda _url: ["legacy-fsa.xlsx"],
+    )
+    monkeypatch.setattr(
+        eligible_sync_service,
+        "_download_to_temp",
+        lambda _url: Path("/tmp/legacy-fsa.xlsx"),
+    )
+    monkeypatch.setattr(
+        eligible_sync_service,
+        "parse_tsumitate_from_growth_xlsx",
+        lambda _path: [],
+    )
+    monkeypatch.setattr(
+        eligible_sync_service,
+        "parse_tsumitate_xlsx",
+        lambda _path: [
+            {
+                "ticker": "SBI・iシェアーズ・TOPIXインデックス・ファンド",
+                "fund_name": "SBI・iシェアーズ・TOPIXインデックス・ファンド",
+                "asset_type": "mutual_fund",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        eligible_sync_service,
+        "parse_growth_xlsx",
+        lambda _path: [
+            {
+                "ticker": "89311199",
+                "fund_name": "SBI・iシェアーズ・TOPIXインデックス・ファンド",
+                "isin_code": "JP90C000AAAA",
+                "asset_type": "mutual_fund",
+            }
+        ],
+    )
+
+    rows = eligible_sync_service._load_tsumitate_rows()
+    assert rows[0]["ticker"] == "89311199"
+    assert rows[0]["isin_code"] == "JP90C000AAAA"
 
 
 def test_load_growth_rows_should_skip_failed_candidate_and_continue(monkeypatch):
@@ -152,6 +202,7 @@ def test_load_tsumitate_rows_should_merge_listed_and_unlisted_sources(monkeypatc
         "parse_tsumitate_from_growth_xlsx",
         _parse_tsumitate,
     )
+    monkeypatch.setattr(eligible_sync_service, "parse_growth_xlsx", lambda _path: [])
     monkeypatch.setattr(eligible_sync_service, "parse_tsumitate_xlsx", lambda _p: [])
 
     rows = eligible_sync_service._load_tsumitate_rows()

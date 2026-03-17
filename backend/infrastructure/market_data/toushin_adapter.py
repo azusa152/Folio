@@ -47,7 +47,8 @@ def fetch_fund_nav_csv(fund_code: str, isin_code: str) -> list[dict] | None:
 
     Returns a list of dicts sorted newest-first:
         [{"date": date, "nav": float, "net_assets": float | None}, ...]
-    Returns None on any network / parse error.
+    Returns None on network/download error.
+    Returns [] when downloaded but no parseable NAV rows are found.
     """
     params = {"isinCd": isin_code, "associFundCd": fund_code}
     try:
@@ -100,7 +101,7 @@ def fetch_fund_nav_csv(fund_code: str, isin_code: str) -> list[dict] | None:
             fund_code,
             isin_code,
         )
-        return None
+        return []
 
     rows.sort(key=lambda r: r["date"], reverse=True)
     return rows

@@ -116,6 +116,8 @@ class TestSyncMutualFundNavs:
 
         assert result["synced"] == 1
         assert result["failed"] == 0
+        assert result["failed_tickers"] == []
+        assert result["failed_details"] == []
 
         # Verify rows were actually written
         from sqlmodel import select
@@ -143,6 +145,10 @@ class TestSyncMutualFundNavs:
 
         assert result["failed"] == 1
         assert result["synced"] == 0
+        assert result["failed_tickers"] == ["NOISINFUND"]
+        assert result["failed_details"] == [
+            {"ticker": "NOISINFUND", "reason": "missing_isin"}
+        ]
 
     def test_should_return_zero_when_no_mutual_funds(self, db_session):
         """No Mutual_Fund stocks means nothing to sync."""
@@ -159,4 +165,41 @@ class TestSyncMutualFundNavs:
             result = nav_sync_module.sync_mutual_fund_navs()
 
         assert result["synced"] == 0
+        assert result["failed"] == 0
+        assert result["failed_tickers"] == []
+        assert result["failed_details"] == []
+
+    def test_should_use_isin_from_inactive_eligible_asset(self, db_session):
+        """Fallback lookup should recover ISIN from inactive eligible row."""
+        db_session.add(
+            Stock(
+                ticker="0131310B",
+                category=StockCategory.MUTUAL_FUND,
+                is_active=True,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="0131310B",
+                fund_name="Test Fund",
+                asset_type="mutual_fund",
+                isin_code="JP90C000HR46",
+                is_active=False,
+            )
+        )
+        db_session.commit()
+
+        fake_csv = [
+            {"date": date(2026, 3, 14), "nav": 15432.0, "net_assets": 1200.0},
+            {"date": date(2026, 3, 13), "nav": 15380.0, "net_assets": 1190.0},
+        ]
+
+        with (
+            patch.object(nav_sync_module, "engine", test_engine),
+            patch.object(nav_sync_module, "fetch_fund_nav_csv", return_value=fake_csv),
+        ):
+            result = nav_sync_module.sync_mutual_fund_navs()
+
+        assert result["synced"] == 1
         assert result["failed"] == 0

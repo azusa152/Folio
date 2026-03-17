@@ -187,7 +187,18 @@ export function useSyncNav() {
     mutationFn: async () => {
       const { data, error } = await client.POST("/nav/sync")
       if (error) throw error
-      return data as { synced: number; failed: number }
+      return data as {
+        synced: number
+        failed: number
+        failed_tickers: string[]
+        failed_details: Array<{ ticker: string; reason: string }>
+        pre_refresh?: {
+          attempted: boolean
+          success: boolean
+          wrappers_synced: string[]
+          error?: string | null
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enriched-stocks"] })

@@ -10875,6 +10875,61 @@
         "title": "MessageResponse",
         "description": "\u901a\u7528\u64cd\u4f5c\u7d50\u679c\u56de\u61c9\uff08\u522a\u9664\u3001\u505c\u7528\u3001\u91cd\u65b0\u555f\u7528\u3001\u532f\u5165\u7b49\uff09\u3002"
       },
+      "NavSyncFailedDetail": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "reason"
+        ],
+        "title": "NavSyncFailedDetail"
+      },
+      "NavSyncPreRefreshStatus": {
+        "properties": {
+          "attempted": {
+            "type": "boolean",
+            "title": "Attempted"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "wrappers_synced": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wrappers Synced"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attempted",
+          "success",
+          "wrappers_synced"
+        ],
+        "title": "NavSyncPreRefreshStatus"
+      },
       "NavSyncResponse": {
         "properties": {
           "synced": {
@@ -10884,12 +10939,38 @@
           "failed": {
             "type": "integer",
             "title": "Failed"
+          },
+          "failed_tickers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failed Tickers"
+          },
+          "failed_details": {
+            "items": {
+              "$ref": "#/components/schemas/NavSyncFailedDetail"
+            },
+            "type": "array",
+            "title": "Failed Details"
+          },
+          "pre_refresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NavSyncPreRefreshStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "synced",
-          "failed"
+          "failed",
+          "failed_tickers",
+          "failed_details"
         ],
         "title": "NavSyncResponse"
       },

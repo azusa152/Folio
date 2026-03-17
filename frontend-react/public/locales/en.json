@@ -2209,7 +2209,13 @@
       "syncing": "Updating…",
       "cooldown": "Wait {{seconds}}s",
       "success": "NAV updated: {{synced}} synced, {{failed}} failed",
-      "failed": "Failed to update NAV data"
+      "partial": "NAV updated: {{synced}} synced, {{failed}} failed ({{details}})",
+      "failed": "Failed to update NAV data",
+      "reason_missing_isin": "missing ISIN",
+      "reason_download_error": "download failed",
+      "reason_empty_csv": "no NAV rows",
+      "reason_upsert_error": "database write failed",
+      "pre_refresh_skipped": "Eligible-list refresh skipped; NAV sync proceeded."
     }
   },
   "routing": {

@@ -2209,7 +2209,13 @@
       "syncing": "更新中…",
       "cooldown": "{{seconds}}秒後に再実行可能",
       "success": "基準価額を更新しました：{{synced}}件成功、{{failed}}件失敗",
-      "failed": "基準価額の更新に失敗しました"
+      "partial": "基準価額を更新しました：{{synced}}件成功、{{failed}}件失敗（{{details}}）",
+      "failed": "基準価額の更新に失敗しました",
+      "reason_missing_isin": "ISIN未設定",
+      "reason_download_error": "ダウンロード失敗",
+      "reason_empty_csv": "基準価額データなし",
+      "reason_upsert_error": "データ保存失敗",
+      "pre_refresh_skipped": "対象リストの更新はスキップされましたが、基準価額の同期は続行しました。"
     }
   },
   "routing": {

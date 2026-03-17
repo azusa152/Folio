@@ -55,7 +55,7 @@ class TestFetchFundNavCsv:
         result = toushin_adapter.fetch_fund_nav_csv("0131310B", "JP90C000HR46")
         assert result is None
 
-    def test_should_return_none_on_empty_csv(self, monkeypatch):
+    def test_should_return_empty_list_on_empty_csv(self, monkeypatch):
         empty_csv = "年月日,基準価額(円),純資産総額(百万円),分配金\n".encode(
             "shift_jis"
         )
@@ -67,7 +67,7 @@ class TestFetchFundNavCsv:
         monkeypatch.setattr(httpx, "Client", lambda **kwargs: mock_client)
 
         result = toushin_adapter.fetch_fund_nav_csv("0131310B", "JP90C000HR46")
-        assert result is None
+        assert result == []
 
 
 class TestFetchLatestNav:

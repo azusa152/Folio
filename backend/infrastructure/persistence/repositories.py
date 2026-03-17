@@ -1798,7 +1798,7 @@ def get_eligible_assets_metadata(
 def find_isin_for_ticker(session: Session, ticker: str) -> str | None:
     """Look up ISIN code from EligibleAsset for a given ticker."""
     normalized = ticker.upper().strip()
-    stmt = (
+    strict_stmt = (
         select(EligibleAsset.isin_code)
         .where(
             EligibleAsset.ticker == normalized,
@@ -1807,7 +1807,21 @@ def find_isin_for_ticker(session: Session, ticker: str) -> str | None:
         )
         .limit(1)
     )
-    return session.exec(stmt).first()
+    isin = session.exec(strict_stmt).first()
+    if isin:
+        return isin
+
+    # Fallback: allow inactive rows so historical/temporarily deactivated
+    # eligible assets can still provide ISIN for NAV sync.
+    fallback_stmt = (
+        select(EligibleAsset.isin_code)
+        .where(
+            EligibleAsset.ticker == normalized,
+            EligibleAsset.isin_code != None,  # noqa: E711
+        )
+        .limit(1)
+    )
+    return session.exec(fallback_stmt).first()
 
 
 def get_latest_nav(session: Session, fund_code: str) -> "MutualFundNav | None":

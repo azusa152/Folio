@@ -61,6 +61,10 @@ def _download_to_temp(url: str) -> Path:
             return Path(tmp.name)
 
 
+def _normalize_fund_name(value: str) -> str:
+    return re.sub(r"\s+", "", value.strip()).lower()
+
+
 def _load_tsumitate_rows() -> list[dict]:
     urls = _resolve_xlsx_urls(settings.ELIGIBLE_TSUMITATE_URL)
     if not urls:
@@ -73,11 +77,13 @@ def _load_tsumitate_rows() -> list[dict]:
     ] or urls
     rows: list[dict] = []
     fallback_rows: list[dict] = []
+    growth_rows: list[dict] = []
     for url in selected:
         try:
             temp_path = _download_to_temp(url)
             try:
                 rows.extend(parse_tsumitate_from_growth_xlsx(temp_path))
+                growth_rows.extend(parse_growth_xlsx(temp_path))
                 legacy_rows = parse_tsumitate_xlsx(temp_path)
                 if len(legacy_rows) > len(fallback_rows):
                     fallback_rows = legacy_rows
@@ -92,10 +98,54 @@ def _load_tsumitate_rows() -> list[dict]:
             deduped[row["ticker"]] = row
         return list(deduped.values())
     if fallback_rows:
+        # Exact-match recovery path:
+        # when legacy fallback rows only contain fund_name ticker surrogate,
+        # recover ticker/ISIN from growth-parsed rows using normalized exact name.
+        growth_by_name: dict[str, dict] = {}
+        duplicate_growth_names: set[str] = set()
+        for row in growth_rows:
+            name = _normalize_fund_name(str(row.get("fund_name", "")))
+            if not name:
+                continue
+            if name in growth_by_name:
+                duplicate_growth_names.add(name)
+            else:
+                growth_by_name[name] = row
+
+        resolved = 0
+        unresolved = 0
+        recovered_rows: list[dict] = []
+        for row in fallback_rows:
+            fund_name = str(row.get("fund_name", ""))
+            key = _normalize_fund_name(fund_name)
+            candidate = growth_by_name.get(key)
+            if (
+                candidate
+                and key not in duplicate_growth_names
+                and candidate.get("ticker")
+                and candidate.get("isin_code")
+            ):
+                recovered_rows.append(
+                    {
+                        **row,
+                        "ticker": str(candidate["ticker"]).strip().upper(),
+                        "isin_code": str(candidate["isin_code"]).strip(),
+                    }
+                )
+                resolved += 1
+            else:
+                recovered_rows.append(row)
+                unresolved += 1
+
+        logger.warning(
+            "Tsumitate fallback recovery: resolved=%d unresolved=%d",
+            resolved,
+            unresolved,
+        )
         logger.warning(
             "Tsumitate target flag not found; falling back to legacy FSA-style parser."
         )
-        return fallback_rows
+        return recovered_rows
     raise ValueError("No parseable rows found in Tsumitate source XLSX links.")
 
 
@@ -156,6 +206,30 @@ def refresh_official_wrappers() -> dict[str, dict[str, int]]:
     with Session(engine) as session:
         for wrapper in ("nisa_tsumitate", "nisa_growth"):
             result[wrapper] = sync_wrapper_from_official_source(session, wrapper)
+    return result
+
+
+def refresh_official_wrappers_best_effort() -> dict[str, dict[str, int]]:
+    """Best-effort one-shot refresh for NISA wrappers.
+
+    Used by manual NAV sync to improve ISIN coverage before NAV fetch.
+    Any wrapper-level refresh failure is logged and skipped.
+    """
+    result: dict[str, dict[str, int]] = {}
+    with Session(engine) as session:
+        for wrapper in ("nisa_tsumitate", "nisa_growth"):
+            try:
+                result[wrapper] = sync_wrapper_from_official_source(
+                    session, wrapper, source="nav_sync_backfill"
+                )
+            except Exception as exc:
+                logger.warning(
+                    "NAV sync pre-refresh skipped for wrapper %s: %s", wrapper, exc
+                )
+        try:
+            _reclassify_after_sync()
+        except Exception as exc:
+            logger.warning("NAV sync pre-refresh reclassification failed: %s", exc)
     return result
 
 

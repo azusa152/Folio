@@ -2209,7 +2209,13 @@
       "syncing": "更新中…",
       "cooldown": "{{seconds}} 秒后可重试",
       "success": "净值已更新：{{synced}} 条成功、{{failed}} 条失败",
-      "failed": "净值更新失败"
+      "partial": "净值已更新：{{synced}} 条成功、{{failed}} 条失败（{{details}}）",
+      "failed": "净值更新失败",
+      "reason_missing_isin": "缺少 ISIN",
+      "reason_download_error": "下载失败",
+      "reason_empty_csv": "无可用净值数据",
+      "reason_upsert_error": "数据写入失败",
+      "pre_refresh_skipped": "目标清单刷新已跳过，但净值同步已继续。"
     }
   },
   "routing": {

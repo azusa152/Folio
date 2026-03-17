@@ -29,6 +29,7 @@ from application.portfolio.eligibility_service import (
     refresh_eligible_assets,
 )
 from application.portfolio.eligible_sync_service import (
+    refresh_official_wrappers_best_effort,
     sync_wrapper_from_official_source,
 )
 from application.portfolio.nav_sync_service import sync_mutual_fund_navs
@@ -370,6 +371,18 @@ def suggest_routing(
 @router.post("/nav/sync", response_model=NavSyncResponse)
 def sync_nav_endpoint():
     """Trigger on-demand NAV sync for all active Mutual_Fund stocks."""
+    pre_refresh_status = {
+        "attempted": True,
+        "success": True,
+        "wrappers_synced": [],
+        "error": None,
+    }
+    try:
+        pre_refresh_result = refresh_official_wrappers_best_effort()
+        pre_refresh_status["wrappers_synced"] = sorted(pre_refresh_result.keys())
+    except Exception as exc:
+        pre_refresh_status["success"] = False
+        pre_refresh_status["error"] = str(exc)
     try:
         result = sync_mutual_fund_navs()
     except Exception:
@@ -378,7 +391,7 @@ def sync_nav_endpoint():
             detail=_error_detail("NAV_SYNC_FAILED", "nav_sync.failed"),
         ) from None
     invalidate_enriched_cache()
-    return result
+    return {**result, "pre_refresh": pre_refresh_status}
 
 
 @router.get("/wrappers/detax", response_model=DeTaxResponse)

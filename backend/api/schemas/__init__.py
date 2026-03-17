@@ -167,6 +167,8 @@ from api.schemas.wrapper import (  # noqa: F401
     EligibleAssetsRefreshStats,
     EligibleAssetsResponse,
     EligibleAssetsUploadResponse,
+    NavSyncFailedDetail,
+    NavSyncPreRefreshStatus,
     NavSyncResponse,
     QuotaStatusResponse,
     RestorationForecastItem,
