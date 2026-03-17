@@ -8,6 +8,7 @@
     "radar": "Investment Radar",
     "backtest": "Signal Backtest",
     "allocation": "Asset Allocation",
+    "nisa": "NISA",
     "fx_watch": "FX Monitor",
     "smart_money": "Smart Money"
   },
@@ -2137,6 +2138,68 @@
     "upload_button": "Upload list file",
     "upload_success": "Eligible fund list uploaded",
     "upload_failed": "Failed to upload eligible fund list"
+  },
+  "nisa": {
+    "title": "NISA Center",
+    "caption": "Manage approved funds, quota usage, and contribution history in one place.",
+    "tabs": {
+      "eligible": "Eligible Assets",
+      "quota": "Quota & Status",
+      "contributions": "Contributions",
+      "data": "Data Management"
+    },
+    "education": {
+      "title": "How NISA limits work",
+      "summary": "Use this quick guide if you are new to NISA.",
+      "tsumitate_limit": "Tsumitate annual limit: 1,200,000 JPY",
+      "growth_limit": "Growth annual limit: 2,400,000 JPY",
+      "combined_annual_limit": "Combined annual limit: 3,600,000 JPY",
+      "combined_lifetime_limit": "Combined lifetime limit: 18,000,000 JPY"
+    },
+    "eligible": {
+      "title": "Eligible fund list",
+      "hint": "Search approved funds for NISA Tsumitate and NISA Growth.",
+      "search_placeholder": "Search by fund name or ticker",
+      "filter_asset_type": "Asset type",
+      "filter_all": "All",
+      "asset_type": {
+        "mutual_fund": "Mutual fund",
+        "etf": "ETF",
+        "stock": "Stock",
+        "reit": "REIT"
+      },
+      "table_fund_name": "Fund name",
+      "table_ticker": "Ticker / Code",
+      "table_asset_type": "Asset type",
+      "table_trust_fee": "Trust fee",
+      "trust_fee_unknown": "N/A",
+      "empty": "No eligible assets found.",
+      "showing_count": "Showing {{count}} of up to {{total}} loaded records",
+      "load_more": "Load 50 more"
+    },
+    "contributions": {
+      "title": "Contribution history",
+      "hint": "Review ledger entries used for NISA quota calculations.",
+      "summary_net_ledger_label": "Net ledger amount",
+      "summary_contribution_only_label": "Contribution entries only: {{amount}}",
+      "filter_wrapper": "Wrapper",
+      "filter_all_wrappers": "All wrappers",
+      "filter_year": "Fiscal year",
+      "table_date": "Date",
+      "table_wrapper": "Wrapper",
+      "table_type": "Entry type",
+      "table_amount": "Amount",
+      "table_note": "Note",
+      "empty": "No contribution entries found for this filter.",
+      "error_title": "Unable to load contribution history",
+      "error_hint": "Please check your connection and try again.",
+      "retry": "Retry",
+      "entry_type": {
+        "contribution": "Contribution",
+        "restoration": "Restoration",
+        "adjustment": "Adjustment"
+      }
+    }
   },
   "routing": {
     "nisa_growth_tax_free": "Buy in NISA Growth (tax-free gains)",

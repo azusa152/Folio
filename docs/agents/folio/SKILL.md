@@ -89,9 +89,24 @@ Verbosity (top-level `format` field in request body):
 - Asset review: `dashboard` -> `analytics` -> `insights` -> `transactions` with `ticker`
 - Record trade: `add_transaction {ticker}` -> `transactions` with `ticker` to confirm (BUY/SELL auto-settle both cash and stock positions)
 - NISA check: `quota` -> `dashboard` (review quota then allocation)
+- NISA ledger review: `quota` -> `GET /wrappers/contributions?wrapper=nisa_tsumitate&year=2026&limit=100`
 - Tax optimization: `quota` -> `insights` -> review DeTAX suggestions in dashboard
 
 All position mutations now go through the transaction API; holdings are a derived position cache.
+
+## Direct NISA REST Endpoint
+
+Use this endpoint when the user asks for contribution ledger records behind NISA quota math:
+
+- `GET /wrappers/contributions`
+  - Query:
+    - `wrapper` (optional): `nisa_tsumitate` or `nisa_growth`
+    - `year` (optional): fiscal year
+    - `limit` (optional, default `500`, max `2000`)
+  - Response:
+    - `count`
+    - `items[]`: `id`, `tax_wrapper`, `entry_type`, `fiscal_year`, `amount`, `transaction_id`, `effective_date`, `note`, `created_at`
+  - Invalid `wrapper` returns structured error (`error_code=INVALID_INPUT`).
 
 ## Signal Cheatsheet
 

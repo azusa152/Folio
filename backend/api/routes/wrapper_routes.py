@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from api.schemas.wrapper import (
     AllQuotasResponse,
+    ContributionsResponse,
     DeTaxResponse,
     EligibilityCheckResponse,
     EligibleAssetsMetadataResponse,
@@ -35,6 +36,7 @@ from application.portfolio.routing_service import (
 )
 from application.portfolio.wrapper_service import (
     get_all_wrapper_quotas,
+    get_contribution_entries,
     get_restoration_forecast,
 )
 from domain.constants import (
@@ -47,6 +49,7 @@ from i18n import t
 from infrastructure.database import get_session
 
 router = APIRouter(tags=["wrapper"])
+_CONTRIBUTION_WRAPPERS = {"nisa_tsumitate", "nisa_growth"}
 
 
 def _error_detail(error_code: str, message_key: str) -> dict[str, str]:
@@ -76,6 +79,81 @@ def quota_status(
 )
 def restoration_forecast(session: Session = Depends(get_session)):
     return get_restoration_forecast(session, DEFAULT_USER_ID)
+
+
+@router.get(
+    "/wrappers/contributions",
+    response_model=ContributionsResponse,
+    responses={
+        422: {
+            "description": "Validation error or domain input error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "anyOf": [
+                            {"$ref": "#/components/schemas/HTTPValidationError"},
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "detail": {
+                                        "type": "object",
+                                        "properties": {
+                                            "error_code": {"type": "string"},
+                                            "detail": {"type": "string"},
+                                        },
+                                        "required": ["error_code", "detail"],
+                                    }
+                                },
+                                "required": ["detail"],
+                            },
+                        ]
+                    }
+                }
+            },
+        }
+    },
+)
+def contributions_history(
+    wrapper: str | None = Query(default=None),
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    limit: int = Query(default=500, ge=1, le=2000),
+    session: Session = Depends(get_session),
+):
+    normalized_wrapper = wrapper.strip().lower() if wrapper else None
+    if (
+        normalized_wrapper is not None
+        and normalized_wrapper not in _CONTRIBUTION_WRAPPERS
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail(
+                ERROR_INVALID_INPUT, "eligibility.contributions_unsupported_wrapper"
+            ),
+        )
+    entries = get_contribution_entries(
+        session=session,
+        user_id=DEFAULT_USER_ID,
+        wrapper=normalized_wrapper,
+        year=year,
+        limit=limit,
+    )
+    return {
+        "count": len(entries),
+        "items": [
+            {
+                "id": entry.id,
+                "tax_wrapper": entry.tax_wrapper,
+                "entry_type": entry.entry_type,
+                "fiscal_year": entry.fiscal_year,
+                "amount": entry.amount,
+                "transaction_id": entry.transaction_id,
+                "effective_date": entry.effective_date,
+                "note": entry.note,
+                "created_at": entry.created_at,
+            }
+            for entry in entries
+        ],
+    }
 
 
 @router.get(

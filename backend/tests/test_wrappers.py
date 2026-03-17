@@ -3,6 +3,9 @@
 import httpx
 from fastapi.testclient import TestClient
 
+from domain.constants import DEFAULT_LANGUAGE
+from i18n import t
+
 
 def _create_nisa_account(client: TestClient, wrapper: str) -> int:
     resp = client.post(
@@ -113,6 +116,95 @@ def test_wrappers_restoration_forecast_should_include_pending_after_sell(
     forecast = forecast_resp.json()
     assert forecast["total_pending"] >= 100.0
     assert any(item["tax_wrapper"] == "nisa_growth" for item in forecast["pending"])
+
+
+def test_wrappers_contributions_should_return_filtered_history(client: TestClient):
+    growth_account_id = _create_nisa_account(client, "nisa_growth")
+    _deposit(client, growth_account_id, 1_000_000.0)
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": growth_account_id,
+            "ticker": "1306.T",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 2_000.0,
+            "total_amount": 20_000.0,
+            "currency": "JPY",
+            "transaction_date": "2026-02-01",
+        },
+    )
+    assert buy_resp.status_code == 201
+
+    resp = client.get(
+        "/wrappers/contributions",
+        params={"wrapper": "nisa_growth", "year": 2026, "limit": 50},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] >= 1
+    assert isinstance(payload["items"], list)
+    for item in payload["items"]:
+        assert item["tax_wrapper"] == "nisa_growth"
+        assert item["fiscal_year"] == 2026
+        assert item["entry_type"] in {"CONTRIBUTION", "RESTORATION", "ADJUSTMENT"}
+
+
+def test_wrappers_contributions_should_reject_invalid_wrapper_with_structured_error(
+    client: TestClient,
+):
+    resp = client.get("/wrappers/contributions", params={"wrapper": "tokutei"})
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert detail["error_code"] == "INVALID_INPUT"
+    assert detail["detail"] == t(
+        "eligibility.contributions_unsupported_wrapper",
+        lang=DEFAULT_LANGUAGE,
+    )
+
+
+def test_wrappers_contributions_should_apply_limit(client: TestClient):
+    growth_account_id = _create_nisa_account(client, "nisa_growth")
+    _deposit(client, growth_account_id, 1_000_000.0)
+    first_buy = client.post(
+        "/transactions",
+        json={
+            "account_id": growth_account_id,
+            "ticker": "1306.T",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 2_000.0,
+            "total_amount": 20_000.0,
+            "currency": "JPY",
+            "transaction_date": "2026-02-01",
+        },
+    )
+    assert first_buy.status_code == 201
+    second_buy = client.post(
+        "/transactions",
+        json={
+            "account_id": growth_account_id,
+            "ticker": "1475.T",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 2_000.0,
+            "total_amount": 20_000.0,
+            "currency": "JPY",
+            "transaction_date": "2026-02-02",
+        },
+    )
+    assert second_buy.status_code == 201
+
+    resp = client.get(
+        "/wrappers/contributions",
+        params={"wrapper": "nisa_growth", "year": 2026, "limit": 1},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 1
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["tax_wrapper"] == "nisa_growth"
+    assert payload["items"][0]["fiscal_year"] == 2026
 
 
 def test_nisa_buy_should_return_422_with_quota_exceeded_payload(client: TestClient):

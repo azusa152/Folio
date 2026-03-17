@@ -8,6 +8,7 @@
     "radar": "投資雷達",
     "backtest": "訊號回測",
     "allocation": "個人資產配置",
+    "nisa": "NISA",
     "fx_watch": "外匯總覽",
     "smart_money": "大師足跡"
   },
@@ -2137,6 +2138,68 @@
     "upload_button": "上傳名單檔案",
     "upload_success": "可投基金名單已上傳",
     "upload_failed": "可投基金名單上傳失敗"
+  },
+  "nisa": {
+    "title": "NISA 中心",
+    "caption": "在同一頁集中管理可投名單、額度使用與提撥台帳。",
+    "tabs": {
+      "eligible": "可投資產",
+      "quota": "額度與狀態",
+      "contributions": "提撥紀錄",
+      "data": "資料管理"
+    },
+    "education": {
+      "title": "NISA 額度說明",
+      "summary": "若你剛開始使用 NISA，可先閱讀這份快速指南。",
+      "tsumitate_limit": "定期定額年上限：1,200,000 日圓",
+      "growth_limit": "成長投資年上限：2,400,000 日圓",
+      "combined_annual_limit": "年合計上限：3,600,000 日圓",
+      "combined_lifetime_limit": "終身總上限：18,000,000 日圓"
+    },
+    "eligible": {
+      "title": "可投名單",
+      "hint": "可依基金名稱或代號搜尋定期定額與成長投資枠的核准商品。",
+      "search_placeholder": "依基金名稱或代號搜尋",
+      "filter_asset_type": "資產類型",
+      "filter_all": "全部",
+      "asset_type": {
+        "mutual_fund": "共同基金",
+        "etf": "ETF",
+        "stock": "股票",
+        "reit": "REIT"
+      },
+      "table_fund_name": "基金名稱",
+      "table_ticker": "代號",
+      "table_asset_type": "資產類型",
+      "table_trust_fee": "信託費率",
+      "trust_fee_unknown": "未提供",
+      "empty": "找不到符合條件的可投資產。",
+      "showing_count": "目前顯示 {{count}} 筆（已載入上限 {{total}} 筆）",
+      "load_more": "再載入 50 筆"
+    },
+    "contributions": {
+      "title": "提撥台帳",
+      "hint": "檢視用於 NISA 額度計算的台帳紀錄。",
+      "summary_net_ledger_label": "台帳淨額",
+      "summary_contribution_only_label": "僅提撥紀錄：{{amount}}",
+      "filter_wrapper": "帳戶類型",
+      "filter_all_wrappers": "全部帳戶類型",
+      "filter_year": "會計年度",
+      "table_date": "日期",
+      "table_wrapper": "帳戶類型",
+      "table_type": "紀錄類型",
+      "table_amount": "金額",
+      "table_note": "備註",
+      "empty": "目前篩選條件下沒有資料。",
+      "error_title": "無法載入提撥台帳",
+      "error_hint": "請確認網路連線後再試一次。",
+      "retry": "重試",
+      "entry_type": {
+        "contribution": "提撥",
+        "restoration": "額度恢復",
+        "adjustment": "調整"
+      }
+    }
   },
   "routing": {
     "nisa_growth_tax_free": "優先在 NISA 成長投資枠買入（收益免稅）",

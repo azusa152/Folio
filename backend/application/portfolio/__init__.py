@@ -71,6 +71,7 @@ from application.portfolio.transaction_service import (  # noqa: F401
 )
 from application.portfolio.wrapper_service import (  # noqa: F401
     get_all_wrapper_quotas,
+    get_contribution_entries,
     get_restoration_forecast,
     record_contribution,
     record_restoration,

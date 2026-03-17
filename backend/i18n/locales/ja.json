@@ -407,6 +407,7 @@
     "invalid_asset_type": "この資産タイプはNISA成長投資枠の対象外です。",
     "try_instead": "{{wrapper}} をご利用ください。",
     "refresh_unsupported_wrapper": "公式リスト更新はNISA口座のみ対応しています。",
+    "contributions_unsupported_wrapper": "拠出履歴はNISA口座のみ対応しています。",
     "upload_unsupported_wrapper": "対象資産リストのアップロードはNISA口座のみ対応しています。",
     "refresh_failed": "ソースデータを安全に解析できず、更新に失敗しました。",
     "upload_invalid_format": "アップロード可能な形式は .csv と .xlsx のみです。",

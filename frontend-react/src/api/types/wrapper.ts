@@ -13,6 +13,8 @@ export type EligibleAssetsRefreshStats = components["schemas"]["EligibleAssetsRe
 export type EligibleAssetsRefreshResponse =
   components["schemas"]["EligibleAssetsRefreshResponse"]
 export type EligibleAssetsUploadResponse = components["schemas"]["EligibleAssetsUploadResponse"]
+export type ContributionEntryItem = components["schemas"]["ContributionEntryItem"]
+export type ContributionsResponse = components["schemas"]["ContributionsResponse"]
 export type RoutingSuggestionItem = components["schemas"]["RoutingSuggestionItem"]
 export type RoutingSuggestRequest = components["schemas"]["RoutingSuggestRequest"]
 export type RoutingSuggestResponse = components["schemas"]["RoutingSuggestResponse"]

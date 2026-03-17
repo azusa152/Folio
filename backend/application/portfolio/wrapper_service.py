@@ -161,3 +161,24 @@ def get_restoration_forecast(session: Session, user_id: str) -> dict:
         "total_pending": round(total_pending, 2),
         "restoration_policy": NISA_RESTORATION_POLICY,
     }
+
+
+def get_contribution_entries(
+    session: Session,
+    user_id: str,
+    *,
+    wrapper: str | None = None,
+    year: int | None = None,
+    limit: int = 500,
+) -> list[ContributionLedgerEntry]:
+    """List contribution ledger entries with optional wrapper/year filters."""
+    entries = repo.find_ledger_entries(session, user_id)
+    if wrapper:
+        normalized_wrapper = wrapper.strip().lower()
+        entries = [
+            entry for entry in entries if entry.tax_wrapper == normalized_wrapper
+        ]
+    if year is not None:
+        entries = [entry for entry in entries if entry.fiscal_year == year]
+    entries.sort(key=lambda item: (item.effective_date, item.created_at), reverse=True)
+    return entries[:limit]

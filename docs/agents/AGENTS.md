@@ -14,6 +14,7 @@ Self-hosted investment tracking. Backend: `http://localhost:8000`.
 - For asset review, use `analytics` then `insights`.
 - For trade recording, use `add_transaction` with required `account_id`, `ticker`, `type`, `quantity`, `total_amount`, `date`; supported types: BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT.
 - For NISA/iDeCo status, use `quota`; branch on `wrapper` field in response.
+- For NISA contribution ledger review, use `GET /wrappers/contributions` with `wrapper`/`year` filters.
 - NISA quotas use cost basis (簿價), not market value. Do not confuse the two.
 
 ## Auth

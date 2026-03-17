@@ -16,6 +16,7 @@ import "./lib/i18n"
 const Dashboard = lazy(() => import("./pages/Dashboard"))
 const Radar = lazy(() => import("./pages/Radar"))
 const Allocation = lazy(() => import("./pages/Allocation"))
+const Nisa = lazy(() => import("./pages/Nisa"))
 const FxWatch = lazy(() => import("./pages/FxWatch"))
 const SmartMoney = lazy(() => import("./pages/SmartMoney"))
 const Backtest = lazy(() => import("./pages/Backtest"))
@@ -46,6 +47,7 @@ export default function App() {
                   <Route path="/" element={<PageShell><Dashboard /></PageShell>} />
                   <Route path="/radar" element={<PageShell><Radar /></PageShell>} />
                   <Route path="/allocation" element={<PageShell><Allocation /></PageShell>} />
+                  <Route path="/nisa" element={<PageShell><Nisa /></PageShell>} />
                   <Route path="/fx-watch" element={<PageShell><FxWatch /></PageShell>} />
                   <Route path="/smart-money" element={<PageShell><SmartMoney /></PageShell>} />
                   <Route path="/backtest" element={<PageShell><Backtest /></PageShell>} />

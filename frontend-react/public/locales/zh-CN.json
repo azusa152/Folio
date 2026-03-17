@@ -8,6 +8,7 @@
     "radar": "投资雷达",
     "backtest": "信号回测",
     "allocation": "个人资产配置",
+    "nisa": "NISA",
     "fx_watch": "外汇总览",
     "smart_money": "大师足迹"
   },
@@ -2137,6 +2138,68 @@
     "upload_button": "上传名单文件",
     "upload_success": "可投基金名单已上传",
     "upload_failed": "可投基金名单上传失败"
+  },
+  "nisa": {
+    "title": "NISA 中心",
+    "caption": "在一个页面集中管理可投名单、额度使用和缴款台账。",
+    "tabs": {
+      "eligible": "可投资产",
+      "quota": "额度与状态",
+      "contributions": "缴款记录",
+      "data": "数据管理"
+    },
+    "education": {
+      "title": "NISA 额度说明",
+      "summary": "如果你刚开始使用 NISA，可先查看这份快速说明。",
+      "tsumitate_limit": "定投额度年上限：1,200,000 日元",
+      "growth_limit": "成长额度年上限：2,400,000 日元",
+      "combined_annual_limit": "年合计上限：3,600,000 日元",
+      "combined_lifetime_limit": "终身总上限：18,000,000 日元"
+    },
+    "eligible": {
+      "title": "可投名单",
+      "hint": "可按基金名称或代码检索定投额度与成长额度的核准产品。",
+      "search_placeholder": "按基金名或代码搜索",
+      "filter_asset_type": "资产类型",
+      "filter_all": "全部",
+      "asset_type": {
+        "mutual_fund": "公募基金",
+        "etf": "ETF",
+        "stock": "股票",
+        "reit": "REIT"
+      },
+      "table_fund_name": "基金名称",
+      "table_ticker": "代码",
+      "table_asset_type": "资产类型",
+      "table_trust_fee": "信托费率",
+      "trust_fee_unknown": "未提供",
+      "empty": "未找到符合条件的可投资产。",
+      "showing_count": "当前显示 {{count}} 条（已加载上限 {{total}} 条）",
+      "load_more": "再加载 50 条"
+    },
+    "contributions": {
+      "title": "缴款台账",
+      "hint": "查看用于 NISA 额度计算的台账记录。",
+      "summary_net_ledger_label": "台账净额",
+      "summary_contribution_only_label": "仅缴款记录：{{amount}}",
+      "filter_wrapper": "账户类型",
+      "filter_all_wrappers": "全部账户类型",
+      "filter_year": "财政年度",
+      "table_date": "日期",
+      "table_wrapper": "账户类型",
+      "table_type": "记录类型",
+      "table_amount": "金额",
+      "table_note": "备注",
+      "empty": "当前筛选条件下暂无记录。",
+      "error_title": "无法加载缴款台账",
+      "error_hint": "请检查网络连接后重试。",
+      "retry": "重试",
+      "entry_type": {
+        "contribution": "缴款",
+        "restoration": "额度恢复",
+        "adjustment": "调整"
+      }
+    }
   },
   "routing": {
     "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import client, { apiFetch } from "@/api/client"
 import type {
   AllQuotasResponse,
+  ContributionsResponse,
   DeTaxResponse,
   EligibilityCheckResponse,
   EligibleAssetsMetadataResponse,
@@ -216,6 +217,32 @@ export function useDeTaxSuggestions(enabled = true) {
       return data as DeTaxResponse
     },
     enabled,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useWrapperContributions(options?: {
+  wrapper?: string
+  year?: number
+  limit?: number
+  enabled?: boolean
+}) {
+  const normalizedWrapper = (options?.wrapper ?? "").trim().toLowerCase()
+  const year = options?.year
+  const limit = options?.limit ?? 200
+  return useQuery<ContributionsResponse>({
+    queryKey: ["wrapper-contributions", normalizedWrapper, year ?? "", limit],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (normalizedWrapper) params.set("wrapper", normalizedWrapper)
+      if (typeof year === "number") params.set("year", String(year))
+      params.set("limit", String(limit))
+      const response = await apiFetch(`/api/wrappers/contributions?${params.toString()}`)
+      const payload = (await response.json()) as ContributionsResponse | { detail?: unknown }
+      if (!response.ok) throw payload
+      return payload as ContributionsResponse
+    },
+    enabled: options?.enabled ?? true,
     staleTime: 30 * 1000,
   })
 }

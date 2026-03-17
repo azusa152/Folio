@@ -407,6 +407,7 @@
     "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
     "try_instead": "请改用 {{wrapper}}。",
     "refresh_unsupported_wrapper": "官方名单刷新仅支持 NISA 账户。",
+    "contributions_unsupported_wrapper": "缴款台账仅支持 NISA 账户。",
     "upload_unsupported_wrapper": "合规资产名单上传仅支持 NISA 账户。",
     "refresh_failed": "来源数据无法安全解析，刷新失败。",
     "upload_invalid_format": "仅支持上传 .csv 和 .xlsx 文件。",

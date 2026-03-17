@@ -407,6 +407,7 @@
     "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
     "try_instead": "Try {{wrapper}} instead.",
     "refresh_unsupported_wrapper": "Official refresh is available only for NISA wrappers.",
+    "contributions_unsupported_wrapper": "Contribution history is available only for NISA wrappers.",
     "upload_unsupported_wrapper": "Eligible-asset upload is available only for NISA wrappers.",
     "refresh_failed": "Refresh failed because the source data could not be parsed safely.",
     "upload_invalid_format": "Only .csv and .xlsx uploads are supported.",

@@ -87,6 +87,23 @@ class EligibleAssetsUploadResponse(BaseModel):
     metadata: EligibleAssetsMetadataResponse
 
 
+class ContributionEntryItem(BaseModel):
+    id: int
+    tax_wrapper: str
+    entry_type: str
+    fiscal_year: int
+    amount: float
+    transaction_id: int | None = None
+    effective_date: date
+    note: str
+    created_at: datetime
+
+
+class ContributionsResponse(BaseModel):
+    count: int
+    items: list[ContributionEntryItem]
+
+
 class RoutingSuggestionItem(BaseModel):
     wrapper: str
     amount: float

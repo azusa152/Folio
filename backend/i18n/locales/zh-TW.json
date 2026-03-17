@@ -407,6 +407,7 @@
     "invalid_asset_type": "此資產類型不符合 NISA 成長投資枠規則。",
     "try_instead": "請改用 {{wrapper}}。",
     "refresh_unsupported_wrapper": "官方清單更新僅支援 NISA 帳戶。",
+    "contributions_unsupported_wrapper": "提撥台帳僅支援 NISA 帳戶。",
     "upload_unsupported_wrapper": "合規資產清單上傳僅支援 NISA 帳戶。",
     "refresh_failed": "來源資料無法安全解析，更新失敗。",
     "upload_invalid_format": "僅支援上傳 .csv 與 .xlsx 檔案。",

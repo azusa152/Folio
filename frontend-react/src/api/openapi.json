@@ -6644,6 +6644,128 @@
         }
       }
     },
+    "/wrappers/contributions": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Contributions History",
+        "operationId": "contributions_history_wrappers_contributions_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error or domain input error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "detail": {
+                          "type": "object",
+                          "properties": {
+                            "error_code": {
+                              "type": "string"
+                            },
+                            "detail": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "error_code",
+                            "detail"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "detail"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wrappers/{wrapper}/check-eligibility": {
       "get": {
         "tags": [
@@ -7810,6 +7932,67 @@
         "title": "ConsensusStockItem",
         "description": "\u88ab\u591a\u4f4d\u5927\u5e2b\u540c\u6642\u6301\u6709\u7684\u5171\u8b58\u80a1\u7968\u3002"
       },
+      "ContributionEntryItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tax_wrapper": {
+            "type": "string",
+            "title": "Tax Wrapper"
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type"
+          },
+          "fiscal_year": {
+            "type": "integer",
+            "title": "Fiscal Year"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Id"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective Date"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tax_wrapper",
+          "entry_type",
+          "fiscal_year",
+          "amount",
+          "effective_date",
+          "note",
+          "created_at"
+        ],
+        "title": "ContributionEntryItem"
+      },
       "ContributionGrowthPoint": {
         "properties": {
           "date": {
@@ -7838,6 +8021,27 @@
           "market_value"
         ],
         "title": "ContributionGrowthPoint"
+      },
+      "ContributionsResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionEntryItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "items"
+        ],
+        "title": "ContributionsResponse"
       },
       "CryptoPrice": {
         "properties": {
