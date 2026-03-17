@@ -90,7 +90,8 @@
       "growth": "🚀 グロース",
       "bond": "🛡️ 債券",
       "crypto": "₿ 暗号資産",
-      "cash": "💵 現金"
+      "cash": "💵 現金",
+      "mutual_fund": "🧺 投資信託"
     },
     "market": {
       "us": "🇺🇸 米国市場",
@@ -547,6 +548,7 @@
       "growth": "🚀 グロース ({{count}})",
       "bond": "🛡️ 債券 ({{count}})",
       "crypto": "₿ 暗号資産 ({{count}})",
+      "mutual_fund": "🧺 投資信託 ({{count}})",
       "removed": "📦 削除済み ({{count}})"
     },
     "market": {

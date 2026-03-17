@@ -77,6 +77,7 @@ export function CategoryTabs({
     Trend_Setter: "radar.tab.trend_setter",
     Moat: "radar.tab.moat",
     Growth: "radar.tab.growth",
+    Mutual_Fund: "radar.tab.mutual_fund",
     Bond: "radar.tab.bond",
     Crypto: "radar.tab.crypto",
   }

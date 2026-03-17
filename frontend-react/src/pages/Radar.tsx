@@ -23,7 +23,7 @@ import type { RadarEnrichedStock } from "@/api/types/radar"
 import { filterStocks, useRadarFilters } from "@/hooks/useRadarFilters"
 import type { StockCategory } from "@/api/types/radar"
 
-const RADAR_TAB_VALUES = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto", "archive"] as const
+const RADAR_TAB_VALUES = ["Trend_Setter", "Moat", "Growth", "Mutual_Fund", "Bond", "Crypto", "archive"] as const
 
 export default function Radar() {
   const { t } = useTranslation()

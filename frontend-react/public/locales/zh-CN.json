@@ -90,7 +90,8 @@
       "growth": "🚀 成长梦想 (Growth)",
       "bond": "🛡️ 债券 (Bond)",
       "crypto": "₿ 加密货币 (Crypto)",
-      "cash": "💵 现金 (Cash)"
+      "cash": "💵 现金 (Cash)",
+      "mutual_fund": "🧺 公募基金"
     },
     "market": {
       "us": "🇺🇸 美股",
@@ -547,6 +548,7 @@
       "growth": "🚀 成长梦想 ({{count}})",
       "bond": "🛡️ 债券 ({{count}})",
       "crypto": "₿ 加密货币 ({{count}})",
+      "mutual_fund": "🧺 公募基金 ({{count}})",
       "removed": "📦 已移除 ({{count}})"
     },
     "market": {

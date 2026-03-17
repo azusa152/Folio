@@ -90,7 +90,8 @@
       "growth": "🚀 Growth",
       "bond": "🛡️ Bond",
       "crypto": "₿ Crypto",
-      "cash": "💵 Cash"
+      "cash": "💵 Cash",
+      "mutual_fund": "🧺 Mutual Fund"
     },
     "market": {
       "us": "🇺🇸 US Market",
@@ -547,6 +548,7 @@
       "growth": "🚀 Growth ({{count}})",
       "bond": "🛡️ Bond ({{count}})",
       "crypto": "₿ Crypto ({{count}})",
+      "mutual_fund": "🧺 Mutual Fund ({{count}})",
       "removed": "📦 Removed ({{count}})"
     },
     "market": {
