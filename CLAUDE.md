@@ -10,7 +10,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 make setup               # First-time setup: uv sync + npm ci + codegen + pre-commit hooks
 docker compose up -d
-make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs
+make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs (parallelized)
+make ci-quick            # Quick CI — lint + tests (no coverage/security/typecheck)
 make test                # Run all tests (backend + frontend)
 make backend-test-quick  # Fast backend tests — no coverage, for local iteration
 make lint                # Lint all (backend + frontend)

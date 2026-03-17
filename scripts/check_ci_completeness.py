@@ -1,9 +1,15 @@
 """
 Verify that every non-infrastructure GitHub CI job has a corresponding
-Makefile target that is reachable from `make ci`.
+Makefile target that is reachable from the `make ci` phase groups.
+
+The `ci` target uses recursive $(MAKE) -j to run three phase groups in
+parallel: _ci-fast, _ci-heavy, _ci-network.  This script walks from those
+phase group targets (not from `ci` itself, whose sub-targets live in recipe
+lines rather than prerequisite declarations).
 
 Exit 1 if any CI job is uncovered — forcing the developer to either:
-  1. Add the job ID to KNOWN_JOB_MAP with a make target and wire it into `make ci`, OR
+  1. Add the job ID to KNOWN_JOB_MAP with a make target and wire it into
+     one of the phase group targets, OR
   2. Add it to SKIP_JOBS if it is infrastructure-only (no local equivalent needed).
 
 Keys in KNOWN_JOB_MAP are **job IDs** (the YAML key in ci.yml, e.g. "test", "api-spec")
@@ -102,7 +108,13 @@ def main() -> None:
         sys.exit(1)
 
     ci_jobs = get_ci_job_ids()
-    ci_targets = get_makefile_dependencies("ci")
+
+    # Walk from the three phase group targets that `make ci` invokes via
+    # recursive $(MAKE) -j.  Union their reachable sets.
+    ci_phase_targets = ["_ci-fast", "_ci-heavy", "_ci-network"]
+    ci_targets: set[str] = set()
+    for phase in ci_phase_targets:
+        ci_targets |= get_makefile_dependencies(phase)
 
     errors: list[str] = []
 
@@ -120,8 +132,8 @@ def main() -> None:
         if make_target not in ci_targets:
             errors.append(
                 f"  CI job '{job_id}' maps to make target '{make_target}', "
-                f"but '{make_target}' is not reachable from `make ci`.\n"
-                f"  → Add '{make_target}' as a dependency of the `ci` target in Makefile."
+                f"but '{make_target}' is not reachable from `make ci` phase groups.\n"
+                f"  → Add '{make_target}' to _ci-fast, _ci-heavy, or _ci-network in Makefile."
             )
 
     # Also warn if KNOWN_JOB_MAP references a CI job that no longer exists

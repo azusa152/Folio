@@ -6,7 +6,8 @@
 #
 #  Fullstack (composite):
 #    make dev              Start backend + frontend dev servers
-#    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs
+#    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs (parallelized)
+#    make ci-quick         Quick CI — lint + tests (no coverage/security/typecheck)
 #    make lint             Lint backend + frontend
 #    make test             Test backend + frontend (pytest + Vitest)
 #    make format           Format backend code
@@ -76,6 +77,9 @@ FRONTEND_DIR := frontend-react
 
 PYTHON ?= $(BACKEND_DIR)/.venv/bin/python
 RUFF   ?= $(BACKEND_DIR)/.venv/bin/ruff
+
+# Auto-detect available CPU cores; overridable: make NPROC=4 ci
+NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 # Lazy-evaluated: only runs `docker volume ls` when backup/restore targets execute
 VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -187,7 +191,8 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: dev lint test format ci clean frontend-test frontend-typecheck
+.PHONY: dev lint test format ci ci-quick clean frontend-test frontend-typecheck
+.PHONY: _ci-fast _ci-heavy _ci-network
 
 dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
 	@echo "Starting backend on :8000 and frontend on :3000 ..."
@@ -206,7 +211,29 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec check-i18n check-agent-doc-tokens frontend-build frontend-security backend-security backend-typecheck ## Full CI check — mirrors all GitHub CI pipeline jobs
+# Phase group targets for parallel CI execution.
+# Parsed by scripts/check_ci_completeness.py to verify all CI jobs are covered.
+_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-api-spec
+_ci-heavy: backend-test frontend-test frontend-build backend-typecheck
+_ci-network: frontend-security backend-security
+
+ci: .venv-check .node-check ## Full CI check — mirrors all GitHub CI pipeline jobs (parallelized)
+	@echo "== Phase 1: fast checks =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-fast
+	@echo ""
+	@echo "== Phase 2: tests + build + typecheck =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-heavy
+	@echo ""
+	@echo "== Phase 3: security audits =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-network
+	@echo ""
+	@echo "== CI passed =="
+
+ci-quick: .venv-check .node-check ## Quick CI — lint + tests (no coverage/security/typecheck)
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-fast
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) backend-test-quick frontend-test
+	@echo ""
+	@echo "== CI quick passed =="
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -325,7 +352,7 @@ backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors 
 			rm -f "$$log_file"; \
 			exit 0; \
 		fi; \
-		if rg -q "SSLError|MaxRetryError|UNEXPECTED_EOF_WHILE_READING|Connection.*timed out|Temporary failure in name resolution" "$$log_file"; then \
+		if grep -qE "SSLError|MaxRetryError|UNEXPECTED_EOF_WHILE_READING|Connection.*timed out|Temporary failure in name resolution" "$$log_file"; then \
 			cat "$$log_file"; \
 			rm -f "$$log_file"; \
 			if [ $$attempt -lt $$max_attempts ]; then \

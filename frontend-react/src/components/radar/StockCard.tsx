@@ -1,27 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { MARKET_OPTIONS, SKIP_PRICE_CATEGORIES, SKIP_MOAT_CATEGORIES } from "@/lib/constants"
+import { SKIP_PRICE_CATEGORIES, SKIP_MOAT_CATEGORIES } from "@/lib/constants"
 import { isMarketOpen } from "@/lib/format"
+import { inferMarket, inferMarketLabel, inferCurrency } from "@/lib/market"
 import { usePriceHistory, useMoatAnalysis } from "@/api/hooks/useRadar"
 import type { RadarStock, RadarEnrichedStock, ResonanceMap } from "@/api/types/radar"
 import { StockCardHeader } from "@/components/radar/StockCardHeader"
 import { StockCardInsights } from "@/components/radar/StockCardInsights"
 import { StockCardActions } from "@/components/radar/StockCardActions"
-
-function infer_market_label(ticker: string): string {
-  if (ticker.endsWith(".TW")) return "🇹🇼 TW"
-  if (ticker.endsWith(".T")) return "🇯🇵 JP"
-  if (ticker.endsWith(".HK")) return "🇭🇰 HK"
-  return "🇺🇸 US"
-}
-
-function infer_currency(ticker: string): { symbol: string; code: string } {
-  if (ticker.endsWith(".TW")) return { symbol: "NT$", code: "TWD" }
-  if (ticker.endsWith(".T")) return { symbol: "¥", code: "JPY" }
-  if (ticker.endsWith(".HK")) return { symbol: "HK$", code: "HKD" }
-  return { symbol: "$", code: "USD" }
-}
 
 interface Props {
   stock: RadarStock
@@ -62,10 +49,10 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
   const navDate = enrichment?.nav_date
 
-  const currency = useMemo(() => infer_currency(stock.ticker), [stock.ticker])
-  const marketLabel = infer_market_label(stock.ticker)
+  const currency = useMemo(() => inferCurrency(stock.ticker, stock.category), [stock.ticker, stock.category])
+  const marketLabel = inferMarketLabel(stock.ticker, stock.category)
   const handleToggle = useCallback(() => setExpanded((v) => !v), [])
-  const marketKey = MARKET_OPTIONS.find((m) => m.suffix && stock.ticker.endsWith(m.suffix))?.key ?? "US"
+  const marketKey = inferMarket(stock.ticker, stock.category)
   const marketOpen = isMarketOpen(marketKey)
 
   return (

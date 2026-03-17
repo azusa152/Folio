@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlmodel import Session
 
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from domain.analysis import determine_scan_signal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
@@ -862,6 +863,18 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     nav_cache[ticker] = build_nav_signals(
                         nav_row, include_nav_date=True
                     )
+
+            missing_mf = [tk for tk in mf_tickers if tk not in nav_cache]
+            for ticker in missing_mf:
+                try:
+                    if sync_single_fund_nav(nav_session, ticker):
+                        nav_row = repo.get_latest_nav(nav_session, ticker)
+                        if nav_row:
+                            nav_cache[ticker] = build_nav_signals(
+                                nav_row, include_nav_date=True
+                            )
+                except Exception:
+                    logger.debug("Enrichment NAV fallback failed for %s", ticker)
 
     # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
     enriched: dict[str, dict] = {}

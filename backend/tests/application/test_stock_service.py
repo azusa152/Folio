@@ -932,6 +932,7 @@ class TestGetEnrichedStocks:
 
         with (
             patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
             patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
@@ -945,6 +946,37 @@ class TestGetEnrichedStocks:
         assert len(result) == 1
         mock_signals.assert_not_called()
         assert result[0]["signals"] is None
+
+    def test_nav_fallback_sync_called_when_no_nav_data(self, db_session) -> None:
+        """When a Mutual_Fund stock has no NAV data, the enrichment pipeline
+        should call sync_single_fund_nav as a self-healing fallback."""
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        save_stock(
+            db_session,
+            Stock(ticker="01312179", category=StockCategory.MUTUAL_FUND),
+        )
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav") as mock_sync,
+            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            mock_sync.return_value = False
+            from application.stock.stock_service import get_enriched_stocks
+
+            get_enriched_stocks(db_session)
+
+        mock_sync.assert_called_once()
+        assert mock_sync.call_args[0][1] == "01312179"
+        mock_signals.assert_not_called()
 
 
 class TestReclassifyMutualFundStocks:

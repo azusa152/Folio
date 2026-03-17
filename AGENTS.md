@@ -4,7 +4,8 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 
 ## Run And Verify
 
-- Full validation: `make ci`
+- Full validation: `make ci` (parallelized in 3 phases: fast checks, tests+build, security)
+- Quick validation: `make ci-quick` (lint + tests, no coverage/security/typecheck)
 - Fast backend test loop: `make backend-test-quick`
 - Lint everything: `make lint`
 - Regenerate API contract after schema changes: `make generate-api`
