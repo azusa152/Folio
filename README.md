@@ -416,6 +416,8 @@ make restore
 make restore FILE=backups/radar-20260214_153022.db
 ```
 
+> 注意：`make refresh-eligible`、`make migrate-ledger`、`make purge-legacy` 等資料維運指令會在 Docker 容器內執行，寫入的是 Docker volume 的資料庫（`/app/data/radar.db`，`radar-data` volume），不是 host 的 `backend/data/radar.db`。
+
 #### 清理遺留資料（Ledger Migration Cleanup）
 
 ```bash

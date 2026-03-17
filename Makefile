@@ -267,25 +267,25 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "Restored from $$file"
 
-migrate-ledger: .venv-check ## Run ledger migration (backfill opening balances)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger
+migrate-ledger: ## Run ledger migration (backfill opening balances; runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger
 
-migrate-ledger-dry: .venv-check ## Dry-run ledger migration
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger --dry-run
+migrate-ledger-dry: ## Dry-run ledger migration (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger --dry-run
 
-purge-legacy: .venv-check ## Purge orphaned/zero-qty legacy holding data (run after ledger migration)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings
+purge-legacy: ## Purge orphaned/zero-qty legacy holding data (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.purge_legacy_holdings
 
-purge-legacy-dry: .venv-check ## Dry-run purge (preview without commit)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings --dry-run
+purge-legacy-dry: ## Dry-run purge (preview without commit; runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.purge_legacy_holdings --dry-run
 
-refresh-eligible: .venv-check ## Refresh NISA eligible assets from official sources
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs DATA_DIR=/tmp/folio_data uv run python -m scripts.refresh_eligible_assets --wrapper all
+refresh-eligible: ## Refresh NISA eligible assets from official sources (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.refresh_eligible_assets --wrapper all
 
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-makefile-db-targets backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
@@ -295,6 +295,9 @@ check-i18n: .venv-check ## Check locale key parity (backend + frontend locale fi
 
 check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no venv needed)
 	python3 scripts/check_agent_doc_tokens.py
+
+check-makefile-db-targets: ## Ensure DB maintenance make targets execute in Docker
+	python3 scripts/check_makefile_db_targets.py
 
 check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	@set -e; \
@@ -340,7 +343,7 @@ backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors 
 		exit 1; \
 	done
 
-check-ci: .venv-check ## Verify make ci covers all GitHub CI pipeline jobs
+check-ci: .venv-check check-makefile-db-targets ## Verify make ci covers all GitHub CI pipeline jobs
 	cd $(BACKEND_DIR) && uv run python ../scripts/check_ci_completeness.py
 
 generate-key: .venv-check ## Generate a secure API key (add to .env as FOLIO_API_KEY)

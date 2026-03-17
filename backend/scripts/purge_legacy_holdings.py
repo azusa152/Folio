@@ -9,30 +9,43 @@ Removes:
 
 After purging, runs verify_positions() to report any remaining ledger drift.
 
-Usage:
-    cd backend && python -m scripts.purge_legacy_holdings [--dry-run]
+Must run inside the Docker container (uses the container's database volume).
+Use the Make targets instead of invoking directly:
+
+    make purge-legacy-dry   # preview without commit
+    make purge-legacy       # apply purge
+
+To exec into the container manually:
+
+    docker compose exec backend uv run --frozen --no-dev python -m scripts.purge_legacy_holdings [--dry-run]
+
+For local-only execution (e.g. debugging against a local DB), set:
+
+    FOLIO_ALLOW_LOCAL_DB=1 uv run python -m scripts.purge_legacy_holdings
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 from typing import Any
 
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
-from domain.constants import HOLDING_QUANTITY_EPSILON
-from domain.entities import Holding, Transaction
-from infrastructure.database import create_db_and_tables, engine
-from logging_config import get_logger
+from scripts import assert_docker_runtime
 
 LEGACY_TABLES = ["networthitem", "networthsnapshot"]
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def purge(dry_run: bool = False) -> dict[str, Any]:
+    from domain.constants import HOLDING_QUANTITY_EPSILON
+    from domain.entities import Holding, Transaction
+    from infrastructure.database import create_db_and_tables, engine
+
     create_db_and_tables()
     stats: dict[str, Any] = {
         "orphan_holdings_deleted": 0,
@@ -128,6 +141,12 @@ def purge(dry_run: bool = False) -> dict[str, Any]:
 
 
 def main(args: list[str] | None = None) -> int:
+    assert_docker_runtime()
+    global logger
+    from logging_config import get_logger
+
+    logger = get_logger(__name__)
+
     parser = argparse.ArgumentParser(
         description="Purge orphaned / zero-quantity legacy holding data.",
     )

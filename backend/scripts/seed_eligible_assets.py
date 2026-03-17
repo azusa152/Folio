@@ -1,24 +1,29 @@
 """
-Seed or refresh wrapper eligible assets from CSV.
+Seed or refresh wrapper eligible assets from a CSV file.
 
-Usage:
-    cd backend && python -m scripts.seed_eligible_assets \
-      --wrapper nisa_tsumitate \
-      --csv data/fsa_tsumitate_funds_sample.csv \
+Must run inside the Docker container (uses the container's database volume).
+Exec into the container to invoke:
+
+    docker compose exec backend uv run --frozen --no-dev python -m scripts.seed_eligible_assets \\
+      --wrapper nisa_tsumitate \\
+      --csv /path/to/file.csv \\
       --dry-run
+
+For local-only execution (e.g. debugging against a local DB), set:
+
+    FOLIO_ALLOW_LOCAL_DB=1 uv run python -m scripts.seed_eligible_assets
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 
 from sqlmodel import Session
 
-from application.portfolio.eligibility_service import refresh_eligible_assets
-from infrastructure.database import create_db_and_tables, engine
-from logging_config import get_logger
+from scripts import assert_docker_runtime
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def run(
@@ -28,6 +33,9 @@ def run(
     broker: str | None = None,
     dry_run: bool = False,
 ) -> dict[str, int]:
+    from application.portfolio.eligibility_service import refresh_eligible_assets
+    from infrastructure.database import create_db_and_tables, engine
+
     create_db_and_tables()
     with Session(engine) as session:
         stats = refresh_eligible_assets(
@@ -47,6 +55,12 @@ def run(
 
 
 def main(args: list[str] | None = None) -> int:
+    assert_docker_runtime()
+    global logger
+    from logging_config import get_logger
+
+    logger = get_logger(__name__)
+
     parser = argparse.ArgumentParser(
         description="Refresh wrapper eligible assets from CSV.",
     )
