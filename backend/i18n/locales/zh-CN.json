@@ -414,6 +414,9 @@
     "upload_file_too_large": "文件过大（最大 10 MB）。",
     "upload_failed": "来源数据无法安全解析，上传失败。"
   },
+  "nav_sync": {
+    "failed": "净值数据更新失败。"
+  },
   "routing": {
     "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",
     "nisa_tsumitate_tax_free": "优先在 NISA 定投额度买入（收益免税）",

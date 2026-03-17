@@ -2203,6 +2203,13 @@
         "restoration": "復活",
         "adjustment": "調整"
       }
+    },
+    "nav_sync": {
+      "button": "基準価額を更新",
+      "syncing": "更新中…",
+      "cooldown": "{{seconds}}秒後に再実行可能",
+      "success": "基準価額を更新しました：{{synced}}件成功、{{failed}}件失敗",
+      "failed": "基準価額の更新に失敗しました"
     }
   },
   "routing": {

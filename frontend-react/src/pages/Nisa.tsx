@@ -1,12 +1,18 @@
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
+import { RefreshCw } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
 import { EligibleAssetsTab } from "@/components/nisa/EligibleAssetsTab"
 import { DataManagementTab } from "@/components/nisa/DataManagementTab"
 import { ContributionsTab } from "@/components/nisa/ContributionsTab"
 import { NisaEducationCard } from "@/components/nisa/NisaEducationCard"
-import { useEligibleAssetsMetadata } from "@/api/hooks/useWrappers"
+import { useEligibleAssetsMetadata, useSyncNav } from "@/api/hooks/useWrappers"
+
+const NAV_SYNC_COOLDOWN_SECONDS = 60
 
 type NisaTab = "eligible" | "quota" | "contributions" | "data"
 
@@ -21,6 +27,35 @@ export default function Nisa() {
 
   const tsumitateMetaQuery = useEligibleAssetsMetadata("nisa_tsumitate")
   const growthMetaQuery = useEligibleAssetsMetadata("nisa_growth")
+  const syncNavMutation = useSyncNav()
+  const [cooldownUntil, setCooldownUntil] = useState(0)
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
+
+  useEffect(() => {
+    if (cooldownUntil <= 0) return
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, cooldownUntil - Math.floor(Date.now() / 1000))
+      setCooldownRemaining(remaining)
+      if (remaining === 0) {
+        setCooldownUntil(0)
+        window.clearInterval(timer)
+      }
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [cooldownUntil])
+
+  const handleSyncNav = () => {
+    syncNavMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        toast.success(t("nisa.nav_sync.success", { synced: data.synced, failed: data.failed }))
+        setCooldownRemaining(NAV_SYNC_COOLDOWN_SECONDS)
+        setCooldownUntil(Math.floor(Date.now() / 1000) + NAV_SYNC_COOLDOWN_SECONDS)
+      },
+      onError: () => {
+        toast.error(t("nisa.nav_sync.failed"))
+      },
+    })
+  }
 
   const setActiveTab = (tab: string) => {
     setSearchParams((prev) => {
@@ -36,16 +71,32 @@ export default function Nisa() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold">{t("nisa.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("nisa.caption")}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {t("eligibility.last_updated_compact", {
-            tsumitate: tsumitateMetaQuery.data?.last_refreshed_at
-              ? new Date(tsumitateMetaQuery.data.last_refreshed_at).toLocaleDateString()
-              : "—",
-            growth: growthMetaQuery.data?.last_refreshed_at
-              ? new Date(growthMetaQuery.data.last_refreshed_at).toLocaleDateString()
-              : "—",
-          })}
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {t("eligibility.last_updated_compact", {
+              tsumitate: tsumitateMetaQuery.data?.last_refreshed_at
+                ? new Date(tsumitateMetaQuery.data.last_refreshed_at).toLocaleDateString()
+                : "—",
+              growth: growthMetaQuery.data?.last_refreshed_at
+                ? new Date(growthMetaQuery.data.last_refreshed_at).toLocaleDateString()
+                : "—",
+            })}
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            onClick={handleSyncNav}
+            disabled={syncNavMutation.isPending || cooldownRemaining > 0}
+          >
+            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${syncNavMutation.isPending ? "animate-spin" : ""}`} />
+            {syncNavMutation.isPending
+              ? t("nisa.nav_sync.syncing")
+              : cooldownRemaining > 0
+                ? t("nisa.nav_sync.cooldown", { seconds: cooldownRemaining })
+                : t("nisa.nav_sync.button")}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

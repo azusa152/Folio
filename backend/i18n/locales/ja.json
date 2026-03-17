@@ -414,6 +414,9 @@
     "upload_file_too_large": "ファイルサイズが大きすぎます（最大10MB）。",
     "upload_failed": "ソースデータを安全に解析できず、アップロード処理に失敗しました。"
   },
+  "nav_sync": {
+    "failed": "基準価額データの更新に失敗しました。"
+  },
   "routing": {
     "nisa_growth_tax_free": "NISA成長投資枠で買付（運用益非課税）",
     "nisa_tsumitate_tax_free": "つみたて投資枠で買付（運用益非課税）",

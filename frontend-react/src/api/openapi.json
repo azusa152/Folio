@@ -7195,6 +7195,56 @@
         }
       }
     },
+    "/nav/sync": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Sync Nav Endpoint",
+        "description": "Trigger on-demand NAV sync for all active Mutual_Fund stocks.",
+        "operationId": "sync_nav_endpoint_nav_sync_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavSyncResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wrappers/detax": {
       "get": {
         "tags": [
@@ -10824,6 +10874,24 @@
         ],
         "title": "MessageResponse",
         "description": "\u901a\u7528\u64cd\u4f5c\u7d50\u679c\u56de\u61c9\uff08\u522a\u9664\u3001\u505c\u7528\u3001\u91cd\u65b0\u555f\u7528\u3001\u532f\u5165\u7b49\uff09\u3002"
+      },
+      "NavSyncResponse": {
+        "properties": {
+          "synced": {
+            "type": "integer",
+            "title": "Synced"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "synced",
+          "failed"
+        ],
+        "title": "NavSyncResponse"
       },
       "PersonaTemplateResponse": {
         "properties": {

@@ -2203,6 +2203,13 @@
         "restoration": "额度恢复",
         "adjustment": "调整"
       }
+    },
+    "nav_sync": {
+      "button": "更新净值",
+      "syncing": "更新中…",
+      "cooldown": "{{seconds}} 秒后可重试",
+      "success": "净值已更新：{{synced}} 条成功、{{failed}} 条失败",
+      "failed": "净值更新失败"
     }
   },
   "routing": {

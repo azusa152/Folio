@@ -11,6 +11,7 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/api/hooks/useWrappers", () => ({
   useEligibleAssetsMetadata: () => ({ data: { last_refreshed_at: null } }),
+  useSyncNav: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock("@/components/nisa/EligibleAssetsTab", () => ({

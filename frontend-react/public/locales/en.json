@@ -2203,6 +2203,13 @@
         "restoration": "Restoration",
         "adjustment": "Adjustment"
       }
+    },
+    "nav_sync": {
+      "button": "Update NAV",
+      "syncing": "Updating…",
+      "cooldown": "Wait {{seconds}}s",
+      "success": "NAV updated: {{synced}} synced, {{failed}} failed",
+      "failed": "Failed to update NAV data"
     }
   },
   "routing": {

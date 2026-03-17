@@ -181,6 +181,20 @@ export function useUploadEligibleAssets() {
   })
 }
 
+export function useSyncNav() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await client.POST("/nav/sync")
+      if (error) throw error
+      return data as { synced: number; failed: number }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enriched-stocks"] })
+    },
+  })
+}
+
 export function useSuggestRouting(
   ticker: string | null | undefined,
   totalAmount: number | null | undefined,

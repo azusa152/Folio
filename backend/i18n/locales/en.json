@@ -414,6 +414,9 @@
     "upload_file_too_large": "File too large (max 10 MB).",
     "upload_failed": "Upload failed because the source data could not be parsed safely."
   },
+  "nav_sync": {
+    "failed": "Failed to update NAV data."
+  },
   "routing": {
     "nisa_growth_tax_free": "Buy in NISA Growth (tax-free gains)",
     "nisa_tsumitate_tax_free": "Buy in NISA Tsumitate (tax-free gains)",

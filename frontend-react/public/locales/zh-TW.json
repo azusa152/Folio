@@ -2203,6 +2203,13 @@
         "restoration": "額度恢復",
         "adjustment": "調整"
       }
+    },
+    "nav_sync": {
+      "button": "更新淨值",
+      "syncing": "更新中…",
+      "cooldown": "{{seconds}} 秒後可重試",
+      "success": "淨值已更新：{{synced}} 筆成功、{{failed}} 筆失敗",
+      "failed": "淨值更新失敗"
     }
   },
   "routing": {

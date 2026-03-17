@@ -130,6 +130,11 @@ class DeTaxOpportunityItem(BaseModel):
     reason: str
 
 
+class NavSyncResponse(BaseModel):
+    synced: int
+    failed: int
+
+
 class DeTaxResponse(BaseModel):
     total_estimated_savings: float
     opportunities: list[DeTaxOpportunityItem]

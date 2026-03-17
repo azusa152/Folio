@@ -17,6 +17,7 @@ from api.schemas.wrapper import (
     EligibleAssetsRefreshResponse,
     EligibleAssetsResponse,
     EligibleAssetsUploadResponse,
+    NavSyncResponse,
     RestorationForecastResponse,
     RoutingSuggestRequest,
     RoutingSuggestResponse,
@@ -30,6 +31,7 @@ from application.portfolio.eligibility_service import (
 from application.portfolio.eligible_sync_service import (
     sync_wrapper_from_official_source,
 )
+from application.portfolio.nav_sync_service import sync_mutual_fund_navs
 from application.portfolio.routing_service import (
     get_detax_suggestions,
     suggest_transaction_routing,
@@ -39,6 +41,7 @@ from application.portfolio.wrapper_service import (
     get_contribution_entries,
     get_restoration_forecast,
 )
+from application.stock.stock_service import invalidate_enriched_cache
 from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_USER_ID,
@@ -362,6 +365,20 @@ def suggest_routing(
             for item in suggestions
         ],
     }
+
+
+@router.post("/nav/sync", response_model=NavSyncResponse)
+def sync_nav_endpoint():
+    """Trigger on-demand NAV sync for all active Mutual_Fund stocks."""
+    try:
+        result = sync_mutual_fund_navs()
+    except Exception:
+        raise HTTPException(
+            status_code=422,
+            detail=_error_detail("NAV_SYNC_FAILED", "nav_sync.failed"),
+        ) from None
+    invalidate_enriched_cache()
+    return result
 
 
 @router.get("/wrappers/detax", response_model=DeTaxResponse)
