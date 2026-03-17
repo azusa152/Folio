@@ -68,6 +68,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         seed_default_eligible_assets_if_empty,
     )
     from application.portfolio.eligible_sync_service import start_eligible_sync_loop
+    from application.stock.stock_service import reclassify_mutual_fund_stocks
     from infrastructure.database import engine
 
     with Session(engine) as _session:
@@ -76,6 +77,12 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         seeded = seed_default_eligible_assets_if_empty(_session)
         if seeded:
             logger.info("NISA eligible asset snapshots seeded: %s", seeded)
+        reclassified = reclassify_mutual_fund_stocks(_session)
+        if reclassified:
+            logger.info(
+                "Reclassified %d active stocks to Mutual_Fund.",
+                reclassified,
+            )
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.scan.prewarm_service import prewarm_all_caches

@@ -84,6 +84,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_user_preferences,
     get_eligible_assets_metadata,
     get_max_thesis_version,
+    is_active_eligible_mutual_fund,
     log_notification_sent,
     save_account,
     save_filing,

@@ -45,7 +45,7 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash"}
+_SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash", "Mutual_Fund"}
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +119,36 @@ def _append_thesis_log(
     )
     repo.create_thesis_log(session, log)
     return log
+
+
+def _is_eligible_mutual_fund(session: Session, ticker: str) -> bool:
+    """Return True if ticker is an active eligible mutual fund."""
+    return repo.is_active_eligible_mutual_fund(session, ticker)
+
+
+def reclassify_mutual_fund_stocks(
+    session: Session,
+    *,
+    autocommit: bool = True,
+) -> int:
+    """Reclassify active stocks to Mutual_Fund when eligible master indicates so."""
+    stocks = repo.find_active_stocks(session)
+    updated = 0
+    for stock in stocks:
+        if stock.category == StockCategory.MUTUAL_FUND:
+            continue
+        if not _is_eligible_mutual_fund(session, stock.ticker):
+            continue
+        stock.category = StockCategory.MUTUAL_FUND
+        stock.is_etf = False
+        repo.update_stock(session, stock)
+        updated += 1
+    if updated:
+        if autocommit:
+            session.commit()
+        else:
+            session.flush()
+    return updated
 
 
 # ---------------------------------------------------------------------------
@@ -206,10 +236,24 @@ def ensure_stock_on_radar(
                 raise ValueError("category must not be empty")
             resolved_category = StockCategory(normalized_category)
 
+    eligible_mutual_fund = _is_eligible_mutual_fund(session, ticker_upper)
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
         if existing.is_active:
-            if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+            if (
+                resolved_category is None
+                and eligible_mutual_fund
+                and existing.category != StockCategory.MUTUAL_FUND
+            ):
+                existing.category = StockCategory.MUTUAL_FUND
+                existing.is_etf = False
+                repo.update_stock(session, existing)
+                return existing, False
+            if (
+                existing.category != StockCategory.MUTUAL_FUND
+                and not bool(existing.is_etf)
+                and detect_is_etf(ticker_upper)
+            ):
                 existing.is_etf = True
                 repo.update_stock(session, existing)
             return existing, False
@@ -217,6 +261,8 @@ def ensure_stock_on_radar(
         has_custom_thesis = bool(thesis and thesis.strip())
         final_thesis = thesis.strip() if has_custom_thesis and thesis else ""
         existing.is_active = True
+        if resolved_category is None and eligible_mutual_fund:
+            resolved_category = StockCategory.MUTUAL_FUND
         if resolved_category is not None:
             existing.category = resolved_category
         if has_custom_thesis:
@@ -224,7 +270,9 @@ def ensure_stock_on_radar(
             existing.current_tags = ""
         existing.last_scan_signal = ScanSignal.NORMAL.value
         existing.signal_since = None
-        if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+        if existing.category == StockCategory.MUTUAL_FUND:
+            existing.is_etf = False
+        elif not bool(existing.is_etf) and detect_is_etf(ticker_upper):
             existing.is_etf = True
         repo.update_stock(session, existing)
         if has_custom_thesis:
@@ -238,12 +286,18 @@ def ensure_stock_on_radar(
             )
         return existing, True
 
-    is_etf = detect_is_etf(ticker_upper)
-    resolved_category = (
-        resolved_category
-        if resolved_category is not None
-        else (StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH)
-    )
+    if resolved_category == StockCategory.MUTUAL_FUND:
+        is_etf = False
+    elif resolved_category is None and eligible_mutual_fund:
+        resolved_category = StockCategory.MUTUAL_FUND
+        is_etf = False
+    else:
+        is_etf = detect_is_etf(ticker_upper)
+    if resolved_category is None:
+        if is_etf:
+            resolved_category = StockCategory.TREND_SETTER
+        else:
+            resolved_category = StockCategory.GROWTH
     lang = get_user_language(session)
     final_thesis = (
         thesis.strip()

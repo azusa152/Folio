@@ -18,6 +18,7 @@ class StockCategory(StrEnum):
     TREND_SETTER = "Trend_Setter"
     MOAT = "Moat"
     GROWTH = "Growth"
+    MUTUAL_FUND = "Mutual_Fund"
     BOND = "Bond"
     CASH = "Cash"
     CRYPTO = "Crypto"
@@ -80,6 +81,7 @@ CATEGORY_LABEL: dict[str, str] = {
     "Trend_Setter": "風向球",
     "Moat": "護城河",
     "Growth": "成長夢想",
+    "Mutual_Fund": "投資信託",
     "Bond": "債券",
     "Cash": "現金",
     "Crypto": "加密貨幣",

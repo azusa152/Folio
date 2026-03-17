@@ -37,6 +37,7 @@ from application.stock.stock_service import (  # noqa: F401
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,
+    reclassify_mutual_fund_stocks,
     update_display_order,
     update_stock_category,
 )

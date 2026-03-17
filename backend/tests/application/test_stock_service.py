@@ -251,6 +251,108 @@ class TestImportStocks:
 
 
 class TestEnsureStockOnRadar:
+    def test_active_existing_stock_should_autocorrect_to_mutual_fund_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy",
+                current_tags="",
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf") as mock_detect:
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is False
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+        mock_detect.assert_not_called()
+
+    def test_reactivate_inactive_stock_should_autocorrect_to_mutual_fund_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy",
+                current_tags="legacy",
+                is_active=False,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf") as mock_detect:
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+        mock_detect.assert_not_called()
+
+    def test_detects_eligible_mutual_fund_and_assigns_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset
+        from domain.enums import StockCategory
+
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf", return_value=False):
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is True
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+
     def test_creates_new_stock_with_thesis_and_etf_category(self, db_session) -> None:
         from application.stock.stock_service import ensure_stock_on_radar
         from domain.enums import StockCategory
@@ -691,3 +793,78 @@ class TestGetEnrichedStocks:
         assert len(result) == 1
         mock_signals.assert_not_called()
         assert result[0]["signals"] is None
+
+    def test_signals_skipped_for_mutual_fund_category(self, db_session) -> None:
+        """Mutual_Fund category stocks should not have yfinance signals fetched."""
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131217A", category=StockCategory.MUTUAL_FUND),
+        )
+
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert len(result) == 1
+        mock_signals.assert_not_called()
+        assert result[0]["signals"] is None
+
+
+class TestReclassifyMutualFundStocks:
+    def test_reclassifies_active_growth_stocks_matching_eligible_fund_codes(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import reclassify_mutual_fund_stocks
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        save_stock(
+            db_session,
+            Stock(
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_stocks(db_session)
+
+        assert updated == 1
+        reclassified = db_session.get(Stock, "0131217A")
+        assert reclassified is not None
+        assert reclassified.category == StockCategory.MUTUAL_FUND
+        unchanged = db_session.get(Stock, "AAPL")
+        assert unchanged is not None
+        assert unchanged.category == StockCategory.GROWTH

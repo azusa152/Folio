@@ -1601,6 +1601,19 @@ def find_eligible_tickers(
     return {str(ticker).upper() for ticker in session.exec(stmt).all()}
 
 
+def is_active_eligible_mutual_fund(session: Session, ticker: str) -> bool:
+    """Return whether ticker has any active eligible mutual_fund record."""
+    normalized_ticker = ticker.upper().strip()
+    if not normalized_ticker:
+        return False
+    stmt = select(func.count()).where(
+        EligibleAsset.ticker == normalized_ticker,
+        EligibleAsset.is_active == True,  # noqa: E712
+        EligibleAsset.asset_type == "mutual_fund",
+    )
+    return bool(session.exec(stmt).one() > 0)
+
+
 def find_eligible_assets(
     session: Session,
     wrapper: str,

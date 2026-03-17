@@ -73,7 +73,7 @@ Appended to Telegram notifications only — do NOT change the signal enum value.
 
 ### None Handling
 
-When technical data is unavailable (e.g., Cash category stocks skip yfinance signals):
+When technical data is unavailable (e.g., Cash / Mutual_Fund category stocks skip yfinance signals):
 
 - RSI = None: P2, P4, P4.5, P6 (RSI part), P7 conditions are skipped
 - Bias = None: P2, P3, P4.5, P5, P6 (bias part), P7 conditions are skipped

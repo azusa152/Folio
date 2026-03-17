@@ -131,6 +131,7 @@
 | **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex（ETF 不參與情緒計算） | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
+| **投資信託 (Mutual_Fund)** | NISA/iDeCo 基金代碼（不走 yfinance 技術訊號） | 否 |
 | **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
 | **現金 (Cash)** | 閒置現金（手動輸入，不進行訊號掃描） | 否 |
 
@@ -360,7 +361,7 @@ python scripts/import_stocks.py path/to/custom_list.json
 ```
 
 - `ticker` — 股票代號（美股）
-- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Bond`、`Cash` 之一
+- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Mutual_Fund`、`Bond`、`Cash` 之一
 - `thesis` — 初始觀點
 - `tags` — 領域標籤（選填，預設為空陣列）
 
