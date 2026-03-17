@@ -98,6 +98,7 @@ interface Props {
   resonance?: ResonanceMap[string]
   isHeld: boolean
   isCrypto: boolean
+  isMutualFund: boolean
   currency: { symbol: string; code: string }
   marketLabel: string
   marketCap?: number | null
@@ -114,6 +115,7 @@ export const StockCardInsights = memo(function StockCardInsights({
   resonance,
   isHeld,
   isCrypto,
+  isMutualFund,
   currency,
   marketLabel,
   marketCap,
@@ -137,7 +139,7 @@ export const StockCardInsights = memo(function StockCardInsights({
       <div className="space-y-2">
         <SectionHeading>{t("radar.stock_card.section_signals")}</SectionHeading>
 
-        {!isCrypto && (
+        {!isCrypto && !isMutualFund && (
           <div className="flex flex-wrap gap-1.5 text-xs">
             <MetricChip
               label={<GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>}
@@ -178,13 +180,13 @@ export const StockCardInsights = memo(function StockCardInsights({
           {sig?.price != null && (
             <span>{t("utils.signals.price")}: {currency.symbol}{formatPrice(sig.price as number, currency.code)}</span>
           )}
-          {!isCrypto && sig?.ma200 != null && (
+          {!isCrypto && !isMutualFund && sig?.ma200 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma200}>{t("utils.signals.ma200")}</GlossaryTerm>:{" "}
               {currency.symbol}{formatPrice(sig.ma200 as number, currency.code)}
             </span>
           )}
-          {!isCrypto && sig?.ma60 != null && (
+          {!isCrypto && !isMutualFund && sig?.ma60 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma60}>{t("utils.signals.ma60")}</GlossaryTerm>:{" "}
               {currency.symbol}{formatPrice(sig.ma60 as number, currency.code)}
@@ -215,11 +217,13 @@ export const StockCardInsights = memo(function StockCardInsights({
         ) : null}
       </div>
 
-      {/* Section 2: Fundamentals */}
-      <div className="space-y-2">
-        <SectionHeading>{t("radar.stock_card.section_fundamentals")}</SectionHeading>
-        <FundamentalsTab ticker={stock.ticker} fundamentals={enrichment?.fundamentals} />
-      </div>
+      {/* Section 2: Fundamentals (not applicable to mutual funds) */}
+      {!isMutualFund && (
+        <div className="space-y-2">
+          <SectionHeading>{t("radar.stock_card.section_fundamentals")}</SectionHeading>
+          <FundamentalsTab ticker={stock.ticker} fundamentals={enrichment?.fundamentals} />
+        </div>
+      )}
 
       {/* Section 3: Thesis */}
       <div className="space-y-2">

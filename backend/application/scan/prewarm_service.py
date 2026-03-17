@@ -255,12 +255,10 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
-    # Sector: 熱力圖需排除 Cash/Crypto；Bond 仍需要板塊資訊
-    # SKIP_RSI_CATEGORIES（Cash/Crypto）排除的標的，其餘均需板塊資訊
+    # Sector: 熱力圖需排除 Cash/Crypto/Mutual_Fund；Bond 仍需要板塊資訊
+    # 使用 _resolve_cat 統一處理 watchlist 與 holdings-only 標的
     sector_tickers = [
-        t
-        for t in all_tickers
-        if t not in stock_map or stock_map[t].category.value not in SKIP_RSI_CATEGORIES
+        t for t in all_tickers if _resolve_cat(t) not in SKIP_RSI_CATEGORIES
     ]
 
     return {

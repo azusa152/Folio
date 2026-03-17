@@ -310,15 +310,21 @@ def reactivate_ticker_route(
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
-def get_earnings_route(ticker: str) -> dict | None:
+def get_earnings_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict | None:
     """取得指定股票的下次財報日期。"""
-    return stock_service.get_earnings_for_ticker(ticker.upper())
+    return stock_service.get_earnings_for_ticker(session, ticker.upper())
 
 
 @router.get("/ticker/{ticker}/dividend", summary="Get dividend info for a stock")
-def get_dividend_route(ticker: str) -> dict | None:
+def get_dividend_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict | None:
     """取得指定股票的股息資訊。"""
-    return stock_service.get_dividend_for_ticker(ticker.upper())
+    return stock_service.get_dividend_for_ticker(session, ticker.upper())
 
 
 @router.get(
@@ -326,13 +332,17 @@ def get_dividend_route(ticker: str) -> dict | None:
     response_model=FundamentalsResponse,
     summary="Get fundamental metrics for a stock",
 )
-def get_fundamentals_route(ticker: str, response: Response) -> FundamentalsResponse:
+def get_fundamentals_route(
+    ticker: str,
+    response: Response,
+    session: Session = Depends(get_session),
+) -> FundamentalsResponse:
     """取得指定股票的基本面指標。"""
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=600"
     )
     return FundamentalsResponse(
-        **stock_service.get_fundamentals_for_ticker(ticker.upper())
+        **stock_service.get_fundamentals_for_ticker(session, ticker.upper())
     )
 
 

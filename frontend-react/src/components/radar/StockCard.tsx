@@ -95,6 +95,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
             resonance={resonance}
             isHeld={isHeld}
             isCrypto={isCrypto}
+            isMutualFund={isMutualFund}
             currency={currency}
             marketLabel={marketLabel}
             marketCap={marketCap}

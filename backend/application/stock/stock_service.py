@@ -659,7 +659,10 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
             # 新增：auto-detect ETF if not specified
             imported_is_etf = item.get("is_etf")
             if imported_is_etf is None:
-                imported_is_etf = detect_is_etf(ticker)
+                if category == StockCategory.MUTUAL_FUND:
+                    imported_is_etf = False
+                else:
+                    imported_is_etf = detect_is_etf(ticker)
             stock = Stock(
                 ticker=ticker,
                 category=category,
@@ -924,10 +927,11 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
         elif cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
             signals = get_technical_signals(ticker)
 
-        try:
-            earnings = get_earnings_date(ticker)
-        except Exception:
-            earnings = None
+        if cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
+            try:
+                earnings = get_earnings_date(ticker)
+            except Exception:
+                earnings = None
 
         if cat_value not in _SKIP_DIVIDEND_CATEGORIES:
             try:
@@ -935,10 +939,11 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             except Exception:
                 dividend = None
 
-        try:
-            fundamentals = get_fundamentals(ticker)
-        except Exception:
-            fundamentals = None
+        if cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
+            try:
+                fundamentals = get_fundamentals(ticker)
+            except Exception:
+                fundamentals = None
 
         return ticker, signals, earnings, dividend, fundamentals
 
@@ -1055,19 +1060,40 @@ def get_price_history_for_ticker(session: Session, ticker: str) -> list[dict]:
     return _get_price_history(upper) or []
 
 
-def get_earnings_for_ticker(ticker: str) -> dict | None:
-    """Fetch next earnings date for a ticker."""
-    return get_earnings_date(ticker)
+def _resolve_stock_category(session: Session, ticker: str) -> str | None:
+    """Look up a stock's category value string, or None if not on radar."""
+    stock = repo.find_stock_by_ticker(session, ticker.upper())
+    if not stock:
+        return None
+    return (
+        stock.category.value
+        if hasattr(stock.category, "value")
+        else str(stock.category)
+    )
 
 
-def get_dividend_for_ticker(ticker: str) -> dict | None:
-    """Fetch dividend info for a ticker."""
-    return get_dividend_info(ticker)
+def get_earnings_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware earnings fetch. Returns None for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return None
+    return get_earnings_date(ticker.upper())
 
 
-def get_fundamentals_for_ticker(ticker: str) -> dict:
-    """Fetch fundamentals for a ticker."""
-    return get_fundamentals(ticker)
+def get_dividend_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware dividend fetch. Returns None for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in _SKIP_DIVIDEND_CATEGORIES:
+        return None
+    return get_dividend_info(ticker.upper())
+
+
+def get_fundamentals_for_ticker(session: Session, ticker: str) -> dict:
+    """Category-aware fundamentals fetch. Returns ticker-only dict for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return {"ticker": ticker.upper()}
+    return get_fundamentals(ticker.upper())
 
 
 def get_market_sentiment_multi(session: Session) -> dict:

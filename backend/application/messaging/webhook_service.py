@@ -36,6 +36,7 @@ from application.stock.stock_service import (
     StockNotFoundError,
     create_stock,
     get_fundamentals_for_ticker,
+    get_moat_for_ticker,
     get_signals_for_ticker,
 )
 from domain.constants import (
@@ -52,7 +53,6 @@ from domain.constants import (
 from domain.enums import StockCategory
 from i18n import get_user_language, t
 from infrastructure.market_data import (
-    analyze_moat_trend,
     get_fear_greed_index,
 )
 from logging_config import get_logger
@@ -254,8 +254,8 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INTERNAL_ERROR,
             )
-        moat = analyze_moat_trend(ticker)
-        fundamentals = get_fundamentals_for_ticker(ticker)
+        moat = get_moat_for_ticker(session, ticker)
+        fundamentals = get_fundamentals_for_ticker(session, ticker)
         message = t(
             "webhook.analyze_line",
             lang=lang,
@@ -302,7 +302,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        result = analyze_moat_trend(ticker)
+        result = get_moat_for_ticker(session, ticker)
         details = result.get("details", "N/A")
         return _wrap_response(
             success=True,

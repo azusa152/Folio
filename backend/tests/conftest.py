@@ -167,6 +167,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("infrastructure.market_data.get_price_history", []),
     ("infrastructure.market_data.get_earnings_date", _MOCK_EARNINGS),
     ("infrastructure.market_data.get_dividend_info", _MOCK_DIVIDEND),
+    ("infrastructure.market_data.get_fundamentals", {"ticker": "NVDA"}),
     ("infrastructure.market_data.get_fear_greed_index", MOCK_FEAR_GREED),
     ("infrastructure.market_data.get_stock_beta", 1.0),
     ("infrastructure.notification.send_telegram_message", None),
@@ -204,7 +205,8 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch", {}),
     # webhook_service
     ("application.messaging.webhook_service.get_signals_for_ticker", MOCK_SIGNALS),
-    ("application.messaging.webhook_service.analyze_moat_trend", MOCK_MOAT),
+    ("application.messaging.webhook_service.get_moat_for_ticker", MOCK_MOAT),
+    ("application.messaging.webhook_service.get_fundamentals_for_ticker", {}),
     ("application.messaging.webhook_service.get_fear_greed_index", MOCK_FEAR_GREED),
     # notification_service
     (
@@ -216,6 +218,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.stock.stock_service.get_technical_signals", MOCK_SIGNALS),
     ("application.stock.stock_service.get_earnings_date", _MOCK_EARNINGS),
     ("application.stock.stock_service.get_dividend_info", _MOCK_DIVIDEND),
+    ("application.stock.stock_service.get_fundamentals", {"ticker": "NVDA"}),
     ("application.stock.stock_service.detect_is_etf", False),
     # prewarm_service (prevent background prewarm during tests)
     ("application.scan.prewarm_service.prewarm_all_caches", None),

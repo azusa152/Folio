@@ -476,3 +476,25 @@ class TestFundamentalsRoute:
             "earnings_growth",
         ]:
             assert key in body
+
+    @patch("api.routes.stock_routes.sync_single_fund_nav")
+    def test_fundamentals_should_return_200_for_mutual_fund(self, _mock_nav, client):
+        """Mutual_Fund stocks return ticker-only response, no yfinance call."""
+        client.post(
+            "/ticker",
+            json={
+                "ticker": "01313139",
+                "category": "Mutual_Fund",
+                "thesis": "NISA fund",
+            },
+        )
+
+        with patch("application.stock.stock_service.get_fundamentals") as mock_yf:
+            resp = client.get("/ticker/01313139/fundamentals")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ticker"] == "01313139"
+        assert body["trailing_pe"] is None
+        assert body["market_cap"] is None
+        mock_yf.assert_not_called()

@@ -113,52 +113,119 @@ class TestGetPriceHistoryForTicker:
 
 
 class TestGetEarningsForTicker:
-    def test_returns_earnings_date(self) -> None:
+    def test_returns_earnings_date(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         mock_earnings = {"next_earnings_date": "2025-04-30"}
         with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings):
             from application.stock.stock_service import get_earnings_for_ticker
 
-            result = get_earnings_for_ticker("AAPL")
+            result = get_earnings_for_ticker(db_session, "AAPL")
 
         assert result == mock_earnings
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_none_when_not_available(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None):
             from application.stock.stock_service import get_earnings_for_ticker
 
-            result = get_earnings_for_ticker("AAPL")
+            result = get_earnings_for_ticker(db_session, "AAPL")
 
         assert result is None
 
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_earnings_date") as mock_yf:
+            from application.stock.stock_service import get_earnings_for_ticker
+
+            result = get_earnings_for_ticker(db_session, "01313139")
+
+        assert result is None
+        mock_yf.assert_not_called()
+
 
 class TestGetDividendForTicker:
-    def test_returns_dividend_info(self) -> None:
+    def test_returns_dividend_info(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
+
         mock_div = {"yield": 0.5, "amount": 0.25}
         with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_div):
             from application.stock.stock_service import get_dividend_for_ticker
 
-            result = get_dividend_for_ticker("AAPL")
+            result = get_dividend_for_ticker(db_session, "AAPL")
 
         assert result == mock_div
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_none_when_not_available(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
+
         with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None):
             from application.stock.stock_service import get_dividend_for_ticker
 
-            result = get_dividend_for_ticker("AAPL")
+            result = get_dividend_for_ticker(db_session, "AAPL")
 
         assert result is None
 
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_dividend_info") as mock_yf:
+            from application.stock.stock_service import get_dividend_for_ticker
+
+            result = get_dividend_for_ticker(db_session, "01313139")
+
+        assert result is None
+        mock_yf.assert_not_called()
+
 
 class TestGetFundamentalsForTicker:
-    def test_returns_fundamentals(self) -> None:
+    def test_returns_fundamentals(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         payload = {"ticker": "AAPL", "trailing_pe": 22.3}
         with patch(f"{STOCK_MODULE}.get_fundamentals", return_value=payload):
             from application.stock.stock_service import get_fundamentals_for_ticker
 
-            result = get_fundamentals_for_ticker("AAPL")
+            result = get_fundamentals_for_ticker(db_session, "AAPL")
 
         assert result == payload
+
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_fundamentals") as mock_yf:
+            from application.stock.stock_service import get_fundamentals_for_ticker
+
+            result = get_fundamentals_for_ticker(db_session, "01313139")
+
+        assert result == {"ticker": "01313139"}
+        mock_yf.assert_not_called()
 
 
 # ===========================================================================
