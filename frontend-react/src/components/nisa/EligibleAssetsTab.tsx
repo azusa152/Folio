@@ -36,6 +36,17 @@ function AssetTable({
   onClearSearch: () => void
 }) {
   const { t } = useTranslation()
+  const getAssetTypeLabel = (assetType: string): string => {
+    switch (assetType) {
+      case "mutual_fund":
+      case "etf":
+      case "stock":
+      case "reit":
+        return t(`nisa.eligible.asset_type.${assetType}`)
+      default:
+        return assetType
+    }
+  }
   const filteredRows = useMemo(() => {
     if (assetTypeFilter === "all") return rows
     return rows.filter((row) => row.asset_type === assetTypeFilter)
@@ -103,7 +114,7 @@ function AssetTable({
                   <td className="px-3 py-2">{item.fund_name || "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{item.ticker}</td>
                   <td className="px-3 py-2">
-                    <Badge variant="outline">{item.asset_type}</Badge>
+                    <Badge variant="outline">{getAssetTypeLabel(item.asset_type)}</Badge>
                   </td>
                   <td className="px-3 py-2">
                     {item.trust_fee_pct != null
@@ -173,7 +184,9 @@ export function EligibleAssetsTab() {
   })
 
   const activeQuery = activeWrapper === "nisa_tsumitate" ? tsumitateQuery : growthQuery
-  const canLoadMore = (activeQuery.data?.count ?? 0) >= limit
+  const loadedCount = activeQuery.data?.items.length ?? 0
+  const totalCount = activeQuery.data?.total_count ?? 0
+  const canLoadMore = loadedCount < totalCount
 
   return (
     <div className="space-y-4">
@@ -187,6 +200,7 @@ export function EligibleAssetsTab() {
         onChange={(event) => {
           setSearch(event.target.value)
           setLimit(50)
+          setAssetTypeFilter("all")
         }}
         placeholder={t("nisa.eligible.search_placeholder")}
         className="max-w-lg"
@@ -203,11 +217,11 @@ export function EligibleAssetsTab() {
         <TabsList className="min-h-[44px] h-auto gap-1">
           <TabsTrigger value="nisa_tsumitate" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_tsumitate")}
-            <Badge variant="secondary">{tsumitateQuery.data?.count ?? 0}</Badge>
+            <Badge variant="secondary">{tsumitateQuery.data?.total_count ?? 0}</Badge>
           </TabsTrigger>
           <TabsTrigger value="nisa_growth" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_growth")}
-            <Badge variant="secondary">{growthQuery.data?.count ?? 0}</Badge>
+            <Badge variant="secondary">{growthQuery.data?.total_count ?? 0}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -245,8 +259,8 @@ export function EligibleAssetsTab() {
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {t("nisa.eligible.showing_count", {
-            count: activeQuery.data?.items.length ?? 0,
-            total: activeQuery.data?.count ?? 0,
+            count: loadedCount,
+            total: totalCount,
           })}
         </p>
         <Button

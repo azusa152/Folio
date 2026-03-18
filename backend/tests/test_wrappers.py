@@ -283,7 +283,81 @@ def test_wrapper_eligible_assets_should_return_list_shape(client: TestClient):
     payload = resp.json()
     assert payload["wrapper"] == "nisa_tsumitate"
     assert isinstance(payload["count"], int)
+    assert isinstance(payload["total_count"], int)
     assert isinstance(payload["items"], list)
+
+
+def test_wrapper_eligible_assets_search_should_match_fullwidth_query(
+    client: TestClient,
+):
+    csv_content = (
+        b"ticker,fund_name,asset_type,trust_fee_pct\n"
+        b"03311187,eMAXIS Slim S&P500,mutual_fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_content, "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    search_resp = client.get(
+        "/wrappers/nisa_tsumitate/eligible-assets",
+        params={"search": "\uff33\uff06\uff30\uff15\uff10\uff10"},
+    )
+    assert search_resp.status_code == 200
+    payload = search_resp.json()
+    assert payload["count"] == 1
+    assert payload["total_count"] == 1
+    assert payload["items"][0]["ticker"] == "03311187"
+
+
+def test_wrapper_eligible_assets_search_should_match_halfwidth_query_against_fullwidth_name(
+    client: TestClient,
+):
+    csv_text = (
+        "ticker,fund_name,asset_type,trust_fee_pct\n"
+        "09311187,eMAXIS Slim Ｓ＆Ｐ５００,mutual_fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    search_resp = client.get(
+        "/wrappers/nisa_tsumitate/eligible-assets",
+        params={"search": "S&P500"},
+    )
+    assert search_resp.status_code == 200
+    payload = search_resp.json()
+    assert payload["count"] == 1
+    assert payload["total_count"] == 1
+    assert payload["items"][0]["ticker"] == "09311187"
+
+
+def test_wrapper_eligible_assets_should_return_count_and_total_count_with_limit(
+    client: TestClient,
+):
+    csv_text = (
+        "ticker,fund_name,asset_type,trust_fee_pct\n"
+        "01311187,Slim Limit Alpha,mutual_fund,0.0814\n"
+        "01311188,Slim Limit Beta,mutual_fund,0.0815\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_tsumitate/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    resp = client.get(
+        "/wrappers/nisa_tsumitate/eligible-assets",
+        params={"search": "Slim Limit", "limit": 1},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 1
+    assert payload["total_count"] == 2
+    assert len(payload["items"]) == payload["count"]
 
 
 def test_wrapper_eligible_assets_upload_should_accept_csv(client: TestClient):

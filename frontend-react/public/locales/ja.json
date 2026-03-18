@@ -2226,8 +2226,8 @@
       "filter_no_match": "現在のフィルターに一致する商品がありません。他の資産タイプをお試しください。",
       "clear_filter": "フィルターをクリア",
       "clear_search": "検索をクリア",
-      "showing_count": "{{count}}件表示中（読み込み済み最大 {{total}} 件）",
-      "load_more": "さらに50件表示"
+      "showing_count": "{{total}}件中 {{count}}件を表示",
+      "load_more": "さらに表示"
     },
     "contributions": {
       "title": "拠出履歴",

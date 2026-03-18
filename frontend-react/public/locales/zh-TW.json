@@ -2226,8 +2226,8 @@
       "filter_no_match": "目前篩選條件下無符合資產，請嘗試其他資產類別。",
       "clear_filter": "清除篩選",
       "clear_search": "清除搜尋",
-      "showing_count": "目前顯示 {{count}} 筆（已載入上限 {{total}} 筆）",
-      "load_more": "再載入 50 筆"
+      "showing_count": "共 {{total}} 筆符合，目前顯示 {{count}} 筆",
+      "load_more": "顯示更多結果"
     },
     "contributions": {
       "title": "提撥台帳",

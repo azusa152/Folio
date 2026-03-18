@@ -25,6 +25,7 @@ from api.schemas.wrapper import (
 from application.portfolio.eligibility_service import (
     check_asset_eligibility,
     get_eligible_assets,
+    get_eligible_assets_count,
     get_eligible_assets_metadata,
     refresh_eligible_assets,
 )
@@ -197,16 +198,24 @@ def list_eligible_assets(
     limit: int = Query(default=50, ge=1, le=500),
     session: Session = Depends(get_session),
 ):
+    normalized_wrapper = wrapper.strip().lower()
     assets = get_eligible_assets(
         session=session,
-        wrapper=wrapper,
+        wrapper=normalized_wrapper,
         broker=broker,
         search=search,
         limit=limit,
     )
+    total_count = get_eligible_assets_count(
+        session=session,
+        wrapper=normalized_wrapper,
+        broker=broker,
+        search=search,
+    )
     return {
-        "wrapper": wrapper.strip().lower(),
+        "wrapper": normalized_wrapper,
         "count": len(assets),
+        "total_count": total_count,
         "items": [
             {
                 "ticker": asset.ticker,

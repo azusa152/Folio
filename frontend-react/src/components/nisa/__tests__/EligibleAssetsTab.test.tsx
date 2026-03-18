@@ -34,7 +34,8 @@ describe("EligibleAssetsTab", () => {
           isLoading: false,
           isFetching: false,
           data: {
-            count: 200,
+            count: 2,
+            total_count: 200,
             items: [
               {
                 ticker: "AAA",
@@ -56,13 +57,15 @@ describe("EligibleAssetsTab", () => {
       return {
         isLoading: false,
         isFetching: false,
-        data: { count: 0, items: [] },
+        data: { count: 0, total_count: 0, items: [] },
         options,
       }
     })
 
     renderTab()
 
+    expect(screen.getByText("200")).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.showing_count:2:200")).toBeInTheDocument()
     expect(screen.getByText("Alpha Fund")).toBeInTheDocument()
     expect(screen.getByText("Beta ETF")).toBeInTheDocument()
 
@@ -89,13 +92,14 @@ describe("EligibleAssetsTab", () => {
           isFetching: false,
           data: {
             count: 1,
+            total_count: 1,
             items: [
               { ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 },
             ],
           },
         }
       }
-      return { isLoading: false, isFetching: false, data: { count: 0, items: [] } }
+      return { isLoading: false, isFetching: false, data: { count: 0, total_count: 0, items: [] } }
     })
 
     renderTab()
@@ -113,7 +117,7 @@ describe("EligibleAssetsTab", () => {
     useEligibleAssetsMock.mockReturnValue({
       isLoading: false,
       isFetching: false,
-      data: { count: 0, items: [] },
+      data: { count: 0, total_count: 0, items: [] },
     })
 
     renderTab()
@@ -131,13 +135,14 @@ describe("EligibleAssetsTab", () => {
           isFetching: false,
           data: {
             count: 1,
+            total_count: 1,
             items: [
               { ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 },
             ],
           },
         }
       }
-      return { isLoading: false, isFetching: false, data: { count: 0, items: [] } }
+      return { isLoading: false, isFetching: false, data: { count: 0, total_count: 0, items: [] } }
     })
 
     renderTab()
@@ -156,9 +161,10 @@ describe("EligibleAssetsTab", () => {
       isLoading: false,
       isFetching: false,
       data: options?.search
-        ? { count: 0, items: [] }
+        ? { count: 0, total_count: 0, items: [] }
         : {
             count: 1,
+            total_count: 1,
             items: [{ ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 }],
           },
     }))

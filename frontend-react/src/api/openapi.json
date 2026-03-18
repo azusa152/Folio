@@ -8699,6 +8699,10 @@
             "type": "integer",
             "title": "Count"
           },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/EligibleAssetItem"
@@ -8711,6 +8715,7 @@
         "required": [
           "wrapper",
           "count",
+          "total_count",
           "items"
         ],
         "title": "EligibleAssetsResponse"

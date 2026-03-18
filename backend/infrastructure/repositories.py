@@ -9,6 +9,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     bulk_update_scan_signals,
     bulk_upsert_nav,
     count_consecutive_scans,
+    count_eligible_assets,
     count_recent_notifications,
     create_fx_watch,
     create_ledger_entry,

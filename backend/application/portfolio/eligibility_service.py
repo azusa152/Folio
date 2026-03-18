@@ -96,6 +96,21 @@ def get_eligible_assets(
     )
 
 
+def get_eligible_assets_count(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+) -> int:
+    """Count eligible assets for a wrapper with optional filters."""
+    return repo.count_eligible_assets(
+        session=session,
+        wrapper=wrapper.strip().lower(),
+        broker=broker.strip() if broker else None,
+        search=search,
+    )
+
+
 def refresh_eligible_assets(
     session: Session,
     wrapper: str,

@@ -4,6 +4,7 @@ Infrastructure — 資料庫連線與 Session 管理。
 """
 
 import os
+import unicodedata
 from collections.abc import Generator
 
 from sqlalchemy import event
@@ -419,6 +420,32 @@ def _backfill_signal_since() -> None:
             logger.info("signal_since 回填完成：%d 筆。", updated)
 
 
+def _normalize_eligible_fund_names() -> None:
+    """One-time NFKC normalization for existing eligible-asset fund names."""
+    from domain.entities import EligibleAsset
+
+    with Session(engine) as session:
+        assets = session.exec(select(EligibleAsset)).all()
+        if not assets:
+            logger.debug("eligible fund_name 正規化：無資料可更新。")
+            return
+
+        updated = 0
+        for asset in assets:
+            normalized_name = unicodedata.normalize("NFKC", str(asset.fund_name or ""))
+            if normalized_name == asset.fund_name:
+                continue
+            asset.fund_name = normalized_name
+            session.add(asset)
+            updated += 1
+
+        if updated:
+            session.commit()
+            logger.info("eligible fund_name NFKC 正規化完成：%d 筆。", updated)
+        else:
+            logger.debug("eligible fund_name 已為 NFKC，無需更新。")
+
+
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移與資料載入。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
@@ -438,6 +465,7 @@ def create_db_and_tables() -> None:
     logger.info("人格範本就緒。")
 
     _encrypt_plaintext_tokens()
+    _normalize_eligible_fund_names()
     _backfill_signal_since()
 
 

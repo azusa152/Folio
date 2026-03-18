@@ -2226,8 +2226,8 @@
       "filter_no_match": "No assets match the current filter. Try a different asset type.",
       "clear_filter": "Clear filter",
       "clear_search": "Clear search",
-      "showing_count": "Showing {{count}} of up to {{total}} loaded records",
-      "load_more": "Load 50 more"
+      "showing_count": "Showing {{count}} of {{total}} matching records",
+      "load_more": "Show more results"
     },
     "contributions": {
       "title": "Contribution history",

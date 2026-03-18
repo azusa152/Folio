@@ -57,6 +57,7 @@ class EligibleAssetItem(BaseModel):
 class EligibleAssetsResponse(BaseModel):
     wrapper: str
     count: int
+    total_count: int
     items: list[EligibleAssetItem]
 
 

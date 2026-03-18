@@ -5,6 +5,7 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
+import unicodedata
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -1683,6 +1684,39 @@ def find_eligible_assets(
     limit: int = 50,
 ) -> list[EligibleAsset]:
     """Search active eligible assets with optional broker/text filters."""
+    stmt = _build_eligible_assets_stmt(
+        wrapper=wrapper,
+        broker=broker,
+        search=search,
+    )
+    stmt = stmt.order_by(EligibleAsset.ticker).limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def count_eligible_assets(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+) -> int:
+    """Count active eligible assets with optional broker/text filters."""
+    stmt = _build_eligible_assets_stmt(
+        wrapper=wrapper,
+        broker=broker,
+        search=search,
+    )
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    count_result = session.exec(count_stmt).one()
+    return int(count_result or 0)
+
+
+def _build_eligible_assets_stmt(
+    *,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+):
+    """Build base eligible-assets query with optional filters."""
     stmt = select(EligibleAsset).where(
         EligibleAsset.tax_wrapper == wrapper,
         EligibleAsset.is_active == True,  # noqa: E712
@@ -1691,16 +1725,17 @@ def find_eligible_assets(
         stmt = stmt.where(
             or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
         )
-    if search:
-        pattern = f"%{search.strip()}%"
+    normalized_search_raw = search.strip() if search else ""
+    if normalized_search_raw:
+        normalized_search = unicodedata.normalize("NFKC", normalized_search_raw).lower()
+        pattern = f"%{normalized_search}%"
         stmt = stmt.where(
             or_(
                 EligibleAsset.ticker.ilike(pattern),
                 EligibleAsset.fund_name.ilike(pattern),
             )
         )
-    stmt = stmt.order_by(EligibleAsset.ticker).limit(limit)
-    return list(session.exec(stmt).all())
+    return stmt
 
 
 def upsert_eligible_assets(
@@ -1721,7 +1756,9 @@ def upsert_eligible_assets(
             continue
         deduped[ticker] = {
             "ticker": ticker,
-            "fund_name": str(row.get("fund_name", "")).strip(),
+            "fund_name": unicodedata.normalize(
+                "NFKC", str(row.get("fund_name", "")).strip()
+            ),
             "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
             or "mutual_fund",
             "trust_fee_pct": row.get("trust_fee_pct"),

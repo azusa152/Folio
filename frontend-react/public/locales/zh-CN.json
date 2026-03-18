@@ -2226,8 +2226,8 @@
       "filter_no_match": "当前筛选条件下无匹配资产，请尝试其他资产类型。",
       "clear_filter": "清除筛选",
       "clear_search": "清除搜索",
-      "showing_count": "当前显示 {{count}} 条（已加载上限 {{total}} 条）",
-      "load_more": "再加载 50 条"
+      "showing_count": "共 {{total}} 条匹配，当前显示 {{count}} 条",
+      "load_more": "显示更多结果"
     },
     "contributions": {
       "title": "缴款台账",
