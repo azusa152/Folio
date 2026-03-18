@@ -3,8 +3,9 @@ import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
 import { EligibleAssetsTab } from "../EligibleAssetsTab"
 
-const { useEligibleAssetsMock } = vi.hoisted(() => ({
+const { useEligibleAssetsMock, useEligibleAssetsMetadataMock } = vi.hoisted(() => ({
   useEligibleAssetsMock: vi.fn(),
+  useEligibleAssetsMetadataMock: vi.fn(),
 }))
 
 vi.mock("react-i18next", () => ({
@@ -16,6 +17,8 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/api/hooks/useWrappers", () => ({
   useEligibleAssets: (...args: unknown[]) => useEligibleAssetsMock(...args),
+  useEligibleAssetsMetadata: (...args: unknown[]) =>
+    useEligibleAssetsMetadataMock(...args),
 }))
 
 function renderTab() {
@@ -27,7 +30,52 @@ function renderTab() {
 }
 
 describe("EligibleAssetsTab", () => {
+  it("shows both wrapper counts on initial render using metadata fallback", () => {
+    useEligibleAssetsMock.mockImplementation((wrapper: string) => {
+      if (wrapper === "nisa_tsumitate") {
+        return {
+          isLoading: false,
+          isFetching: false,
+          data: {
+            count: 2,
+            total_count: 325,
+            items: [
+              {
+                ticker: "AAA",
+                fund_name: "Alpha Fund",
+                asset_type: "mutual_fund",
+                trust_fee_pct: 0.1,
+              },
+            ],
+          },
+        }
+      }
+      return {
+        isLoading: false,
+        isFetching: false,
+        data: undefined,
+      }
+    })
+    useEligibleAssetsMetadataMock.mockImplementation((wrapper: string) => {
+      if (wrapper === "nisa_tsumitate") {
+        return { data: { wrapper: "nisa_tsumitate", count: 325 } }
+      }
+      return { data: { wrapper: "nisa_growth", count: 2702 } }
+    })
+
+    renderTab()
+
+    expect(screen.getByText("325")).toBeInTheDocument()
+    expect(screen.getByText("2702")).toBeInTheDocument()
+  })
+
   it("applies asset-type filter and supports load-more pagination", async () => {
+    useEligibleAssetsMetadataMock.mockImplementation((wrapper: string) => {
+      if (wrapper === "nisa_tsumitate") {
+        return { data: { wrapper: "nisa_tsumitate", count: 325 } }
+      }
+      return { data: { wrapper: "nisa_growth", count: 0 } }
+    })
     useEligibleAssetsMock.mockImplementation((wrapper: string, options: { limit?: number }) => {
       if (wrapper === "nisa_tsumitate") {
         return {
@@ -85,6 +133,7 @@ describe("EligibleAssetsTab", () => {
   })
 
   it("shows filter-mismatch empty state when data exists but filter excludes all", () => {
+    useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
     useEligibleAssetsMock.mockImplementation((wrapper: string) => {
       if (wrapper === "nisa_tsumitate") {
         return {
@@ -114,6 +163,7 @@ describe("EligibleAssetsTab", () => {
   })
 
   it("shows data-empty state when API returns no items", () => {
+    useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 0 } })
     useEligibleAssetsMock.mockReturnValue({
       isLoading: false,
       isFetching: false,
@@ -128,6 +178,7 @@ describe("EligibleAssetsTab", () => {
   })
 
   it("clears filter when clear-filter button is clicked", () => {
+    useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
     useEligibleAssetsMock.mockImplementation((wrapper: string) => {
       if (wrapper === "nisa_tsumitate") {
         return {
@@ -157,6 +208,7 @@ describe("EligibleAssetsTab", () => {
   })
 
   it("shows search no-match state and clears search query", () => {
+    useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
     useEligibleAssetsMock.mockImplementation((_wrapper: string, options?: { search?: string }) => ({
       isLoading: false,
       isFetching: false,

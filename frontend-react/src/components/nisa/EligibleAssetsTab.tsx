@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useEligibleAssets } from "@/api/hooks/useWrappers"
+import { useEligibleAssets, useEligibleAssetsMetadata } from "@/api/hooks/useWrappers"
 
 type WrapperTab = "nisa_tsumitate" | "nisa_growth"
 type AssetTypeFilter = "all" | "mutual_fund" | "etf" | "stock" | "reit"
@@ -182,6 +182,8 @@ export function EligibleAssetsTab() {
     limit,
     enabled: activeWrapper === "nisa_growth",
   })
+  const tsumitateMetadataQuery = useEligibleAssetsMetadata("nisa_tsumitate")
+  const growthMetadataQuery = useEligibleAssetsMetadata("nisa_growth")
 
   const activeQuery = activeWrapper === "nisa_tsumitate" ? tsumitateQuery : growthQuery
   const loadedCount = activeQuery.data?.items.length ?? 0
@@ -217,11 +219,15 @@ export function EligibleAssetsTab() {
         <TabsList className="min-h-[44px] h-auto gap-1">
           <TabsTrigger value="nisa_tsumitate" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_tsumitate")}
-            <Badge variant="secondary">{tsumitateQuery.data?.total_count ?? 0}</Badge>
+            <Badge variant="secondary">
+              {tsumitateQuery.data?.total_count ?? tsumitateMetadataQuery.data?.count ?? 0}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="nisa_growth" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_growth")}
-            <Badge variant="secondary">{growthQuery.data?.total_count ?? 0}</Badge>
+            <Badge variant="secondary">
+              {growthQuery.data?.total_count ?? growthMetadataQuery.data?.count ?? 0}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
