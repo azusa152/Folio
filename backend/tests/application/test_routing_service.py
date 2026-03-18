@@ -21,6 +21,7 @@ def _create_account(
     broker: str,
     tax_wrapper: str,
     currency: str = "JPY",
+    market: str | None = None,
 ) -> Account:
     account = Account(
         user_id=DEFAULT_USER_ID,
@@ -29,6 +30,7 @@ def _create_account(
         account_type="brokerage",
         tax_wrapper=tax_wrapper,
         currency=currency,
+        market=market,
         is_active=True,
     )
     session.add(account)
@@ -67,6 +69,7 @@ def test_suggest_transaction_routing_should_include_ideco_when_eligible(
         broker="SBI",
         tax_wrapper="ideco",
         currency="JPY",
+        market="JP",
     )
     _create_eligible_asset(
         db_session,
