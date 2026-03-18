@@ -8,6 +8,7 @@ into the ``MutualFundNav`` table.
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 
@@ -18,6 +19,10 @@ from domain.enums import StockCategory
 from infrastructure import repositories as repo
 from infrastructure.database import engine
 from infrastructure.market_data.toushin_adapter import fetch_fund_nav_csv
+from infrastructure.market_data.toushin_lib_adapter import (
+    lookup_isin,
+    resolve_fund_code_from_name,
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -39,6 +44,58 @@ def _annotate_previous_nav(rows: list[dict]) -> list[dict]:
     return rows
 
 
+_FUND_CODE_RE = re.compile(r"^[0-9A-Z]{8}$", re.IGNORECASE)
+
+
+def _is_fund_code(ticker: str) -> bool:
+    return bool(_FUND_CODE_RE.match(ticker.strip()))
+
+
+def _resolve_isin_fallback(session: Session, ticker: str) -> tuple[str, str] | None:
+    """Try the toushin-lib search API when the local DB has no ISIN.
+
+    Handles two cases:
+    1. Normal fund code (e.g. ``01311143``) — look up ISIN directly.
+    2. Legacy fund-name ticker (e.g. ``EMAXIS S&P500インデックス``) — first
+       resolve the name to a fund code, then look up the ISIN.
+
+    Returns ``(fund_code, isin)`` on success, ``None`` on failure.
+    When resolved, the ISIN is back-filled into the EligibleAsset table.
+    """
+    fund_code = ticker
+    if not _is_fund_code(ticker):
+        try:
+            resolved = resolve_fund_code_from_name(ticker)
+        except Exception:
+            resolved = None
+        if not resolved:
+            logger.warning(
+                "ISIN fallback: ticker '%s' is not a fund code and "
+                "could not be resolved from fund name.",
+                ticker,
+            )
+            return None
+        logger.info(
+            "ISIN fallback: resolved legacy name '%s' → fund code %s.", ticker, resolved
+        )
+        fund_code = resolved
+
+    try:
+        isin = lookup_isin(fund_code)
+    except Exception:
+        return None
+    if not isin:
+        return None
+    logger.info("ISIN fallback resolved %s → %s via toushin-lib.", fund_code, isin)
+    try:
+        # Quick migration: persist ISIN for both alias ticker and canonical fund code.
+        repo.backfill_isin_for_ticker(session, ticker, isin)
+        repo.backfill_isin_for_ticker(session, fund_code, isin)
+    except Exception as exc:
+        logger.debug("ISIN back-fill to DB failed for %s: %s", ticker, exc)
+    return fund_code, isin
+
+
 def _sync_single_fund_nav_with_reason(
     session: Session, ticker: str
 ) -> tuple[bool, str | None]:
@@ -49,13 +106,35 @@ def _sync_single_fund_nav_with_reason(
         (False, reason_code) on failure
     """
     upper = ticker.upper()
+    fund_code = upper
     isin = repo.find_isin_for_ticker(session, upper)
+
+    # Legacy name ticker path: even when ISIN already exists locally, CSV download
+    # still needs the 8-char fund code. Resolve DB-first by ISIN, then fallback API.
+    if not _is_fund_code(upper):
+        if isin:
+            resolved_code = repo.find_fund_code_by_isin(session, isin)
+            if resolved_code:
+                fund_code = resolved_code
+            else:
+                fallback = _resolve_isin_fallback(session, upper)
+                if fallback:
+                    fund_code, fallback_isin = fallback
+                    isin = isin or fallback_isin
+        else:
+            fallback = _resolve_isin_fallback(session, upper)
+            if fallback:
+                fund_code, isin = fallback
+    elif not isin:
+        fallback = _resolve_isin_fallback(session, upper)
+        if fallback:
+            fund_code, isin = fallback
     if not isin:
         logger.warning("NAV on-demand: no ISIN found for %s, skipping.", upper)
         return False, _NAV_FAIL_MISSING_ISIN
 
     try:
-        csv_rows = fetch_fund_nav_csv(upper, isin)
+        csv_rows = fetch_fund_nav_csv(fund_code, isin)
     except Exception as exc:
         logger.warning("NAV on-demand fetch failed for %s: %s", upper, exc)
         return False, _NAV_FAIL_DOWNLOAD_ERROR
@@ -68,12 +147,12 @@ def _sync_single_fund_nav_with_reason(
 
     try:
         annotated = _annotate_previous_nav(csv_rows)
-        repo.bulk_upsert_nav(session, upper, isin, annotated, autocommit=True)
+        repo.bulk_upsert_nav(session, fund_code, isin, annotated, autocommit=True)
     except Exception as exc:
-        logger.warning("NAV on-demand upsert failed for %s: %s", upper, exc)
+        logger.warning("NAV on-demand upsert failed for %s: %s", fund_code, exc)
         return False, _NAV_FAIL_UPSERT_ERROR
 
-    logger.info("NAV on-demand: %s — %d rows upserted.", upper, len(annotated))
+    logger.info("NAV on-demand: %s — %d rows upserted.", fund_code, len(annotated))
     return True, None
 
 

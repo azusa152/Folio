@@ -68,8 +68,126 @@ class TestSyncSingleFundNav:
         )
         db_session.commit()
 
-        result = nav_sync_module.sync_single_fund_nav(db_session, "NOISINFUND")
+        with patch.object(nav_sync_module, "lookup_isin", return_value=None):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "NOISINFUND")
         assert result is False
+
+    def test_should_use_isin_fallback_from_toushin_lib(self, db_session):
+        """When DB has no ISIN, fallback to toushin-lib lookup."""
+        db_session.add(
+            Stock(
+                ticker="01311143",
+                category=StockCategory.MUTUAL_FUND,
+                is_active=True,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="01311143",
+                fund_name="Test Fund",
+                asset_type="mutual_fund",
+                isin_code=None,
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        fake_csv = [
+            {"date": date(2026, 3, 14), "nav": 10074.0, "net_assets": 100.0},
+        ]
+
+        with (
+            patch.object(nav_sync_module, "lookup_isin", return_value="JP90C000A808"),
+            patch.object(nav_sync_module, "fetch_fund_nav_csv", return_value=fake_csv),
+        ):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "01311143")
+
+        assert result is True
+
+    def test_should_resolve_legacy_fund_name_ticker(self, db_session):
+        """Legacy fund-name ticker should be resolved to fund code."""
+        db_session.add(
+            Stock(
+                ticker="EMAXIS S&P500",
+                category=StockCategory.MUTUAL_FUND,
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        fake_csv = [
+            {"date": date(2026, 3, 14), "nav": 25000.0, "net_assets": 5000.0},
+        ]
+
+        with (
+            patch.object(
+                nav_sync_module, "resolve_fund_code_from_name", return_value="0331220C"
+            ),
+            patch.object(nav_sync_module, "lookup_isin", return_value="JP90C000L110"),
+            patch.object(
+                nav_sync_module, "fetch_fund_nav_csv", return_value=fake_csv
+            ) as mock_fetch,
+        ):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "EMAXIS S&P500")
+
+        assert result is True
+        mock_fetch.assert_called_once_with("0331220C", "JP90C000L110")
+
+    def test_should_use_db_fund_code_for_legacy_ticker_when_isin_exists(
+        self, db_session
+    ):
+        """When legacy ticker already has ISIN, resolve fund code from DB (no API)."""
+        db_session.add(
+            Stock(
+                ticker="EMAXIS S&P500",
+                category=StockCategory.MUTUAL_FUND,
+                is_active=True,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="EMAXIS S&P500",
+                fund_name="EMAXIS S&P500",
+                asset_type="mutual_fund",
+                isin_code="JP90C000L110",
+                is_active=True,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="0331220C",
+                fund_name="EMAXIS S&P500",
+                asset_type="mutual_fund",
+                isin_code="JP90C000L110",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        fake_csv = [
+            {"date": date(2026, 3, 14), "nav": 25000.0, "net_assets": 5000.0},
+        ]
+
+        with (
+            patch.object(
+                nav_sync_module, "resolve_fund_code_from_name", return_value=None
+            ) as mock_resolve_name,
+            patch.object(
+                nav_sync_module, "lookup_isin", return_value=None
+            ) as mock_lookup,
+            patch.object(
+                nav_sync_module, "fetch_fund_nav_csv", return_value=fake_csv
+            ) as mock_fetch,
+        ):
+            result = nav_sync_module.sync_single_fund_nav(db_session, "EMAXIS S&P500")
+
+        assert result is True
+        mock_fetch.assert_called_once_with("0331220C", "JP90C000L110")
+        mock_resolve_name.assert_not_called()
+        mock_lookup.assert_not_called()
 
     def test_should_return_false_when_csv_empty(self, db_session):
         """Empty CSV result should return False."""
@@ -140,7 +258,10 @@ class TestSyncMutualFundNavs:
         )
         db_session.commit()
 
-        with patch.object(nav_sync_module, "engine", test_engine):
+        with (
+            patch.object(nav_sync_module, "engine", test_engine),
+            patch.object(nav_sync_module, "lookup_isin", return_value=None),
+        ):
             result = nav_sync_module.sync_mutual_fund_navs()
 
         assert result["failed"] == 1

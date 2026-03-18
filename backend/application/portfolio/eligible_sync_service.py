@@ -20,6 +20,7 @@ from infrastructure.external.eligible_fund_parser import (
     parse_tsumitate_from_growth_xlsx,
     parse_tsumitate_xlsx,
 )
+from infrastructure.market_data.toushin_lib_adapter import fetch_isin_mapping
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -45,20 +46,60 @@ def _extract_xlsx_urls(page_html: str, base_url: str) -> list[str]:
 def _resolve_xlsx_urls(source_url: str) -> list[str]:
     if urlparse(source_url).path.lower().endswith(".xlsx"):
         return [source_url]
-    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-        index_resp = client.get(source_url)
-        index_resp.raise_for_status()
+    last_exc: Exception | None = None
+    for attempt in range(_DOWNLOAD_MAX_RETRIES):
+        try:
+            with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+                index_resp = client.get(source_url)
+                index_resp.raise_for_status()
+                break
+        except Exception as exc:
+            last_exc = exc
+            if not _is_ssl_error(exc) or attempt >= _DOWNLOAD_MAX_RETRIES - 1:
+                raise
+            logger.debug(
+                "Index page fetch attempt %d failed for %s: %s",
+                attempt + 1,
+                source_url,
+                exc,
+            )
+            time.sleep(1.5 * (attempt + 1))
+    else:
+        raise last_exc  # type: ignore[misc]
     return _extract_xlsx_urls(index_resp.text, source_url)
 
 
+_DOWNLOAD_MAX_RETRIES = 3
+_SSL_RETRY_ERRORS = (
+    "UNEXPECTED_EOF_WHILE_READING",
+    "EOF occurred in violation of protocol",
+    "SSLError",
+    "ConnectError",
+)
+
+
+def _is_ssl_error(exc: Exception) -> bool:
+    return any(tok in str(exc) for tok in _SSL_RETRY_ERRORS)
+
+
 def _download_to_temp(url: str) -> Path:
-    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-        response = client.get(url)
-        response.raise_for_status()
-        suffix = ".xlsx" if url.lower().endswith(".xlsx") else ".tmp"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(response.content)
-            return Path(tmp.name)
+    last_exc: Exception | None = None
+    for attempt in range(_DOWNLOAD_MAX_RETRIES):
+        try:
+            with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+                response = client.get(url)
+                response.raise_for_status()
+                suffix = ".xlsx" if url.lower().endswith(".xlsx") else ".tmp"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(response.content)
+                    return Path(tmp.name)
+        except Exception as exc:
+            last_exc = exc
+            if not _is_ssl_error(exc) or attempt >= _DOWNLOAD_MAX_RETRIES - 1:
+                raise
+            logger.debug("Download attempt %d failed for %s: %s", attempt + 1, url, exc)
+            time.sleep(1.5 * (attempt + 1))
+    raise last_exc  # type: ignore[misc]
 
 
 def _normalize_fund_name(value: str) -> str:
@@ -178,6 +219,43 @@ def _load_growth_rows() -> list[dict]:
     return list(deduped.values())
 
 
+def _enrich_isin(rows: list[dict]) -> list[dict]:
+    """Fill in missing ``isin_code`` using the toushin-lib fund search API."""
+    missing = [r for r in rows if not r.get("isin_code") and r.get("ticker")]
+    if not missing:
+        return rows
+
+    try:
+        mapping = fetch_isin_mapping()
+    except Exception as exc:
+        logger.warning("ISIN enrichment lookup failed, skipping: %s", exc)
+        return rows
+
+    if not mapping:
+        return rows
+
+    enriched = 0
+    for row in rows:
+        if not row.get("isin_code") and row.get("ticker"):
+            isin = mapping.get(row["ticker"].strip().upper())
+            if isin:
+                row["isin_code"] = isin
+                enriched += 1
+
+    if enriched:
+        logger.info(
+            "ISIN enrichment: filled %d of %d rows missing ISIN.",
+            enriched,
+            len(missing),
+        )
+    else:
+        logger.warning(
+            "ISIN enrichment: 0 of %d rows resolved — XLSX source may lack fund codes.",
+            len(missing),
+        )
+    return rows
+
+
 def sync_wrapper_from_official_source(
     session: Session,
     wrapper: str,
@@ -191,6 +269,7 @@ def sync_wrapper_from_official_source(
         rows = _load_growth_rows()
     else:
         raise ValueError(f"Unsupported wrapper for official sync: {wrapper}")
+    rows = _enrich_isin(rows)
     return refresh_eligible_assets_from_rows(
         session=session,
         wrapper=normalized_wrapper,

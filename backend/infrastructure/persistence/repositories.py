@@ -1824,6 +1824,51 @@ def find_isin_for_ticker(session: Session, ticker: str) -> str | None:
     return session.exec(fallback_stmt).first()
 
 
+def find_fund_code_by_isin(session: Session, isin: str) -> str | None:
+    """Find a likely 8-char fund-code ticker for a given ISIN."""
+    normalized = isin.strip()
+    if not normalized:
+        return None
+
+    # Prefer active rows first, then fallback to inactive.
+    active_stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.isin_code == normalized,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    active_tickers = [str(t).strip().upper() for t in session.exec(active_stmt).all()]
+    for ticker in active_tickers:
+        if len(ticker) == 8 and ticker.isalnum():
+            return ticker
+
+    fallback_stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.isin_code == normalized
+    )
+    tickers = [str(t).strip().upper() for t in session.exec(fallback_stmt).all()]
+    for ticker in tickers:
+        if len(ticker) == 8 and ticker.isalnum():
+            return ticker
+    return None
+
+
+def backfill_isin_for_ticker(
+    session: Session, ticker: str, isin: str, *, autocommit: bool = True
+) -> bool:
+    """Set ``isin_code`` on matching EligibleAsset rows that lack one."""
+    normalized = ticker.upper().strip()
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.ticker == normalized,
+        or_(EligibleAsset.isin_code == None, EligibleAsset.isin_code == ""),  # noqa: E711
+    )
+    rows = list(session.exec(stmt).all())
+    if not rows:
+        return False
+    for row in rows:
+        row.isin_code = isin
+    if autocommit:
+        session.commit()
+    return True
+
+
 def get_latest_nav(session: Session, fund_code: str) -> "MutualFundNav | None":
     """Get the most recent NAV row for a fund."""
     stmt = (

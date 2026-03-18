@@ -4,6 +4,7 @@ Consumers using ``from infrastructure.repositories import X`` continue to work u
 """
 
 from infrastructure.persistence.repositories import (  # noqa: F401
+    backfill_isin_for_ticker,
     bulk_update_display_order,
     bulk_update_scan_signals,
     bulk_upsert_nav,
@@ -46,6 +47,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_eligible_tickers,
     find_filing_by_accession,
     find_filings_by_guru,
+    find_fund_code_by_isin,
     find_fx_watch_by_id,
     find_grand_portfolio,
     find_guru_by_cik,

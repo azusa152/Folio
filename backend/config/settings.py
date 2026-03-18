@@ -12,6 +12,9 @@ NAV_SYNC_INTERVAL_HOURS = 24
 TOUSHIN_LIB_CSV_URL = (
     "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST030000/csv-file-download"
 )
+TOUSHIN_LIB_SEARCH_URL = (
+    "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST999900/fundDataSearch"
+)
 
 
 def init_settings() -> None:
@@ -21,7 +24,8 @@ def init_settings() -> None:
         ELIGIBLE_SYNC_INTERVAL_HOURS, \
         ELIGIBLE_TSUMITATE_URL, \
         NAV_SYNC_INTERVAL_HOURS, \
-        TOUSHIN_LIB_CSV_URL
+        TOUSHIN_LIB_CSV_URL, \
+        TOUSHIN_LIB_SEARCH_URL
     ELIGIBLE_TSUMITATE_URL = os.getenv(
         "ELIGIBLE_TSUMITATE_URL",
         ELIGIBLE_TSUMITATE_URL,
@@ -39,4 +43,8 @@ def init_settings() -> None:
     TOUSHIN_LIB_CSV_URL = os.getenv(
         "TOUSHIN_LIB_CSV_URL",
         TOUSHIN_LIB_CSV_URL,
+    )
+    TOUSHIN_LIB_SEARCH_URL = os.getenv(
+        "TOUSHIN_LIB_SEARCH_URL",
+        TOUSHIN_LIB_SEARCH_URL,
     )
