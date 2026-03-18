@@ -360,6 +360,92 @@ def test_wrapper_eligible_assets_should_return_count_and_total_count_with_limit(
     assert len(payload["items"]) == payload["count"]
 
 
+def test_wrapper_eligible_assets_should_filter_by_asset_type(
+    client: TestClient,
+):
+    csv_text = (
+        "ticker,fund_name,asset_type,trust_fee_pct\n"
+        "2558.T,MAXIS 米国株式（S&P500）上場投信,etf,\n"
+        "03311187,eMAXIS Slim 米国株式（S&P500）,mutual_fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_growth/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    resp = client.get(
+        "/wrappers/nisa_growth/eligible-assets",
+        params={"asset_type": "etf"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 1
+    assert payload["total_count"] == 1
+    assert payload["items"][0]["ticker"] == "2558.T"
+    assert payload["items"][0]["asset_type"] == "etf"
+
+
+def test_wrapper_eligible_assets_should_filter_by_asset_type_after_mixed_case_upload(
+    client: TestClient,
+):
+    csv_text = (
+        "ticker,fund_name,asset_type,trust_fee_pct\n"
+        "2559.T,MAXIS 全世界株式（オール・カントリー）上場投信,ETF,\n"
+        "03311188,eMAXIS Slim 全世界株式（オール・カントリー）,Mutual_Fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_growth/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    resp = client.get(
+        "/wrappers/nisa_growth/eligible-assets",
+        params={"asset_type": "etf"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 1
+    assert payload["total_count"] == 1
+    assert payload["items"][0]["ticker"] == "2559.T"
+    assert payload["items"][0]["asset_type"] == "etf"
+
+
+def test_wrapper_eligible_assets_should_reject_invalid_asset_type_query(
+    client: TestClient,
+):
+    resp = client.get(
+        "/wrappers/nisa_growth/eligible-assets",
+        params={"asset_type": "etfs"},
+    )
+    assert resp.status_code == 422
+
+
+def test_wrapper_eligible_assets_should_default_unknown_asset_type_to_mutual_fund(
+    client: TestClient,
+):
+    """Unknown asset_type values at ingest must be silently coerced to 'mutual_fund'."""
+    csv_text = (
+        "ticker,fund_name,asset_type,trust_fee_pct\n"
+        "BOND001,Some Bond Fund,bond,0.1\n"
+        "CRYPTO01,Some Crypto ETN,crypto,\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_growth/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_text.encode("utf-8"), "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    resp = client.get(
+        "/wrappers/nisa_growth/eligible-assets", params={"asset_type": "mutual_fund"}
+    )
+    assert resp.status_code == 200
+    tickers = {item["ticker"] for item in resp.json()["items"]}
+    assert "BOND001" in tickers
+    assert "CRYPTO01" in tickers
+
+
 def test_wrapper_eligible_assets_upload_should_accept_csv(client: TestClient):
     csv_content = (
         b"ticker,fund_name,asset_type,trust_fee_pct\n"

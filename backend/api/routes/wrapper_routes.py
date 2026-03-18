@@ -3,6 +3,7 @@
 import tempfile
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -195,6 +196,9 @@ def list_eligible_assets(
     wrapper: str,
     broker: str | None = Query(default=None),
     search: str | None = Query(default=None),
+    asset_type: Literal["mutual_fund", "etf", "stock", "reit"] | None = Query(
+        default=None
+    ),
     limit: int = Query(default=50, ge=1, le=500),
     session: Session = Depends(get_session),
 ):
@@ -204,6 +208,7 @@ def list_eligible_assets(
         wrapper=normalized_wrapper,
         broker=broker,
         search=search,
+        asset_type=asset_type,
         limit=limit,
     )
     total_count = get_eligible_assets_count(
@@ -211,6 +216,7 @@ def list_eligible_assets(
         wrapper=normalized_wrapper,
         broker=broker,
         search=search,
+        asset_type=asset_type,
     )
     return {
         "wrapper": normalized_wrapper,

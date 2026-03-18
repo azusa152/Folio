@@ -84,6 +84,7 @@ def get_eligible_assets(
     wrapper: str,
     broker: str | None = None,
     search: str | None = None,
+    asset_type: str | None = None,
     limit: int = 50,
 ) -> list[EligibleAsset]:
     """List eligible assets for a wrapper with optional filters."""
@@ -92,6 +93,7 @@ def get_eligible_assets(
         wrapper=wrapper.strip().lower(),
         broker=broker.strip() if broker else None,
         search=search,
+        asset_type=asset_type.strip().lower() if asset_type else None,
         limit=limit,
     )
 
@@ -101,6 +103,7 @@ def get_eligible_assets_count(
     wrapper: str,
     broker: str | None = None,
     search: str | None = None,
+    asset_type: str | None = None,
 ) -> int:
     """Count eligible assets for a wrapper with optional filters."""
     return repo.count_eligible_assets(
@@ -108,6 +111,7 @@ def get_eligible_assets_count(
         wrapper=wrapper.strip().lower(),
         broker=broker.strip() if broker else None,
         search=search,
+        asset_type=asset_type.strip().lower() if asset_type else None,
     )
 
 

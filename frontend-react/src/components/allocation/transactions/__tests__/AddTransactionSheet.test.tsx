@@ -13,7 +13,7 @@ const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState,
     isLoading: false,
   },
   wrapperState: {
-    eligibleItems: [] as Array<{ ticker: string; fund_name: string; trust_fee_pct?: number }>,
+    eligibleItems: [] as Array<{ ticker: string; fund_name: string; asset_type?: string; trust_fee_pct?: number }>,
     eligibility: undefined as
       | {
           ticker: string
@@ -84,8 +84,12 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 vi.mock("@/api/hooks/useWrappers", () => ({
   useWrapperEligibility: () => ({ data: wrapperState.eligibility, isLoading: false }),
   useSuggestRouting: () => ({ data: undefined, isLoading: false }),
-  useEligibleAssets: () => ({
-    data: { items: wrapperState.eligibleItems },
+  useEligibleAssets: (_wrapper: string | null | undefined, options?: { assetType?: string }) => ({
+    data: {
+      items: options?.assetType
+        ? wrapperState.eligibleItems.filter((item) => item.asset_type === options.assetType)
+        : wrapperState.eligibleItems,
+    },
     isLoading: false,
   }),
   useWrapperQuota: () => ({ data: wrapperState.quota, isLoading: false }),
@@ -400,13 +404,82 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    const [, tsumitatePickerTrigger] = screen.getAllByRole("combobox")
-    fireEvent.click(tsumitatePickerTrigger)
+    const [, nisaPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(nisaPickerTrigger)
     fireEvent.click(screen.getByText("野村インデックスファンド・JPX日経400"))
 
     expect(screen.getByText("野村インデックスファンド・JPX日経400")).toBeInTheDocument()
-    expect(screen.getByText("01311143 · eligibility.tsumitate_trust_fee_label: 0.198%")).toBeInTheDocument()
-    expect(screen.queryByText("eligibility.tsumitate_picker_placeholder")).not.toBeInTheDocument()
+    expect(screen.getByText("01311143 · eligibility.nisa_trust_fee_label: 0.198%")).toBeInTheDocument()
+    expect(screen.queryByText("eligibility.nisa_picker_placeholder")).not.toBeInTheDocument()
+  })
+
+  it("shows NISA picker for growth account buy", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByLabelText("transactions.form.ticker")).not.toBeInTheDocument()
+    expect(screen.getAllByRole("combobox").length).toBeGreaterThan(1)
+  })
+
+  it("shows asset type chips for growth nisa before opening picker", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+      { ticker: "03311187", fund_name: "eMAXIS Slim 米国株式", asset_type: "mutual_fund", trust_fee_pct: 0.0814 },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole("button", { name: "nisa.eligible.asset_type.etf" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "nisa.eligible.asset_type.mutual_fund" })).toBeInTheDocument()
+  })
+
+  it("narrows growth nisa picker results after selecting asset type", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+      { ticker: "03311187", fund_name: "eMAXIS Slim 米国株式", asset_type: "mutual_fund", trust_fee_pct: 0.0814 },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.etf" }))
+    const [, nisaPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(nisaPickerTrigger)
+    expect(screen.getByText("MAXIS 米国株式")).toBeInTheDocument()
+    expect(screen.queryByText("eMAXIS Slim 米国株式")).not.toBeInTheDocument()
+  })
+
+  it("shows selected growth asset type badge in picker trigger", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    const [, nisaPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(nisaPickerTrigger)
+    fireEvent.click(screen.getByText("MAXIS 米国株式"))
+
+    expect(screen.getAllByText("nisa.eligible.asset_type.etf").length).toBeGreaterThan(0)
   })
 
 

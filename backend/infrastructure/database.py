@@ -184,6 +184,15 @@ def _run_migrations() -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
         # Add isin_code to eligible asset (for toushin-lib NAV lookup).
         "ALTER TABLE eligibleasset ADD COLUMN isin_code VARCHAR;",
+        # One-time canonicalization: ensure asset_type is lowercase-trimmed.
+        # Rows already canonical are untouched; runs as a cheap SQL scan.
+        (
+            "UPDATE eligibleasset SET asset_type = "
+            "CASE WHEN LOWER(TRIM(COALESCE(asset_type, ''))) = '' THEN 'mutual_fund' "
+            "ELSE LOWER(TRIM(asset_type)) END "
+            "WHERE asset_type IS NULL OR TRIM(asset_type) = '' "
+            "OR asset_type != LOWER(TRIM(asset_type));"
+        ),
         # Eligible asset sync metadata.
         (
             "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("

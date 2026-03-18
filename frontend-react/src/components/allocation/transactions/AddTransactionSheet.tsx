@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import client from "@/api/client"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
 import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
@@ -50,9 +51,10 @@ interface FieldErrors {
   fee?: string
 }
 
-type TsumitateEligibleAssetItem = {
+type NisaEligibleAssetItem = {
   ticker: string
   fund_name?: string | null
+  asset_type?: string | null
   trust_fee_pct?: number | null
 }
 
@@ -110,13 +112,14 @@ export function AddTransactionSheet({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [insufficientBalance, setInsufficientBalance] = useState<{ available: number; required: number } | null>(null)
   const [splitSubmitting, setSplitSubmitting] = useState(false)
-  const [tsumitatePickerOpen, setTsumitatePickerOpen] = useState(false)
-  const [tsumitateSearchInput, setTsumitateSearchInput] = useState("")
-  const [cachedSelectedTsumitateAsset, setCachedSelectedTsumitateAsset] = useState<TsumitateEligibleAssetItem | null>(null)
+  const [nisaPickerOpen, setNisaPickerOpen] = useState(false)
+  const [nisaPickerSearch, setNisaPickerSearch] = useState("")
+  const [nisaAssetTypeFilter, setNisaAssetTypeFilter] = useState<"all" | "mutual_fund" | "etf" | "stock" | "reit">("all")
+  const [cachedSelectedNisaAsset, setCachedSelectedNisaAsset] = useState<NisaEligibleAssetItem | null>(null)
   const isMobile = useIsMobile()
   const commandListScrollFix = useCommandListScrollFix()
   const debouncedTicker = useDebouncedValue(ticker, 400)
-  const debouncedTsumitateSearchInput = useDebouncedValue(tsumitateSearchInput, 300)
+  const debouncedNisaPickerSearch = useDebouncedValue(nisaPickerSearch, 300)
 
   const selectedAccountId = accountId ? Number(accountId) : null
   const { data: cashBalances } = useAccountCashBalances(selectedAccountId, open)
@@ -150,24 +153,25 @@ export function AddTransactionSheet({
     !!debouncedTicker.trim() &&
     !!totalAmount &&
     Number(totalAmount) > 0
-  const shouldShowTsumitatePicker =
+  const shouldShowNisaPicker =
     open &&
     transactionType === "BUY" &&
     !isCashMovement &&
-    selectedWrapper === "nisa_tsumitate"
-  const tsumitateEligibleAssetsQuery = useEligibleAssets("nisa_tsumitate", {
-    search: debouncedTsumitateSearchInput || undefined,
+    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+  const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
+    search: debouncedNisaPickerSearch || undefined,
+    assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
     limit: 50,
-    enabled: shouldShowTsumitatePicker,
+    enabled: shouldShowNisaPicker,
   })
-  const selectedTsumitateAsset = useMemo(() => {
+  const selectedNisaAsset = useMemo(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) return null
-    return (tsumitateEligibleAssetsQuery.data?.items ?? []).find(
+    return (nisaEligibleAssetsQuery.data?.items ?? []).find(
       (item) => item.ticker.toUpperCase() === normalizedTicker,
     ) ?? null
-  }, [ticker, tsumitateEligibleAssetsQuery.data?.items])
-  const selectedTsumitateAssetForDisplay = selectedTsumitateAsset ?? cachedSelectedTsumitateAsset
+  }, [ticker, nisaEligibleAssetsQuery.data?.items])
+  const selectedNisaAssetForDisplay = selectedNisaAsset ?? cachedSelectedNisaAsset
   const routingSuggestionQuery = useSuggestRouting(
     debouncedTicker,
     Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : null,
@@ -235,16 +239,16 @@ export function AddTransactionSheet({
   useEffect(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) {
-      setCachedSelectedTsumitateAsset(null)
+      setCachedSelectedNisaAsset(null)
       return
     }
 
-    const matched = (tsumitateEligibleAssetsQuery.data?.items ?? []).find(
+    const matched = (nisaEligibleAssetsQuery.data?.items ?? []).find(
       (item) => item.ticker.toUpperCase() === normalizedTicker,
     )
     if (!matched) return
 
-    setCachedSelectedTsumitateAsset((prev) => {
+    setCachedSelectedNisaAsset((prev) => {
       if (
         prev?.ticker.toUpperCase() === matched.ticker.toUpperCase() &&
         prev?.fund_name === matched.fund_name &&
@@ -254,7 +258,12 @@ export function AddTransactionSheet({
       }
       return matched
     })
-  }, [ticker, tsumitateEligibleAssetsQuery.data?.items])
+  }, [ticker, nisaEligibleAssetsQuery.data?.items])
+  useEffect(() => {
+    if (selectedWrapper !== "nisa_growth") {
+      setNisaAssetTypeFilter("all")
+    }
+  }, [selectedWrapper])
 
   const holdingOptions = useMemo(
     () =>
@@ -292,9 +301,10 @@ export function AddTransactionSheet({
     setMoreOptionsOpen(false)
     setFieldErrors({})
     setInsufficientBalance(null)
-    setTsumitatePickerOpen(false)
-    setTsumitateSearchInput("")
-    setCachedSelectedTsumitateAsset(null)
+    setNisaPickerOpen(false)
+    setNisaPickerSearch("")
+    setNisaAssetTypeFilter("all")
+    setCachedSelectedNisaAsset(null)
   }
 
   const applyCashMovementDefaults = (nextCurrency: string) => {
@@ -683,12 +693,33 @@ export function AddTransactionSheet({
           {!isCashMovement ? (
             <div className="space-y-1">
               <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
-              {shouldShowTsumitatePicker ? (
+              {shouldShowNisaPicker && selectedWrapper === "nisa_growth" ? (
+                <div className="flex flex-wrap gap-1 pb-1">
+                  {(["all", "mutual_fund", "etf", "stock", "reit"] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setNisaAssetTypeFilter(type)}
+                      className={cn(
+                        "rounded-full border px-2 py-1 text-[11px] leading-none",
+                        nisaAssetTypeFilter === type
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted/40",
+                      )}
+                    >
+                      {type === "all" ? t("nisa.eligible.filter_all") : t(`nisa.eligible.asset_type.${type}`)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {shouldShowNisaPicker ? (
                 <Popover
-                  open={tsumitatePickerOpen}
+                  open={nisaPickerOpen}
                   onOpenChange={(nextOpen) => {
-                    setTsumitatePickerOpen(nextOpen)
-                    if (nextOpen) setTsumitateSearchInput("")
+                    setNisaPickerOpen(nextOpen)
+                    if (nextOpen) {
+                      setNisaPickerSearch("")
+                    }
                   }}
                 >
                   <PopoverTrigger asChild>
@@ -696,29 +727,36 @@ export function AddTransactionSheet({
                       type="button"
                       variant="outline"
                       role="combobox"
-                      aria-expanded={tsumitatePickerOpen}
+                      aria-expanded={nisaPickerOpen}
                       className="h-auto min-h-9 w-full justify-between py-1.5 text-xs"
                     >
                       <span className="min-w-0 text-left">
-                        {selectedTsumitateAssetForDisplay ? (
+                        {selectedNisaAssetForDisplay ? (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="min-w-0 flex flex-col leading-tight">
                                   <span className="truncate font-medium text-xs">
-                                    {selectedTsumitateAssetForDisplay.fund_name || selectedTsumitateAssetForDisplay.ticker}
+                                    {selectedNisaAssetForDisplay.fund_name || selectedNisaAssetForDisplay.ticker}
                                   </span>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {selectedTsumitateAssetForDisplay.ticker}
-                                    {selectedTsumitateAssetForDisplay.trust_fee_pct != null
-                                      ? ` · ${t("eligibility.tsumitate_trust_fee_label")}: ${selectedTsumitateAssetForDisplay.trust_fee_pct.toFixed(3)}%`
-                                      : ""}
+                                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <span>
+                                      {selectedNisaAssetForDisplay.ticker}
+                                      {selectedNisaAssetForDisplay.trust_fee_pct != null
+                                        ? ` · ${t("eligibility.nisa_trust_fee_label")}: ${selectedNisaAssetForDisplay.trust_fee_pct.toFixed(3)}%`
+                                        : ""}
+                                    </span>
+                                    {selectedWrapper === "nisa_growth" && selectedNisaAssetForDisplay.asset_type ? (
+                                      <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                                        {t(`nisa.eligible.asset_type.${selectedNisaAssetForDisplay.asset_type}`)}
+                                      </Badge>
+                                    ) : null}
                                   </span>
                                 </span>
                               </TooltipTrigger>
-                              {selectedTsumitateAssetForDisplay.fund_name ? (
+                              {selectedNisaAssetForDisplay.fund_name ? (
                                 <TooltipContent side="bottom" className="max-w-xs text-xs">
-                                  {selectedTsumitateAssetForDisplay.fund_name}
+                                  {selectedNisaAssetForDisplay.fund_name}
                                 </TooltipContent>
                               ) : null}
                             </Tooltip>
@@ -726,7 +764,7 @@ export function AddTransactionSheet({
                         ) : ticker.trim() ? (
                           <span className="truncate">{ticker.trim().toUpperCase()}</span>
                         ) : (
-                          t("eligibility.tsumitate_picker_placeholder")
+                          t("eligibility.nisa_picker_placeholder")
                         )}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -741,31 +779,31 @@ export function AddTransactionSheet({
                   >
                     <Command shouldFilter={false}>
                       <CommandInput
-                        value={tsumitateSearchInput}
-                        onValueChange={setTsumitateSearchInput}
-                        placeholder={t("eligibility.tsumitate_picker_search")}
+                        value={nisaPickerSearch}
+                        onValueChange={setNisaPickerSearch}
+                        placeholder={t("eligibility.nisa_picker_search")}
                       />
                       <CommandList {...commandListScrollFix}>
-                        {tsumitateEligibleAssetsQuery.isLoading ? (
+                        {nisaEligibleAssetsQuery.isLoading ? (
                           <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                            {t("eligibility.tsumitate_picker_loading")}
+                            {t("eligibility.nisa_picker_loading")}
                           </div>
                         ) : (
                           <>
-                            <CommandEmpty>{t("eligibility.tsumitate_picker_empty")}</CommandEmpty>
+                            <CommandEmpty>{t("eligibility.nisa_picker_empty")}</CommandEmpty>
                             <CommandGroup>
-                              {(tsumitateEligibleAssetsQuery.data?.items ?? []).map((item) => (
+                              {(nisaEligibleAssetsQuery.data?.items ?? []).map((item) => (
                                 <CommandItem
                                   key={`${item.ticker}-${item.fund_name}`}
                                   value={`${item.ticker} ${item.fund_name}`}
                                   onSelect={() => {
                                     setTicker(item.ticker.toUpperCase())
-                                    setCachedSelectedTsumitateAsset(item)
-                                    setTsumitateSearchInput("")
+                                    setCachedSelectedNisaAsset(item)
+                                    setNisaPickerSearch("")
                                     setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
                                     setInsufficientBalance(null)
-                                    setTsumitatePickerOpen(false)
+                                    setNisaPickerOpen(false)
                                   }}
                                 >
                                   <Check
@@ -783,12 +821,19 @@ export function AddTransactionSheet({
                                           <p className="truncate text-xs font-medium">
                                             {item.fund_name || item.ticker}
                                           </p>
-                                          <p className="text-[11px] text-muted-foreground">
-                                            {item.ticker}
-                                            {item.trust_fee_pct != null
-                                              ? ` · ${t("eligibility.tsumitate_trust_fee_label")}: ${item.trust_fee_pct.toFixed(3)}%`
-                                              : ""}
-                                          </p>
+                                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <span>
+                                              {item.ticker}
+                                              {item.trust_fee_pct != null
+                                                ? ` · ${t("eligibility.nisa_trust_fee_label")}: ${item.trust_fee_pct.toFixed(3)}%`
+                                                : ""}
+                                            </span>
+                                            {selectedWrapper === "nisa_growth" && item.asset_type ? (
+                                              <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                                                {t(`nisa.eligible.asset_type.${item.asset_type}`)}
+                                              </Badge>
+                                            ) : null}
+                                          </div>
                                         </div>
                                       </TooltipTrigger>
                                       {item.fund_name ? (
@@ -804,9 +849,9 @@ export function AddTransactionSheet({
                           </>
                         )}
                       </CommandList>
-                      {!tsumitateEligibleAssetsQuery.isLoading && (tsumitateEligibleAssetsQuery.data?.items?.length ?? 0) > 0 ? (
+                      {!nisaEligibleAssetsQuery.isLoading && (nisaEligibleAssetsQuery.data?.items?.length ?? 0) > 0 ? (
                         <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
-                          {t("eligibility.tsumitate_picker_limit_hint")}
+                          {t("eligibility.nisa_picker_limit_hint")}
                         </p>
                       ) : null}
                     </Command>
@@ -825,9 +870,11 @@ export function AddTransactionSheet({
                   className="text-xs"
                 />
               )}
-              {shouldShowTsumitatePicker ? (
+              {shouldShowNisaPicker ? (
                 <p className="text-[11px] text-muted-foreground">
-                  {t("eligibility.tsumitate_picker_hint")}
+                  {selectedWrapper === "nisa_growth"
+                    ? t("eligibility.nisa_picker_hint_growth")
+                    : t("eligibility.nisa_picker_hint_tsumitate")}
                 </p>
               ) : null}
               {transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) ? (

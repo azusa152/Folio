@@ -6900,6 +6900,28 @@
             }
           },
           {
+            "name": "asset_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mutual_fund",
+                    "etf",
+                    "stock",
+                    "reit"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Type"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,

@@ -42,6 +42,9 @@ from domain.entities import (
     UserTelegramSettings,
 )
 from domain.enums import StockCategory
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ===========================================================================
 # Stock Repository
@@ -1681,6 +1684,7 @@ def find_eligible_assets(
     wrapper: str,
     broker: str | None = None,
     search: str | None = None,
+    asset_type: str | None = None,
     limit: int = 50,
 ) -> list[EligibleAsset]:
     """Search active eligible assets with optional broker/text filters."""
@@ -1688,6 +1692,7 @@ def find_eligible_assets(
         wrapper=wrapper,
         broker=broker,
         search=search,
+        asset_type=asset_type,
     )
     stmt = stmt.order_by(EligibleAsset.ticker).limit(limit)
     return list(session.exec(stmt).all())
@@ -1698,12 +1703,14 @@ def count_eligible_assets(
     wrapper: str,
     broker: str | None = None,
     search: str | None = None,
+    asset_type: str | None = None,
 ) -> int:
     """Count active eligible assets with optional broker/text filters."""
     stmt = _build_eligible_assets_stmt(
         wrapper=wrapper,
         broker=broker,
         search=search,
+        asset_type=asset_type,
     )
     count_stmt = select(func.count()).select_from(stmt.subquery())
     count_result = session.exec(count_stmt).one()
@@ -1715,6 +1722,7 @@ def _build_eligible_assets_stmt(
     wrapper: str,
     broker: str | None = None,
     search: str | None = None,
+    asset_type: str | None = None,
 ):
     """Build base eligible-assets query with optional filters."""
     stmt = select(EligibleAsset).where(
@@ -1725,6 +1733,9 @@ def _build_eligible_assets_stmt(
         stmt = stmt.where(
             or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
         )
+    normalized_asset_type = asset_type.strip().lower() if asset_type else ""
+    if normalized_asset_type:
+        stmt = stmt.where(EligibleAsset.asset_type == normalized_asset_type)
     normalized_search_raw = search.strip() if search else ""
     if normalized_search_raw:
         normalized_search = unicodedata.normalize("NFKC", normalized_search_raw).lower()
@@ -1748,6 +1759,18 @@ def upsert_eligible_assets(
     autocommit: bool = True,
 ) -> dict[str, int]:
     """Idempotent bulk upsert and deactivate-missing for eligible assets."""
+    _CANONICAL_ASSET_TYPES = {"mutual_fund", "etf", "stock", "reit"}
+
+    def _canonical_asset_type(raw: Any) -> str:
+        normalized = str(raw or "mutual_fund").strip().lower() or "mutual_fund"
+        if normalized not in _CANONICAL_ASSET_TYPES:
+            logger.warning(
+                "upsert_eligible_assets: unknown asset_type %r — defaulting to 'mutual_fund'",
+                raw,
+            )
+            return "mutual_fund"
+        return normalized
+
     # Deduplicate by ticker before processing; last occurrence wins.
     deduped: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -1759,8 +1782,7 @@ def upsert_eligible_assets(
             "fund_name": unicodedata.normalize(
                 "NFKC", str(row.get("fund_name", "")).strip()
             ),
-            "asset_type": str(row.get("asset_type", "mutual_fund")).strip()
-            or "mutual_fund",
+            "asset_type": _canonical_asset_type(row.get("asset_type")),
             "trust_fee_pct": row.get("trust_fee_pct"),
             "isin_code": row.get("isin_code"),
         }

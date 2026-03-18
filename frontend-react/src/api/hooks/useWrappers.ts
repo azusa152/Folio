@@ -13,6 +13,8 @@ import type {
   RestorationForecastResponse,
 } from "@/api/types/wrapper"
 
+type EligibleAssetType = "mutual_fund" | "etf" | "stock" | "reit"
+
 export function useWrapperQuota(enabled = true) {
   return useQuery<AllQuotasResponse>({
     queryKey: ["wrapper-quota"],
@@ -72,12 +74,14 @@ export function useEligibleAssets(
   options?: {
     broker?: string
     search?: string
+    assetType?: EligibleAssetType
     limit?: number
     enabled?: boolean
   },
 ) {
   const normalizedWrapper = (wrapper ?? "").trim().toLowerCase()
   const normalizedSearch = (options?.search ?? "").trim()
+  const normalizedAssetType = options?.assetType
   const limit = options?.limit ?? 50
   return useQuery<EligibleAssetsResponse>({
     queryKey: [
@@ -85,6 +89,7 @@ export function useEligibleAssets(
       normalizedWrapper,
       options?.broker ?? "",
       normalizedSearch,
+      normalizedAssetType,
       limit,
     ],
     queryFn: async () => {
@@ -94,6 +99,7 @@ export function useEligibleAssets(
           query: {
             broker: options?.broker || undefined,
             search: normalizedSearch || undefined,
+            asset_type: normalizedAssetType || undefined,
             limit,
           },
         },
