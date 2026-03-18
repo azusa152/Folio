@@ -20,11 +20,20 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 _REQUEST_TIMEOUT = 30.0
+_MAX_DOWNLOAD_RETRIES = 2
+
+
+def _is_ssl_error(exc: Exception) -> bool:
+    return isinstance(exc, httpx.TransportError) and "SSL" in str(exc).upper()
+
+
+def _normalize_header_key(raw: str) -> str:
+    return raw.strip().lstrip("\ufeff").replace("（", "(").replace("）", ")")
 
 
 def _parse_date(raw: str) -> date | None:
-    """Parse YYYY/MM/DD or YYYY-MM-DD to a date object."""
-    for fmt in ("%Y/%m/%d", "%Y-%m-%d"):
+    """Parse YYYY/MM/DD, YYYY-MM-DD, or YYYY年MM月DD日 to a date object."""
+    for fmt in ("%Y/%m/%d", "%Y-%m-%d", "%Y年%m月%d日"):
         try:
             return datetime.strptime(raw.strip(), fmt).date()
         except ValueError:
@@ -51,17 +60,35 @@ def fetch_fund_nav_csv(fund_code: str, isin_code: str) -> list[dict] | None:
     Returns [] when downloaded but no parseable NAV rows are found.
     """
     params = {"isinCd": isin_code, "associFundCd": fund_code}
-    try:
-        with httpx.Client(timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
-            resp = client.get(settings.TOUSHIN_LIB_CSV_URL, params=params)
-            resp.raise_for_status()
-    except Exception as exc:
-        logger.warning(
-            "toushin-lib CSV download failed for %s/%s: %s",
-            fund_code,
-            isin_code,
-            exc,
-        )
+    resp: httpx.Response | None = None
+    for attempt in range(1, _MAX_DOWNLOAD_RETRIES + 1):
+        try:
+            with httpx.Client(
+                timeout=_REQUEST_TIMEOUT, follow_redirects=True
+            ) as client:
+                resp = client.get(settings.TOUSHIN_LIB_CSV_URL, params=params)
+                resp.raise_for_status()
+            break
+        except Exception as exc:
+            if _is_ssl_error(exc) and attempt < _MAX_DOWNLOAD_RETRIES:
+                logger.warning(
+                    "toushin-lib CSV SSL error for %s/%s (attempt %d/%d), retrying: %s",
+                    fund_code,
+                    isin_code,
+                    attempt,
+                    _MAX_DOWNLOAD_RETRIES,
+                    exc,
+                )
+                continue
+            logger.warning(
+                "toushin-lib CSV download failed for %s/%s: %s",
+                fund_code,
+                isin_code,
+                exc,
+            )
+            return None
+
+    if resp is None:
         return None
 
     try:
@@ -75,7 +102,7 @@ def fetch_fund_nav_csv(fund_code: str, isin_code: str) -> list[dict] | None:
 
     for csv_row in reader:
         if header is None:
-            header = [c.strip() for c in csv_row]
+            header = [_normalize_header_key(c) for c in csv_row]
             continue
         if len(csv_row) < len(header):
             continue
@@ -96,10 +123,13 @@ def fetch_fund_nav_csv(fund_code: str, isin_code: str) -> list[dict] | None:
         )
 
     if not rows:
+        first_chars = text[:300].replace("\r", "")
         logger.warning(
-            "toushin-lib CSV returned 0 parseable NAV rows for %s/%s.",
+            "toushin-lib CSV returned 0 parseable NAV rows for %s/%s. "
+            "First 300 chars: %s",
             fund_code,
             isin_code,
+            first_chars,
         )
         return []
 
