@@ -61,6 +61,7 @@ export function AccountsTab({
   const [accountType, setAccountType] = useState<(typeof ACCOUNT_TYPES)[number]>("brokerage")
   const [taxWrapper, setTaxWrapper] = useState<TaxWrapperType | null>(null)
   const [currency, setCurrency] = useState("USD")
+  const [market, setMarket] = useState("")
   const [institution, setInstitution] = useState("")
   const [note, setNote] = useState("")
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
@@ -119,6 +120,7 @@ export function AccountsTab({
     setAccountType("brokerage")
     setTaxWrapper(null)
     setCurrency("USD")
+    setMarket("")
     setInstitution("")
     setNote("")
   }
@@ -135,6 +137,7 @@ export function AccountsTab({
     account_type: string
     tax_wrapper?: string | null
     currency: string
+    market?: string | null
     institution: string
     note: string
   }) => {
@@ -152,6 +155,7 @@ export function AccountsTab({
         : null,
     )
     setCurrency(account.currency || "USD")
+    setMarket(account.market || "")
     setInstitution(account.institution || "")
     setNote(account.note || "")
     setFormOpen(true)
@@ -163,12 +167,14 @@ export function AccountsTab({
       return
     }
 
+    const trimmedMarket = market.trim().toUpperCase()
     const payload = {
       name: name.trim(),
       broker: broker.trim(),
       account_type: accountType,
       tax_wrapper: taxWrapper,
       currency: currency.trim().toUpperCase() || "USD",
+      market: trimmedMarket || null,
       institution: institution.trim(),
       note: note.trim(),
     }
@@ -346,6 +352,13 @@ export function AccountsTab({
               value={currency}
               onChange={(event) => setCurrency(event.target.value.toUpperCase())}
               placeholder={t("accounts.form.currency")}
+              className="text-xs"
+            />
+            <Input
+              aria-label={t("accounts.form.market")}
+              value={market}
+              onChange={(event) => setMarket(event.target.value.toUpperCase())}
+              placeholder={t("accounts.form.market")}
               className="text-xs"
             />
             <Input

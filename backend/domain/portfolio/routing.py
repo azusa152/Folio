@@ -14,6 +14,7 @@ class RoutingSuggestion:
     wrapper: str
     amount: float
     reason: str  # i18n key
+    account_id: int | None = None
 
 
 def suggest_purchase_routing(

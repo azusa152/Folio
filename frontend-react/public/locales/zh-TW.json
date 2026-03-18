@@ -787,7 +787,7 @@
     },
     "tab_teaser": {
       "risk_desc": "分析貨幣曝險，並對投資組合進行市場崩盤壓力測試。",
-      "actions_desc": "智慧賣出建議，最小化偏離與稅務影響。",
+      "actions_desc": "根據目前持倉與現金餘額提供的智慧提領規劃。",
       "show_details": "顯示詳情",
       "hide_details": "隱藏詳情"
     },
@@ -1997,6 +1997,7 @@
       "broker": "券商",
       "account_type": "帳戶類型",
       "currency": "基準幣別",
+      "market": "市場（自動偵測）",
       "institution": "機構名稱（選填）",
       "note": "備註（選填）",
       "save": "儲存",
@@ -2153,7 +2154,11 @@
       "eligible": "可投資產",
       "quota": "額度與狀態",
       "contributions": "提撥紀錄",
+      "actions": "操作",
       "data": "資料管理"
+    },
+    "actions": {
+      "empty": "找不到日本稅制帳戶。請先建立 JPY 的 NISA/iDeCo/特定口座後再使用此操作。"
     },
     "education": {
       "title": "NISA 額度說明",

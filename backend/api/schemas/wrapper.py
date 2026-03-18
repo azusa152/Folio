@@ -109,6 +109,7 @@ class RoutingSuggestionItem(BaseModel):
     wrapper: str
     amount: float
     reason: str
+    account_id: int | None = None
 
 
 class RoutingSuggestRequest(BaseModel):

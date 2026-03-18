@@ -466,6 +466,78 @@ def test_wrappers_suggest_routing_should_split_growth_and_tokutei(client: TestCl
     ]
     assert payload["suggestions"][0]["amount"] == 2_400_000.0
     assert payload["suggestions"][1]["amount"] == 600_000.0
+    assert payload["suggestions"][0]["account_id"] == growth_account_id
+
+
+def test_wrappers_suggest_routing_should_exclude_non_jpy_accounts(client: TestClient):
+    usd_account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "NISA Growth USD",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "tax_wrapper": "nisa_growth",
+            "currency": "USD",
+        },
+    )
+    assert usd_account_resp.status_code == 201
+
+    routing_resp = client.post(
+        "/wrappers/suggest-routing",
+        json={"ticker": "AAPL", "total_amount": 300_000.0},
+    )
+    assert routing_resp.status_code == 200
+    payload = routing_resp.json()
+    assert payload["suggestions"] == []
+
+
+def test_wrappers_suggest_routing_should_exclude_non_routing_wrappers(
+    client: TestClient,
+):
+    ippan_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Ippan JPY",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "tax_wrapper": "ippan",
+            "currency": "JPY",
+        },
+    )
+    assert ippan_resp.status_code == 201
+
+    routing_resp = client.post(
+        "/wrappers/suggest-routing",
+        json={"ticker": "AAPL", "total_amount": 300_000.0},
+    )
+    assert routing_resp.status_code == 200
+    payload = routing_resp.json()
+    assert payload["suggestions"] == []
+
+
+def test_wrappers_suggest_routing_should_exclude_non_jp_market_accounts(
+    client: TestClient,
+):
+    non_jp_market_resp = client.post(
+        "/accounts",
+        json={
+            "name": "NISA Growth JPY US Market",
+            "broker": "SBI",
+            "account_type": "brokerage",
+            "tax_wrapper": "nisa_growth",
+            "currency": "JPY",
+            "market": "US",
+        },
+    )
+    assert non_jp_market_resp.status_code == 201
+
+    routing_resp = client.post(
+        "/wrappers/suggest-routing",
+        json={"ticker": "AAPL", "total_amount": 300_000.0},
+    )
+    assert routing_resp.status_code == 200
+    payload = routing_resp.json()
+    assert payload["suggestions"] == []
 
 
 def test_wrappers_detax_should_return_computed_tax_saving(

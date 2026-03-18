@@ -7370,6 +7370,18 @@
             "title": "Currency",
             "default": "USD"
           },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
+          },
           "institution": {
             "type": "string",
             "maxLength": 200,
@@ -7425,6 +7437,17 @@
           "currency": {
             "type": "string",
             "title": "Currency"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
           },
           "institution": {
             "type": "string",
@@ -7556,6 +7579,18 @@
               }
             ],
             "title": "Currency"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
           },
           "institution": {
             "anyOf": [
@@ -12124,6 +12159,17 @@
           "reason": {
             "type": "string",
             "title": "Reason"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           }
         },
         "type": "object",

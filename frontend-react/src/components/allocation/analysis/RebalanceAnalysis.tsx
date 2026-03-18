@@ -18,15 +18,11 @@ import { DriftChart } from "./DriftChart"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
 import { SectorHeatmap } from "./SectorHeatmap"
-import { AssetLocationViz } from "../wrappers/AssetLocationViz"
-import { TsumitateMigrationCard } from "../wrappers/TsumitateMigrationCard"
 
 interface Props {
   displayCurrency: string
   privacyMode: boolean
   enabled: boolean
-  onExecutePlacementSuggestion?: (ticker: string, targetWrapper: string) => void
-  onSetupTsumitateMigration?: (tickers: string[]) => void
 }
 
 type DrillSource = "category" | "geo" | "asset_class"
@@ -57,8 +53,6 @@ export function RebalanceAnalysis({
   displayCurrency,
   privacyMode,
   enabled,
-  onExecutePlacementSuggestion,
-  onSetupTsumitateMigration,
 }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
@@ -214,23 +208,6 @@ export function RebalanceAnalysis({
 
       {/* Drift chart */}
       <DriftChart categories={data.categories} />
-
-      {(data.wrapper_allocations?.length ?? 0) > 0 && (
-        <>
-          <hr className="border-border" />
-          <AssetLocationViz
-            taxEfficiencyScore={data.tax_efficiency_score}
-            wrapperAllocations={data.wrapper_allocations}
-            placementSuggestions={data.placement_suggestions}
-            taxSavingsEstimate={data.tax_savings_estimate}
-            onExecuteSuggestion={onExecutePlacementSuggestion}
-          />
-          <TsumitateMigrationCard
-            migration={data.tsumitate_migration}
-            onSetup={onSetupTsumitateMigration}
-          />
-        </>
-      )}
 
       <hr className="border-border" />
 

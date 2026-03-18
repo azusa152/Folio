@@ -3,6 +3,7 @@ import { Lightbulb, Sparkles } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useDeTaxSuggestions, useSuggestRouting } from "@/api/hooks/useWrappers"
+import { getPreferredWrapperAccountMap } from "@/lib/wrapperAccounts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,15 +12,20 @@ interface SmartActionCardsProps {
   enabled?: boolean
   onApplyRouting?: (ticker: string, accountId: number, currency: string) => void
   onReviewDetax?: (accountId: number, currency: string) => void
+  forceHideActions?: boolean
+  emptyHintKey?: string
 }
 
 export function SmartActionCards({
   enabled = true,
   onApplyRouting,
   onReviewDetax,
+  forceHideActions = false,
+  emptyHintKey,
 }: SmartActionCardsProps) {
   const { t } = useTranslation()
-  const { data: accounts } = useAccounts(enabled)
+  const queryEnabled = enabled && !forceHideActions
+  const { data: accounts } = useAccounts(queryEnabled)
   const [ticker, setTicker] = useState("")
   const [amount, setAmount] = useState("")
   const [whyOpen, setWhyOpen] = useState(false)
@@ -28,23 +34,14 @@ export function SmartActionCards({
   const routingQuery = useSuggestRouting(
     ticker,
     Number.isFinite(amountNumber) ? amountNumber : null,
-    enabled,
+    queryEnabled,
   )
-  const detaxQuery = useDeTaxSuggestions(enabled)
+  const detaxQuery = useDeTaxSuggestions(queryEnabled)
 
-  const accountByWrapper = useMemo(() => {
-    const map = new Map<string, { id: number; currency: string }>()
-    for (const account of accounts ?? []) {
-      if (account.id == null) continue
-      const wrapper = (account.tax_wrapper ?? "").trim().toLowerCase()
-      if (!wrapper || map.has(wrapper)) continue
-      map.set(wrapper, {
-        id: account.id,
-        currency: (account.currency || "USD").toUpperCase(),
-      })
-    }
-    return map
-  }, [accounts])
+  const accountByWrapper = useMemo(
+    () => getPreferredWrapperAccountMap(accounts),
+    [accounts],
+  )
   const accountById = useMemo(() => {
     const map = new Map<number, string>()
     for (const account of accounts ?? []) {
@@ -64,6 +61,18 @@ export function SmartActionCards({
     ideco: "bg-blue-500",
     tokutei: "bg-slate-500",
     ippan: "bg-zinc-500",
+  }
+
+  if (forceHideActions) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-xs text-muted-foreground">
+            {t(emptyHintKey ?? "nisa.actions.empty")}
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -116,7 +125,12 @@ export function SmartActionCards({
                 {t("smart_actions.why_toggle")}
               </button>
               {routingSuggestions.map((item, index) => {
-                const suggestionAccount = accountByWrapper.get(item.wrapper)
+                const suggestionAccount = item.account_id != null
+                  ? {
+                    id: item.account_id,
+                    currency: accountById.get(item.account_id) ?? "JPY",
+                  }
+                  : accountByWrapper.get(item.wrapper)
                 return (
                   <div
                     key={`${item.wrapper}-${index}`}

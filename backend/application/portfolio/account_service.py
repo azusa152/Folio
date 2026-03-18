@@ -14,7 +14,9 @@ from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
 from application.portfolio.transaction_service import cleanup_account_transactions
 from domain.constants import (
+    CURRENCY_REGION_MAP,
     DEFAULT_ACCOUNT_NAME,
+    DEFAULT_MARKET,
     DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
     ERROR_INVALID_INPUT,
@@ -43,6 +45,7 @@ def _acct_to_dict(acct: Account) -> dict:
         "account_type": acct.account_type,
         "tax_wrapper": acct.tax_wrapper,
         "currency": acct.currency,
+        "market": acct.market,
         "institution": acct.institution,
         "note": acct.note,
         "is_active": acct.is_active,
@@ -82,6 +85,18 @@ def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
     return normalized
 
 
+def _normalize_market(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def _infer_market_from_currency(currency: str | None) -> str:
+    normalized_currency = (currency or "USD").strip().upper() or "USD"
+    return CURRENCY_REGION_MAP.get(normalized_currency, DEFAULT_MARKET)
+
+
 # ---------------------------------------------------------------------------
 # Service functions
 # ---------------------------------------------------------------------------
@@ -105,6 +120,9 @@ def create_account(session: Session, data: dict, lang: str) -> dict:
 
     normalized_currency = (account.currency or "USD").upper().strip() or "USD"
     account.currency = normalized_currency
+    account.market = _normalize_market(account.market) or _infer_market_from_currency(
+        normalized_currency
+    )
     cash_holding = Holding(
         user_id=account.user_id or DEFAULT_USER_ID,
         ticker=normalized_currency,
@@ -159,6 +177,17 @@ def update_account(session: Session, account_id: int, data: dict, lang: str) -> 
         normalized_data["tax_wrapper"] = _normalize_tax_wrapper(
             normalized_data.get("tax_wrapper"), lang
         )
+    explicit_market = "market" in normalized_data
+    if explicit_market:
+        normalized_data["market"] = _normalize_market(normalized_data.get("market"))
+    if "currency" in normalized_data and normalized_data["currency"] is not None:
+        normalized_data["currency"] = (
+            str(normalized_data["currency"]).strip().upper() or "USD"
+        )
+        if not explicit_market:
+            normalized_data["market"] = _infer_market_from_currency(
+                normalized_data["currency"]
+            )
     for key, value in normalized_data.items():
         if hasattr(account, key) and key not in ("id", "user_id", "created_at"):
             setattr(account, key, value)

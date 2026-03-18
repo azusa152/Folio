@@ -128,6 +128,22 @@ def _run_migrations() -> None:
         "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
         # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
         "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
+        # Account: 新增市場欄位（US / JP / TW / HK ...）
+        "ALTER TABLE account ADD COLUMN market VARCHAR;",
+        # Account: 依帳戶幣別回填市場（既有資料遷移）
+        (
+            "UPDATE account SET market = CASE UPPER(COALESCE(currency, 'USD')) "
+            "WHEN 'JPY' THEN 'JP' "
+            "WHEN 'TWD' THEN 'TW' "
+            "WHEN 'HKD' THEN 'HK' "
+            "WHEN 'EUR' THEN 'EU' "
+            "WHEN 'GBP' THEN 'UK' "
+            "WHEN 'CNY' THEN 'CN' "
+            "WHEN 'SGD' THEN 'SG' "
+            "WHEN 'THB' THEN 'TH' "
+            "ELSE 'US' END "
+            "WHERE market IS NULL OR TRIM(market) = '';"
+        ),
         # Contribution ledger: append-only quota accounting for NISA/iDeCo
         (
             "CREATE TABLE IF NOT EXISTS contributionledgerentry ("

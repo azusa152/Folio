@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from domain.entities import Transaction
 
 ROUTING_WRAPPERS = ("nisa_growth", "nisa_tsumitate", "ideco")
+ROUTING_WRAPPERS_WITH_OVERFLOW = ("nisa_growth", "nisa_tsumitate", "ideco", "tokutei")
 STOCK_INCREASE_TYPES = {
     TransactionType.BUY,
     TransactionType.OPENING_BALANCE,
@@ -34,6 +35,13 @@ STOCK_DECREASE_TYPES = {
 
 def _is_cash_ticker(ticker: str, currency: str) -> bool:
     return ticker.strip().upper() == currency.strip().upper()
+
+
+def _is_japanese_routing_account(account: Any) -> bool:
+    """Return True when an account is eligible for JP wrapper routing."""
+    wrapper = (account.tax_wrapper or "").strip().lower()
+    market = (account.market or "").strip().upper()
+    return wrapper in ROUTING_WRAPPERS_WITH_OVERFLOW and market == "JP"
 
 
 def _resolve_unit_price(txn: Transaction) -> float | None:
@@ -146,11 +154,27 @@ def suggest_transaction_routing(
     if not normalized_ticker or total_amount <= 0:
         return []
 
-    accounts = [
+    all_accounts = [
         account
         for account in repo.find_all_accounts(session, active_only=True)
         if account.user_id == user_id
     ]
+    accounts = [
+        account for account in all_accounts if _is_japanese_routing_account(account)
+    ]
+    if not accounts:
+        return []
+
+    wrapper_account_id: dict[str, int] = {}
+    for account in accounts:
+        if account.id is None:
+            continue
+        wrapper = (account.tax_wrapper or "").strip().lower()
+        existing = wrapper_account_id.get(wrapper)
+        account_id = int(account.id)
+        if existing is None or account_id < existing:
+            wrapper_account_id[wrapper] = account_id
+
     wrappers_present = {
         (account.tax_wrapper or "").strip().lower()
         for account in accounts
@@ -206,12 +230,21 @@ def suggest_transaction_routing(
         )
         eligibility[wrapper] = eligibility_result.eligible
 
-    return suggest_purchase_routing(
+    base_suggestions = suggest_purchase_routing(
         ticker=normalized_ticker,
         total_amount=float(total_amount),
         quotas=quotas,
         eligibility=eligibility,
     )
+    return [
+        RoutingSuggestion(
+            wrapper=item.wrapper,
+            amount=item.amount,
+            reason=item.reason,
+            account_id=wrapper_account_id.get(item.wrapper),
+        )
+        for item in base_suggestions
+    ]
 
 
 def get_detax_suggestions(

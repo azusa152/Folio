@@ -787,7 +787,7 @@
     },
     "tab_teaser": {
       "risk_desc": "通貨エクスポージャーを分析し、市場の暴落に対するポートフォリオのストレステストを行います。",
-      "actions_desc": "乖離(ドリフト)と税負担を最小化するスマートな引き出し提案です。",
+      "actions_desc": "現在の保有と現金残高に基づくスマートな引き出し計画です。",
       "show_details": "詳細を表示",
       "hide_details": "詳細を非表示"
     },
@@ -1997,6 +1997,7 @@
       "broker": "証券会社",
       "account_type": "口座タイプ",
       "currency": "基準通貨",
+      "market": "市場（自動判定）",
       "institution": "金融機関名 (任意)",
       "note": "メモ (任意)",
       "save": "保存",
@@ -2153,7 +2154,11 @@
       "eligible": "対象商品一覧",
       "quota": "利用枠と状況",
       "contributions": "拠出履歴",
+      "actions": "アクション",
       "data": "データ管理"
+    },
+    "actions": {
+      "empty": "日本向けの税制口座が見つかりません。まずJPY建てのNISA/iDeCo/特定口座を作成してください。"
     },
     "education": {
       "title": "NISA枠の基本",

@@ -363,6 +363,7 @@ def suggest_routing(
                 "wrapper": item.wrapper,
                 "amount": item.amount,
                 "reason": item.reason,
+                "account_id": item.account_id,
             }
             for item in suggestions
         ],

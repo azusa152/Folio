@@ -787,7 +787,7 @@
     },
     "tab_teaser": {
       "risk_desc": "Analyze currency exposure and stress test your portfolio against market crashes.",
-      "actions_desc": "Smart withdrawal recommendations that minimize drift and tax impact.",
+      "actions_desc": "Smart withdrawal planning based on your current positions and cash balances.",
       "show_details": "Show details",
       "hide_details": "Hide details"
     },
@@ -1997,6 +1997,7 @@
       "broker": "Broker",
       "account_type": "Account type",
       "currency": "Base currency",
+      "market": "Market (auto-detected)",
       "institution": "Institution (optional)",
       "note": "Note (optional)",
       "save": "Save",
@@ -2153,7 +2154,11 @@
       "eligible": "Eligible Assets",
       "quota": "Quota & Status",
       "contributions": "Contributions",
+      "actions": "Actions",
       "data": "Data Management"
+    },
+    "actions": {
+      "empty": "No Japanese wrapper accounts found. Create a JPY NISA/iDeCo/Tokutei account first to use Actions."
     },
     "education": {
       "title": "How NISA limits work",

@@ -23,7 +23,6 @@ import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
-import { SmartActionCards } from "@/components/allocation/wrappers/SmartActionCards"
 
 type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 
@@ -148,17 +147,6 @@ export default function Allocation() {
 
   const hasSetup = holdings.length > 0
   const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
-  const accountByWrapper = new Map<string, { id: number; currency: string }>()
-  for (const account of accounts ?? []) {
-    if (account.id == null) continue
-    const wrapper = (account.tax_wrapper ?? "").trim().toLowerCase()
-    if (!wrapper || accountByWrapper.has(wrapper)) continue
-    accountByWrapper.set(wrapper, {
-      id: account.id,
-      currency: (account.currency || "USD").toUpperCase(),
-    })
-  }
-
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
@@ -251,26 +239,6 @@ export default function Allocation() {
             displayCurrency={displayCurrency}
             privacyMode={privacyMode}
             enabled={activeTab === "portfolio"}
-            onExecutePlacementSuggestion={(ticker, targetWrapper) => {
-              const target = accountByWrapper.get(targetWrapper)
-              if (!target) return
-              openTransactionSheet({
-                ticker,
-                accountId: target.id,
-                currency: target.currency,
-                transactionType: "BUY",
-              })
-            }}
-            onSetupTsumitateMigration={(tickers) => {
-              const target = accountByWrapper.get("nisa_tsumitate")
-              if (!target || tickers.length === 0) return
-              openTransactionSheet({
-                ticker: tickers[0],
-                accountId: target.id,
-                currency: target.currency,
-                transactionType: "BUY",
-              })
-            }}
           />
         </TabsContent>
 
@@ -306,22 +274,6 @@ export default function Allocation() {
         <TabsContent value="actions" className="mt-4 space-y-6">
           {actionsExpanded ? (
             <>
-              <SmartActionCards
-                enabled={activeTab === "actions"}
-                onApplyRouting={(ticker, accountId, currency) =>
-                  openTransactionSheet({
-                    ticker,
-                    accountId,
-                    currency,
-                    transactionType: "BUY",
-                  })}
-                onReviewDetax={(accountId, currency) =>
-                  openTransactionSheet({
-                    accountId,
-                    currency,
-                    transactionType: "SELL",
-                  })}
-              />
               <SmartWithdrawal privacyMode={privacyMode} />
               <Button size="sm" variant="ghost" className="text-xs gap-1.5" onClick={() => setActionsExpanded(false)}>
                 <ChevronDown className="h-3.5 w-3.5" />

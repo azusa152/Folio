@@ -19,6 +19,7 @@ def test_account_crud(client: TestClient):
     assert data["account_type"] == "brokerage"
     assert data["tax_wrapper"] is None
     assert data["currency"] == "USD"
+    assert data["market"] == "US"
     assert data["is_active"] is True
     acct_id = data["id"]
 
@@ -151,6 +152,7 @@ def test_account_should_persist_tax_wrapper(client: TestClient):
     assert create_resp.status_code == 201
     created = create_resp.json()
     assert created["tax_wrapper"] == "nisa_growth"
+    assert created["market"] == "JP"
 
     account_id = created["id"]
     update_resp = client.put(
@@ -166,6 +168,69 @@ def test_account_should_persist_tax_wrapper(client: TestClient):
     assert list_resp.status_code == 200
     listed = next(item for item in list_resp.json() if item["id"] == account_id)
     assert listed["tax_wrapper"] == "tokutei"
+
+
+def test_account_should_allow_market_override(client: TestClient):
+    create_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Cross-border",
+            "broker": "Demo Broker",
+            "account_type": "brokerage",
+            "currency": "JPY",
+            "market": "US",
+        },
+    )
+    assert create_resp.status_code == 201
+    created = create_resp.json()
+    assert created["market"] == "US"
+
+
+def test_account_update_currency_should_re_infer_market(client: TestClient):
+    create_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Re-infer Market",
+            "broker": "Demo Broker",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert create_resp.status_code == 201
+    account_id = create_resp.json()["id"]
+    assert create_resp.json()["market"] == "US"
+
+    update_resp = client.put(
+        f"/accounts/{account_id}",
+        json={"currency": "JPY"},
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["market"] == "JP"
+
+
+def test_account_update_currency_should_not_override_explicit_market(
+    client: TestClient,
+):
+    create_resp = client.post(
+        "/accounts",
+        json={
+            "name": "Explicit Market",
+            "broker": "Demo Broker",
+            "account_type": "brokerage",
+            "currency": "USD",
+            "market": "HK",
+        },
+    )
+    assert create_resp.status_code == 201
+    account_id = create_resp.json()["id"]
+    assert create_resp.json()["market"] == "HK"
+
+    update_resp = client.put(
+        f"/accounts/{account_id}",
+        json={"currency": "JPY", "market": "HK"},
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["market"] == "HK"
 
 
 def test_account_should_reject_invalid_tax_wrapper(client: TestClient):

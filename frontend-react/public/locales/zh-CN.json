@@ -787,7 +787,7 @@
     },
     "tab_teaser": {
       "risk_desc": "分析货币敞口，并对投资组合进行市场崩盘压力测试。",
-      "actions_desc": "智能卖出建议，最小化偏离与税务影响。",
+      "actions_desc": "基于当前持仓与现金余额的智能提领规划。",
       "show_details": "显示详情",
       "hide_details": "隐藏详情"
     },
@@ -1997,6 +1997,7 @@
       "broker": "券商",
       "account_type": "账户类型",
       "currency": "基准币种",
+      "market": "市场（自动检测）",
       "institution": "机构名称（选填）",
       "note": "备注（选填）",
       "save": "保存",
@@ -2153,7 +2154,11 @@
       "eligible": "可投资产",
       "quota": "额度与状态",
       "contributions": "缴款记录",
+      "actions": "操作",
       "data": "数据管理"
+    },
+    "actions": {
+      "empty": "未找到日本税务账户。请先创建 JPY 的 NISA/iDeCo/特定账户后再使用此操作。"
     },
     "education": {
       "title": "NISA 额度说明",

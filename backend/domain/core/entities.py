@@ -148,6 +148,10 @@ class Account(SQLModel, table=True):
         description="税制ラッパー種別（tokutei / nisa_tsumitate / nisa_growth / ideco / ippan）",
     )
     currency: str = Field(default="USD", description="帳戶基準幣別")
+    market: str | None = Field(
+        default=None,
+        description="帳戶主要市場代碼（例如 US / JP / TW / HK）",
+    )
     institution: str = Field(default="", description="金融機構全名（選填）")
     note: str = Field(default="", description="備註")
     is_active: bool = Field(default=True, description="是否啟用")
