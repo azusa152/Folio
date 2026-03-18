@@ -182,6 +182,7 @@ def check_eligibility_endpoint(
         "eligible": result.eligible,
         "reasons": result.reasons,
         "suggested_wrapper": result.suggested_wrapper,
+        "asset_type": result.asset_type,
     }
 
 

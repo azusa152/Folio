@@ -14,6 +14,7 @@ class EligibilityResult:
     eligible: bool
     reasons: list[str]
     suggested_wrapper: str | None = None
+    asset_type: str | None = None
 
 
 # Growth NISA exclusion flags.

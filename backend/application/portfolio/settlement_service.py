@@ -122,6 +122,7 @@ def settle_transaction(
                 },
             )
 
+    eligibility = None
     if (
         wrapper in ELIGIBILITY_CHECK_WRAPPERS
         and txn_type == TransactionType.BUY
@@ -143,6 +144,19 @@ def settle_transaction(
                     "suggested_wrapper": eligibility.suggested_wrapper,
                 },
             )
+
+    if (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_tsumitate"
+        and not is_cash_ticker
+    ) or (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_growth"
+        and not is_cash_ticker
+        and eligibility is not None
+        and eligibility.asset_type == "mutual_fund"
+    ):
+        txn_data["category"] = StockCategory.MUTUAL_FUND.value
 
     restoration_amount = 0.0
 
@@ -422,6 +436,13 @@ def _is_cash_ticker(ticker: str, currency: str) -> bool:
 def _infer_category(session: Session, txn_data: dict) -> StockCategory:
     """Infer category by radar stock first, eligible fund master, then payload fallback."""
     ticker = str(txn_data.get("ticker", "")).upper().strip()
+    requested = str(txn_data.get("category", "")).strip()
+    if (
+        ticker
+        and requested == StockCategory.MUTUAL_FUND.value
+        and repo.is_active_eligible_mutual_fund(session, ticker)
+    ):
+        return StockCategory.MUTUAL_FUND
     if ticker:
         stock = repo.find_stock_by_ticker(session, ticker)
         if stock:

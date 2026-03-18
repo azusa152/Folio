@@ -8503,6 +8503,17 @@
               }
             ],
             "title": "Suggested Wrapper"
+          },
+          "asset_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Type"
           }
         },
         "type": "object",

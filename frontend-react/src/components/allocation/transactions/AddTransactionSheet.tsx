@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Building2, Check, ChevronsUpDown } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import client from "@/api/client"
 import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
-import { useEligibleAssets, useSuggestRouting, useWrapperEligibility } from "@/api/hooks/useWrappers"
+import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
@@ -167,6 +167,17 @@ export function AddTransactionSheet({
     shouldCheckEligibility,
   )
   const eligibility = eligibilityQuery.data
+  const shouldShowQuotaSummary =
+    open &&
+    transactionType === "BUY" &&
+    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+  const wrapperQuotaQuery = useWrapperQuota(shouldShowQuotaSummary)
+  const selectedQuota = shouldShowQuotaSummary ? wrapperQuotaQuery.data?.quotas?.[selectedWrapper] : undefined
+  const forcedCategory = useMemo<StockCategory | null>(() => {
+    if (selectedWrapper === "nisa_tsumitate") return "Mutual_Fund"
+    if (eligibility?.asset_type === "mutual_fund") return "Mutual_Fund"
+    return null
+  }, [eligibility?.asset_type, selectedWrapper])
   const suggestedAccount = useMemo(() => {
     const suggestedWrapper = eligibility?.suggested_wrapper
     if (!suggestedWrapper) return null
@@ -203,6 +214,11 @@ export function AddTransactionSheet({
     transactionType === "BUY" &&
     splitRoutingPlan.length >= 2 &&
     splitRoutingPlan.every((item) => item.account != null)
+
+  useEffect(() => {
+    if (!open || isCashMovement || !isNewToRadar || !forcedCategory) return
+    setCategory((prev) => (prev === forcedCategory ? prev : forcedCategory))
+  }, [forcedCategory, isCashMovement, isNewToRadar, open])
 
   const holdingOptions = useMemo(
     () =>
@@ -513,6 +529,24 @@ export function AddTransactionSheet({
                 })}
               </p>
             ) : null}
+            {shouldShowQuotaSummary ? (
+              <p className="text-[11px] text-muted-foreground">
+                {wrapperQuotaQuery.isLoading
+                  ? t("common.loading")
+                  : selectedQuota
+                    ? t("transactions.form.nisa_quota_summary", {
+                        wrapper: t(`wrapper.${selectedWrapper}`),
+                        remaining: selectedQuota.wrapper_annual_remaining.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        }),
+                        annual: (selectedQuota.wrapper_annual_used + selectedQuota.wrapper_annual_remaining).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 0 },
+                        ),
+                      })
+                    : t("transactions.form.nisa_quota_unavailable")}
+              </p>
+            ) : null}
             {transactionType === "BUY" && hasNoAccounts ? (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-2 space-y-1">
                 <p className="text-[11px] text-amber-800 dark:text-amber-300">
@@ -806,7 +840,11 @@ export function AddTransactionSheet({
                 className="text-xs"
               />
               <p className="text-xs font-medium pt-2">{t("transactions.form.category")}</p>
-              <Select value={category} onValueChange={(value) => setCategory(value as StockCategory)}>
+              <Select
+                value={forcedCategory ?? category}
+                onValueChange={(value) => setCategory(value as StockCategory)}
+                disabled={forcedCategory != null}
+              >
                 <SelectTrigger aria-label={t("transactions.form.category")} className="text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -818,6 +856,9 @@ export function AddTransactionSheet({
                   ))}
                 </SelectContent>
               </Select>
+              {forcedCategory ? (
+                <p className="text-[11px] text-muted-foreground">{t("transactions.form.mutual_fund_category_hint")}</p>
+              ) : null}
             </div>
           ) : null}
 

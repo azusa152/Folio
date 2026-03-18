@@ -913,6 +913,82 @@ def test_nisa_growth_buy_should_reject_when_not_in_growth_approved_list(
     assert exc.value.detail["suggested_wrapper"] == "tokutei"
 
 
+def test_nisa_tsumitate_buy_should_force_mutual_fund_category(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="0331418A",
+        asset_type="mutual_fund",
+    )
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "0331418A",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "category": "Growth",
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    stock_holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "0331418A",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert stock_holding.category == StockCategory.MUTUAL_FUND
+
+
+def test_nisa_growth_buy_should_force_mutual_fund_category_for_mutual_fund_asset(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="01312179",
+        asset_type="mutual_fund",
+    )
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "01312179",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "category": "Growth",
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    stock_holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "01312179",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert stock_holding.category == StockCategory.MUTUAL_FUND
+
+
 def test_nisa_buy_and_sell_should_record_contribution_and_restoration(
     db_session: Session,
 ):

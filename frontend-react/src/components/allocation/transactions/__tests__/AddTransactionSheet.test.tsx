@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AddTransactionSheet } from "../AddTransactionSheet"
 
-const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState, wrapperState } = vi.hoisted(() => ({
+const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState, wrapperState, accountState } = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -14,6 +14,34 @@ const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState,
   },
   wrapperState: {
     eligibleItems: [] as Array<{ ticker: string; fund_name: string; trust_fee_pct?: number }>,
+    eligibility: undefined as
+      | {
+          ticker: string
+          wrapper: string
+          eligible: boolean
+          reasons: string[]
+          suggested_wrapper?: string
+          asset_type?: string
+        }
+      | undefined,
+    quota: undefined as
+      | {
+          year: number
+          as_of: string
+          restoration_policy: string
+          quotas: Record<
+            string,
+            {
+              wrapper_annual_remaining: number
+              wrapper_annual_used: number
+            }
+          >
+        }
+      | undefined,
+  },
+  accountState: {
+    accounts: [{ id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" }],
+    balances: [{ currency: "USD", balance: 500 }],
   },
 }))
 
@@ -46,20 +74,21 @@ vi.mock("@/api/hooks/useRadar", () => ({
 
 vi.mock("@/api/hooks/useAccounts", () => ({
   useAccounts: () => ({
-    data: [{ id: 7, name: "IB Main", broker: "Interactive Brokers" }],
+    data: accountState.accounts,
   }),
   useAccountCashBalances: () => ({
-    data: [{ currency: "USD", balance: 500 }],
+    data: accountState.balances,
   }),
 }))
 
 vi.mock("@/api/hooks/useWrappers", () => ({
-  useWrapperEligibility: () => ({ data: undefined, isLoading: false }),
+  useWrapperEligibility: () => ({ data: wrapperState.eligibility, isLoading: false }),
   useSuggestRouting: () => ({ data: undefined, isLoading: false }),
   useEligibleAssets: () => ({
     data: { items: wrapperState.eligibleItems },
     isLoading: false,
   }),
+  useWrapperQuota: () => ({ data: wrapperState.quota, isLoading: false }),
 }))
 
 describe("AddTransactionSheet", () => {
@@ -68,6 +97,10 @@ describe("AddTransactionSheet", () => {
     radarState.stocks = []
     radarState.isLoading = false
     wrapperState.eligibleItems = []
+    wrapperState.eligibility = undefined
+    wrapperState.quota = undefined
+    accountState.accounts = [{ id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" }]
+    accountState.balances = [{ currency: "USD", balance: 500 }]
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       value: vi.fn(),
       writable: true,
@@ -279,6 +312,70 @@ describe("AddTransactionSheet", () => {
     fireEvent.change(screen.getByLabelText("transactions.form.ticker"), { target: { value: "NVDA" } })
     expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("transactions.form.category")).not.toBeInTheDocument()
+  })
+
+  it("forces category to Mutual_Fund for tsumitate accounts", () => {
+    accountState.accounts = [{ id: 7, name: "IB NISA", broker: "SBI", tax_wrapper: "nisa_tsumitate" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="01312179" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    const categorySelect = screen.getByLabelText("transactions.form.category")
+    expect(categorySelect).toBeDisabled()
+    expect(screen.getByText("transactions.form.mutual_fund_category_hint")).toBeInTheDocument()
+  })
+
+  it("forces category to Mutual_Fund for growth mutual fund eligibility", () => {
+    accountState.accounts = [{ id: 7, name: "IB NISA", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibility = {
+      ticker: "01312179",
+      wrapper: "nisa_growth",
+      eligible: true,
+      reasons: [],
+      asset_type: "mutual_fund",
+    }
+
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="01312179" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
+
+    expect(mockMutate).toHaveBeenCalled()
+    const [payload] = mockMutate.mock.calls[0]
+    expect(payload.category).toBe("Mutual_Fund")
+  })
+
+  it("shows NISA quota summary during buy flow", () => {
+    accountState.accounts = [{ id: 7, name: "IB NISA", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.quota = {
+      year: 2026,
+      as_of: "2026-03-18",
+      restoration_policy: "next_year",
+      quotas: {
+        nisa_growth: {
+          wrapper_annual_remaining: 1_800_000,
+          wrapper_annual_used: 600_000,
+        },
+      },
+    }
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultTicker="AAPL" defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText("transactions.form.nisa_quota_summary")).toBeInTheDocument()
   })
 
 

@@ -47,7 +47,16 @@ def check_asset_eligibility(
                 eligible=False,
                 reasons=["eligibility.not_in_growth_approved_list"],
                 suggested_wrapper="tokutei",
+                asset_type=asset_type,
             )
+        matched_asset = repo.find_eligible_asset_by_ticker(
+            session=session,
+            wrapper=normalized_wrapper,
+            ticker=normalized_ticker,
+            broker=normalized_broker,
+        )
+        if matched_asset and matched_asset.asset_type:
+            asset_type = matched_asset.asset_type.strip().lower()
     elif normalized_wrapper == "ideco":
         broker_lineup = repo.find_eligible_tickers(
             session=session,
@@ -55,12 +64,18 @@ def check_asset_eligibility(
             broker=normalized_broker,
         )
 
-    return check_eligibility(
+    result = check_eligibility(
         ticker=normalized_ticker,
         wrapper=normalized_wrapper,
         asset_type=asset_type,
         approved_tickers=approved_tickers,
         broker_lineup=broker_lineup,
+    )
+    return EligibilityResult(
+        eligible=result.eligible,
+        reasons=result.reasons,
+        suggested_wrapper=result.suggested_wrapper,
+        asset_type=asset_type,
     )
 
 

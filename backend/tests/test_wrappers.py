@@ -252,6 +252,31 @@ def test_wrapper_check_eligibility_should_return_suggestion_for_ineligible_tsumi
     assert payload["suggested_wrapper"] == "nisa_growth"
 
 
+def test_wrapper_check_eligibility_should_include_asset_type_for_growth_mutual_fund(
+    client: TestClient,
+):
+    csv_content = (
+        b"ticker,fund_name,asset_type,trust_fee_pct\n"
+        b"01312179,eMAXIS Slim S&P500,mutual_fund,0.0814\n"
+    )
+    upload_resp = client.post(
+        "/wrappers/nisa_growth/eligible-assets/upload",
+        files={"file": ("eligible.csv", csv_content, "text/csv")},
+    )
+    assert upload_resp.status_code == 200
+
+    resp = client.get(
+        "/wrappers/nisa_growth/check-eligibility",
+        params={"ticker": "01312179"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["wrapper"] == "nisa_growth"
+    assert payload["ticker"] == "01312179"
+    assert payload["eligible"] is True
+    assert payload["asset_type"] == "mutual_fund"
+
+
 def test_wrapper_eligible_assets_should_return_list_shape(client: TestClient):
     resp = client.get("/wrappers/nisa_tsumitate/eligible-assets")
     assert resp.status_code == 200

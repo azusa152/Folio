@@ -1622,6 +1622,28 @@ def is_active_eligible_mutual_fund(session: Session, ticker: str) -> bool:
     return bool(session.exec(stmt).one() > 0)
 
 
+def find_eligible_asset_by_ticker(
+    session: Session,
+    wrapper: str,
+    ticker: str,
+    broker: str | None = None,
+) -> EligibleAsset | None:
+    """Return one active eligible asset for an exact ticker match."""
+    normalized_ticker = ticker.upper().strip()
+    if not normalized_ticker:
+        return None
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.ticker == normalized_ticker,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    return session.exec(stmt.order_by(EligibleAsset.broker.is_not(None).desc())).first()
+
+
 def find_eligible_assets(
     session: Session,
     wrapper: str,

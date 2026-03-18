@@ -43,6 +43,7 @@ from infrastructure.persistence.repositories import (  # noqa: F401
     find_all_transactions,
     find_cash_holding_by_account_and_currency,
     find_consensus_stocks,
+    find_eligible_asset_by_ticker,
     find_eligible_assets,
     find_eligible_tickers,
     find_filing_by_accession,
