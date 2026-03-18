@@ -2262,6 +2262,7 @@
     "eligible": {
       "title": "対象商品リスト",
       "hint": "つみたて投資枠・成長投資枠の対象商品を検索できます。",
+      "stocks_note": "成長投資枠の株式は、監理銘柄・整理銘柄等を除き原則として上場株式が対象です。個別株はウォッチリストや銘柄検索から選択してください。",
       "search_placeholder": "ファンド名またはコードで検索",
       "filter_asset_type": "資産種別",
       "filter_all": "すべて",
@@ -2269,7 +2270,7 @@
         "mutual_fund": "投資信託",
         "etf": "ETF",
         "stock": "株式",
-        "reit": "REIT"
+        "reit": "不動産投資信託(REIT)"
       },
       "table_fund_name": "ファンド名",
       "table_ticker": "ティッカー / コード",

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Info, SearchX } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -47,10 +47,6 @@ function AssetTable({
         return assetType
     }
   }
-  const filteredRows = useMemo(() => {
-    if (assetTypeFilter === "all") return rows
-    return rows.filter((row) => row.asset_type === assetTypeFilter)
-  }, [assetTypeFilter, rows])
   const showNoMatchState = totalUnfilteredCount > 0 || hasSearchQuery
 
   return (
@@ -108,8 +104,8 @@ function AssetTable({
                   </td>
                 </tr>
               ))
-            ) : filteredRows.length > 0 ? (
-              filteredRows.map((item) => (
+            ) : rows.length > 0 ? (
+              rows.map((item) => (
                 <tr key={`${item.ticker}-${item.fund_name}`} className="border-t border-border">
                   <td className="px-3 py-2">{item.fund_name || "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{item.ticker}</td>
@@ -172,13 +168,16 @@ export function EligibleAssetsTab() {
   const [limit, setLimit] = useState(50)
   const [assetTypeFilter, setAssetTypeFilter] = useState<AssetTypeFilter>("all")
 
+  const selectedAssetType = assetTypeFilter === "all" ? undefined : assetTypeFilter
   const tsumitateQuery = useEligibleAssets("nisa_tsumitate", {
     search,
+    assetType: selectedAssetType,
     limit,
     enabled: activeWrapper === "nisa_tsumitate",
   })
   const growthQuery = useEligibleAssets("nisa_growth", {
     search,
+    assetType: selectedAssetType,
     limit,
     enabled: activeWrapper === "nisa_growth",
   })
@@ -189,6 +188,10 @@ export function EligibleAssetsTab() {
   const loadedCount = activeQuery.data?.items.length ?? 0
   const totalCount = activeQuery.data?.total_count ?? 0
   const canLoadMore = loadedCount < totalCount
+  const handleAssetTypeChange = (value: AssetTypeFilter) => {
+    setAssetTypeFilter(value)
+    setLimit(50)
+  }
 
   return (
     <div className="space-y-4">
@@ -220,13 +223,13 @@ export function EligibleAssetsTab() {
           <TabsTrigger value="nisa_tsumitate" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_tsumitate")}
             <Badge variant="secondary">
-              {tsumitateQuery.data?.total_count ?? tsumitateMetadataQuery.data?.count ?? 0}
+              {tsumitateMetadataQuery.data?.count ?? tsumitateQuery.data?.total_count ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="nisa_growth" className="min-h-[44px] gap-2">
             {t("wrapper.nisa_growth")}
             <Badge variant="secondary">
-              {growthQuery.data?.total_count ?? growthMetadataQuery.data?.count ?? 0}
+              {growthMetadataQuery.data?.count ?? growthQuery.data?.total_count ?? 0}
             </Badge>
           </TabsTrigger>
         </TabsList>
@@ -236,8 +239,10 @@ export function EligibleAssetsTab() {
             rows={tsumitateQuery.data?.items ?? []}
             loading={tsumitateQuery.isLoading}
             assetTypeFilter={assetTypeFilter}
-            onAssetTypeChange={setAssetTypeFilter}
-            totalUnfilteredCount={tsumitateQuery.data?.items.length ?? 0}
+            onAssetTypeChange={handleAssetTypeChange}
+            totalUnfilteredCount={
+              tsumitateMetadataQuery.data?.count ?? tsumitateQuery.data?.total_count ?? 0
+            }
             hasSearchQuery={search.trim().length > 0}
             onClearSearch={() => {
               setSearch("")
@@ -247,12 +252,15 @@ export function EligibleAssetsTab() {
         </TabsContent>
 
         <TabsContent value="nisa_growth" className="mt-4">
+          <p className="mb-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            {t("nisa.eligible.stocks_note")}
+          </p>
           <AssetTable
             rows={growthQuery.data?.items ?? []}
             loading={growthQuery.isLoading}
             assetTypeFilter={assetTypeFilter}
-            onAssetTypeChange={setAssetTypeFilter}
-            totalUnfilteredCount={growthQuery.data?.items.length ?? 0}
+            onAssetTypeChange={handleAssetTypeChange}
+            totalUnfilteredCount={growthMetadataQuery.data?.count ?? growthQuery.data?.total_count ?? 0}
             hasSearchQuery={search.trim().length > 0}
             onClearSearch={() => {
               setSearch("")

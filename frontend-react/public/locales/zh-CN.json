@@ -2262,6 +2262,7 @@
     "eligible": {
       "title": "可投名单",
       "hint": "可按基金名称或代码检索定投额度与成长额度的核准产品。",
+      "stocks_note": "成长额度中的股票通常覆盖上市股票（不含被列为监理/整理状态的股票）。个股请通过自选列表或股票检索功能选择。",
       "search_placeholder": "按基金名或代码搜索",
       "filter_asset_type": "资产类型",
       "filter_all": "全部",
@@ -2269,7 +2270,7 @@
         "mutual_fund": "公募基金",
         "etf": "ETF",
         "stock": "股票",
-        "reit": "REIT"
+        "reit": "不动产投资信托(REIT)"
       },
       "table_fund_name": "基金名称",
       "table_ticker": "代码",

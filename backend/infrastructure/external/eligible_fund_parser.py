@@ -238,7 +238,16 @@ def _parse_growth_sheet(sheet_rows: list[list[Any]]) -> list[dict[str, Any]]:
         raw_asset_type = (
             str(row[type_idx] or "").strip() if type_idx is not None else ""
         )
-        asset_type = "etf" if "上場" in raw_asset_type else "mutual_fund"
+        normalized_asset_type = raw_asset_type.replace(" ", "").replace("　", "")
+        if (
+            "不動産投資信託" in normalized_asset_type
+            or "投資法人" in normalized_asset_type
+        ):
+            asset_type = "reit"
+        elif "上場" in normalized_asset_type or "ETF" in normalized_asset_type.upper():
+            asset_type = "etf"
+        else:
+            asset_type = "mutual_fund"
         ticker = (
             _normalize_growth_listed_code(code_raw)
             if code_raw.isdigit()

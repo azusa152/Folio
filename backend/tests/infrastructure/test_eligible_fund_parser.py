@@ -157,13 +157,45 @@ def test_parse_growth_xlsx_should_extract_rows(tmp_path: Path):
             "非対象",
         ]
     )
+    ws.append(
+        [
+            20230621,
+            "追加",
+            "不動産投資信託",
+            "13430",
+            "ＮＥＸＴ ＦＵＮＤＳ 東証ＲＥＩＴ指数連動型上場投信",
+            "野村アセットマネジメント株式会社",
+            20080625,
+            20240104,
+            "年4回",
+            "非対象",
+        ]
+    )
+    ws.append(
+        [
+            20230621,
+            "追加",
+            "上場投資法人",
+            "13280",
+            "ＫＤＸ不動産投資法人",
+            "ケネディクス不動産投資顧問株式会社",
+            20060531,
+            20240104,
+            "年2回",
+            "非対象",
+        ]
+    )
     wb.save(xlsx_path)
 
     rows = parse_growth_xlsx(xlsx_path)
-    assert len(rows) == 1
-    assert rows[0]["ticker"] == "1498.T"
-    assert rows[0]["asset_type"] == "etf"
-    assert rows[0]["is_tsumitate_target"] is False
+    by_ticker = {row["ticker"]: row for row in rows}
+    assert len(rows) == 3
+    assert by_ticker["1498.T"]["asset_type"] == "etf"
+    assert by_ticker["1498.T"]["is_tsumitate_target"] is False
+    assert by_ticker["1343.T"]["asset_type"] == "reit"
+    assert by_ticker["1343.T"]["is_tsumitate_target"] is False
+    assert by_ticker["1328.T"]["asset_type"] == "reit"
+    assert by_ticker["1328.T"]["is_tsumitate_target"] is False
 
 
 def test_parse_tsumitate_from_growth_xlsx_should_filter_target_rows(tmp_path: Path):

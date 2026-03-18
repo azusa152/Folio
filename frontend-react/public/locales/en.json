@@ -2262,6 +2262,7 @@
     "eligible": {
       "title": "Eligible fund list",
       "hint": "Search approved funds for NISA Tsumitate and NISA Growth.",
+      "stocks_note": "For Growth NISA, all TSE-listed stocks are generally eligible except supervision/delisting-designated issues. Use the stock search or your watchlist to choose individual stocks.",
       "search_placeholder": "Search by fund name or ticker",
       "filter_asset_type": "Asset type",
       "filter_all": "All",
