@@ -10,6 +10,7 @@ import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
 import { cn } from "@/lib/utils"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { formatPrice, formatMarketCap } from "@/lib/format"
+import { getSignalDescription } from "@/lib/signal-label"
 import { FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
 import { useThesisHistory } from "@/api/hooks/useRadar"
 import type { PricePoint, MoatAnalysis } from "@/api/hooks/useRadar"
@@ -95,6 +96,7 @@ function SectionHeading({ children }: { children: ReactNode }) {
 interface Props {
   stock: RadarStock
   enrichment?: RadarEnrichedStock
+  signal: string
   resonance?: ResonanceMap[string]
   isHeld: boolean
   isCrypto: boolean
@@ -112,6 +114,7 @@ interface Props {
 export const StockCardInsights = memo(function StockCardInsights({
   stock,
   enrichment,
+  signal,
   resonance,
   isHeld,
   isCrypto,
@@ -126,6 +129,7 @@ export const StockCardInsights = memo(function StockCardInsights({
   showMoatChart,
 }: Props) {
   const { t } = useTranslation()
+  const signalDescription = signal !== "NORMAL" ? getSignalDescription(t, signal) : ""
 
   const sig = enrichment?.signals
   const rsi = sig?.rsi ?? enrichment?.rsi
@@ -174,6 +178,12 @@ export const StockCardInsights = memo(function StockCardInsights({
               />
             )}
           </div>
+        )}
+
+        {signalDescription && (
+          <p className="text-xs italic text-muted-foreground">
+            {signalDescription}
+          </p>
         )}
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">

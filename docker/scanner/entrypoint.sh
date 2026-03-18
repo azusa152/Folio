@@ -15,7 +15,7 @@ chmod +x \
   /usr/local/bin/take-snapshot.sh
 
 # Persist environment for cron jobs (Alpine crond doesn't inherit env)
-printenv | grep FOLIO_API_KEY > /etc/folio.env 2>/dev/null || true
+printenv | grep -E "^(FOLIO_API_KEY|SCAN_STALE_SECONDS_MARKET_HOURS|SCAN_STALE_SECONDS_OFF_HOURS)=" > /etc/folio.env 2>/dev/null || true
 
 # Run startup tasks immediately (avoids waiting for first cron tick)
 /usr/local/bin/smart-scan.sh

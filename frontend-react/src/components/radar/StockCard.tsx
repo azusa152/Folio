@@ -81,6 +81,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
           <StockCardInsights
             stock={stock}
             enrichment={enrichment}
+            signal={signal}
             resonance={resonance}
             isHeld={isHeld}
             isCrypto={isCrypto}

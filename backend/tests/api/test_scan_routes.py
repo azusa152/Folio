@@ -1,5 +1,6 @@
 """Tests for scan routes (GET /scan/last, GET /scan/status)."""
 
+import json
 from datetime import UTC, datetime
 
 from sqlmodel import Session
@@ -180,6 +181,50 @@ class TestGetSignalActivity:
             assert "signal" in item
             assert "consecutive_scans" in item
             assert "is_new" in item
+            assert "trigger_context" in item
+
+    def test_signal_activity_should_include_trigger_context_from_latest_scanlog(
+        self, client
+    ):
+        # Arrange
+        client.post(
+            "/ticker",
+            json={"ticker": "AMD", "category": "Growth", "thesis": "Context check"},
+        )
+
+        from domain.entities import ScanLog, Stock
+
+        with Session(test_engine) as session:
+            amd = session.get(Stock, "AMD")
+            assert amd is not None
+            amd.last_scan_signal = "OVERSOLD"
+            amd.signal_since = datetime(2025, 6, 20, 8, 0, 0, tzinfo=UTC)
+            session.add(
+                ScanLog(
+                    stock_ticker="AMD",
+                    signal="OVERSOLD",
+                    market_status="NEUTRAL",
+                    market_status_details="",
+                    details=json.dumps(
+                        ["📉 <b>AMD</b> Oversold · RSI 28.1 · Bias -21.3%"],
+                        ensure_ascii=False,
+                    ),
+                    scanned_at=datetime(2025, 6, 20, 8, 5, 0, tzinfo=UTC),
+                )
+            )
+            session.commit()
+
+        # Act
+        resp = client.get("/signals/activity")
+
+        # Assert
+        assert resp.status_code == 200
+        data = resp.json()
+        amd_item = next(item for item in data if item["ticker"] == "AMD")
+        assert amd_item["trigger_context"] is not None
+        # trigger_context should be language-neutral metric values only
+        assert "RSI 28.1" in amd_item["trigger_context"]
+        assert "Bias -21.3%" in amd_item["trigger_context"]
 
 
 class TestGetScanStatus:

@@ -147,8 +147,12 @@ export const StockCardHeader = memo(function StockCardHeader({
               ? <SparklineHeader data={priceHistory} />
               : <Skeleton className="h-8 w-20 shrink-0" />
           )}
-          <span className={`text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}>
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}
+            aria-label={marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}
+          >
             {marketOpen ? "●" : "○"}
+            <span>{marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}</span>
           </span>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
         </span>

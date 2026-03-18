@@ -12644,6 +12644,17 @@
             "type": "boolean",
             "title": "Is New",
             "default": false
+          },
+          "trigger_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Context"
           }
         },
         "type": "object",

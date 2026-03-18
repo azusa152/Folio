@@ -1,24 +1,23 @@
 #!/bin/sh
-# Market-hours aware scanner: only triggers a scan if data is stale (>= 15 min).
+# Market-hours aware scanner: triggers scan only when stale.
+# During extended US market hours we scan every 15 minutes.
+# During off-hours/weekends we keep scanning with a relaxed cadence.
 # Source environment for cron context (Alpine crond doesn't inherit env).
 [ -f /etc/folio.env ] && . /etc/folio.env
 
 BACKEND="http://backend:8000"
-STALE_SECONDS=900
+MARKET_HOURS_STALE_SECONDS="${SCAN_STALE_SECONDS_MARKET_HOURS:-900}"
+OFF_HOURS_STALE_SECONDS="${SCAN_STALE_SECONDS_OFF_HOURS:-3600}"
 
-# Market-hours gate: skip scans on weekends and outside extended US market hours
+# Two-tier staleness threshold:
+# - Market hours (Mon-Fri 13:00-22:00 UTC): 15 minutes
+# - Off-hours/weekends: 60 minutes
 DOW=$(date +%u)   # 1=Mon ... 7=Sun
 HOUR=$(date -u +%H)  # UTC hour (0-23)
-
-if [ "$DOW" -ge 6 ]; then
-  echo "$(date) Weekend — skipping scan."
-  exit 0
-fi
-
-# Extended US market window: 13:00-22:00 UTC (pre-market 08:00 ET to post-close 18:00 ET)
-if [ "$HOUR" -lt 13 ] || [ "$HOUR" -ge 22 ]; then
-  echo "$(date) Off-market hours (UTC $HOUR) — skipping scan."
-  exit 0
+if [ "$DOW" -lt 6 ] && [ "$HOUR" -ge 13 ] && [ "$HOUR" -lt 22 ]; then
+  STALE_SECONDS="$MARKET_HOURS_STALE_SECONDS"
+else
+  STALE_SECONDS="$OFF_HOURS_STALE_SECONDS"
 fi
 
 last_epoch=$(folio-curl.sh "$BACKEND/scan/last" | jq -r '.epoch // empty')

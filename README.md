@@ -235,6 +235,13 @@ TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 TELEGRAM_CHAT_ID=your-telegram-chat-id-here
 ```
 
+可選：調整 scanner 在開市/休市的資料新鮮度門檻（秒）：
+
+```env
+SCAN_STALE_SECONDS_MARKET_HOURS=900
+SCAN_STALE_SECONDS_OFF_HOURS=3600
+```
+
 > 若不需要 Telegram 通知，保留預設值即可，系統會自動跳過發送。
 >
 > **雙模式通知**：除了 `.env` 環境變數（系統預設 Bot），你也可以在「💼 個人資產配置 → 📡 Telegram 設定」分頁中設定自訂 Bot Token 與 Chat ID。啟用後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送。
@@ -305,7 +312,7 @@ docker compose up --build
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:3000
-- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
+- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），開市時預設每 15 分鐘、休市/週末預設每 60 分鐘觸發 `POST /scan`（可由 `SCAN_STALE_SECONDS_MARKET_HOURS` / `SCAN_STALE_SECONDS_OFF_HOURS` 覆蓋）；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
 
 > **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
 

@@ -4,6 +4,7 @@ Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史�
 """
 
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 
@@ -61,6 +62,12 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+# Matches metric values in alert strings regardless of surrounding language labels.
+# Both RSI and Bias values are always formatted as plain numbers in all locales.
+_RSI_RE = re.compile(r"\bRSI\s+([\d.]+)")
+_BIAS_RE = re.compile(r"Bias\s+([-\d.]+)%")
 
 
 # ===========================================================================
@@ -702,9 +709,36 @@ def get_signal_activity(session: Session) -> list[dict]:
         prev_signal: str | None = None
         changed_at = None
         consecutive_scans = 0
+        trigger_context: str | None = None
         for log in logs:
             if log.signal == current_signal:
                 consecutive_scans += 1
+                if trigger_context is None:
+                    try:
+                        parsed = json.loads(log.details) if log.details else []
+                    except Exception:  # pragma: no cover - malformed historical rows
+                        parsed = []
+                    if isinstance(parsed, list):
+                        for item in parsed:
+                            if not isinstance(item, str) or not item.strip():
+                                continue
+                            # Extract language-neutral metric values so trigger_context
+                            # is consistent regardless of the locale used when scanning.
+                            rsi_m = _RSI_RE.search(item)
+                            bias_m = _BIAS_RE.search(item)
+                            parts: list[str] = []
+                            if rsi_m:
+                                parts.append(f"RSI {rsi_m.group(1)}")
+                            if bias_m:
+                                parts.append(f"Bias {bias_m.group(1)}%")
+                            if parts:
+                                trigger_context = " · ".join(parts)
+                                break
+                            # Fallback: strip HTML and use first non-empty line
+                            cleaned = _HTML_TAG_RE.sub("", item).split("\n")[0].strip()
+                            if cleaned:
+                                trigger_context = cleaned
+                                break
             elif prev_signal is None:
                 prev_signal = log.signal
                 changed_at = log.scanned_at
@@ -722,6 +756,7 @@ def get_signal_activity(session: Session) -> list[dict]:
                 "changed_at": changed_at.isoformat() if changed_at else None,
                 "consecutive_scans": max(consecutive_scans, 1),
                 "is_new": is_new,
+                "trigger_context": trigger_context,
             }
         )
 

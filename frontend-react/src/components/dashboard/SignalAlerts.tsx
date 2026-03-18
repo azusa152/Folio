@@ -24,7 +24,7 @@ function formatDuration(t: TFunction<any>, days: number): string {
 interface SignalRowProps {
   stock: Stock
   signal: string
-  activity?: SignalActivityItem
+  activity?: SignalActivityItem & { trigger_context?: string | null }
 }
 
 function SignalRow({ stock, signal, activity }: SignalRowProps) {
@@ -44,6 +44,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
   const durationDays = activity?.duration_days
   const previousSignal = activity?.previous_signal
   const consecutiveScans = activity?.consecutive_scans ?? 1
+  const triggerContext = activity?.trigger_context?.trim() || signalDescription
 
   const durationBadge = isNew
     ? t("dashboard.signal_new")
@@ -105,6 +106,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
           )}
         </div>
       )}
+      <p className="pl-7 mt-0.5 text-xs text-muted-foreground">{triggerContext}</p>
     </div>
   )
 }
