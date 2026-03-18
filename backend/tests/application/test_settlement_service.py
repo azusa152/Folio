@@ -6,11 +6,13 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from application.portfolio.account_service import remove_account
 from application.portfolio.settlement_service import verify_positions
 from application.portfolio.transaction_service import (
     create_transaction,
     remove_transaction,
 )
+from application.portfolio.wrapper_service import get_all_wrapper_quotas
 from domain.constants import DEFAULT_USER_ID, ERROR_INSUFFICIENT_BALANCE
 from domain.entities import (
     Account,
@@ -1036,6 +1038,58 @@ def test_nisa_buy_and_sell_should_record_contribution_and_restoration(
     assert entries[1].entry_type == "RESTORATION"
     assert entries[1].transaction_id == created_sell["id"]
     assert entries[1].amount == -100.0
+
+
+def test_remove_account_should_delete_nisa_ledger_entries(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 10_000.0)
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+    assert created["id"] is not None
+
+    entries_before = db_session.exec(select(ContributionLedgerEntry)).all()
+    assert len(entries_before) == 1
+    quotas_before = get_all_wrapper_quotas(
+        db_session,
+        user_id=DEFAULT_USER_ID,
+        year=2026,
+        as_of=date(2026, 3, 10),
+    )
+    assert quotas_before["nisa_growth"]["wrapper_annual_used"] > 0
+
+    remove_account(db_session, account.id, "en")
+
+    entries_after = db_session.exec(select(ContributionLedgerEntry)).all()
+    transactions_after = db_session.exec(
+        select(Transaction).where(Transaction.account_id == account.id)
+    ).all()
+    holdings_after = db_session.exec(
+        select(Holding).where(Holding.account_id == account.id)
+    ).all()
+    assert entries_after == []
+    assert transactions_after == []
+    assert holdings_after == []
+    quotas_after = get_all_wrapper_quotas(
+        db_session,
+        user_id=DEFAULT_USER_ID,
+        year=2026,
+        as_of=date(2026, 3, 10),
+    )
+    assert quotas_after["nisa_growth"]["wrapper_annual_used"] == 0
 
 
 # ---------------------------------------------------------------------------

@@ -319,7 +319,8 @@ def _to_dict(
     }
 
 
-def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
+def cleanup_account_transactions(session: Session, account_id: int, lang: str) -> int:
+    """Reverse and delete all transactions (and wrapper ledgers) for one account."""
     existing_transactions = repo.find_all_transactions(
         session,
         account_id=account_id,
@@ -336,6 +337,10 @@ def _replace_account_transactions(session: Session, account_id: int, lang: str) 
         if txn.id is not None:
             repo.delete_ledger_entries_by_transaction(session, txn.id)
     return repo.delete_transactions_by_account(session, account_id)
+
+
+def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
+    return cleanup_account_transactions(session, account_id, lang)
 
 
 def _replace_account_and_import(

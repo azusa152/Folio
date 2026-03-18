@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
+from application.portfolio.transaction_service import cleanup_account_transactions
 from domain.constants import (
     DEFAULT_ACCOUNT_NAME,
     DEFAULT_USER_ID,
@@ -167,8 +168,10 @@ def update_account(session: Session, account_id: int, data: dict, lang: str) -> 
 
 
 def remove_account(session: Session, account_id: int, lang: str) -> None:
-    """Soft-delete an account (set is_active = False)."""
+    """Cascade-clean account transactions/holdings, then soft-delete the account."""
     account = _get_account_or_raise(session, account_id, lang)
+    cleanup_account_transactions(session, account_id, lang)
+    repo.delete_holdings_by_account(session, account_id)
     repo.deactivate_account(session, account)
     invalidate_rebalance_cache()
     invalidate_insight_cache()

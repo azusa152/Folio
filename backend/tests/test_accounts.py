@@ -1,6 +1,7 @@
 """Contract tests for account CRUD and summary endpoints."""
 
 from fastapi.testclient import TestClient
+from sqlmodel import select
 
 
 def test_account_crud(client: TestClient):
@@ -388,3 +389,99 @@ def test_deactivate_all_accounts_should_hide_positions_from_holdings_and_rebalan
 
     rebalance_after = client.get("/rebalance")
     assert rebalance_after.status_code == 404
+
+
+def test_deactivate_account_should_cascade_delete_transactions_and_nisa_quota(
+    client: TestClient, db_session
+):
+    from domain.entities import (
+        ContributionLedgerEntry,
+        EligibleAsset,
+        Holding,
+        Transaction,
+    )
+
+    db_session.add(
+        EligibleAsset(
+            tax_wrapper="nisa_tsumitate",
+            ticker="01312179",
+            fund_name="テスト投信",
+            asset_type="mutual_fund",
+            is_active=True,
+        )
+    )
+    db_session.commit()
+
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": "NISA Account",
+            "broker": "SBI Securities",
+            "account_type": "brokerage",
+            "tax_wrapper": "nisa_tsumitate",
+            "currency": "JPY",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "JPY",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 300_000.0,
+            "currency": "JPY",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    buy_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "01312179",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 10_000.0,
+            "total_amount": 100_000.0,
+            "currency": "JPY",
+            "transaction_date": "2026-03-11",
+            "category": "Growth",
+        },
+    )
+    assert buy_resp.status_code == 201
+
+    quota_before = client.get("/wrappers/quota")
+    assert quota_before.status_code == 200
+    assert quota_before.json()["quotas"]["nisa_tsumitate"]["wrapper_annual_used"] > 0
+    assert db_session.exec(
+        select(ContributionLedgerEntry).where(
+            ContributionLedgerEntry.tax_wrapper == "nisa_tsumitate"
+        )
+    ).all()
+
+    deactivate_resp = client.delete(f"/accounts/{account_id}")
+    assert deactivate_resp.status_code == 200
+
+    remaining_transactions = db_session.exec(
+        select(Transaction).where(Transaction.account_id == account_id)
+    ).all()
+    remaining_holdings = db_session.exec(
+        select(Holding).where(Holding.account_id == account_id)
+    ).all()
+    remaining_ledger_entries = db_session.exec(
+        select(ContributionLedgerEntry).where(
+            ContributionLedgerEntry.tax_wrapper == "nisa_tsumitate"
+        )
+    ).all()
+    assert remaining_transactions == []
+    assert remaining_holdings == []
+    assert remaining_ledger_entries == []
+
+    quota_after = client.get("/wrappers/quota")
+    assert quota_after.status_code == 200
+    assert quota_after.json()["quotas"]["nisa_tsumitate"]["wrapper_annual_used"] == 0
