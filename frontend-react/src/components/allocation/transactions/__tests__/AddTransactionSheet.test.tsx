@@ -481,6 +481,76 @@ describe("AddTransactionSheet", () => {
     expect(screen.queryByText("eMAXIS Slim 米国株式")).not.toBeInTheDocument()
   })
 
+  it("falls back to ticker input when growth nisa stock filter is selected", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+    fireEvent.change(tickerInput, { target: { value: "7203.t" } })
+
+    expect(tickerInput.value).toBe("7203.T")
+    expect(screen.getByText("nisa.eligible.stocks_input_hint")).toBeInTheDocument()
+    expect(screen.queryByText("eligibility.nisa_picker_placeholder")).not.toBeInTheDocument()
+  })
+
+  it("auto-appends .T on blur when user types a bare 4-digit jp code in stock mode", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+
+    fireEvent.change(tickerInput, { target: { value: "7203" } })
+    expect(tickerInput.value).toBe("7203")
+
+    fireEvent.blur(tickerInput)
+    expect(tickerInput.value).toBe("7203.T")
+  })
+
+  it("does not append .T on blur when input is not a bare 4-digit code", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+
+    fireEvent.change(tickerInput, { target: { value: "7203.T" } })
+    fireEvent.blur(tickerInput)
+    expect(tickerInput.value).toBe("7203.T")
+  })
+
+  it("shows eligibility disclaimer and suppresses generic growth hint in stock mode", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
+
+    expect(screen.getByText("nisa.eligible.stocks_eligibility_disclaimer")).toBeInTheDocument()
+    expect(screen.queryByText("eligibility.nisa_picker_hint_growth")).not.toBeInTheDocument()
+  })
+
   it("shows selected growth asset type badge in picker trigger", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     wrapperState.eligibleItems = [

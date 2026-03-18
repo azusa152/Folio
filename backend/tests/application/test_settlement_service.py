@@ -915,6 +915,90 @@ def test_nisa_growth_buy_should_reject_when_not_in_growth_approved_list(
     assert exc.value.detail["suggested_wrapper"] == "tokutei"
 
 
+def test_nisa_growth_buy_should_allow_stock_ticker_not_in_approved_list(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="2558.T",
+        asset_type="etf",
+    )
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "6758.T",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "6758.T",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert created["account_id"] == account.id
+    assert holding.category == StockCategory.GROWTH
+
+
+def test_nisa_growth_buy_should_normalize_bare_4digit_ticker(
+    db_session: Session,
+):
+    """Bare 4-digit JP code (e.g. '6758') is accepted by eligibility logic.
+
+    Note: the eligibility service normalises the ticker to '6758.T' internally,
+    but create_transaction stores whatever ticker string was passed in.  The
+    holding query therefore accepts both forms.
+    """
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="2558.T",
+        asset_type="etf",
+    )
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "6758",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.is_cash == False,  # noqa: E712
+            Holding.ticker.in_(["6758", "6758.T"]),
+        )
+    ).first()
+    assert created["account_id"] == account.id
+    assert holding is not None
+
+
 def test_nisa_tsumitate_buy_should_force_mutual_fund_category(db_session: Session):
     account = _create_nisa_account(db_session, "nisa_tsumitate")
     _create_cash_holding(db_session, account.id, 2_000_000.0)

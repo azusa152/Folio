@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,22 @@ if TYPE_CHECKING:
     from sqlmodel import Session
 
     from domain.entities import EligibleAsset
+
+
+_JP_STOCK_TICKER_RE = re.compile(r"^\d{4}(?:\.T)?$")
+_BARE_JP_CODE_RE = re.compile(r"^\d{4}$")
+
+
+def _looks_like_growth_stock_ticker(ticker: str) -> bool:
+    """Return True for JP stock code forms accepted in Growth NISA flow."""
+    return bool(_JP_STOCK_TICKER_RE.fullmatch(ticker))
+
+
+def _normalize_jp_stock_ticker(ticker: str) -> str:
+    """Append the .T exchange suffix to bare 4-digit JP stock codes."""
+    if _BARE_JP_CODE_RE.fullmatch(ticker):
+        return f"{ticker}.T"
+    return ticker
 
 
 def check_asset_eligibility(
@@ -37,18 +54,12 @@ def check_asset_eligibility(
         )
         asset_type = "mutual_fund"
     elif normalized_wrapper == "nisa_growth":
+        normalized_ticker = _normalize_jp_stock_ticker(normalized_ticker)
         approved_tickers = repo.find_eligible_tickers(
             session=session,
             wrapper=normalized_wrapper,
             broker=normalized_broker,
         )
-        if approved_tickers and normalized_ticker not in approved_tickers:
-            return EligibilityResult(
-                eligible=False,
-                reasons=["eligibility.not_in_growth_approved_list"],
-                suggested_wrapper="tokutei",
-                asset_type=asset_type,
-            )
         matched_asset = repo.find_eligible_asset_by_ticker(
             session=session,
             wrapper=normalized_wrapper,
@@ -57,6 +68,17 @@ def check_asset_eligibility(
         )
         if matched_asset and matched_asset.asset_type:
             asset_type = matched_asset.asset_type.strip().lower()
+        elif (
+            approved_tickers
+            and normalized_ticker not in approved_tickers
+            and not _looks_like_growth_stock_ticker(normalized_ticker)
+        ):
+            return EligibilityResult(
+                eligible=False,
+                reasons=["eligibility.not_in_growth_approved_list"],
+                suggested_wrapper="tokutei",
+                asset_type=asset_type,
+            )
     elif normalized_wrapper == "ideco":
         broker_lineup = repo.find_eligible_tickers(
             session=session,
