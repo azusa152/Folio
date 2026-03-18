@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
-import { RefreshCw } from "lucide-react"
+import { ChevronDown, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useAllocRebalance } from "@/api/hooks/useAllocation"
 import { getPreferredWrapperAccountMap, isJapaneseWrapperAccount } from "@/lib/wrapperAccounts"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
@@ -18,6 +19,7 @@ import { EligibleAssetsTab } from "@/components/nisa/EligibleAssetsTab"
 import { DataManagementTab } from "@/components/nisa/DataManagementTab"
 import { ContributionsTab } from "@/components/nisa/ContributionsTab"
 import { NisaEducationCard } from "@/components/nisa/NisaEducationCard"
+import { NisaOnboardingBanner } from "@/components/nisa/NisaOnboardingBanner"
 import { useEligibleAssetsMetadata, useSyncNav } from "@/api/hooks/useWrappers"
 
 const NAV_SYNC_COOLDOWN_SECONDS = 60
@@ -53,6 +55,7 @@ export default function Nisa() {
   const [transactionDefaultAccountId, setTransactionDefaultAccountId] = useState<number | undefined>(undefined)
   const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionType | undefined>(undefined)
   const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(undefined)
+  const [sopOpen, setSopOpen] = useState(false)
 
   const accountByWrapper = useMemo(
     () => getPreferredWrapperAccountMap(accounts),
@@ -163,6 +166,38 @@ export default function Nisa() {
           </Button>
         </div>
       </div>
+
+      <div id="nisa-sop" className="rounded-md border border-border">
+        <button
+          onClick={() => setSopOpen((value) => !value)}
+          aria-expanded={sopOpen}
+          className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
+        >
+          <span>{t("nisa.sop.title")}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
+        </button>
+        {sopOpen ? (
+          <div className="px-4 pb-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-muted-foreground whitespace-pre-wrap">
+              {t("nisa.sop.content")}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {!hasJapaneseWrapperAccounts ? (
+        <NisaOnboardingBanner
+          onLearnMore={() => {
+            setSopOpen(true)
+            document.getElementById("nisa-sop")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }}
+        />
+      ) : null}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">

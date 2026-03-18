@@ -45,6 +45,10 @@ vi.mock("@/components/nisa/NisaEducationCard", () => ({
   NisaEducationCard: () => <div>education-card-content</div>,
 }))
 
+vi.mock("@/components/nisa/NisaOnboardingBanner", () => ({
+  NisaOnboardingBanner: () => <div>nisa-onboarding-banner</div>,
+}))
+
 vi.mock("@/components/allocation/wrappers/SmartActionCards", () => ({
   SmartActionCards: (props: { forceHideActions?: boolean; emptyHintKey?: string }) =>
     props.forceHideActions ? <div>{props.emptyHintKey ?? "nisa.actions.empty"}</div> : <div>smart-action-cards-content</div>,
@@ -111,7 +115,16 @@ describe("Nisa page tab routing", () => {
       data: [{ id: 1, tax_wrapper: "nisa_growth", currency: "JPY", market: "US" }],
     })
     renderWithRoute("/nisa?tab=actions")
+    expect(screen.getByText("nisa-onboarding-banner")).toBeInTheDocument()
     expect(screen.getByText("nisa.actions.empty")).toBeInTheDocument()
     expect(mockUseAllocRebalance).toHaveBeenCalledWith("JPY", false)
+  })
+
+  it("hides onboarding banner when JP wrapper account exists", () => {
+    mockUseAccounts.mockReturnValue({
+      data: [{ id: 1, tax_wrapper: "nisa_growth", currency: "JPY", market: "JP" }],
+    })
+    renderWithRoute("/nisa")
+    expect(screen.queryByText("nisa-onboarding-banner")).not.toBeInTheDocument()
   })
 })

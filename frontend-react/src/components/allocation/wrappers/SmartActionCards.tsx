@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { Lightbulb, Sparkles } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Lightbulb, ShieldCheck, Sparkles } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useDeTaxSuggestions, useSuggestRouting } from "@/api/hooks/useWrappers"
@@ -67,9 +68,20 @@ export function SmartActionCards({
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-xs text-muted-foreground">
-            {t(emptyHintKey ?? "nisa.actions.empty")}
-          </p>
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-3 text-center">
+            <div className="rounded-full bg-muted p-3">
+              <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{t("nisa.actions.empty_title")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t(emptyHintKey ?? "nisa.actions.empty")}
+              </p>
+            </div>
+            <Button asChild size="sm">
+              <Link to="/allocation?tab=accounts">{t("nisa.actions.empty_cta")}</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )

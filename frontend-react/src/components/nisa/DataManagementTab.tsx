@@ -78,6 +78,7 @@ export function DataManagementTab() {
           >
             {t("eligibility.refresh_now")}
           </Button>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("eligibility.refresh_hint")}</p>
         </div>
 
         <div className="rounded border border-border p-3">
@@ -103,6 +104,7 @@ export function DataManagementTab() {
           >
             {t("eligibility.refresh_now")}
           </Button>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("eligibility.refresh_hint")}</p>
         </div>
       </div>
 
@@ -135,6 +137,7 @@ export function DataManagementTab() {
             {t("eligibility.upload_button")}
           </Button>
         </div>
+        <p className="text-[11px] text-muted-foreground">{t("eligibility.upload_hint")}</p>
       </div>
     </div>
   )

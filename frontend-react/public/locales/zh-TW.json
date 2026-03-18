@@ -93,6 +93,15 @@
       "cash": "💵 現金 (Cash)",
       "mutual_fund": "🧺 共同基金"
     },
+    "category_desc": {
+      "trend_setter": "以大型 ETF 與龍頭股為主，追蹤資金流與消費趨勢。",
+      "moat": "供應鏈中難以取代的「賣鏟子」型公司。",
+      "growth": "波動較高、但上行空間較大的成長型股票。",
+      "mutual_fund": "共同基金與指數基金（例如 eMAXIS Slim）。",
+      "bond": "政府公債與投資等級債券 ETF（例如 TLT、BND）。",
+      "crypto": "BTC、ETH 與其他加密資產。",
+      "cash": "閒置現金部位（USD、TWD、JPY）。"
+    },
     "market": {
       "us": "🇺🇸 美股",
       "tw": "🇹🇼 台股",
@@ -2111,6 +2120,7 @@
       "lifetime_combined": "終身共用額度",
       "growth_sub_limit": "成長額度子上限",
       "used_remaining": "已用 {{used}} / 剩餘 {{remaining}}",
+      "progress_tooltip": "已用 {{used}} / 剩餘 {{remaining}} / 上限 {{limit}}",
       "restoration_forecast": "額度恢復預測",
       "restoration_empty": "目前沒有待恢復額度",
       "policy_next_year": "恢復：次年",
@@ -2140,10 +2150,12 @@
     "data_count_label": "有效基金數：{{count}}",
     "data_last_updated_label": "最後更新：{{date}}",
     "refresh_now": "從官方來源更新",
+    "refresh_hint": "更新會從官方 NISA 名單同步最新可投資料。",
     "refresh_success": "可投基金名單已更新",
     "refresh_failed": "可投基金名單更新失敗",
     "upload_title": "上傳本地名單檔案 (.csv/.xlsx)",
     "upload_button": "上傳名單檔案",
+    "upload_hint": "上傳可匯入你自己的 CSV / XLSX 名單供自訂篩選。",
     "upload_success": "可投基金名單已上傳",
     "upload_failed": "可投基金名單上傳失敗"
   },
@@ -2157,8 +2169,23 @@
       "actions": "操作",
       "data": "資料管理"
     },
+    "sop": {
+      "title": "NISA SOP（新手指南）",
+      "content": "1) 什麼是 NISA？\nNISA 是日本居民可使用的稅務優惠投資帳戶。\n\n2) 定期定額枠 vs 成長投資枠\n- 定期定額枠：只能買入合規的長期基金。\n- 成長投資枠：可投商品較廣（股票、ETF、基金等）。\n\n3) 額度速覽\n- 定期定額枠年上限：1,200,000 日圓\n- 成長投資枠年上限：2,400,000 日圓\n- 年合計上限：3,600,000 日圓\n- 終身總上限：18,000,000 日圓\n\n4) 賣出後會怎樣\n額度恢復依制度規則進行（通常次年恢復）。\n\n5) 什麼是「可投名單」\n指該帳戶類型可購買的核准商品，請在「可投資產」頁查看。\n\n6) 提撥如何記錄\n系統透過台帳紀錄（提撥/恢復/調整）計算額度使用情況。\n\n7) 操作分頁如何運作\n操作分頁會依你的帳戶與剩餘額度，提供買入路由與 DeTAX 建議。\n\n8) 常見問題\n問：定期定額枠可以買美股嗎？\n答：不行，定期定額枠僅支援合規基金。\n\n問：特定口座是什麼？\n答：特定口座是一般課稅帳戶（非免稅）。"
+    },
     "actions": {
-      "empty": "找不到日本稅制帳戶。請先建立 JPY 的 NISA/iDeCo/特定口座後再使用此操作。"
+      "empty_title": "請先建立帳戶再使用操作",
+      "empty": "找不到日本稅制帳戶。請先建立 JPY 的 NISA/iDeCo/特定口座後再使用此操作。",
+      "empty_cta": "建立帳戶"
+    },
+    "onboarding": {
+      "title": "開始使用 NISA",
+      "description": "先建立一個日本稅制帳戶，即可啟用 NISA 工具。",
+      "step1": "建立日本市場的 NISA / 特定 / iDeCo 帳戶",
+      "step2": "將資金存入該帳戶",
+      "step3": "從可投名單買入合規資產",
+      "create_account": "建立 NISA 帳戶",
+      "learn_more": "了解更多"
     },
     "education": {
       "title": "NISA 額度說明",
@@ -2184,8 +2211,15 @@
       "table_ticker": "代號",
       "table_asset_type": "資產類型",
       "table_trust_fee": "信託費率",
+      "trust_fee_help": "信託費率是基金每年的管理成本。通常費率越低，長期可留給投資人的報酬越多。",
       "trust_fee_unknown": "未提供",
-      "empty": "找不到符合條件的可投資產。",
+      "empty_title": "尚未載入可投資產",
+      "empty": "請在資料管理標籤中上傳或重新整理可投資產清單。",
+      "empty_cta": "前往資料管理",
+      "filter_no_match_title": "無符合資產",
+      "filter_no_match": "目前篩選條件下無符合資產，請嘗試其他資產類別。",
+      "clear_filter": "清除篩選",
+      "clear_search": "清除搜尋",
       "showing_count": "目前顯示 {{count}} 筆（已載入上限 {{total}} 筆）",
       "load_more": "再載入 50 筆"
     },

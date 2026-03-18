@@ -93,6 +93,15 @@
       "cash": "💵 Cash",
       "mutual_fund": "🧺 Mutual Fund"
     },
+    "category_desc": {
+      "trend_setter": "Large-cap ETFs and mega-caps that track capital flow and spending trends.",
+      "moat": "Irreplaceable pick-and-shovel companies in the supply chain.",
+      "growth": "High-volatility stocks with significant upside potential.",
+      "mutual_fund": "Mutual funds and index funds (e.g. eMAXIS Slim).",
+      "bond": "Government bonds and investment-grade bond ETFs (e.g. TLT, BND).",
+      "crypto": "BTC, ETH, and other crypto assets.",
+      "cash": "Idle cash holdings (USD, TWD, JPY)."
+    },
     "market": {
       "us": "🇺🇸 US Market",
       "tw": "🇹🇼 Taiwan Market",
@@ -2111,6 +2120,7 @@
       "lifetime_combined": "Combined lifetime quota",
       "growth_sub_limit": "Growth sub-limit",
       "used_remaining": "{{used}} used / {{remaining}} remaining",
+      "progress_tooltip": "Used {{used}} / Remaining {{remaining}} / Limit {{limit}}",
       "restoration_forecast": "Restoration forecast",
       "restoration_empty": "No pending restorations",
       "policy_next_year": "Restoration: next year",
@@ -2140,10 +2150,12 @@
     "data_count_label": "Active funds: {{count}}",
     "data_last_updated_label": "Last updated: {{date}}",
     "refresh_now": "Refresh from official source",
+    "refresh_hint": "Refresh syncs the latest approved list from official NISA sources.",
     "refresh_success": "Eligible fund list refreshed",
     "refresh_failed": "Failed to refresh eligible fund list",
     "upload_title": "Upload local list file (.csv/.xlsx)",
     "upload_button": "Upload list file",
+    "upload_hint": "Upload lets you import your own CSV/XLSX list for custom screening.",
     "upload_success": "Eligible fund list uploaded",
     "upload_failed": "Failed to upload eligible fund list"
   },
@@ -2157,8 +2169,23 @@
       "actions": "Actions",
       "data": "Data Management"
     },
+    "sop": {
+      "title": "NISA SOP (Beginner Guide)",
+      "content": "1) What is NISA?\nNISA is a tax-advantaged investment wrapper for Japanese residents.\n\n2) Tsumitate vs Growth\n- Tsumitate: long-term, approved mutual funds only.\n- Growth: broader products (stocks, ETFs, funds) within eligible rules.\n\n3) Limits at a glance\n- Tsumitate annual limit: 1,200,000 JPY\n- Growth annual limit: 2,400,000 JPY\n- Combined annual limit: 3,600,000 JPY\n- Combined lifetime limit: 18,000,000 JPY\n\n4) When you sell\nQuota restoration follows policy rules (commonly restored next year).\n\n5) Eligible assets\n\"Eligible\" means products approved for that wrapper. Check the Eligible Assets tab.\n\n6) How contributions are tracked\nThe app uses ledger entries (contribution/restoration/adjustment) to calculate quota usage.\n\n7) How Actions works\nActions tab suggests purchase routing and DeTAX ideas based on your accounts and quota.\n\n8) Quick FAQ\nQ: Can I buy US stocks in Tsumitate?\nA: No, Tsumitate supports approved mutual funds.\n\nQ: What is Tokutei?\nA: Tokutei is a standard taxable account (not tax-free)."
+    },
     "actions": {
-      "empty": "No Japanese wrapper accounts found. Create a JPY NISA/iDeCo/Tokutei account first to use Actions."
+      "empty_title": "Set up an account to use Actions",
+      "empty": "No Japanese wrapper accounts found. Create a JPY NISA/iDeCo/Tokutei account first to use Actions.",
+      "empty_cta": "Create Account"
+    },
+    "onboarding": {
+      "title": "Get started with NISA",
+      "description": "Set up your first Japanese wrapper account to unlock NISA tools.",
+      "step1": "Create a Japanese-market NISA/Tokutei/iDeCo account",
+      "step2": "Deposit cash into that account",
+      "step3": "Buy eligible assets from the approved list",
+      "create_account": "Create NISA Account",
+      "learn_more": "Learn more"
     },
     "education": {
       "title": "How NISA limits work",
@@ -2184,8 +2211,15 @@
       "table_ticker": "Ticker / Code",
       "table_asset_type": "Asset type",
       "table_trust_fee": "Trust fee",
+      "trust_fee_help": "Trust fee is the annual management cost charged by the fund. Lower fees generally leave more long-term return for investors.",
       "trust_fee_unknown": "N/A",
-      "empty": "No eligible assets found.",
+      "empty_title": "No eligible assets loaded",
+      "empty": "Upload or refresh the eligible asset list in the Data Management tab.",
+      "empty_cta": "Go to Data Management",
+      "filter_no_match_title": "No matching assets",
+      "filter_no_match": "No assets match the current filter. Try a different asset type.",
+      "clear_filter": "Clear filter",
+      "clear_search": "Clear search",
       "showing_count": "Showing {{count}} of up to {{total}} loaded records",
       "load_more": "Load 50 more"
     },

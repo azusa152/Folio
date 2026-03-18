@@ -93,6 +93,15 @@
       "cash": "💵 現金",
       "mutual_fund": "🧺 投資信託"
     },
+    "category_desc": {
+      "trend_setter": "大型ETFやメガキャップ中心で、資金フローと消費トレンドを追うカテゴリ。",
+      "moat": "代替されにくい、サプライチェーンの基盤企業。",
+      "growth": "値動きは大きいが、大きな成長余地を狙う銘柄。",
+      "mutual_fund": "投資信託・インデックスファンド（例: eMAXIS Slim）。",
+      "bond": "国債や投資適格債ETF（例: TLT, BND）。",
+      "crypto": "BTC、ETH などの暗号資産。",
+      "cash": "待機資金（USD / TWD / JPY）。"
+    },
     "market": {
       "us": "🇺🇸 米国市場",
       "tw": "🇹🇼 台湾市場",
@@ -2111,6 +2120,7 @@
       "lifetime_combined": "生涯共通枠",
       "growth_sub_limit": "成長投資枠サブ上限",
       "used_remaining": "使用 {{used}} / 残り {{remaining}}",
+      "progress_tooltip": "使用 {{used}} / 残り {{remaining}} / 上限 {{limit}}",
       "restoration_forecast": "復活予定",
       "restoration_empty": "復活予定はありません",
       "policy_next_year": "復活: 翌年",
@@ -2140,10 +2150,12 @@
     "data_count_label": "有効ファンド数: {{count}}",
     "data_last_updated_label": "最終更新: {{date}}",
     "refresh_now": "公式ソースから更新",
+    "refresh_hint": "更新は公式のNISA対象商品リストから最新データを同期します。",
     "refresh_success": "対象ファンド一覧を更新しました",
     "refresh_failed": "対象ファンド一覧の更新に失敗しました",
     "upload_title": "ローカル一覧ファイルをアップロード (.csv/.xlsx)",
     "upload_button": "一覧ファイルをアップロード",
+    "upload_hint": "アップロードでは任意の CSV / XLSX 一覧を取り込めます。",
     "upload_success": "対象ファンド一覧をアップロードしました",
     "upload_failed": "対象ファンド一覧のアップロードに失敗しました"
   },
@@ -2157,8 +2169,23 @@
       "actions": "アクション",
       "data": "データ管理"
     },
+    "sop": {
+      "title": "NISA SOP（初心者向け）",
+      "content": "1) NISAとは？\nNISAは日本居住者向けの非課税投資制度です。\n\n2) つみたて枠と成長投資枠の違い\n- つみたて枠: 長期積立向けの対象投信のみ\n- 成長投資枠: 株式・ETF・投信など対象商品がより広い\n\n3) 枠の上限\n- つみたて枠（年）: 120万円\n- 成長投資枠（年）: 240万円\n- 年間合計: 360万円\n- 生涯投資枠合計: 1,800万円\n\n4) 売却時の扱い\n売却後の枠復活は制度ルールに従います（通常は翌年復活）。\n\n5) 対象商品とは\n各枠で購入可能と認められた商品のことです。対象商品タブで確認できます。\n\n6) 拠出の記録方法\n本アプリは台帳エントリー（拠出・復活・調整）で利用枠を計算します。\n\n7) アクションタブの仕組み\n口座と残枠に基づいて、買付ルーティング提案やDeTAX候補を表示します。\n\n8) よくある質問\nQ: つみたて枠で米国個別株は買える？\nA: いいえ。つみたて枠は対象投信のみです。\n\nQ: 特定口座とは？\nA: 通常課税の口座です（非課税ではありません）。"
+    },
     "actions": {
-      "empty": "日本向けの税制口座が見つかりません。まずJPY建てのNISA/iDeCo/特定口座を作成してください。"
+      "empty_title": "アクションを使うには口座作成が必要です",
+      "empty": "日本向けの税制口座が見つかりません。まずJPY建てのNISA/iDeCo/特定口座を作成してください。",
+      "empty_cta": "口座を作成"
+    },
+    "onboarding": {
+      "title": "NISAをはじめましょう",
+      "description": "最初の日本向け税制口座を作成すると、NISA機能が使えるようになります。",
+      "step1": "日本市場向けの NISA / 特定 / iDeCo 口座を作成",
+      "step2": "その口座に入金",
+      "step3": "対象商品リストから買付",
+      "create_account": "NISA口座を作成",
+      "learn_more": "詳しく見る"
     },
     "education": {
       "title": "NISA枠の基本",
@@ -2184,8 +2211,15 @@
       "table_ticker": "ティッカー / コード",
       "table_asset_type": "資産種別",
       "table_trust_fee": "信託報酬",
+      "trust_fee_help": "信託報酬はファンドの年間運用コストです。一般的に低いほど長期リターンに有利です。",
       "trust_fee_unknown": "未設定",
-      "empty": "対象商品が見つかりません。",
+      "empty_title": "対象商品が読み込まれていません",
+      "empty": "データ管理タブで対象商品リストをアップロードまたは更新してください。",
+      "empty_cta": "データ管理へ",
+      "filter_no_match_title": "該当する商品がありません",
+      "filter_no_match": "現在のフィルターに一致する商品がありません。他の資産タイプをお試しください。",
+      "clear_filter": "フィルターをクリア",
+      "clear_search": "検索をクリア",
       "showing_count": "{{count}}件表示中（読み込み済み最大 {{total}} 件）",
       "load_more": "さらに50件表示"
     },

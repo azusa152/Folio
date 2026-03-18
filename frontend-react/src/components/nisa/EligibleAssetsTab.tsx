@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react"
+import { Link } from "react-router-dom"
+import { Info, SearchX } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useEligibleAssets } from "@/api/hooks/useWrappers"
 
 type WrapperTab = "nisa_tsumitate" | "nisa_growth"
@@ -15,6 +18,9 @@ function AssetTable({
   loading,
   assetTypeFilter,
   onAssetTypeChange,
+  totalUnfilteredCount,
+  hasSearchQuery,
+  onClearSearch,
 }: {
   rows: Array<{
     ticker: string
@@ -25,12 +31,16 @@ function AssetTable({
   loading: boolean
   assetTypeFilter: AssetTypeFilter
   onAssetTypeChange: (value: AssetTypeFilter) => void
+  totalUnfilteredCount: number
+  hasSearchQuery: boolean
+  onClearSearch: () => void
 }) {
   const { t } = useTranslation()
   const filteredRows = useMemo(() => {
     if (assetTypeFilter === "all") return rows
     return rows.filter((row) => row.asset_type === assetTypeFilter)
   }, [assetTypeFilter, rows])
+  const showNoMatchState = totalUnfilteredCount > 0 || hasSearchQuery
 
   return (
     <div className="space-y-3">
@@ -59,7 +69,23 @@ function AssetTable({
               <th className="px-3 py-2 font-medium">{t("nisa.eligible.table_fund_name")}</th>
               <th className="px-3 py-2 font-medium">{t("nisa.eligible.table_ticker")}</th>
               <th className="px-3 py-2 font-medium">{t("nisa.eligible.table_asset_type")}</th>
-              <th className="px-3 py-2 font-medium">{t("nisa.eligible.table_trust_fee")}</th>
+              <th className="px-3 py-2 font-medium">
+                <span className="inline-flex items-center gap-1">
+                  {t("nisa.eligible.table_trust_fee")}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex text-muted-foreground">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-64 text-xs">
+                        {t("nisa.eligible.trust_fee_help")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -88,8 +114,36 @@ function AssetTable({
               ))
             ) : (
               <tr className="border-t border-border">
-                <td className="px-3 py-6 text-sm text-muted-foreground" colSpan={4}>
-                  {t("nisa.eligible.empty")}
+                <td className="px-3 py-8" colSpan={4}>
+                  <div className="flex flex-col items-center justify-center gap-3 text-center">
+                    <div className="rounded-full bg-muted p-3">
+                      <SearchX className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    {showNoMatchState ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">{t("nisa.eligible.filter_no_match_title")}</p>
+                        <p className="text-xs text-muted-foreground">{t("nisa.eligible.filter_no_match")}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">{t("nisa.eligible.empty_title")}</p>
+                        <p className="text-xs text-muted-foreground">{t("nisa.eligible.empty")}</p>
+                      </div>
+                    )}
+                    {totalUnfilteredCount > 0 && assetTypeFilter !== "all" ? (
+                      <Button size="sm" variant="outline" onClick={() => onAssetTypeChange("all")}>
+                        {t("nisa.eligible.clear_filter")}
+                      </Button>
+                    ) : hasSearchQuery ? (
+                      <Button size="sm" variant="outline" onClick={onClearSearch}>
+                        {t("nisa.eligible.clear_search")}
+                      </Button>
+                    ) : totalUnfilteredCount === 0 ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/nisa?tab=data">{t("nisa.eligible.empty_cta")}</Link>
+                      </Button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             )}
@@ -163,6 +217,12 @@ export function EligibleAssetsTab() {
             loading={tsumitateQuery.isLoading}
             assetTypeFilter={assetTypeFilter}
             onAssetTypeChange={setAssetTypeFilter}
+            totalUnfilteredCount={tsumitateQuery.data?.items.length ?? 0}
+            hasSearchQuery={search.trim().length > 0}
+            onClearSearch={() => {
+              setSearch("")
+              setLimit(50)
+            }}
           />
         </TabsContent>
 
@@ -172,6 +232,12 @@ export function EligibleAssetsTab() {
             loading={growthQuery.isLoading}
             assetTypeFilter={assetTypeFilter}
             onAssetTypeChange={setAssetTypeFilter}
+            totalUnfilteredCount={growthQuery.data?.items.length ?? 0}
+            hasSearchQuery={search.trim().length > 0}
+            onClearSearch={() => {
+              setSearch("")
+              setLimit(50)
+            }}
           />
         </TabsContent>
       </Tabs>

@@ -406,7 +406,7 @@ describe("AddTransactionSheet", () => {
     )
 
     fireEvent.click(screen.getByLabelText("transactions.form.category"))
-    fireEvent.click(screen.getByText("🏰 config.category.moat"))
+    fireEvent.click(screen.getByText("config.category.moat"))
 
     fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })

@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  CATEGORY_ICON_SHORT,
   STOCK_CATEGORIES,
   MARKET_TAG_OPTIONS,
   CASH_CURRENCY_OPTIONS,
@@ -336,11 +335,14 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                     <SelectContent>
                       {STOCK_CATEGORIES.map((c) => (
                         <SelectItem key={c} value={c} className="text-xs">
-                          {CATEGORY_ICON_SHORT[c] ?? ""} {c.replace("_", " ")}
+                          {t(`config.category.${c.toLowerCase()}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {t(`config.category_desc.${category.toLowerCase()}`)}
+                  </p>
                 </div>
 
                 {/* Thesis */}

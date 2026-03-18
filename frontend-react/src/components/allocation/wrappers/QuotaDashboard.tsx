@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useRestorationForecast, useWrapperQuota } from "@/api/hooks/useWrappers"
 
 function ratio(used: number, remaining: number): number {
@@ -60,10 +61,12 @@ export function QuotaDashboard({ enabled = true }: { enabled?: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <TooltipProvider>
         {[nisaTsumitate, nisaGrowth].map((quota) => {
           if (!quota) return null
           const used = quota.wrapper_annual_used
           const remaining = quota.wrapper_annual_remaining
+          const limit = used + remaining
           return (
             <div key={quota.wrapper} className="space-y-1.5">
               <div className="flex items-center justify-between gap-2 text-xs">
@@ -75,12 +78,31 @@ export function QuotaDashboard({ enabled = true }: { enabled?: boolean }) {
                   })}
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${ratio(used, remaining)}%` }}
-                />
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="block w-full h-2 overflow-hidden rounded-full bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                    aria-label={t("wrapper.dashboard.progress_tooltip", {
+                      used: Math.round(used).toLocaleString(),
+                      remaining: Math.round(Math.max(0, remaining)).toLocaleString(),
+                      limit: Math.round(Math.max(0, limit)).toLocaleString(),
+                    })}
+                  >
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${ratio(used, remaining)}%` }}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  {t("wrapper.dashboard.progress_tooltip", {
+                    used: Math.round(used).toLocaleString(),
+                    remaining: Math.round(Math.max(0, remaining)).toLocaleString(),
+                    limit: Math.round(Math.max(0, limit)).toLocaleString(),
+                  })}
+                </TooltipContent>
+              </Tooltip>
             </div>
           )
         })}
@@ -95,9 +117,28 @@ export function QuotaDashboard({ enabled = true }: { enabled?: boolean }) {
               })}
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${lifetime.pct}%` }} />
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="block w-full h-2 overflow-hidden rounded-full bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                aria-label={t("wrapper.dashboard.progress_tooltip", {
+                  used: Math.round(lifetime.used).toLocaleString(),
+                  remaining: Math.round(Math.max(0, lifetime.remaining)).toLocaleString(),
+                  limit: Math.round(Math.max(0, lifetime.used + lifetime.remaining)).toLocaleString(),
+                })}
+              >
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${lifetime.pct}%` }} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs">
+              {t("wrapper.dashboard.progress_tooltip", {
+                used: Math.round(lifetime.used).toLocaleString(),
+                remaining: Math.round(Math.max(0, lifetime.remaining)).toLocaleString(),
+                limit: Math.round(Math.max(0, lifetime.used + lifetime.remaining)).toLocaleString(),
+              })}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {nisaGrowth ? (
@@ -111,14 +152,37 @@ export function QuotaDashboard({ enabled = true }: { enabled?: boolean }) {
                 })}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-blue-500"
-                style={{
-                  width: `${ratio(nisaGrowth.growth_sub_limit_used ?? 0, nisaGrowth.growth_sub_limit_remaining ?? 0)}%`,
-                }}
-              />
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="block w-full h-2 overflow-hidden rounded-full bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                  aria-label={t("wrapper.dashboard.progress_tooltip", {
+                    used: Math.round(nisaGrowth.growth_sub_limit_used ?? 0).toLocaleString(),
+                    remaining: Math.round(Math.max(0, nisaGrowth.growth_sub_limit_remaining ?? 0)).toLocaleString(),
+                    limit: Math.round(
+                      Math.max(0, (nisaGrowth.growth_sub_limit_used ?? 0) + (nisaGrowth.growth_sub_limit_remaining ?? 0)),
+                    ).toLocaleString(),
+                  })}
+                >
+                  <div
+                    className="h-full rounded-full bg-blue-500"
+                    style={{
+                      width: `${ratio(nisaGrowth.growth_sub_limit_used ?? 0, nisaGrowth.growth_sub_limit_remaining ?? 0)}%`,
+                    }}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                {t("wrapper.dashboard.progress_tooltip", {
+                  used: Math.round(nisaGrowth.growth_sub_limit_used ?? 0).toLocaleString(),
+                  remaining: Math.round(Math.max(0, nisaGrowth.growth_sub_limit_remaining ?? 0)).toLocaleString(),
+                  limit: Math.round(
+                    Math.max(0, (nisaGrowth.growth_sub_limit_used ?? 0) + (nisaGrowth.growth_sub_limit_remaining ?? 0)),
+                  ).toLocaleString(),
+                })}
+              </TooltipContent>
+            </Tooltip>
           </div>
         ) : null}
 
@@ -136,6 +200,7 @@ export function QuotaDashboard({ enabled = true }: { enabled?: boolean }) {
             <p className="text-xs text-muted-foreground">{t("wrapper.dashboard.restoration_empty")}</p>
           )}
         </div>
+        </TooltipProvider>
       </CardContent>
     </Card>
   )

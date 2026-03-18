@@ -17,7 +17,7 @@ import { EligibilityBadge } from "@/components/common/EligibilityBadge"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import { CATEGORY_ICON_SHORT, DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
+import { DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
 import { cn, getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -851,11 +851,16 @@ export function AddTransactionSheet({
                 <SelectContent>
                   {STOCK_CATEGORIES.map((item) => (
                     <SelectItem key={item} value={item} className="text-xs">
-                      {CATEGORY_ICON_SHORT[item] ?? ""} {t(`config.category.${item.toLowerCase()}`)}
+                      {t(`config.category.${item.toLowerCase()}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {!forcedCategory ? (
+                <p className="text-[11px] text-muted-foreground">
+                  {t(`config.category_desc.${category.toLowerCase()}`)}
+                </p>
+              ) : null}
               {forcedCategory ? (
                 <p className="text-[11px] text-muted-foreground">{t("transactions.form.mutual_fund_category_hint")}</p>
               ) : null}
