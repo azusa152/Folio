@@ -10,6 +10,12 @@ from datetime import UTC, datetime
 from sqlmodel import Session, select
 
 from application.portfolio.eligibility_service import check_asset_eligibility
+from application.portfolio.pricing_service import (
+    build_nav_cache as _build_nav_cache,
+)
+from application.portfolio.pricing_service import (
+    resolve_holding_price as _resolve_holding_price,
+)
 from application.portfolio.wrapper_service import get_all_wrapper_quotas
 from application.stock.stock_service import StockNotFoundError
 from domain.analysis import compute_daily_change_pct
@@ -74,7 +80,6 @@ from infrastructure.notification import (
 from infrastructure.repositories import (
     find_all_accounts,
     find_holdings_for_active_accounts,
-    get_latest_nav,
     log_notification_sent,
 )
 from logging_config import get_logger
@@ -101,52 +106,6 @@ def invalidate_rebalance_cache() -> None:
     """主動清除再平衡快取（持倉變動後呼叫）。"""
     with _rebalance_cache_lock:
         _rebalance_cache.clear()
-
-
-def _build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
-    """Pre-fetch latest NAV for all Mutual_Fund holdings."""
-    cache: dict[str, dict] = {}
-    for h in holdings:
-        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
-        if cat != StockCategory.MUTUAL_FUND.value or h.ticker in cache:
-            continue
-        nav_row = get_latest_nav(session, h.ticker)
-        if nav_row:
-            cache[h.ticker] = {
-                "nav": nav_row.nav,
-                "nav_previous": nav_row.nav_previous,
-            }
-    return cache
-
-
-def _resolve_holding_price(
-    h: object,
-    nav_cache: dict[str, dict],
-) -> float | None:
-    """Resolve current price for a holding based on its category.
-
-    Returns the raw price (not FX-adjusted). Returns None if unavailable
-    (caller should fall back to cost_basis).
-    """
-    cat = h.category.value if hasattr(h.category, "value") else str(h.category)  # type: ignore[attr-defined]
-    if h.is_cash:  # type: ignore[attr-defined]
-        return 1.0
-    if h.category == StockCategory.CRYPTO:  # type: ignore[attr-defined]
-        crypto_data = get_crypto_price(
-            getattr(h, "coingecko_id", None),
-            h.ticker,  # type: ignore[attr-defined]
-        )
-        p = crypto_data.get("price_usd") if crypto_data else None
-        return float(p) if isinstance(p, (int, float)) else None
-    if cat == StockCategory.MUTUAL_FUND.value:
-        nav_data = nav_cache.get(h.ticker)  # type: ignore[attr-defined]
-        p = nav_data.get("nav") if nav_data else None
-        return float(p) if isinstance(p, (int, float)) else None
-    if cat in SKIP_PRICE_FETCH_CATEGORIES:
-        return None
-    signals = get_technical_signals(h.ticker)  # type: ignore[attr-defined]
-    p = signals.get("price") if signals else None
-    return float(p) if isinstance(p, (int, float)) else None
 
 
 # ===========================================================================

@@ -336,6 +336,184 @@ def test_account_positions_should_return_holdings_for_selected_account(
     assert all(item["account_id"] == account_a_id for item in payload)
 
 
+def _setup_sell_picker_account(
+    client: TestClient, name: str = "Sell Picker Account"
+) -> int:
+    """Helper: create an account with AAPL (2 shares, $100) and MSFT (1 share, $250) positions."""
+    account_resp = client.post(
+        "/accounts",
+        json={
+            "name": name,
+            "broker": "IBKR",
+            "account_type": "brokerage",
+            "currency": "USD",
+        },
+    )
+    assert account_resp.status_code == 201
+    account_id = account_resp.json()["id"]
+
+    deposit_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "USD",
+            "transaction_type": "DEPOSIT",
+            "quantity": 1,
+            "total_amount": 10000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-11",
+        },
+    )
+    assert deposit_resp.status_code == 201
+
+    for ticker, quantity, price in (("AAPL", 2, 100.0), ("MSFT", 1, 250.0)):
+        buy_resp = client.post(
+            "/transactions",
+            json={
+                "account_id": account_id,
+                "ticker": ticker,
+                "transaction_type": "BUY",
+                "quantity": quantity,
+                "price": price,
+                "total_amount": quantity * price,
+                "currency": "USD",
+                "transaction_date": "2026-03-11",
+            },
+        )
+        assert buy_resp.status_code == 201
+    return account_id
+
+
+def test_account_sellable_positions_should_return_enriched_non_cash_positions(
+    client: TestClient,
+    monkeypatch,
+):
+    from application.portfolio import holding_service
+
+    account_id = _setup_sell_picker_account(client)
+
+    def _fake_resolve_price(holding, _nav_cache):
+        if holding.ticker == "AAPL":
+            return 120.0
+        if holding.ticker == "MSFT":
+            return 280.0
+        return None
+
+    monkeypatch.setattr(holding_service, "_resolve_holding_price", _fake_resolve_price)
+
+    resp = client.get(f"/accounts/{account_id}/sellable-positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 2
+    assert len(payload["items"]) == 2
+
+    # Sorted by market_value desc (MSFT: 280 > AAPL: 240).
+    assert payload["items"][0]["ticker"] == "MSFT"
+    assert payload["items"][0]["quantity"] == 1
+    assert payload["items"][0]["current_price"] == 280.0
+    assert payload["items"][0]["market_value"] == 280.0
+    assert payload["items"][0]["currency"] == "USD"
+    assert payload["items"][0]["value_source"] == "live_price"
+
+    assert payload["items"][1]["ticker"] == "AAPL"
+    assert payload["items"][1]["quantity"] == 2
+    assert payload["items"][1]["current_price"] == 120.0
+    assert payload["items"][1]["market_value"] == 240.0
+    assert payload["items"][1]["value_source"] == "live_price"
+
+
+def test_account_sellable_positions_should_fall_back_to_cost_basis_when_price_unavailable(
+    client: TestClient,
+    monkeypatch,
+):
+    """When live price resolution fails, value_source == "cost_basis" and market_value uses cost_basis."""
+    from application.portfolio import holding_service
+
+    account_id = _setup_sell_picker_account(client, "Cost Basis Fallback Account")
+
+    # Simulate price resolution failure for all holdings
+    monkeypatch.setattr(
+        holding_service, "_resolve_holding_price", lambda _h, _nav: None
+    )
+
+    resp = client.get(f"/accounts/{account_id}/sellable-positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 2
+    for item in payload["items"]:
+        assert item["value_source"] == "cost_basis"
+        assert item["current_price"] is None
+        assert item["market_value"] is not None  # derived from cost_basis × quantity
+
+
+def test_account_sellable_positions_should_mark_unavailable_when_no_price_and_no_cost_basis(
+    client: TestClient,
+    monkeypatch,
+):
+    """When both live price and cost_basis are absent, value_source == "unavailable"."""
+    from application.portfolio import holding_service
+
+    account_id = _setup_sell_picker_account(client, "No Cost Basis Account")
+
+    # Patch find_holdings_by_account to clear cost_basis on returned holdings
+    original_find = holding_service.repo.find_holdings_by_account
+
+    def _fake_find_holdings(session, acct_id):
+        holdings = original_find(session, acct_id)
+        for h in holdings:
+            h.cost_basis = None
+        return holdings
+
+    monkeypatch.setattr(
+        holding_service.repo, "find_holdings_by_account", _fake_find_holdings
+    )
+    monkeypatch.setattr(
+        holding_service, "_resolve_holding_price", lambda _h, _nav: None
+    )
+
+    resp = client.get(f"/accounts/{account_id}/sellable-positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    for item in payload["items"]:
+        assert item["value_source"] == "unavailable"
+        assert item["current_price"] is None
+        assert item["market_value"] is None
+
+
+def test_account_sellable_positions_should_use_eligible_asset_fund_name(
+    client: TestClient,
+    monkeypatch,
+    db_session,
+):
+    """Display name resolves to EligibleAsset.fund_name when an entry exists."""
+    from application.portfolio import holding_service
+    from domain.entities import EligibleAsset
+
+    account_id = _setup_sell_picker_account(client, "Name Fallback Account")
+
+    # Register AAPL in EligibleAsset so the display name can be resolved
+    db_session.add(
+        EligibleAsset(
+            tax_wrapper="nisa_growth",
+            ticker="AAPL",
+            fund_name="Apple Inc. (AAPL)",
+            asset_type="stock",
+            is_active=True,
+        )
+    )
+    db_session.commit()
+
+    monkeypatch.setattr(
+        holding_service, "_resolve_holding_price", lambda _h, _nav: None
+    )
+
+    resp = client.get(f"/accounts/{account_id}/sellable-positions")
+    assert resp.status_code == 200
+    payload = resp.json()
+    aapl_item = next(item for item in payload["items"] if item["ticker"] == "AAPL")
+    assert aapl_item["fund_name"] == "Apple Inc. (AAPL)"
+
+
 def test_account_transactions_should_return_paginated_transactions(client: TestClient):
     account_resp = client.post(
         "/accounts",

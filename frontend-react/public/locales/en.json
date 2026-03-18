@@ -1929,6 +1929,23 @@
       "buy_no_account_banner": "Create an investment account to track trades and balance updates.",
       "buy_no_balance_hint": "No funds yet. Deposit cash to this account first."
     },
+    "sell_picker": {
+      "placeholder": "Select a holding to sell",
+      "placeholder_dividend": "Select a holding",
+      "search": "Search by ticker or name...",
+      "empty": "No sellable holdings in this account",
+      "loading": "Loading positions...",
+      "load_error": "Failed to load holdings. Please retry.",
+      "available": "Available: {{quantity}} {{unit}}",
+      "unit_shares": "shares",
+      "unit_units": "units",
+      "max": "Max",
+      "price_unavailable": "Price unavailable",
+      "value_fallback_label": "Cost basis value",
+      "value_source_live": "Live price",
+      "value_source_cost_basis": "Based on cost",
+      "value_source_unavailable": "Value unknown"
+    },
     "toast": {
       "created": "Transaction recorded.",
       "deleted": "Transaction deleted."

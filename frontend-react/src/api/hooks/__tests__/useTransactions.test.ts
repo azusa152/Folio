@@ -42,7 +42,10 @@ const EXPECTED_INVALIDATION_KEYS = [
   ["account-summary"],
   ["account-positions"],
   ["account-transactions"],
+  ["account-sellable-positions"],
   ["stocks"],
+  ["wrapper-quota"],
+  ["wrapper-restoration"],
 ]
 
 function createWrapper() {

@@ -2,6 +2,8 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from domain.enums import StockCategory
@@ -40,6 +42,26 @@ class HoldingResponse(BaseModel):
     is_cash: bool
     purchase_fx_rate: float | None = None
     updated_at: str
+
+
+class SellablePositionItem(BaseModel):
+    """單一可賣出部位（SELL / DIVIDEND picker 用）。"""
+
+    ticker: str
+    fund_name: str
+    quantity: float
+    cost_basis: float | None = None
+    current_price: float | None = None
+    market_value: float | None = None
+    currency: str = "USD"
+    value_source: Literal["live_price", "cost_basis", "unavailable"] = "unavailable"
+
+
+class SellablePositionsResponse(BaseModel):
+    """指定帳戶可賣出部位清單。"""
+
+    items: list[SellablePositionItem] = []
+    count: int = 0
 
 
 # ---------------------------------------------------------------------------

@@ -1929,6 +1929,23 @@
       "buy_no_account_banner": "取引と残高の動きを追跡するには、先に投資口座を作成してください。",
       "buy_no_balance_hint": "この口座に利用可能な資金がありません。先に現金を入金してください。"
     },
+    "sell_picker": {
+      "placeholder": "売却する保有銘柄を選択",
+      "placeholder_dividend": "保有銘柄を選択",
+      "search": "ティッカーまたは銘柄名で検索...",
+      "empty": "この口座に売却可能な保有銘柄はありません",
+      "loading": "ポジションを読み込み中...",
+      "load_error": "ポジションの読込に失敗しました。再試行してください。",
+      "available": "売却可能: {{quantity}} {{unit}}",
+      "unit_shares": "株",
+      "unit_units": "口",
+      "max": "全量",
+      "price_unavailable": "価格データなし",
+      "value_fallback_label": "取得原価ベース",
+      "value_source_live": "リアルタイム価格",
+      "value_source_cost_basis": "取得原価ベース",
+      "value_source_unavailable": "評価額不明"
+    },
     "toast": {
       "created": "取引を記録しました。",
       "deleted": "取引を削除しました。"

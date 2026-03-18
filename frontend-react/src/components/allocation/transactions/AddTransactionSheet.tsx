@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import client from "@/api/client"
-import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
+import { useAccountCashBalances, useAccountSellablePositions, useAccounts } from "@/api/hooks/useAccounts"
 import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -56,6 +56,17 @@ type NisaEligibleAssetItem = {
   fund_name?: string | null
   asset_type?: string | null
   trust_fee_pct?: number | null
+}
+
+type SellablePositionItem = {
+  ticker: string
+  fund_name: string
+  quantity: number
+  cost_basis?: number | null
+  current_price?: number | null
+  market_value?: number | null
+  currency: string
+  value_source?: "live_price" | "cost_basis" | "unavailable"
 }
 
 function todayISO(): string {
@@ -116,6 +127,9 @@ export function AddTransactionSheet({
   const [nisaPickerSearch, setNisaPickerSearch] = useState("")
   const [nisaAssetTypeFilter, setNisaAssetTypeFilter] = useState<"all" | "mutual_fund" | "etf" | "stock" | "reit">("all")
   const [cachedSelectedNisaAsset, setCachedSelectedNisaAsset] = useState<NisaEligibleAssetItem | null>(null)
+  const [sellPickerOpen, setSellPickerOpen] = useState(false)
+  const [sellPickerSearch, setSellPickerSearch] = useState("")
+  const [cachedSelectedSellablePosition, setCachedSelectedSellablePosition] = useState<SellablePositionItem | null>(null)
   const isMobile = useIsMobile()
   const commandListScrollFix = useCommandListScrollFix()
   const debouncedTicker = useDebouncedValue(ticker, 400)
@@ -158,12 +172,43 @@ export function AddTransactionSheet({
     transactionType === "BUY" &&
     !isCashMovement &&
     (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+  const shouldShowSellPicker =
+    open &&
+    (transactionType === "SELL" || transactionType === "DIVIDEND") &&
+    !isCashMovement &&
+    selectedAccountId != null
   const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
     search: debouncedNisaPickerSearch || undefined,
     assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
     limit: 50,
     enabled: shouldShowNisaPicker,
   })
+  const sellablePositionsQuery = useAccountSellablePositions(selectedAccountId, shouldShowSellPicker)
+  const filteredSellablePositions = useMemo(() => {
+    const keyword = sellPickerSearch.trim().toLowerCase()
+    const rows = (sellablePositionsQuery.data ?? []) as SellablePositionItem[]
+    if (!keyword) return rows
+    return rows.filter((item) => {
+      const ticker = item.ticker.toLowerCase()
+      const fundName = (item.fund_name || "").toLowerCase()
+      return ticker.includes(keyword) || fundName.includes(keyword)
+    })
+  }, [sellPickerSearch, sellablePositionsQuery.data])
+  const selectedSellablePosition = useMemo(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) return null
+    return ((sellablePositionsQuery.data ?? []) as SellablePositionItem[]).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    ) ?? null
+  }, [ticker, sellablePositionsQuery.data])
+  const selectedSellablePositionForDisplay = selectedSellablePosition ?? cachedSelectedSellablePosition
+  const getSellValueSourceLabel = (
+    valueSource?: SellablePositionItem["value_source"],
+  ): string | null => {
+    if (!valueSource || valueSource === "live_price") return null
+    if (valueSource === "cost_basis") return t("transactions.sell_picker.value_source_cost_basis")
+    return t("transactions.sell_picker.value_source_unavailable")
+  }
   const selectedNisaAsset = useMemo(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) return null
@@ -264,6 +309,28 @@ export function AddTransactionSheet({
       setNisaAssetTypeFilter("all")
     }
   }, [selectedWrapper])
+  useEffect(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) {
+      setCachedSelectedSellablePosition(null)
+      return
+    }
+    const matched = ((sellablePositionsQuery.data ?? []) as SellablePositionItem[]).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    )
+    if (!matched) return
+    setCachedSelectedSellablePosition((prev) => {
+      if (
+        prev?.ticker.toUpperCase() === matched.ticker.toUpperCase() &&
+        prev?.fund_name === matched.fund_name &&
+        prev?.quantity === matched.quantity &&
+        prev?.market_value === matched.market_value
+      ) {
+        return prev
+      }
+      return matched
+    })
+  }, [ticker, sellablePositionsQuery.data])
 
   const holdingOptions = useMemo(
     () =>
@@ -305,6 +372,9 @@ export function AddTransactionSheet({
     setNisaPickerSearch("")
     setNisaAssetTypeFilter("all")
     setCachedSelectedNisaAsset(null)
+    setSellPickerOpen(false)
+    setSellPickerSearch("")
+    setCachedSelectedSellablePosition(null)
   }
 
   const applyCashMovementDefaults = (nextCurrency: string) => {
@@ -337,6 +407,12 @@ export function AddTransactionSheet({
     if (!isCashMovement && !ticker.trim()) nextErrors.ticker = t("transactions.form.error_ticker")
     if (!isCashMovement && (!quantity || Number.isNaN(quantityNum) || quantityNum <= 0)) {
       nextErrors.quantity = t("transactions.form.error_quantity")
+    }
+    if (!isCashMovement && shouldShowSellPicker && selectedSellablePosition && quantityNum > selectedSellablePosition.quantity) {
+      nextErrors.quantity = t("transaction.insufficient_shares", {
+        available: selectedSellablePosition.quantity,
+        required: quantityNum,
+      })
     }
     if (!isCashMovement && price && (Number.isNaN(priceNum) || priceNum < 0)) {
       nextErrors.price = t("transactions.form.error_price")
@@ -411,6 +487,7 @@ export function AddTransactionSheet({
       ["account-summary"],
       ["account-positions"],
       ["account-transactions"],
+      ["account-sellable-positions"],
       ["stocks"],
       ["wrapper-quota"],
       ["wrapper-restoration"],
@@ -547,6 +624,7 @@ export function AddTransactionSheet({
               value={accountId}
               onChange={(event) => {
                 setAccountId(event.target.value)
+                setCachedSelectedSellablePosition(null)
                 const nextAccountId = Number(event.target.value)
                 const account = (accounts ?? []).find((item) => item.id === nextAccountId)
                 if (account?.currency) {
@@ -672,6 +750,8 @@ export function AddTransactionSheet({
                   type="button"
                   onClick={() => {
                     setTransactionType(type)
+                    setSellPickerOpen(false)
+                    setSellPickerSearch("")
                     setInsufficientBalance(null)
                     setFieldErrors({})
                     if (type === "DEPOSIT" || type === "WITHDRAWAL") {
@@ -857,6 +937,159 @@ export function AddTransactionSheet({
                     </Command>
                   </PopoverContent>
                 </Popover>
+              ) : shouldShowSellPicker ? (
+                <Popover
+                  open={sellPickerOpen}
+                  onOpenChange={(nextOpen) => {
+                    setSellPickerOpen(nextOpen)
+                    if (nextOpen) {
+                      setSellPickerSearch("")
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={sellPickerOpen}
+                      className="h-auto min-h-9 w-full justify-between py-1.5 text-xs"
+                    >
+                      <span className="min-w-0 text-left">
+                        {selectedSellablePositionForDisplay ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex flex-col leading-tight">
+                                  <span className="truncate font-medium text-xs">
+                                    {selectedSellablePositionForDisplay.fund_name || selectedSellablePositionForDisplay.ticker}
+                                  </span>
+                                  <span className="truncate text-[11px] text-muted-foreground">
+                                    {selectedSellablePositionForDisplay.ticker} · {selectedSellablePositionForDisplay.quantity.toLocaleString()}
+                                  </span>
+                                  {getSellValueSourceLabel(selectedSellablePositionForDisplay.value_source) ? (
+                                    <span
+                                      className={cn(
+                                        "truncate text-[10px] mt-0.5",
+                                        selectedSellablePositionForDisplay.value_source === "cost_basis"
+                                          ? "text-amber-500"
+                                          : "text-muted-foreground",
+                                      )}
+                                    >
+                                      {getSellValueSourceLabel(selectedSellablePositionForDisplay.value_source)}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </TooltipTrigger>
+                              {selectedSellablePositionForDisplay.fund_name ? (
+                                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                                  {selectedSellablePositionForDisplay.fund_name}
+                                </TooltipContent>
+                              ) : null}
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : ticker.trim() ? (
+                          <span className="truncate">{ticker.trim().toUpperCase()}</span>
+                        ) : transactionType === "DIVIDEND" ? (
+                          t("transactions.sell_picker.placeholder_dividend")
+                        ) : (
+                          t("transactions.sell_picker.placeholder")
+                        )}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[360px] max-w-[calc(100vw-2rem)] p-0"
+                    align="start"
+                    onOpenAutoFocus={(event) => {
+                      if (isMobile) event.preventDefault()
+                    }}
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        value={sellPickerSearch}
+                        onValueChange={setSellPickerSearch}
+                        placeholder={t("transactions.sell_picker.search")}
+                      />
+                      <CommandList {...commandListScrollFix}>
+                        {sellablePositionsQuery.isLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            {t("transactions.sell_picker.loading")}
+                          </div>
+                        ) : sellablePositionsQuery.isError ? (
+                          <div className="px-3 py-4 text-xs text-destructive">
+                            {t("transactions.sell_picker.load_error")}
+                          </div>
+                        ) : (
+                          <>
+                            <CommandEmpty>{t("transactions.sell_picker.empty")}</CommandEmpty>
+                            <CommandGroup>
+                              {filteredSellablePositions.map((item) => (
+                                <CommandItem
+                                  key={item.ticker}
+                                  value={`${item.ticker} ${item.fund_name}`}
+                                  onSelect={() => {
+                                    setTicker(item.ticker.toUpperCase())
+                                    setCachedSelectedSellablePosition(item)
+                                    setSellPickerSearch("")
+                                    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                                    setInsufficientBalance(null)
+                                    setSellPickerOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4",
+                                      ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-xs font-medium">
+                                            {item.fund_name || item.ticker}
+                                          </p>
+                                          <p className="truncate text-[11px] text-muted-foreground">
+                                            {item.ticker} · {item.quantity.toLocaleString()} ·{" "}
+                                            {item.market_value != null
+                                              ? `${item.currency} ${item.market_value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                                              : t("transactions.sell_picker.price_unavailable")}
+                                          </p>
+                                          {getSellValueSourceLabel(item.value_source) ? (
+                                            <p
+                                              className={cn(
+                                                "text-[10px] mt-0.5",
+                                                item.value_source === "cost_basis"
+                                                  ? "text-amber-500"
+                                                  : "text-muted-foreground",
+                                              )}
+                                            >
+                                              {getSellValueSourceLabel(item.value_source)}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      </TooltipTrigger>
+                                      {item.fund_name ? (
+                                        <TooltipContent side="right" className="max-w-xs text-xs">
+                                          {item.fund_name}
+                                        </TooltipContent>
+                                      ) : null}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : (
                 <Input
                   value={ticker}
@@ -1010,7 +1243,23 @@ export function AddTransactionSheet({
           {!isCashMovement ? (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+                  {shouldShowSellPicker && selectedSellablePositionForDisplay ? (
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary hover:underline"
+                      onClick={() => {
+                        const maxQuantity = String(selectedSellablePositionForDisplay.quantity)
+                        setQuantity(maxQuantity)
+                        if (!manualTotal) setTotalAmount(computeTotalAmount(maxQuantity, price))
+                        setFieldErrors((prev) => ({ ...prev, quantity: undefined }))
+                      }}
+                    >
+                      {t("transactions.sell_picker.max")}
+                    </button>
+                  ) : null}
+                </div>
                 <Input
                   type="number"
                   step="any"
@@ -1024,6 +1273,18 @@ export function AddTransactionSheet({
                   }}
                   className="text-xs"
                 />
+                {shouldShowSellPicker && selectedSellablePositionForDisplay ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("transactions.sell_picker.available", {
+                      quantity: selectedSellablePositionForDisplay.quantity.toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      }),
+                      unit: (forcedCategory ?? category) === "Mutual_Fund"
+                        ? t("transactions.sell_picker.unit_units")
+                        : t("transactions.sell_picker.unit_shares"),
+                    })}
+                  </p>
+                ) : null}
                 {fieldErrors.quantity ? <p className="text-xs text-destructive">{fieldErrors.quantity}</p> : null}
               </div>
               <div className="space-y-1">

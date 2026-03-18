@@ -11,7 +11,7 @@ from api.schemas.account import (
     AccountSummaryItem,
     AccountUpdateRequest,
 )
-from api.schemas.portfolio import HoldingResponse
+from api.schemas.portfolio import HoldingResponse, SellablePositionsResponse
 from api.schemas.transaction import TransactionResponse
 from application.portfolio.account_service import (
     create_account,
@@ -21,7 +21,10 @@ from application.portfolio.account_service import (
     remove_account,
     update_account,
 )
-from application.portfolio.holding_service import get_holdings_by_account
+from application.portfolio.holding_service import (
+    get_holdings_by_account,
+    get_sellable_positions,
+)
 from application.portfolio.transaction_service import list_transactions_by_account
 from i18n import get_user_language, t
 from infrastructure.database import get_session
@@ -71,6 +74,19 @@ def get_account_positions(
     """Return all holdings (positions) for a given account."""
     lang = get_user_language(session)
     return get_holdings_by_account(session, account_id, lang)
+
+
+@router.get(
+    "/accounts/{account_id}/sellable-positions",
+    response_model=SellablePositionsResponse,
+)
+def get_account_sellable_positions(
+    account_id: int,
+    session: Session = Depends(get_session),
+):
+    """Return sellable non-cash positions for a given account."""
+    lang = get_user_language(session)
+    return get_sellable_positions(session, account_id, lang)
 
 
 @router.get(

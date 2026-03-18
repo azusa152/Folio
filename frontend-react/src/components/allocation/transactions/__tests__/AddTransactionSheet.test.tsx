@@ -42,6 +42,17 @@ const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState,
   accountState: {
     accounts: [{ id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" }],
     balances: [{ currency: "USD", balance: 500 }],
+    sellablePositionsError: false,
+    sellablePositions: [] as Array<{
+      ticker: string
+      fund_name: string
+      quantity: number
+      cost_basis?: number | null
+      current_price?: number | null
+      market_value?: number | null
+      currency: string
+      value_source?: "live_price" | "cost_basis" | "unavailable"
+    }>,
   },
 }))
 
@@ -79,6 +90,11 @@ vi.mock("@/api/hooks/useAccounts", () => ({
   useAccountCashBalances: () => ({
     data: accountState.balances,
   }),
+  useAccountSellablePositions: () => ({
+    data: accountState.sellablePositions,
+    isLoading: false,
+    isError: accountState.sellablePositionsError,
+  }),
 }))
 
 vi.mock("@/api/hooks/useWrappers", () => ({
@@ -109,6 +125,8 @@ describe("AddTransactionSheet", () => {
     wrapperState.quota = undefined
     accountState.accounts = [{ id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" }]
     accountState.balances = [{ currency: "USD", balance: 500 }]
+    accountState.sellablePositionsError = false
+    accountState.sellablePositions = []
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       value: vi.fn(),
       writable: true,
@@ -480,6 +498,237 @@ describe("AddTransactionSheet", () => {
     fireEvent.click(screen.getByText("MAXIS 米国株式"))
 
     expect(screen.getAllByText("nisa.eligible.asset_type.etf").length).toBeGreaterThan(0)
+  })
+
+  it("shows holding picker for sell when account selected", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 12,
+        current_price: 200,
+        market_value: 2400,
+        currency: "USD",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    expect(screen.queryByLabelText("transactions.form.ticker")).not.toBeInTheDocument()
+    expect(screen.getByText("transactions.sell_picker.placeholder")).toBeInTheDocument()
+  })
+
+  it("shows holding picker for dividend when account selected", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 8,
+        current_price: 200,
+        market_value: 1600,
+        currency: "USD",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.dividend" }))
+    expect(screen.queryByLabelText("transactions.form.ticker")).not.toBeInTheDocument()
+    expect(screen.getByText("transactions.sell_picker.placeholder_dividend")).toBeInTheDocument()
+  })
+
+  it("auto-fills ticker on sell holding selection", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "MSFT",
+        fund_name: "Microsoft Corp.",
+        quantity: 3,
+        current_price: 300,
+        market_value: 900,
+        currency: "USD",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    fireEvent.click(screen.getByText("Microsoft Corp."))
+
+    expect(screen.getByText("Microsoft Corp.")).toBeInTheDocument()
+    expect(screen.getByText("MSFT · 3")).toBeInTheDocument()
+  })
+
+  it("shows empty state when no sellable holdings", () => {
+    accountState.sellablePositions = []
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    expect(screen.getByText("transactions.sell_picker.empty")).toBeInTheDocument()
+  })
+
+  it("shows load error state when sellable positions query fails", () => {
+    accountState.sellablePositionsError = true
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    expect(screen.getByText("transactions.sell_picker.load_error")).toBeInTheDocument()
+  })
+
+  it("falls back to plain ticker input for sell when account is not selected", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 1,
+        current_price: 200,
+        market_value: 200,
+        currency: "USD",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    expect(screen.getByLabelText("transactions.form.ticker")).toBeInTheDocument()
+  })
+
+  it("applies max quantity from selected sell position", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 5,
+        current_price: 200,
+        market_value: 1000,
+        currency: "USD",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    fireEvent.click(screen.getByText("Apple Inc."))
+    fireEvent.click(screen.getByRole("button", { name: "transactions.sell_picker.max" }))
+    expect((screen.getByLabelText("transactions.form.quantity") as HTMLInputElement).value).toBe("5")
+  })
+
+  it("shows cost_basis value source label when price is based on cost", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 2,
+        cost_basis: 150,
+        current_price: null,
+        market_value: 300,
+        currency: "USD",
+        value_source: "cost_basis",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    expect(screen.getByText("transactions.sell_picker.value_source_cost_basis")).toBeInTheDocument()
+  })
+
+  it("shows cost_basis value source on selected trigger", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "AAPL",
+        fund_name: "Apple Inc.",
+        quantity: 2,
+        cost_basis: 150,
+        current_price: null,
+        market_value: 300,
+        currency: "USD",
+        value_source: "cost_basis",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    fireEvent.click(screen.getByText("Apple Inc."))
+    expect(screen.getByText("transactions.sell_picker.value_source_cost_basis")).toBeInTheDocument()
+  })
+
+  it("shows live_price value source without extra label", () => {
+    accountState.sellablePositions = [
+      {
+        ticker: "MSFT",
+        fund_name: "Microsoft Corp.",
+        quantity: 1,
+        cost_basis: 200,
+        current_price: 310,
+        market_value: 310,
+        currency: "USD",
+        value_source: "live_price",
+      },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "transactions.type.sell" }))
+    const [, sellPickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(sellPickerTrigger)
+    // live_price items should NOT show any value source label
+    expect(screen.queryByText("transactions.sell_picker.value_source_live")).not.toBeInTheDocument()
   })
 
 

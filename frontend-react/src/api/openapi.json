@@ -692,6 +692,65 @@
         }
       }
     },
+    "/accounts/{account_id}/sellable-positions": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Sellable Positions",
+        "description": "Return sellable non-cash positions for a given account.",
+        "operationId": "get_account_sellable_positions_accounts__account_id__sellable_positions_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellablePositionsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/accounts/{account_id}/transactions": {
       "get": {
         "tags": [
@@ -12429,6 +12488,98 @@
         ],
         "title": "SellRecommendationResponse",
         "description": "\u55ae\u7b46\u8ce3\u51fa\u5efa\u8b70\u3002"
+      },
+      "SellablePositionItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "fund_name": {
+            "type": "string",
+            "title": "Fund Name"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          },
+          "current_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Price"
+          },
+          "market_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Value"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "value_source": {
+            "type": "string",
+            "enum": [
+              "live_price",
+              "cost_basis",
+              "unavailable"
+            ],
+            "title": "Value Source",
+            "default": "unavailable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "fund_name",
+          "quantity"
+        ],
+        "title": "SellablePositionItem",
+        "description": "\u55ae\u4e00\u53ef\u8ce3\u51fa\u90e8\u4f4d\uff08SELL / DIVIDEND picker \u7528\uff09\u3002"
+      },
+      "SellablePositionsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SellablePositionItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "SellablePositionsResponse",
+        "description": "\u6307\u5b9a\u5e33\u6236\u53ef\u8ce3\u51fa\u90e8\u4f4d\u6e05\u55ae\u3002"
       },
       "SignalActivityItem": {
         "properties": {

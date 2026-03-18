@@ -1929,6 +1929,23 @@
       "buy_no_account_banner": "请先创建投资账户，才能追踪交易与资金变化。",
       "buy_no_balance_hint": "该账户当前没有可用资金，请先存入现金。"
     },
+    "sell_picker": {
+      "placeholder": "选择要卖出的持仓",
+      "placeholder_dividend": "选择持仓",
+      "search": "按 ticker 或名称搜索...",
+      "empty": "该账户没有可卖出的持仓",
+      "loading": "正在加载持仓...",
+      "load_error": "持仓加载失败，请重试。",
+      "available": "可用数量：{{quantity}} {{unit}}",
+      "unit_shares": "股",
+      "unit_units": "份",
+      "max": "全部",
+      "price_unavailable": "暂无价格",
+      "value_fallback_label": "按成本估算",
+      "value_source_live": "实时价格",
+      "value_source_cost_basis": "按成本估算",
+      "value_source_unavailable": "估值未知"
+    },
     "toast": {
       "created": "已新增交易记录。",
       "deleted": "已删除交易记录。"
