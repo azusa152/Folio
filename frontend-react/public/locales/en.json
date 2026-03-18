@@ -2064,6 +2064,9 @@
     "contribution_label": "Total Invested",
     "growth_label": "Market Value"
   },
+  "holding": {
+    "auto_radar": "This ticker has been automatically added to your Radar watchlist."
+  },
   "insight": {
     "title": "Portfolio Insights",
     "show_more": "Show more insights",
@@ -2134,7 +2137,10 @@
     "tsumitate_picker_placeholder": "Select approved Tsumitate fund",
     "tsumitate_picker_search": "Search by fund name or ticker",
     "tsumitate_picker_empty": "No approved funds found",
+    "tsumitate_picker_loading": "Loading approved funds…",
+    "tsumitate_picker_limit_hint": "Showing up to 50 results. Type a name or code to narrow.",
     "tsumitate_picker_hint": "Only FSA-approved funds can be purchased in NISA Tsumitate.",
+    "tsumitate_trust_fee_label": "Trust fee",
     "switch_to_suggested_account": "Switch to {{wrapper}} account",
     "no_suggested_account": "No account available for {{wrapper}}.",
     "not_in_tsumitate_approved_list": "Not in the approved fund list for NISA Tsumitate.",

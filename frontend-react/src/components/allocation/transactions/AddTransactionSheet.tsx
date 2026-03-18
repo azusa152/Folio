@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Building2, Check, ChevronsUpDown } from "lucide-react"
+import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -12,10 +12,13 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
 import { EligibilityBadge } from "@/components/common/EligibilityBadge"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { useCommandListScrollFix } from "@/hooks/useCommandListScrollFix"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
 import { cn, getErrorMessage } from "@/lib/utils"
@@ -45,6 +48,12 @@ interface FieldErrors {
   transactionDate?: string
   fxRate?: string
   fee?: string
+}
+
+type TsumitateEligibleAssetItem = {
+  ticker: string
+  fund_name?: string | null
+  trust_fee_pct?: number | null
 }
 
 function todayISO(): string {
@@ -103,6 +112,9 @@ export function AddTransactionSheet({
   const [splitSubmitting, setSplitSubmitting] = useState(false)
   const [tsumitatePickerOpen, setTsumitatePickerOpen] = useState(false)
   const [tsumitateSearchInput, setTsumitateSearchInput] = useState("")
+  const [cachedSelectedTsumitateAsset, setCachedSelectedTsumitateAsset] = useState<TsumitateEligibleAssetItem | null>(null)
+  const isMobile = useIsMobile()
+  const commandListScrollFix = useCommandListScrollFix()
   const debouncedTicker = useDebouncedValue(ticker, 400)
   const debouncedTsumitateSearchInput = useDebouncedValue(tsumitateSearchInput, 300)
 
@@ -155,6 +167,7 @@ export function AddTransactionSheet({
       (item) => item.ticker.toUpperCase() === normalizedTicker,
     ) ?? null
   }, [ticker, tsumitateEligibleAssetsQuery.data?.items])
+  const selectedTsumitateAssetForDisplay = selectedTsumitateAsset ?? cachedSelectedTsumitateAsset
   const routingSuggestionQuery = useSuggestRouting(
     debouncedTicker,
     Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : null,
@@ -219,6 +232,29 @@ export function AddTransactionSheet({
     if (!open || isCashMovement || !isNewToRadar || !forcedCategory) return
     setCategory((prev) => (prev === forcedCategory ? prev : forcedCategory))
   }, [forcedCategory, isCashMovement, isNewToRadar, open])
+  useEffect(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) {
+      setCachedSelectedTsumitateAsset(null)
+      return
+    }
+
+    const matched = (tsumitateEligibleAssetsQuery.data?.items ?? []).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    )
+    if (!matched) return
+
+    setCachedSelectedTsumitateAsset((prev) => {
+      if (
+        prev?.ticker.toUpperCase() === matched.ticker.toUpperCase() &&
+        prev?.fund_name === matched.fund_name &&
+        prev?.trust_fee_pct === matched.trust_fee_pct
+      ) {
+        return prev
+      }
+      return matched
+    })
+  }, [ticker, tsumitateEligibleAssetsQuery.data?.items])
 
   const holdingOptions = useMemo(
     () =>
@@ -258,6 +294,7 @@ export function AddTransactionSheet({
     setInsufficientBalance(null)
     setTsumitatePickerOpen(false)
     setTsumitateSearchInput("")
+    setCachedSelectedTsumitateAsset(null)
   }
 
   const applyCashMovementDefaults = (nextCurrency: string) => {
@@ -647,75 +684,131 @@ export function AddTransactionSheet({
             <div className="space-y-1">
               <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
               {shouldShowTsumitatePicker ? (
-                <Popover open={tsumitatePickerOpen} onOpenChange={setTsumitatePickerOpen}>
+                <Popover
+                  open={tsumitatePickerOpen}
+                  onOpenChange={(nextOpen) => {
+                    setTsumitatePickerOpen(nextOpen)
+                    if (nextOpen) setTsumitateSearchInput("")
+                  }}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
                       role="combobox"
                       aria-expanded={tsumitatePickerOpen}
-                      className="w-full justify-between text-xs"
+                      className="h-auto min-h-9 w-full justify-between py-1.5 text-xs"
                     >
-                      <span className="truncate text-left">
-                        {selectedTsumitateAsset
-                          ? `${selectedTsumitateAsset.fund_name || selectedTsumitateAsset.ticker} (${selectedTsumitateAsset.ticker})`
-                          : t("eligibility.tsumitate_picker_placeholder")}
+                      <span className="min-w-0 text-left">
+                        {selectedTsumitateAssetForDisplay ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex flex-col leading-tight">
+                                  <span className="truncate font-medium text-xs">
+                                    {selectedTsumitateAssetForDisplay.fund_name || selectedTsumitateAssetForDisplay.ticker}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {selectedTsumitateAssetForDisplay.ticker}
+                                    {selectedTsumitateAssetForDisplay.trust_fee_pct != null
+                                      ? ` · ${t("eligibility.tsumitate_trust_fee_label")}: ${selectedTsumitateAssetForDisplay.trust_fee_pct.toFixed(3)}%`
+                                      : ""}
+                                  </span>
+                                </span>
+                              </TooltipTrigger>
+                              {selectedTsumitateAssetForDisplay.fund_name ? (
+                                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                                  {selectedTsumitateAssetForDisplay.fund_name}
+                                </TooltipContent>
+                              ) : null}
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : ticker.trim() ? (
+                          <span className="truncate">{ticker.trim().toUpperCase()}</span>
+                        ) : (
+                          t("eligibility.tsumitate_picker_placeholder")
+                        )}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[360px] p-0" align="start">
+                  <PopoverContent
+                    className="w-[360px] max-w-[calc(100vw-2rem)] p-0"
+                    align="start"
+                    onOpenAutoFocus={(event) => {
+                      if (isMobile) event.preventDefault()
+                    }}
+                  >
                     <Command shouldFilter={false}>
                       <CommandInput
                         value={tsumitateSearchInput}
                         onValueChange={setTsumitateSearchInput}
                         placeholder={t("eligibility.tsumitate_picker_search")}
                       />
-                      <CommandList>
-                        <CommandEmpty>{t("eligibility.tsumitate_picker_empty")}</CommandEmpty>
-                        <CommandGroup>
-                          {(tsumitateEligibleAssetsQuery.data?.items ?? []).map((item) => (
-                            <CommandItem
-                              key={`${item.ticker}-${item.fund_name}`}
-                              value={`${item.ticker} ${item.fund_name}`}
-                              onSelect={() => {
-                                setTicker(item.ticker.toUpperCase())
-                                setTsumitateSearchInput(
-                                  item.fund_name
-                                    ? `${item.ticker} (${item.fund_name})`
-                                    : item.ticker,
-                                )
-                                setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
-                                setInsufficientBalance(null)
-                                setTsumitatePickerOpen(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "h-4 w-4",
-                                  ticker.trim().toUpperCase() === item.ticker.toUpperCase()
-                                    ? "opacity-100"
-                                    : "opacity-0",
-                                )}
-                              />
-                              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                                <span className="truncate text-xs">
-                                  {item.fund_name
-                                    ? `${item.ticker} (${item.fund_name})`
-                                    : item.ticker}
-                                </span>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  {item.trust_fee_pct != null ? (
-                                    <span className="text-[11px] text-muted-foreground">
-                                      {item.trust_fee_pct.toFixed(3)}%
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
+                      <CommandList {...commandListScrollFix}>
+                        {tsumitateEligibleAssetsQuery.isLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            {t("eligibility.tsumitate_picker_loading")}
+                          </div>
+                        ) : (
+                          <>
+                            <CommandEmpty>{t("eligibility.tsumitate_picker_empty")}</CommandEmpty>
+                            <CommandGroup>
+                              {(tsumitateEligibleAssetsQuery.data?.items ?? []).map((item) => (
+                                <CommandItem
+                                  key={`${item.ticker}-${item.fund_name}`}
+                                  value={`${item.ticker} ${item.fund_name}`}
+                                  onSelect={() => {
+                                    setTicker(item.ticker.toUpperCase())
+                                    setCachedSelectedTsumitateAsset(item)
+                                    setTsumitateSearchInput("")
+                                    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                                    setInsufficientBalance(null)
+                                    setTsumitatePickerOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4",
+                                      ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-xs font-medium">
+                                            {item.fund_name || item.ticker}
+                                          </p>
+                                          <p className="text-[11px] text-muted-foreground">
+                                            {item.ticker}
+                                            {item.trust_fee_pct != null
+                                              ? ` · ${t("eligibility.tsumitate_trust_fee_label")}: ${item.trust_fee_pct.toFixed(3)}%`
+                                              : ""}
+                                          </p>
+                                        </div>
+                                      </TooltipTrigger>
+                                      {item.fund_name ? (
+                                        <TooltipContent side="right" className="max-w-xs text-xs">
+                                          {item.fund_name}
+                                        </TooltipContent>
+                                      ) : null}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </>
+                        )}
                       </CommandList>
+                      {!tsumitateEligibleAssetsQuery.isLoading && (tsumitateEligibleAssetsQuery.data?.items?.length ?? 0) > 0 ? (
+                        <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+                          {t("eligibility.tsumitate_picker_limit_hint")}
+                        </p>
+                      ) : null}
                     </Command>
                   </PopoverContent>
                 </Popover>

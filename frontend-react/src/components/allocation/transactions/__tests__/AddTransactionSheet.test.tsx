@@ -91,6 +91,10 @@ vi.mock("@/api/hooks/useWrappers", () => ({
   useWrapperQuota: () => ({ data: wrapperState.quota, isLoading: false }),
 }))
 
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => false,
+}))
+
 describe("AddTransactionSheet", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -376,6 +380,33 @@ describe("AddTransactionSheet", () => {
     )
 
     expect(screen.getByText("transactions.form.nisa_quota_summary")).toBeInTheDocument()
+  })
+
+  it("keeps displaying selected tsumitate fund name and ticker in the trigger", () => {
+    accountState.accounts = [{ id: 7, name: "Tsumitate", broker: "SBI", tax_wrapper: "nisa_tsumitate" }]
+    accountState.balances = [{ currency: "JPY", balance: 500_000 }]
+    wrapperState.eligibleItems = [
+      {
+        ticker: "01311143",
+        fund_name: "野村インデックスファンド・JPX日経400",
+        trust_fee_pct: 0.198,
+      },
+    ]
+
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    const [, tsumitatePickerTrigger] = screen.getAllByRole("combobox")
+    fireEvent.click(tsumitatePickerTrigger)
+    fireEvent.click(screen.getByText("野村インデックスファンド・JPX日経400"))
+
+    expect(screen.getByText("野村インデックスファンド・JPX日経400")).toBeInTheDocument()
+    expect(screen.getByText("01311143 · eligibility.tsumitate_trust_fee_label: 0.198%")).toBeInTheDocument()
+    expect(screen.queryByText("eligibility.tsumitate_picker_placeholder")).not.toBeInTheDocument()
   })
 
 

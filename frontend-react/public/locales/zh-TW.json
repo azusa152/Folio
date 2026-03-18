@@ -2064,6 +2064,9 @@
     "contribution_label": "總投入",
     "growth_label": "市值"
   },
+  "holding": {
+    "auto_radar": "該標的已自動加入雷達監控清單。"
+  },
   "insight": {
     "title": "投資組合洞察",
     "show_more": "顯示更多洞察",
@@ -2134,7 +2137,10 @@
     "tsumitate_picker_placeholder": "選擇定期定額可投基金",
     "tsumitate_picker_search": "依基金名稱或代號搜尋",
     "tsumitate_picker_empty": "找不到可投基金",
+    "tsumitate_picker_loading": "正在載入可投基金…",
+    "tsumitate_picker_limit_hint": "最多顯示 50 筆結果。輸入名稱或代號可進一步篩選。",
     "tsumitate_picker_hint": "NISA 定期定額僅可購買金融廳核准基金。",
+    "tsumitate_trust_fee_label": "信託費率",
     "switch_to_suggested_account": "切換至 {{wrapper}} 帳戶",
     "no_suggested_account": "找不到可用的 {{wrapper}} 帳戶。",
     "not_in_tsumitate_approved_list": "不在 NISA 定期定額核准清單中。",

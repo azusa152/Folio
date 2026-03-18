@@ -2064,6 +2064,9 @@
     "contribution_label": "总投入",
     "growth_label": "市值"
   },
+  "holding": {
+    "auto_radar": "该标的已自动添加至雷达监控列表。"
+  },
   "insight": {
     "title": "投资组合洞察",
     "show_more": "显示更多洞察",
@@ -2134,7 +2137,10 @@
     "tsumitate_picker_placeholder": "选择定投额度可投基金",
     "tsumitate_picker_search": "按基金名或代码搜索",
     "tsumitate_picker_empty": "未找到可投基金",
+    "tsumitate_picker_loading": "正在加载可投基金…",
+    "tsumitate_picker_limit_hint": "最多显示 50 条结果。输入名称或代码可进一步筛选。",
     "tsumitate_picker_hint": "NISA 定投额度仅可购买金融厅核准基金。",
+    "tsumitate_trust_fee_label": "信托费率",
     "switch_to_suggested_account": "切换到 {{wrapper}} 账户",
     "no_suggested_account": "未找到可用的 {{wrapper}} 账户。",
     "not_in_tsumitate_approved_list": "不在 NISA 定投额度核准名单中。",
