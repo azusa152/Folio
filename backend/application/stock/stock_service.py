@@ -849,6 +849,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
 
     # Pre-fetch NAV data for Mutual_Fund stocks (single DB read, not per-thread)
     nav_cache: dict[str, dict] = {}
+    fund_name_by_ticker: dict[str, str] = {}
     mf_tickers = [
         s.ticker
         for s in stocks
@@ -857,6 +858,9 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
     ]
     if mf_tickers:
         with Session(engine) as nav_session:
+            fund_name_by_ticker = repo.find_fund_names_by_tickers(
+                nav_session, mf_tickers
+            )
             for ticker in mf_tickers:
                 nav_row = repo.get_latest_nav(nav_session, ticker)
                 if nav_row:
@@ -902,6 +906,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "market_cap": None,
             "trailing_pe": None,
             "nav_date": None,
+            "fund_name": fund_name_by_ticker.get(stock.ticker.strip().upper()),
         }
 
     def _fetch_enrichment(

@@ -29,6 +29,7 @@ interface Props {
   isCrypto: boolean
   isMutualFund?: boolean
   navDate?: string
+  fundName?: string | null
   expanded: boolean
   priceHistory?: PricePoint[]
   onToggle: () => void
@@ -46,6 +47,7 @@ export const StockCardHeader = memo(function StockCardHeader({
   isCrypto,
   isMutualFund = false,
   navDate,
+  fundName,
   expanded,
   priceHistory,
   onToggle,
@@ -72,9 +74,27 @@ export const StockCardHeader = memo(function StockCardHeader({
       aria-expanded={expanded}
     >
       <span className="flex items-center justify-between gap-2">
-        {/* Left: ticker + category icon + signal badge */}
+        {/* Left: ticker/name + category icon + signal badge */}
         <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
-          <span className="truncate">{signalIcon} {ticker}</span>
+          {isMutualFund && fundName ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="min-w-0 flex flex-col leading-tight">
+                    <span className="truncate font-medium">{fundName}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal shrink-0">
+                      {signalIcon} {ticker}
+                    </span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6} className="max-w-72 text-xs">
+                  {fundName}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className="truncate">{signalIcon} {ticker}</span>
+          )}
           <span className="shrink-0 text-muted-foreground">{catIcon}</span>
           {signalLabel && (
             <TooltipProvider>

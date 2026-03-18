@@ -74,6 +74,7 @@ export interface RadarEnrichedStock {
   market_cap?: number
   trailing_pe?: number
   nav_date?: string
+  fund_name?: string | null
   signals?: RadarSignals
   fundamentals?: RadarFundamentals
   dividend?: {

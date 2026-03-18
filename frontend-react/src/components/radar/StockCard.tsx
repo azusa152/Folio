@@ -48,6 +48,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   const changeAbs = price != null && prevClose != null ? price - prevClose : null
   const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
   const navDate = enrichment?.nav_date
+  const fundName = enrichment?.fund_name
 
   const currency = useMemo(() => inferCurrency(stock.ticker, stock.category), [stock.ticker, stock.category])
   const marketLabel = inferMarketLabel(stock.ticker, stock.category)
@@ -69,6 +70,7 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
         isCrypto={isCrypto}
         isMutualFund={isMutualFund}
         navDate={navDate}
+        fundName={fundName}
         expanded={expanded}
         priceHistory={priceHistory}
         onToggle={handleToggle}

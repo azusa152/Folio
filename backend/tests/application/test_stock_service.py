@@ -947,6 +947,93 @@ class TestGetEnrichedStocks:
         mock_signals.assert_not_called()
         assert result[0]["signals"] is None
 
+    def test_mutual_fund_enriched_response_should_include_fund_name(
+        self, db_session
+    ) -> None:
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131217A", category=StockCategory.MUTUAL_FUND),
+        )
+        save_stock(
+            db_session,
+            Stock(ticker="AAPL", category=StockCategory.MOAT),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="0131217A",
+                fund_name="eMAXIS Slim S&P500",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        by_ticker = {item["ticker"]: item for item in result}
+        assert by_ticker["0131217A"]["fund_name"] == "eMAXIS Slim S&P500"
+        assert by_ticker["AAPL"]["fund_name"] is None
+
+    def test_mutual_fund_fund_name_resolved_regardless_of_ticker_case(
+        self, db_session
+    ) -> None:
+        """fund_name lookup must succeed even when Stock.ticker is lowercase/mixed-case
+        but EligibleAsset stores the normalized UPPERCASE ticker."""
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        # Stock ticker stored in mixed-case (as may happen via import)
+        save_stock(
+            db_session,
+            Stock(ticker="0131217a", category=StockCategory.MUTUAL_FUND),
+        )
+        # EligibleAsset normalized to uppercase by upsert logic
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="eMAXIS Slim 全世界株式",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert len(result) == 1
+        assert result[0]["fund_name"] == "eMAXIS Slim 全世界株式"
+
     def test_nav_fallback_sync_called_when_no_nav_data(self, db_session) -> None:
         """When a Mutual_Fund stock has no NAV data, the enrichment pipeline
         should call sync_single_fund_nav as a self-healing fallback."""

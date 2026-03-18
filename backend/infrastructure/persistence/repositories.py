@@ -1609,6 +1609,37 @@ def find_eligible_tickers(
     return {str(ticker).upper() for ticker in session.exec(stmt).all()}
 
 
+def find_fund_names_by_tickers(
+    session: Session,
+    tickers: list[str] | set[str],
+) -> dict[str, str]:
+    """Return active eligible-asset fund names keyed by normalized ticker."""
+    normalized_tickers = {
+        str(ticker).strip().upper() for ticker in tickers if str(ticker).strip()
+    }
+    if not normalized_tickers:
+        return {}
+
+    stmt = (
+        select(EligibleAsset.ticker, EligibleAsset.fund_name)
+        .where(
+            EligibleAsset.ticker.in_(normalized_tickers),
+            EligibleAsset.is_active == True,  # noqa: E712
+        )
+        .order_by(EligibleAsset.ticker, EligibleAsset.updated_at.desc())
+    )
+
+    names_by_ticker: dict[str, str] = {}
+    for ticker, fund_name in session.exec(stmt).all():
+        normalized_ticker = str(ticker).strip().upper()
+        normalized_name = str(fund_name or "").strip()
+        if not normalized_ticker or not normalized_name:
+            continue
+        if normalized_ticker not in names_by_ticker:
+            names_by_ticker[normalized_ticker] = normalized_name
+    return names_by_ticker
+
+
 def is_active_eligible_mutual_fund(session: Session, ticker: str) -> bool:
     """Return whether ticker has any active eligible mutual_fund record."""
     normalized_ticker = ticker.upper().strip()
