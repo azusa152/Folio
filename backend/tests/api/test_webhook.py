@@ -401,6 +401,46 @@ class TestWebhookStockSplits:
         assert body["message"] == expected_msg
 
 
+class TestWebhookAcknowledgments:
+    """Tests for drift/X-Ray acknowledgment webhook actions."""
+
+    @patch("application.messaging.webhook_service.acknowledge_drift_alert")
+    def test_acknowledge_drift_should_return_success(self, mock_ack, client):
+        mock_ack.return_value = {
+            "type": "drift",
+            "key": "Growth",
+            "acknowledged_value": 12.0,
+            "acknowledged_at": "2026-03-19T00:00:00",
+            "expires_at": "2026-06-17T00:00:00",
+        }
+        resp = client.post(
+            "/webhook",
+            json={"action": "acknowledge_drift", "params": {"category": "Growth"}},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert body["data"]["key"] == "Growth"
+
+    @patch("application.messaging.webhook_service.acknowledge_xray_alert")
+    def test_acknowledge_xray_should_return_success(self, mock_ack, client):
+        mock_ack.return_value = {
+            "type": "xray",
+            "key": "AAPL",
+            "acknowledged_value": 20.0,
+            "acknowledged_at": "2026-03-19T00:00:00",
+            "expires_at": "2026-06-17T00:00:00",
+        }
+        resp = client.post(
+            "/webhook",
+            json={"action": "acknowledge_xray", "params": {"symbol": "AAPL"}},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert body["data"]["key"] == "AAPL"
+
+
 class TestWebhookDiscoverability:
     """Tests ensuring AI agent discoverability stays in sync with WEBHOOK_ACTION_REGISTRY."""
 

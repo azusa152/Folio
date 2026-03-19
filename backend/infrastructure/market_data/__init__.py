@@ -27,6 +27,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     get_benchmark_close_history,
     get_bias_distribution,
     get_cnn_fear_greed,
+    get_dividend_events,
     get_dividend_info,
     get_earnings_date,
     get_etf_sector_weights,

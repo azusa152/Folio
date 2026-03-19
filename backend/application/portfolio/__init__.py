@@ -19,6 +19,19 @@ from application.portfolio.crypto_service import (  # noqa: F401
     get_crypto_price_for_ticker,
     search_crypto_coins,
 )
+from application.portfolio.dividend_service import (  # noqa: F401
+    apply_all_pending_dividends,
+    apply_dividend,
+    build_dividend_preview,
+    check_dividends,
+    dismiss_dividend,
+    list_dividend_events,
+    send_dividend_alerts,
+)
+from application.portfolio.drift_alert_service import (  # noqa: F401
+    acknowledge_drift_alert,
+    send_drift_alerts,
+)
 from application.portfolio.fx_watch_service import (  # noqa: F401
     check_fx_watches,
     create_watch,
@@ -38,6 +51,7 @@ from application.portfolio.insight_service import (  # noqa: F401
 )
 from application.portfolio.rebalance_service import (  # noqa: F401
     _compute_holding_market_values,
+    acknowledge_xray_alert,
     calculate_currency_exposure,
     calculate_rebalance,
     calculate_withdrawal,

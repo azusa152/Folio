@@ -260,6 +260,52 @@ class StockSplitEvent(SQLModel, table=True):
     applied_at: datetime | None = Field(default=None, description="套用時間")
 
 
+class DividendEvent(SQLModel, table=True):
+    """偵測到的股息事件（待處理/已套用/已忽略）。"""
+
+    __table_args__ = (
+        UniqueConstraint(
+            "ticker",
+            "ex_dividend_date",
+            "amount_per_share",
+            name="uq_dividend_event",
+        ),
+        Index("ix_dividend_event_ticker_date", "ticker", "ex_dividend_date"),
+        Index("ix_dividend_event_status", "status"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    ticker: str = Field(description="股票代號")
+    ex_dividend_date: date = Field(description="除息日")
+    amount_per_share: float = Field(description="每股股息（原幣別）")
+    status: str = Field(default="pending", description="pending/applied/dismissed")
+    detected_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="偵測時間",
+    )
+    applied_at: datetime | None = Field(default=None, description="套用時間")
+
+
+class DriftAcknowledgment(SQLModel, table=True):
+    """漂移/X-Ray 告警確認狀態，用於抑制重複提醒。"""
+
+    __table_args__ = (
+        UniqueConstraint("alert_type", "alert_key", name="uq_drift_ack_type_key"),
+        Index("ix_drift_ack_type_key", "alert_type", "alert_key"),
+        Index("ix_drift_ack_expires_at", "expires_at"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    alert_type: str = Field(description="drift/xray")
+    alert_key: str = Field(description="drift=category, xray=symbol")
+    acknowledged_value: float = Field(description="確認當下的偏離值（百分點）")
+    acknowledged_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="確認時間",
+    )
+    expires_at: datetime = Field(description="抑制到期時間")
+
+
 class UserTelegramSettings(SQLModel, table=True):
     """使用者的 Telegram 通知設定（支援自訂 Bot）。"""
 

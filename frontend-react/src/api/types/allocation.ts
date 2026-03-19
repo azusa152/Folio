@@ -53,3 +53,11 @@ export type StockSplitCheckResponse = components["schemas"]["StockSplitCheckResp
 export type StockSplitApplyResponse = components["schemas"]["StockSplitApplyResponse"]
 export type StockSplitApplyAllResponse = components["schemas"]["StockSplitApplyAllResponse"]
 export type StockSplitDismissResponse = components["schemas"]["StockSplitDismissResponse"]
+
+// Dividends
+export type DividendHoldingPreview = components["schemas"]["DividendHoldingPreview"]
+export type DividendEvent = components["schemas"]["DividendEventResponse"]
+export type DividendCheckResponse = components["schemas"]["DividendCheckResponse"]
+export type DividendApplyResponse = components["schemas"]["DividendApplyResponse"]
+export type DividendApplyAllResponse = components["schemas"]["DividendApplyAllResponse"]
+export type DividendDismissResponse = components["schemas"]["DividendDismissResponse"]

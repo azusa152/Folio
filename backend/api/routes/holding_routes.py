@@ -9,6 +9,7 @@ from api.schemas import (
     CurrencyExposureResponse,
     FXAlertResponse,
     HoldingResponse,
+    MessageResponse,
     RebalanceResponse,
     StressTestResponse,
     WithdrawRequest,
@@ -18,10 +19,13 @@ from api.schemas import (
 from application.portfolio import holding_service
 from application.services import (
     StockNotFoundError,
+    acknowledge_drift_alert,
+    acknowledge_xray_alert,
     calculate_currency_exposure,
     calculate_rebalance,
     calculate_stress_test,
     calculate_withdrawal,
+    send_drift_alerts,
     send_fx_alerts,
     send_xray_warnings,
 )
@@ -82,6 +86,72 @@ def get_rebalance(
 
 
 @router.post(
+    "/rebalance/drift-alert",
+    response_model=FXAlertResponse,
+    summary="Trigger portfolio drift alert via Telegram",
+)
+def trigger_drift_alert(
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> dict:
+    """檢查組合漂移並發送 Telegram 警報摘要。"""
+    result = send_drift_alerts(
+        session, display_currency=display_currency.strip().upper()
+    )
+    alerts = [
+        f"{row['category']}: actual {row['actual_pct']}% vs target {row['target_pct']}% "
+        f"(drift {abs(row['drift_pct'])}%)"
+        for row in result.get("alerts", [])
+    ]
+    return {
+        "message": t(
+            "api.drift_alert_done",
+            lang=get_user_language(session),
+            count=result.get("count", len(alerts)),
+        ),
+        "alerts": alerts,
+    }
+
+
+@router.post(
+    "/rebalance/drift-alert/ack",
+    response_model=MessageResponse,
+    summary="Acknowledge one drift category and suppress repeats",
+)
+def acknowledge_drift(
+    category: str,
+    drift_pct: float | None = None,
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> MessageResponse:
+    """確認漂移提醒（同一類別後續僅在惡化或反轉時重送）。"""
+    lang = get_user_language(session)
+    try:
+        result = acknowledge_drift_alert(
+            session,
+            category=category,
+            drift_pct=drift_pct,
+            display_currency=display_currency.strip().upper(),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": str(e) or ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        ) from e
+    return MessageResponse(
+        message=t(
+            "webhook.acknowledge_drift_summary",
+            lang=lang,
+            category=result["key"],
+            drift=round(float(result["acknowledged_value"]), 2),
+        )
+    )
+
+
+@router.post(
     "/rebalance/xray-alert",
     response_model=XRayAlertResponse,
     summary="Trigger X-Ray alert via Telegram",
@@ -110,6 +180,44 @@ def trigger_xray_alert(
             status_code=404,
             detail={"error_code": ERROR_PROFILE_NOT_FOUND, "detail": str(e)},
         ) from e
+
+
+@router.post(
+    "/rebalance/xray-alert/ack",
+    response_model=MessageResponse,
+    summary="Acknowledge one X-Ray symbol and suppress repeats",
+)
+def acknowledge_xray(
+    symbol: str,
+    total_weight_pct: float | None = None,
+    display_currency: str = "USD",
+    session: Session = Depends(get_session),
+) -> MessageResponse:
+    """確認 X-Ray 集中度提醒（同標的後續僅在明顯惡化時重送）。"""
+    lang = get_user_language(session)
+    try:
+        result = acknowledge_xray_alert(
+            session,
+            symbol=symbol,
+            total_weight_pct=total_weight_pct,
+            display_currency=display_currency.strip().upper(),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": str(e) or ERROR_INVALID_INPUT,
+                "detail": t(GENERIC_VALIDATION_ERROR, lang=lang),
+            },
+        ) from e
+    return MessageResponse(
+        message=t(
+            "webhook.acknowledge_xray_summary",
+            lang=lang,
+            symbol=result["key"],
+            weight=round(float(result["acknowledged_value"]), 2),
+        )
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ from api.routes.account_routes import router as account_router
 from api.routes.analytics_routes import router as analytics_router
 from api.routes.backtest_routes import router as backtest_router
 from api.routes.crypto_routes import router as crypto_router
+from api.routes.dividend_routes import router as dividend_router
 from api.routes.forex_routes import router as forex_router
 from api.routes.fx_watch_routes import router as fx_watch_router
 from api.routes.guru_routes import resonance_router
@@ -164,6 +165,7 @@ app.include_router(analytics_router, dependencies=auth_deps)
 app.include_router(account_router, dependencies=auth_deps)
 app.include_router(stock_router, dependencies=auth_deps)
 app.include_router(stock_split_router, dependencies=auth_deps)
+app.include_router(dividend_router, dependencies=auth_deps)
 app.include_router(thesis_router, dependencies=auth_deps)
 app.include_router(scan_router, dependencies=auth_deps)
 app.include_router(backtest_router, dependencies=auth_deps)

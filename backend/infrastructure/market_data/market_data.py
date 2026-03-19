@@ -74,6 +74,7 @@ from domain.constants import (
     DISK_FUNDAMENTALS_TTL,
     DISK_KEY_BETA,
     DISK_KEY_DIVIDEND,
+    DISK_KEY_DIVIDEND_EVENTS,
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
     DISK_KEY_ETF_SECTOR_WEIGHTS,
@@ -101,6 +102,7 @@ from domain.constants import (
     DISK_YF_INFO_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
+    DIVIDEND_LOOKBACK_DAYS,
     EARNINGS_CACHE_MAXSIZE,
     EARNINGS_CACHE_TTL,
     ETF_HOLDINGS_CACHE_MAXSIZE,
@@ -350,6 +352,9 @@ _earnings_cache: TTLCache = TTLCache(
 _dividend_cache: TTLCache = TTLCache(
     maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL
 )
+_dividend_events_cache: TTLCache = TTLCache(
+    maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL
+)
 _stock_split_cache: TTLCache = TTLCache(
     maxsize=STOCK_SPLIT_CACHE_MAXSIZE, ttl=STOCK_SPLIT_CACHE_TTL
 )
@@ -411,6 +416,7 @@ def clear_all_caches() -> dict:
         _moat_cache,
         _earnings_cache,
         _dividend_cache,
+        _dividend_events_cache,
         _stock_split_cache,
         _fundamentals_cache,
         _yf_info_cache,
@@ -1590,6 +1596,73 @@ def get_stock_splits(
         DISK_KEY_STOCK_SPLIT,
         STOCK_SPLIT_CACHE_TTL,
         _fetch_stock_splits_from_yf,
+    )
+
+
+def _fetch_dividend_events_from_yf(
+    ticker: str, lookback_days: int = DIVIDEND_LOOKBACK_DAYS
+) -> list[dict]:
+    """取得近期股息事件（供自動偵測/入帳使用）。"""
+    ticker = ticker.upper().strip()
+    if lookback_days < 1:
+        lookback_days = DIVIDEND_LOOKBACK_DAYS
+
+    try:
+        dividends = _yf_dividends(ticker)
+    except Exception as exc:
+        logger.warning("無法取得 %s 股息事件：%s", ticker, exc)
+        return []
+
+    if dividends is None or getattr(dividends, "empty", True):
+        return []
+
+    cutoff = date.today() - timedelta(days=lookback_days)
+    rows: list[dict] = []
+    for raw_date, raw_amount in dividends.items():
+        try:
+            amount = float(raw_amount)
+        except (TypeError, ValueError):
+            continue
+        if amount <= 0 or math.isnan(amount):
+            continue
+
+        ex_date: date | None = None
+        if hasattr(raw_date, "date"):
+            ex_date = raw_date.date()
+        elif isinstance(raw_date, date):
+            ex_date = raw_date
+        else:
+            try:
+                ex_date = date.fromisoformat(str(raw_date)[:10])
+            except ValueError:
+                ex_date = None
+        if ex_date is None or ex_date < cutoff:
+            continue
+
+        rows.append(
+            {
+                "ticker": ticker,
+                "ex_dividend_date": ex_date.isoformat(),
+                "amount_per_share": round(amount, 8),
+            }
+        )
+    rows.sort(key=lambda x: x["ex_dividend_date"])
+    return rows
+
+
+def get_dividend_events(
+    ticker: str, lookback_days: int = DIVIDEND_LOOKBACK_DAYS
+) -> list[dict]:
+    """取得近期股息事件（含快取）。"""
+    normalized_ticker = ticker.upper().strip()
+    normalized_lookback = max(1, int(lookback_days))
+    cache_key = f"{normalized_ticker}:{normalized_lookback}"
+    return _cached_fetch(
+        _dividend_events_cache,
+        cache_key,
+        DISK_KEY_DIVIDEND_EVENTS,
+        DIVIDEND_CACHE_TTL,
+        _fetch_dividend_events_from_yf,
     )
 
 

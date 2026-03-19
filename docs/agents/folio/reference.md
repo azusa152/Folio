@@ -32,6 +32,9 @@ Composite actions (token-efficient):
 - `dashboard` — portfolio summary + market fear/greed context in one call
 - `analyze` — technical signals + moat trend + fundamentals in one call
 - `stock_splits` — detect split events for held tickers in one call
+- `dividends` — detect dividend events for held tickers in one call
+- `acknowledge_drift` — acknowledge one drift category to suppress repeated drift alerts
+- `acknowledge_xray` — acknowledge one concentrated symbol to suppress repeated X-Ray alerts
 
 ---
 
@@ -193,12 +196,20 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `POST` | `/stock-splits/{event_id}/apply` | Apply one split event to matching holdings |
 | `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
 | `POST` | `/stock-splits/apply-all` | Apply all pending split events |
+| `POST` | `/dividends/check` | Detect dividend events for held tickers |
+| `GET` | `/dividends/pending` | List pending dividend events |
+| `POST` | `/dividends/{event_id}/apply` | Apply one dividend event to matching holdings |
+| `POST` | `/dividends/{event_id}/dismiss` | Dismiss one dividend event |
+| `POST` | `/dividends/apply-all` | Apply all pending dividend events |
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
 | `GET` | `/holdings` | All holdings (materialized position cache derived from transactions) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
 | `POST` | `/rebalance/xray-alert` | Telegram alert for stocks with true exposure > 15% |
+| `POST` | `/rebalance/xray-alert/ack` | Acknowledge one symbol concentration and suppress repeated X-Ray alerts |
+| `POST` | `/rebalance/drift-alert` | Telegram alert for allocation drift beyond threshold |
+| `POST` | `/rebalance/drift-alert/ack` | Acknowledge one drift category and suppress repeated drift alerts |
 | `GET` | `/stress-test` | Stress test (`?scenario_drop_pct=-20&display_currency=USD`); returns Beta, expected loss, pain level |
 | `GET` | `/currency-exposure` | Currency exposure: `breakdown`, `cash_breakdown`, `fx_rate_alerts` (three-tier), FX movements |
 | `POST` | `/currency-exposure/alert` | Telegram alert for three-tier FX rate changes (daily >1.5%, 5-day >2%, 3-month >8%) |
@@ -327,6 +338,11 @@ Array of insight objects:
 | `POST` | `/stock-splits/{event_id}/apply` | Apply one split event |
 | `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
 | `POST` | `/stock-splits/apply-all` | Apply all pending split events |
+| `POST` | `/dividends/check` | Detect dividend events for held tickers |
+| `GET` | `/dividends/pending` | List pending dividend events |
+| `POST` | `/dividends/{event_id}/apply` | Apply one dividend event |
+| `POST` | `/dividends/{event_id}/dismiss` | Dismiss one dividend event |
+| `POST` | `/dividends/apply-all` | Apply all pending dividend events |
 | `GET` | `/accounts` | List accounts |
 | `POST` | `/accounts` | Create account |
 | `PUT` | `/accounts/{id}` | Update account |

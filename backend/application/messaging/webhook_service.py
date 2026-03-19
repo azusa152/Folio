@@ -17,9 +17,17 @@ from application.portfolio.account_service import get_account_summary
 from application.portfolio.analytics_service import (
     get_risk_metrics as get_risk_metrics_svc,
 )
+from application.portfolio.dividend_service import check_dividends
+from application.portfolio.drift_alert_service import (
+    acknowledge_drift_alert,
+    send_drift_alerts,
+)
 from application.portfolio.fx_watch_service import send_fx_watch_alerts
 from application.portfolio.insight_service import get_portfolio_insights
-from application.portfolio.rebalance_service import calculate_withdrawal
+from application.portfolio.rebalance_service import (
+    acknowledge_xray_alert,
+    calculate_withdrawal,
+)
 from application.portfolio.stock_split_service import check_splits
 from application.portfolio.transaction_service import (
     create_transaction,
@@ -503,6 +511,149 @@ def handle_webhook(
             return _wrap_response(
                 success=False,
                 message=t("webhook.stock_splits_failed", lang=lang, error=str(e)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INTERNAL_ERROR,
+            )
+
+    if action == "dividends":
+        try:
+            result = check_dividends(session)
+            return _wrap_response(
+                success=True,
+                message=t(
+                    "webhook.dividends_summary",
+                    lang=lang,
+                    checked=result["checked_tickers"],
+                    detected=result["detected"],
+                    auto_applied=result["auto_applied"],
+                ),
+                interpretation=t("webhook.interpretation.dividends_ready", lang=lang),
+                params=params,
+                data=result,
+            )
+        except Exception as e:
+            logger.error("dividends 執行失敗：%s", e)
+            return _wrap_response(
+                success=False,
+                message=t("webhook.dividends_failed", lang=lang, error=str(e)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INTERNAL_ERROR,
+            )
+
+    if action == "drift_alerts":
+        try:
+            result = send_drift_alerts(session)
+            return _wrap_response(
+                success=True,
+                message=t(
+                    "webhook.drift_alerts_summary",
+                    lang=lang,
+                    count=result.get("count", 0),
+                    sent=result.get("sent", False),
+                ),
+                interpretation=t(
+                    "webhook.interpretation.drift_alerts_ready", lang=lang
+                ),
+                params=params,
+                data=result,
+            )
+        except Exception as e:
+            logger.error("drift_alerts 執行失敗：%s", e)
+            return _wrap_response(
+                success=False,
+                message=t("webhook.drift_alerts_failed", lang=lang, error=str(e)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INTERNAL_ERROR,
+            )
+
+    if action == "acknowledge_drift":
+        category = str(params.get("category", "")).strip()
+        display_currency = str(params.get("display_currency", "USD")).strip().upper()
+        drift_pct_raw = params.get("drift_pct")
+        try:
+            drift_pct = float(drift_pct_raw) if drift_pct_raw is not None else None
+            result = acknowledge_drift_alert(
+                session,
+                category=category,
+                drift_pct=drift_pct,
+                display_currency=display_currency,
+            )
+            return _wrap_response(
+                success=True,
+                message=t(
+                    "webhook.acknowledge_drift_summary",
+                    lang=lang,
+                    category=result["key"],
+                    drift=round(float(result["acknowledged_value"]), 2),
+                ),
+                interpretation=t(
+                    "webhook.interpretation.acknowledge_drift_ready", lang=lang
+                ),
+                params=params,
+                data=result,
+            )
+        except ValueError:
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        except Exception as e:
+            logger.error("acknowledge_drift 執行失敗：%s", e)
+            return _wrap_response(
+                success=False,
+                message=t("webhook.acknowledge_drift_failed", lang=lang, error=str(e)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INTERNAL_ERROR,
+            )
+
+    if action == "acknowledge_xray":
+        symbol = str(params.get("symbol", "")).strip().upper()
+        display_currency = str(params.get("display_currency", "USD")).strip().upper()
+        total_weight_raw = params.get("total_weight_pct")
+        try:
+            total_weight_pct = (
+                float(total_weight_raw) if total_weight_raw is not None else None
+            )
+            result = acknowledge_xray_alert(
+                session,
+                symbol=symbol,
+                total_weight_pct=total_weight_pct,
+                display_currency=display_currency,
+            )
+            return _wrap_response(
+                success=True,
+                message=t(
+                    "webhook.acknowledge_xray_summary",
+                    lang=lang,
+                    symbol=result["key"],
+                    weight=round(float(result["acknowledged_value"]), 2),
+                ),
+                interpretation=t(
+                    "webhook.interpretation.acknowledge_xray_ready", lang=lang
+                ),
+                params=params,
+                data=result,
+            )
+        except ValueError:
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        except Exception as e:
+            logger.error("acknowledge_xray 執行失敗：%s", e)
+            return _wrap_response(
+                success=False,
+                message=t("webhook.acknowledge_xray_failed", lang=lang, error=str(e)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
                 error_code=ERROR_INTERNAL_ERROR,

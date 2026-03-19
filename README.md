@@ -46,6 +46,7 @@
 
 - **自訂價格警報** — 為個股設定 RSI / 價格 / 乖離率門檻，觸發時 Telegram 即時通知
 - **股票分割自動偵測** — 每日檢查持有部位的股票分割事件，支援通知、手動套用與一鍵全部套用（可選自動套用）
+- **股息事件自動偵測** — 每日檢查持有部位的股息事件，支援通知、手動套用與一鍵全部套用（可選自動套用）
 - **智慧定時掃描** — 每 30 分鐘檢查資料新鮮度，僅推播差異通知，避免重複掃描
 - **每週摘要** — 每週日自動發送豐富投資組合報告（總市值 WoW + S&P 500 Alpha + 健康分數 + 本週漲跌前三名 + 異常訊號 + 配置偏移 + Smart Money 大師動態）
 - **雙模式通知** — 系統預設 Bot 或自訂 Bot Token，兩種 Telegram 發送模式
@@ -57,6 +58,8 @@
 - **購買匯率快照 & FX 報酬拆解** — 新增持倉時自動記錄當下匯率（`purchase_fx_rate`），持倉明細同時顯示**本幣報酬**（本地股價漲跌 + 匯率影響）與**匯率報酬**，完整呈現跨幣別投資的真實損益
 - **壓力測試** — 模擬大盤崩盤情境（-50% 至 0%），基於 CAPM Beta 計算各持倉預期損失與痛苦等級（微風輕拂 / 有感修正 / 傷筋動骨 / 睡不著覺），檢視投資組合抗跌能力
 - **穿透式持倉 X-Ray** — 自動解析 ETF 成分股，計算直接+間接真實曝險，超門檻自動警告
+- **X-Ray / 漂移防疲勞抑制** — 可對特定集中標的或漂移分類執行「確認一次」，後續僅在明顯惡化或反轉時再提醒，避免重複干擾
+- **組合漂移提醒** — 依目標配置每週檢查實際偏離，超過門檻時推播 Telegram 提醒（可關閉、限頻、確認後抑制）
 - **匯率曝險監控** — 現金/全資產幣別雙分頁檢視，三層級匯率變動偵測（單日 / 5日 / 3月），Telegram 警報
 - **外匯換匯時機監控** — 完整的換匯時機管理系統：
   - 支援 9 種主要貨幣（USD、TWD、JPY、EUR、GBP、CNY、HKD、SGD、THB），任意貨幣對組合
@@ -633,6 +636,11 @@ docker compose up --build -d
 | `POST` | `/stock-splits/{event_id}/apply` | 套用單一股票分割事件 |
 | `POST` | `/stock-splits/{event_id}/dismiss` | 忽略單一股票分割事件 |
 | `POST` | `/stock-splits/apply-all` | 一鍵套用所有待處理股票分割事件 |
+| `POST` | `/dividends/check` | 檢查持有股票是否發生股息事件（可由排程或手動觸發） |
+| `GET` | `/dividends/pending` | 取得待處理的股息事件 |
+| `POST` | `/dividends/{event_id}/apply` | 套用單一股息事件 |
+| `POST` | `/dividends/{event_id}/dismiss` | 忽略單一股息事件 |
+| `POST` | `/dividends/apply-all` | 一鍵套用所有待處理股息事件 |
 
 <details>
 <summary>📋 完整 API 端點列表（點擊展開）</summary>
@@ -931,6 +939,8 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | `alerts` | 查看價格警報 | 是 |
 | `add_stock` | 新增股票 | 是（在 params 中） |
 | `stock_splits` | 檢查持有部位的股票分割並回傳摘要 | 否 |
+| `dividends` | 檢查持有部位的股息事件並回傳摘要 | 否 |
+| `drift_alerts` | 檢查組合漂移並回傳提醒摘要 | 否 |
 | `transactions` | 查看近期交易紀錄（可選 `ticker`、`limit`） | 否 |
 | `add_transaction` | 記錄交易（BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT） | 是 |
 | `accounts` | 列出帳戶及持倉數量 | 否 |

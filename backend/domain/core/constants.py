@@ -118,6 +118,7 @@ BACKFILL_MARKET_STATUS = "BACKFILL"
 BACKFILL_DEFAULT_MOAT = "STABLE"
 BACKFILL_MIN_HISTORY_DAYS = 200  # MA200 warmup requirement for replay
 STOCK_SPLIT_LOOKBACK_DAYS = 30
+DIVIDEND_LOOKBACK_DAYS = 45
 
 SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
@@ -201,6 +202,8 @@ ACCOUNT_TYPE_OPTIONS = [
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
+DRIFT_ACK_EXPIRE_DAYS = 90  # acknowledged drift/xray suppression safety expiry
+XRAY_ACK_STEP_PCT = 5.0  # re-alert when concentration worsens by another 5pp
 
 # ---------------------------------------------------------------------------
 # i18n Language Support
@@ -400,6 +403,7 @@ DISK_KEY_SIGNALS = "signals"
 DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
+DISK_KEY_DIVIDEND_EVENTS = "dividend_events"
 DISK_KEY_STOCK_SPLIT = "stock_split"
 DISK_KEY_FUNDAMENTALS = "fundamentals"
 DISK_KEY_YF_INFO = "yf_info"
@@ -481,6 +485,32 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
     "stock_splits": {
         "description": "Check stock splits for held tickers and notify/apply updates",
         "requires_ticker": False,
+    },
+    "dividends": {
+        "description": "Check dividends for held tickers and notify/apply updates",
+        "requires_ticker": False,
+    },
+    "drift_alerts": {
+        "description": "Run portfolio drift checks and send alert summaries",
+        "requires_ticker": False,
+    },
+    "acknowledge_drift": {
+        "description": "Acknowledge one drift category to suppress repeated alerts",
+        "requires_ticker": False,
+        "params": {
+            "category": "str (required — allocation category name)",
+            "drift_pct": "float (optional — current drift percentage points)",
+            "display_currency": "str (optional — default USD)",
+        },
+    },
+    "acknowledge_xray": {
+        "description": "Acknowledge one X-Ray symbol to suppress repeated alerts",
+        "requires_ticker": False,
+        "params": {
+            "symbol": "str (required — concentrated underlying symbol)",
+            "total_weight_pct": "float (optional — current portfolio weight percentage)",
+            "display_currency": "str (optional — default USD)",
+        },
     },
     "guru_sync": {
         "description": "Trigger 13F filing sync for all tracked gurus (EDGAR fetch)",
@@ -574,6 +604,8 @@ NOTIFICATION_TYPES = {
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
     "guru_alerts": "constants.notification_guru_alerts",
     "stock_split_alerts": "constants.notification_stock_split_alerts",
+    "dividend_alerts": "constants.notification_dividend_alerts",
+    "drift_alerts": "constants.notification_drift_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
     NOTIFICATION_TYPES, True
