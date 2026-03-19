@@ -12,25 +12,28 @@
 | api/routes/analytics\_routes.py                       |       40 |        0 |    100% |           |
 | api/routes/backtest\_routes.py                        |       41 |        1 |     98% |        72 |
 | api/routes/crypto\_routes.py                          |       18 |        0 |    100% |           |
+| api/routes/dividend\_routes.py                        |       30 |        2 |     93% |    70, 84 |
 | api/routes/forex\_routes.py                           |        6 |        0 |    100% |           |
 | api/routes/fx\_watch\_routes.py                       |       78 |        4 |     95% |     86-91 |
 | api/routes/guru\_routes.py                            |      149 |        4 |     97% |226, 357, 605-606 |
-| api/routes/holding\_routes.py                         |       63 |        3 |     95% |   106-109 |
+| api/routes/holding\_routes.py                         |       84 |        5 |     94% |176-179, 205-206 |
 | api/routes/persona\_routes.py                         |       37 |        0 |    100% |           |
 | api/routes/preferences\_routes.py                     |       16 |        0 |    100% |           |
 | api/routes/scan\_routes.py                            |       82 |        6 |     93% |51-52, 60-61, 150, 186 |
 | api/routes/snapshot\_routes.py                        |       80 |        9 |     89% |37-38, 41-42, 56-57, 75-76, 116 |
 | api/routes/stock\_routes.py                           |      170 |       32 |     81% |143-146, 159, 176, 204, 268-269, 278-281, 301, 320, 329, 358-363, 375-377, 391-402, 414-416, 427-429, 442-444 |
+| api/routes/stock\_split\_routes.py                    |       30 |        2 |     93% |    68, 82 |
 | api/routes/telegram\_routes.py                        |       19 |        0 |    100% |           |
 | api/routes/thesis\_routes.py                          |       19 |        0 |    100% |           |
 | api/routes/transaction\_routes.py                     |       43 |        0 |    100% |           |
 | api/routes/wrapper\_routes.py                         |      111 |        2 |     98% |  260, 318 |
-| api/schemas/\_\_init\_\_.py                           |       14 |        0 |    100% |           |
+| api/schemas/\_\_init\_\_.py                           |       16 |        0 |    100% |           |
 | api/schemas/account.py                                |       27 |        0 |    100% |           |
 | api/schemas/analytics.py                              |       10 |        0 |    100% |           |
 | api/schemas/backtest.py                               |        8 |        0 |    100% |           |
 | api/schemas/common.py                                 |        8 |        0 |    100% |           |
 | api/schemas/crypto.py                                 |        6 |        0 |    100% |           |
+| api/schemas/dividend.py                               |       13 |        0 |    100% |           |
 | api/schemas/fx\_watch.py                              |       48 |        1 |     98% |        69 |
 | api/schemas/guru.py                                   |      108 |        0 |    100% |           |
 | api/schemas/guru\_analytics.py                        |       24 |        0 |    100% |           |
@@ -38,7 +41,8 @@
 | api/schemas/portfolio.py                              |      104 |        0 |    100% |           |
 | api/schemas/scan.py                                   |       88 |        0 |    100% |           |
 | api/schemas/stock.py                                  |       82 |        1 |     99% |        80 |
-| api/schemas/transaction.py                            |       73 |        1 |     99% |        64 |
+| api/schemas/stock\_split.py                           |       14 |        0 |    100% |           |
+| api/schemas/transaction.py                            |       95 |        6 |     94% |64, 78, 143-145, 147 |
 | api/schemas/wrapper.py                                |       35 |        0 |    100% |           |
 | application/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
 | application/formatters.py                             |      106 |        8 |     92% |82-83, 122, 265, 267, 294-296 |
@@ -48,13 +52,16 @@
 | application/guru/heatmap\_service.py                  |       83 |       17 |     80% |40, 55-56, 62-63, 66-67, 72-77, 98, 133, 141, 149 |
 | application/guru/resonance\_service.py                |      102 |       13 |     87% |45, 87-88, 91-92, 97-102, 113-114 |
 | application/messaging/\_\_init\_\_.py                 |        3 |        0 |    100% |           |
-| application/messaging/notification\_service.py        |      247 |       15 |     94% |52-56, 61-66, 136, 357, 436-437 |
+| application/messaging/notification\_service.py        |      254 |       19 |     93% |52-56, 61-66, 136, 357, 374-377, 446-447 |
 | application/messaging/telegram\_settings\_service.py  |       54 |        1 |     98% |        85 |
-| application/messaging/webhook\_service.py             |      257 |       17 |     93% |71, 202-207, 245-250, 339-347, 399, 416-417, 750-751 |
-| application/portfolio/\_\_init\_\_.py                 |       13 |        0 |    100% |           |
+| application/messaging/webhook\_service.py             |      308 |       39 |     87% |81, 212-217, 255-260, 349-357, 409, 426-427, 531-548, 557-575, 609-619, 655-665, 932-933 |
+| application/portfolio/\_\_init\_\_.py                 |       16 |        0 |    100% |           |
 | application/portfolio/account\_service.py             |      124 |        8 |     94% |76, 78, 150-154, 168, 231, 250, 272 |
+| application/portfolio/alert\_ack\_service.py          |       24 |        0 |    100% |           |
 | application/portfolio/analytics\_service.py           |       27 |        0 |    100% |           |
 | application/portfolio/crypto\_service.py              |       26 |        8 |     69% |15, 36, 49-53, 57 |
+| application/portfolio/dividend\_service.py            |      146 |       38 |     74% |64, 72, 80, 93-97, 122, 136-137, 161, 211-220, 229-252, 285, 313, 318, 320, 323-324, 330-331, 333 |
+| application/portfolio/drift\_alert\_service.py        |       80 |       22 |     72% |54-55, 66, 69-70, 89-90, 98, 105, 128-130, 161-177, 180 |
 | application/portfolio/eligibility\_service.py         |       63 |        1 |     98% |       206 |
 | application/portfolio/eligible\_sync\_service.py      |      224 |       55 |     75% |40, 68, 102, 112, 150, 152, 190, 196, 211-213, 215, 235, 252, 265-273, 284-288, 297-312, 317-324, 330-333, 341-349 |
 | application/portfolio/fx\_watch\_service.py           |      123 |        3 |     98% |163, 230, 400 |
@@ -62,10 +69,11 @@
 | application/portfolio/insight\_service.py             |       62 |        0 |    100% |           |
 | application/portfolio/nav\_sync\_service.py           |      138 |       24 |     83% |69-70, 85-86, 88, 94-95, 120-123, 146, 151-153, 210-211, 219-220, 224-228 |
 | application/portfolio/pricing\_service.py             |       33 |        8 |     76% |32, 52-57, 59-61, 63 |
-| application/portfolio/rebalance\_service.py           |      635 |       75 |     88% |156-184, 191, 195, 198-199, 203-208, 218, 298, 312-313, 344, 379, 384-390, 398-399, 406-412, 499-500, 662, 676-677, 869, 996, 1065-1067, 1199, 1381, 1443, 1473, 1485-1513, 1539, 1547-1548, 1633-1636, 1692, 1699, 1722-1725 |
+| application/portfolio/rebalance\_service.py           |      666 |       88 |     87% |165-193, 200, 204, 207-208, 212-217, 227, 307, 321-322, 353, 388, 393-399, 407-408, 415-421, 508-509, 671, 685-686, 878, 1005, 1074-1076, 1120-1121, 1135, 1142-1143, 1169, 1173-1185, 1188, 1282, 1464, 1526, 1556, 1568-1596, 1622, 1630-1631, 1716-1719, 1775, 1782, 1805-1808 |
 | application/portfolio/routing\_service.py             |      155 |       40 |     74% |50-54, 77, 80, 91, 97-98, 103-106, 110, 124-141, 155, 171, 270, 285, 298, 309, 315 |
-| application/portfolio/settlement\_service.py          |      264 |       30 |     89% |76, 86, 184, 225, 304, 315, 326, 341, 358-370, 398, 456-457, 463, 471, 480, 483, 494-495, 556, 559, 598, 638-639 |
+| application/portfolio/settlement\_service.py          |      274 |       26 |     91% |79, 89, 187, 228, 312, 323, 334, 349, 367, 369-378, 420, 482, 490, 499, 502, 513-514, 575, 578, 622, 662-663 |
 | application/portfolio/snapshot\_service.py            |      120 |        7 |     94% |197-198, 202, 205-209, 213 |
+| application/portfolio/stock\_split\_service.py        |      159 |       30 |     81% |65, 73, 128, 144-145, 173, 232, 253-277, 314, 356, 358, 361-362, 368-369, 371, 385 |
 | application/portfolio/stress\_test\_service.py        |       39 |        0 |    100% |           |
 | application/portfolio/transaction\_service.py         |      140 |       15 |     89% |89-90, 106-107, 156, 182, 285-298 |
 | application/portfolio/wrapper\_service.py             |       56 |        2 |     96% |   96, 129 |
@@ -73,8 +81,8 @@
 | application/scan/backfill\_service.py                 |       77 |        8 |     90% |68-71, 82-84, 151-153 |
 | application/scan/backtest\_service.py                 |       80 |        2 |     98% |   45, 149 |
 | application/scan/prewarm\_service.py                  |      211 |       29 |     86% |58, 82-85, 157, 169-170, 371-387, 422-423, 454-455, 486, 491-499 |
-| application/scan/scan\_service.py                     |      351 |       80 |     77% |88-91, 134-137, 166-168, 193, 225, 264, 273, 283, 303, 314, 324, 334, 357, 359, 361, 416-418, 468, 528-551, 556, 584, 592-593, 596, 637, 649-651, 666-667, 724, 738-745, 779-791, 824-829, 834-842 |
-| application/services.py                               |        9 |        0 |    100% |           |
+| application/scan/scan\_service.py                     |      357 |       85 |     76% |88-91, 134-137, 166-168, 193, 225, 264, 273, 283, 303, 314, 324, 334, 357, 359, 361, 416-418, 468, 527-531, 535-558, 563, 591, 599-600, 603, 644, 656-658, 673-674, 731, 745-752, 786-798, 831-836, 841-849 |
+| application/services.py                               |       10 |        0 |    100% |           |
 | application/settings/\_\_init\_\_.py                  |        2 |        0 |    100% |           |
 | application/settings/persona\_service.py              |       53 |        0 |    100% |           |
 | application/settings/preferences\_service.py          |       42 |        3 |     93% |60, 64, 93 |
@@ -92,9 +100,9 @@
 | domain/analysis/smart\_money.py                       |       27 |        1 |     96% |        35 |
 | domain/constants.py                                   |        1 |        0 |    100% |           |
 | domain/core/\_\_init\_\_.py                           |        0 |        0 |    100% |           |
-| domain/core/constants.py                              |      330 |        0 |    100% |           |
-| domain/core/entities.py                               |      244 |        4 |     98% |417-418, 430-431 |
-| domain/core/enums.py                                  |       94 |        0 |    100% |           |
+| domain/core/constants.py                              |      340 |        0 |    100% |           |
+| domain/core/entities.py                               |      305 |        7 |     98% |36, 96, 271, 550-551, 563-564 |
+| domain/core/enums.py                                  |       96 |        0 |    100% |           |
 | domain/core/formatters.py                             |       38 |        0 |    100% |           |
 | domain/core/protocols.py                              |        3 |        0 |    100% |           |
 | domain/entities.py                                    |        1 |        0 |    100% |           |
@@ -124,7 +132,7 @@
 | infrastructure/external/\_\_init\_\_.py               |        0 |        0 |    100% |           |
 | infrastructure/external/crypto.py                     |       38 |        3 |     92% |     80-82 |
 | infrastructure/external/eligible\_fund\_parser.py     |      163 |       26 |     84% |40, 43, 46-47, 64, 98-102, 122, 127-128, 139, 147, 153-154, 159, 162, 196, 215, 220, 224, 299-301 |
-| infrastructure/external/notification.py               |       96 |       20 |     79% |149-150, 164-166, 171-177, 189-208 |
+| infrastructure/external/notification.py               |       96 |        9 |     91% |149-150, 177, 199-205 |
 | infrastructure/external/sec\_edgar.py                 |      188 |       38 |     80% |78-83, 104-105, 119, 125-129, 135-139, 212-214, 277-279, 315-316, 393-395, 419, 429-431, 439, 442, 448-449 |
 | infrastructure/finmind\_adapter.py                    |        1 |        1 |      0% |         6 |
 | infrastructure/jquants\_adapter.py                    |        1 |        0 |    100% |           |
@@ -132,17 +140,17 @@
 | infrastructure/market\_data/crypto\_adapter.py        |      211 |      101 |     52% |84-89, 96, 102, 111-112, 123-127, 141-157, 165-166, 173-174, 185-188, 192-194, 200, 202, 211, 222-225, 235, 239, 241, 247, 251-252, 266, 270, 273, 285-293, 299-302, 306-323, 328-330, 335-372, 376-378 |
 | infrastructure/market\_data/finmind\_adapter.py       |       55 |        2 |     96% |     55-56 |
 | infrastructure/market\_data/jquants\_adapter.py       |       37 |        9 |     76% | 20, 26-34 |
-| infrastructure/market\_data/market\_data.py           |     1297 |      456 |     65% |230, 394-395, 437-469, 535-543, 619, 630-632, 640-642, 679-687, 709-711, 726-727, 764, 807, 922, 940, 955-957, 999-1000, 1026-1031, 1088-1089, 1097, 1099-1101, 1130-1144, 1182-1183, 1209, 1225, 1264, 1282-1284, 1352-1385, 1405-1451, 1465-1496, 1501, 1517-1561, 1571-1589, 1652-1685, 1693-1696, 1713, 1724-1729, 1746-1783, 1792-1802, 1810-1847, 1856-1866, 1871-1878, 1897, 1916, 1930-1932, 1959, 1996-2011, 2058, 2065, 2070, 2077, 2080-2082, 2106, 2117-2119, 2121-2125, 2141-2156, 2170-2217, 2231-2263, 2274-2280, 2296-2302, 2417, 2429, 2445-2470, 2572-2598, 2623-2631, 2643, 2664, 2699, 2797, 2845-2846, 2862-2864, 2873, 2888, 2906-2908, 2917, 2932, 2954-2955, 2973-2974, 2997, 3006, 3034-3039, 3044-3047, 3067-3072, 3074-3075 |
+| infrastructure/market\_data/market\_data.py           |     1385 |      536 |     61% |236, 406-407, 451-483, 549-557, 633, 644-646, 654-656, 693-701, 723-725, 731-733, 748-749, 786, 829, 944, 962, 977-979, 1021-1022, 1048-1053, 1110-1111, 1119, 1121-1123, 1152-1166, 1204-1205, 1231, 1247, 1286, 1304-1306, 1374-1407, 1427-1473, 1487-1518, 1523, 1539-1587, 1594-1597, 1610-1654, 1661-1664, 1680-1724, 1734-1752, 1815-1848, 1856-1859, 1876, 1887-1892, 1909-1946, 1955-1965, 1973-2010, 2019-2029, 2034-2041, 2060, 2079, 2093-2095, 2122, 2159-2174, 2221, 2228, 2233, 2240, 2243-2245, 2269, 2280-2282, 2284-2288, 2304-2319, 2333-2380, 2394-2426, 2437-2443, 2459-2465, 2580, 2592, 2608-2633, 2735-2761, 2786-2794, 2806, 2827, 2862, 2960, 3008-3009, 3025-3027, 3036, 3051, 3069-3071, 3080, 3095, 3117-3118, 3136-3137, 3160, 3169, 3197-3202, 3207-3210, 3230-3235, 3237-3238 |
 | infrastructure/market\_data/market\_data\_resolver.py |       73 |       23 |     68% |19-25, 43-44, 47-48, 54-55, 58-59, 62, 65, 68, 71, 121, 124, 127, 132 |
 | infrastructure/market\_data/toushin\_adapter.py       |       79 |        9 |     89% |41, 47, 50-51, 92, 96-97, 108, 114 |
 | infrastructure/market\_data/toushin\_lib\_adapter.py  |      111 |        4 |     96% |75-77, 139 |
 | infrastructure/market\_data\_resolver.py              |        1 |        1 |      0% |         6 |
 | infrastructure/notification.py                        |        1 |        0 |    100% |           |
 | infrastructure/persistence/\_\_init\_\_.py            |        1 |        0 |    100% |           |
-| infrastructure/persistence/repositories.py            |      780 |      137 |     82% |74-82, 106-114, 140-153, 158-172, 184, 367-370, 375-379, 396, 401-402, 491, 622, 1254, 1268, 1300, 1350-1353, 1358-1359, 1364-1369, 1397-1400, 1419-1422, 1457-1460, 1484, 1486, 1488, 1556-1564, 1576, 1625, 1641, 1651, 1669, 1733, 1779, 1823-1840, 1843-1847, 1852, 1867-1870, 1874, 1943, 1960-1961, 2020-2051, 2072-2077, 2094, 2100-2103, 2108-2109 |
+| infrastructure/persistence/repositories.py            |      892 |      166 |     81% |78-86, 110-118, 144-157, 162-176, 188, 371-374, 379-383, 400, 405-406, 495, 537, 566-576, 581-584, 628, 655-665, 670-673, 712-714, 741-744, 757, 890, 1536, 1568, 1618-1621, 1626-1627, 1632-1637, 1665-1668, 1687-1690, 1725-1728, 1752, 1754, 1756, 1824-1832, 1844, 1893, 1909, 1919, 1937, 2001, 2047, 2091-2108, 2111-2115, 2120, 2135-2138, 2142, 2211, 2228-2229, 2288-2319, 2340-2345, 2362, 2368-2371, 2376-2377 |
 | infrastructure/repositories.py                        |        1 |        0 |    100% |           |
 | infrastructure/sec\_edgar.py                          |        1 |        0 |    100% |           |
-| **TOTAL**                                             | **12230** | **1586** | **87%** |           |
+| **TOTAL**                                             | **13153** | **1828** | **86%** |           |
 
 
 ## Setup coverage badge
