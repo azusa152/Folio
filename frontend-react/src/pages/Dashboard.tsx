@@ -25,6 +25,7 @@ import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { useDefaultCurrency } from "@/hooks/useDefaultCurrency"
 import {
   Select,
   SelectContent,
@@ -53,7 +54,11 @@ import { InsightCard } from "@/components/common/InsightCard"
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const { defaultDisplayCurrency } = useDefaultCurrency()
+  // currencyOverride is set when the user manually changes the per-page selector.
+  // When null, the page reads the user's server-persisted default (reactive via Zustand).
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null)
+  const displayCurrency = currencyOverride ?? defaultDisplayCurrency
   const [showAdvanced, setShowAdvanced] = useLocalStorage("dashboard_advanced", false)
   const digestMutation = useTriggerDigest()
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
@@ -63,6 +68,7 @@ export default function Dashboard() {
     const timer = window.setInterval(updateNow, 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
 
   const handleDigest = () => {
     digestMutation.mutate(undefined, {
@@ -210,7 +216,7 @@ export default function Dashboard() {
           <SendHorizonal className="w-3.5 h-3.5" />
           {t("dashboard.digest_tooltip")}
         </Button>
-        <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+        <Select value={displayCurrency} onValueChange={setCurrencyOverride}>
           <SelectTrigger className="w-28 text-xs min-h-[44px]">
             <SelectValue />
           </SelectTrigger>

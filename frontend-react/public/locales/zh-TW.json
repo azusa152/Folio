@@ -10,7 +10,8 @@
     "allocation": "個人資產配置",
     "nisa": "NISA",
     "fx_watch": "外匯總覽",
-    "smart_money": "大師足跡"
+    "smart_money": "大師足跡",
+    "settings": "設定"
   },
   "common": {
     "refresh": "🔄 重新整理",
@@ -2413,5 +2414,35 @@
     "split_purchase": "分拆買入",
     "split_success": "已建立 {{count}} 筆分拆買入交易",
     "split_rollback_failed": "分拆買入部分失敗，且自動回滾未能完全完成。"
+  },
+  "settings": {
+    "page_title": "設定",
+    "tab_general": "一般",
+    "tab_portfolio": "投資組合",
+    "tab_notifications": "通知",
+    "section_appearance": "外觀",
+    "section_language": "語言與地區",
+    "section_privacy": "隱私",
+    "section_currency": "貨幣",
+    "goto_settings": "前往設定",
+    "goto_settings_hint": "設定已移至獨立頁面，請使用設定頁面管理您的偏好。",
+    "language_label": "顯示語言",
+    "language_hint": "選擇整個應用程式使用的語言。",
+    "theme_label": "主題",
+    "theme_hint": "選擇應用程式的外觀。「系統」會跟隨您的裝置設定。",
+    "theme_light": "淺色",
+    "theme_dark": "深色",
+    "privacy_label": "隱私模式",
+    "privacy_hint": "在所有頁面隱藏金額數字——在分享螢幕時非常實用。",
+    "terminology_label": "術語顯示風格",
+    "terminology_hint": "「簡化」使用日常用語；「專業」使用標準金融術語。",
+    "default_currency_label": "預設顯示貨幣",
+    "default_currency_hint": "應用程式中所有金額將預設以此貨幣顯示。",
+    "home_currency_label": "本國貨幣",
+    "home_currency_hint": "您的本國貨幣，用於計算外匯曝險與風險。",
+    "portfolio_section_title": "投資組合",
+    "notifications_section_title": "通知",
+    "telegram_section_title": "Telegram 通知",
+    "alerts_section_title": "通知偏好"
   }
 }

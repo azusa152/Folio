@@ -1,23 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
+import { ChevronDown, ChevronRight, Clock3, Settings } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useAccounts } from "@/api/hooks/useAccounts"
 import { useHoldings, useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
+import { useDefaultCurrency } from "@/hooks/useDefaultCurrency"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { RebalanceAnalysis } from "@/components/allocation/analysis/RebalanceAnalysis"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
 import { StressTest } from "@/components/allocation/tools/StressTest"
 import { SmartWithdrawal } from "@/components/allocation/tools/SmartWithdrawal"
-import { TargetAllocation } from "@/components/allocation/tools/TargetAllocation"
-import { HoldingsManager } from "../components/allocation/holdings/HoldingsManager"
-import { TelegramSettings } from "@/components/allocation/settings/TelegramSettings"
-import { NotificationPreferences } from "@/components/allocation/settings/NotificationPreferences"
-import { TerminologySettings } from "@/components/allocation/settings/TerminologySettings"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
@@ -35,15 +31,14 @@ export default function Allocation() {
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
   const tabParam = searchParams.get("tab")
   const activeTab =
-    tabParam === "risk" ||
-    tabParam === "actions" ||
-    tabParam === "accounts" ||
-    tabParam === "settings"
+    tabParam === "risk" || tabParam === "actions" || tabParam === "accounts"
       ? tabParam
       : tabParam === "transactions"
         ? "accounts"
         : "portfolio"
-  const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const { defaultDisplayCurrency } = useDefaultCurrency()
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null)
+  const displayCurrency = currencyOverride ?? defaultDisplayCurrency
   const [riskExpanded, setRiskExpanded] = useState(false)
   const [actionsExpanded, setActionsExpanded] = useState(false)
   const [transactionSheetOpen, setTransactionSheetOpen] = useState(false)
@@ -81,6 +76,7 @@ export default function Allocation() {
     )
     return () => window.clearInterval(timer)
   }, [])
+
 
   const openTransactionSheet = useCallback((options?: {
     ticker?: string
@@ -213,13 +209,21 @@ export default function Allocation() {
 
       {/* Main tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
-          <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
-          <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
-          <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
-          <TabsTrigger value="accounts" className="min-h-[44px]">{t("allocation.tab.accounts")}</TabsTrigger>
-          <TabsTrigger value="settings" className="min-h-[44px]">{t("allocation.tab.settings")}</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-2 flex-wrap">
+          <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
+            <TabsTrigger value="portfolio" className="min-h-[44px]">{t("allocation.tab.portfolio")}</TabsTrigger>
+            <TabsTrigger value="risk" className="min-h-[44px]">{t("allocation.tab.risk")}</TabsTrigger>
+            <TabsTrigger value="actions" className="min-h-[44px]">{t("allocation.tab.actions")}</TabsTrigger>
+            <TabsTrigger value="accounts" className="min-h-[44px]">{t("allocation.tab.accounts")}</TabsTrigger>
+          </TabsList>
+          <Link
+            to="/settings"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground min-h-[44px] px-2 transition-colors"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            {t("nav.settings")}
+          </Link>
+        </div>
 
         {/* Portfolio tab */}
         <TabsContent value="portfolio" className="mt-4 space-y-4">
@@ -229,7 +233,7 @@ export default function Allocation() {
             <select
               id="alloc-currency"
               value={displayCurrency}
-              onChange={(e) => setDisplayCurrency(e.target.value)}
+              onChange={(e) => setCurrencyOverride(e.target.value)}
               className="text-xs border border-border rounded px-3 py-2 min-h-[44px] bg-background"
             >
               {DISPLAY_CURRENCIES.map((c) => (
@@ -314,41 +318,6 @@ export default function Allocation() {
           />
         </TabsContent>
 
-        {/* Settings tab */}
-        <TabsContent value="settings" className="mt-4 space-y-8">
-          <section className="space-y-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t("allocation.tab.portfolio")}
-            </p>
-            <div className="rounded-md border border-border p-4">
-              <TargetAllocation />
-            </div>
-            <div className="rounded-md border border-border p-4">
-              <HoldingsManager privacyMode={privacyMode} />
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t("terminology_settings.terminology_mode")}
-            </p>
-            <div className="rounded-md border border-border p-4">
-              <TerminologySettings />
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t("allocation.telegram.title")}
-            </p>
-            <div className="rounded-md border border-border p-4">
-              <TelegramSettings privacyMode={privacyMode} />
-            </div>
-            <div className="rounded-md border border-border p-4">
-              <NotificationPreferences />
-            </div>
-          </section>
-        </TabsContent>
       </Tabs>
 
       {transactionSheetOpen ? (

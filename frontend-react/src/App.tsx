@@ -20,6 +20,7 @@ const Nisa = lazy(() => import("./pages/Nisa"))
 const FxWatch = lazy(() => import("./pages/FxWatch"))
 const SmartMoney = lazy(() => import("./pages/SmartMoney"))
 const Backtest = lazy(() => import("./pages/Backtest"))
+const SettingsPage = lazy(() => import("./pages/Settings"))
 
 export default function App() {
   const { t } = useTranslation()
@@ -51,6 +52,7 @@ export default function App() {
                   <Route path="/fx-watch" element={<PageShell><FxWatch /></PageShell>} />
                   <Route path="/smart-money" element={<PageShell><SmartMoney /></PageShell>} />
                   <Route path="/backtest" element={<PageShell><Backtest /></PageShell>} />
+                  <Route path="/settings" element={<PageShell><SettingsPage /></PageShell>} />
                 </Routes>
               </main>
             </div>

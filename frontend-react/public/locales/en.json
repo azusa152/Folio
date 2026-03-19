@@ -10,7 +10,8 @@
     "allocation": "Asset Allocation",
     "nisa": "NISA",
     "fx_watch": "FX Monitor",
-    "smart_money": "Smart Money"
+    "smart_money": "Smart Money",
+    "settings": "Settings"
   },
   "common": {
     "refresh": "🔄 Refresh",
@@ -2413,5 +2414,35 @@
     "split_purchase": "Split purchase",
     "split_success": "Created {{count}} split buy transactions",
     "split_rollback_failed": "Split purchase partially failed; automatic rollback did not fully complete."
+  },
+  "settings": {
+    "page_title": "Settings",
+    "tab_general": "General",
+    "tab_portfolio": "Portfolio",
+    "tab_notifications": "Notifications",
+    "section_appearance": "Appearance",
+    "section_language": "Language & Region",
+    "section_privacy": "Privacy",
+    "section_currency": "Currency",
+    "goto_settings": "Go to Settings",
+    "goto_settings_hint": "Settings have moved. Use the Settings page to manage your preferences.",
+    "language_label": "Display Language",
+    "language_hint": "Choose the language used throughout the app.",
+    "theme_label": "Theme",
+    "theme_hint": "Choose how the app looks. System follows your device setting.",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "privacy_label": "Privacy Mode",
+    "privacy_hint": "Hide all monetary amounts across every page — useful when sharing your screen.",
+    "terminology_label": "Terminology Style",
+    "terminology_hint": "Simplified uses everyday language; Expert uses standard financial terms.",
+    "default_currency_label": "Default Display Currency",
+    "default_currency_hint": "All monetary values across the app will be shown in this currency by default.",
+    "home_currency_label": "Home Currency",
+    "home_currency_hint": "Your domestic currency, used to calculate your FX exposure and risk.",
+    "portfolio_section_title": "Portfolio",
+    "notifications_section_title": "Notifications",
+    "telegram_section_title": "Telegram Alerts",
+    "alerts_section_title": "Alert Preferences"
   }
 }

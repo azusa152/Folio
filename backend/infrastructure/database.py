@@ -217,6 +217,8 @@ def _run_migrations() -> None:
         ),
         "CREATE INDEX IF NOT EXISTS ix_mfnav_fund_code ON mutualfundnav (fund_code);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_mfnav_fund_code_date ON mutualfundnav (fund_code, nav_date);",
+        # UserPreferences: 新增預設顯示貨幣欄位（Centralized Settings Page）
+        "ALTER TABLE userpreferences ADD COLUMN default_display_currency VARCHAR DEFAULT 'USD';",
     ]
 
     with engine.connect() as conn:

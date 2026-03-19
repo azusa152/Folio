@@ -10,7 +10,8 @@
     "allocation": "資産配分",
     "nisa": "NISA",
     "fx_watch": "FXモニター",
-    "smart_money": "スマートマネー"
+    "smart_money": "スマートマネー",
+    "settings": "設定"
   },
   "common": {
     "refresh": "🔄 更新",
@@ -2413,5 +2414,35 @@
     "split_purchase": "買付を分割して作成",
     "split_success": "分割買付を {{count}} 件作成しました",
     "split_rollback_failed": "分割買付の一部が失敗し、自動ロールバックを完了できませんでした。"
+  },
+  "settings": {
+    "page_title": "設定",
+    "tab_general": "一般",
+    "tab_portfolio": "ポートフォリオ",
+    "tab_notifications": "通知",
+    "section_appearance": "外観",
+    "section_language": "言語と地域",
+    "section_privacy": "プライバシー",
+    "section_currency": "通貨",
+    "goto_settings": "設定へ移動",
+    "goto_settings_hint": "設定は専用ページに移動しました。設定ページでお好みを管理してください。",
+    "language_label": "表示言語",
+    "language_hint": "アプリ全体で使用する言語を選択してください。",
+    "theme_label": "テーマ",
+    "theme_hint": "アプリの外観を選択してください。「システム」はデバイスの設定に従います。",
+    "theme_light": "ライト",
+    "theme_dark": "ダーク",
+    "privacy_label": "プライバシーモード",
+    "privacy_hint": "すべてのページで金額を非表示にします。画面を共有する際に便利です。",
+    "terminology_label": "用語スタイル",
+    "terminology_hint": "「簡易」は日常用語を使用し、「専門家」は標準的な金融用語を使用します。",
+    "default_currency_label": "デフォルト表示通貨",
+    "default_currency_hint": "アプリ内のすべての金額はデフォルトでこの通貨で表示されます。",
+    "home_currency_label": "ホーム通貨",
+    "home_currency_hint": "FXエクスポージャーとリスクの計算に使用する自国通貨です。",
+    "portfolio_section_title": "ポートフォリオ",
+    "notifications_section_title": "通知",
+    "telegram_section_title": "Telegram 通知",
+    "alerts_section_title": "通知設定"
   }
 }

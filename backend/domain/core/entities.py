@@ -13,6 +13,7 @@ from sqlalchemy.types import TypeDecorator
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
+    DEFAULT_DISPLAY_CURRENCY,
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
     DEFAULT_NOTIFICATION_RATE_LIMITS,
@@ -531,6 +532,9 @@ class UserPreferences(SQLModel, table=True):
     terminology_mode: str = Field(
         default="simplified",
         description="術語顯示模式：simplified（簡化）或 expert（專業）",
+    )
+    default_display_currency: str = Field(
+        default=DEFAULT_DISPLAY_CURRENCY, description="預設顯示貨幣（如 USD、JPY）"
     )
     notification_preferences: str = Field(
         default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),

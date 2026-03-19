@@ -10,7 +10,8 @@
     "allocation": "个人资产配置",
     "nisa": "NISA",
     "fx_watch": "外汇总览",
-    "smart_money": "大师足迹"
+    "smart_money": "大师足迹",
+    "settings": "设置"
   },
   "common": {
     "refresh": "🔄 重新整理",
@@ -2413,5 +2414,35 @@
     "split_purchase": "拆分买入",
     "split_success": "已创建 {{count}} 笔拆分买入交易",
     "split_rollback_failed": "拆分买入部分失败，且自动回滚未能完全完成。"
+  },
+  "settings": {
+    "page_title": "设置",
+    "tab_general": "常规",
+    "tab_portfolio": "投资组合",
+    "tab_notifications": "通知",
+    "section_appearance": "外观",
+    "section_language": "语言与地区",
+    "section_privacy": "隐私",
+    "section_currency": "货币",
+    "goto_settings": "前往设置",
+    "goto_settings_hint": "设置已移至独立页面，请使用设置页面管理您的偏好。",
+    "language_label": "显示语言",
+    "language_hint": "选择整个应用程序使用的语言。",
+    "theme_label": "主题",
+    "theme_hint": "选择应用程序的外观。「系统」会跟随您的设备设置。",
+    "theme_light": "浅色",
+    "theme_dark": "深色",
+    "privacy_label": "隐私模式",
+    "privacy_hint": "在所有页面隐藏金额数字——在分享屏幕时非常实用。",
+    "terminology_label": "术语显示风格",
+    "terminology_hint": "「简化」使用日常用语；「专业」使用标准金融术语。",
+    "default_currency_label": "默认显示货币",
+    "default_currency_hint": "应用程序中所有金额将默认以此货币显示。",
+    "home_currency_label": "本国货币",
+    "home_currency_hint": "您的本国货币，用于计算外汇敞口与风险。",
+    "portfolio_section_title": "投资组合",
+    "notifications_section_title": "通知",
+    "telegram_section_title": "Telegram 通知",
+    "alerts_section_title": "通知偏好"
   }
 }

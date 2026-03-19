@@ -12402,6 +12402,17 @@
             ],
             "title": "Terminology Mode"
           },
+          "default_display_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Display Currency"
+          },
           "notification_preferences": {
             "anyOf": [
               {
@@ -12459,6 +12470,11 @@
             ],
             "title": "Terminology Mode",
             "default": "simplified"
+          },
+          "default_display_currency": {
+            "type": "string",
+            "title": "Default Display Currency",
+            "default": "USD"
           },
           "notification_preferences": {
             "additionalProperties": {

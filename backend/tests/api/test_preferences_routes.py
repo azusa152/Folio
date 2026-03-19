@@ -148,6 +148,49 @@ class TestNotificationPreferences:
         assert notif["weekly_digest"] is False  # Still disabled
 
 
+class TestDefaultDisplayCurrency:
+    """Tests for default_display_currency in /settings/preferences."""
+
+    def test_get_should_return_default_usd_when_no_record(self, client):
+        resp = client.get("/settings/preferences")
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "USD"
+
+    def test_update_should_persist_display_currency(self, client):
+        resp = client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "JPY"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "JPY"
+
+        get_resp = client.get("/settings/preferences")
+        assert get_resp.json()["default_display_currency"] == "JPY"
+
+    def test_update_without_currency_should_preserve_existing(self, client):
+        client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "TWD"},
+        )
+
+        resp = client.put("/settings/preferences", json={"privacy_mode": True})
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "TWD"
+
+    def test_update_should_accept_any_currency_string(self, client):
+        # No server-side enum validation — any string is accepted.
+        resp = client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "SGD"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "SGD"
+
+
 class TestNotificationRateLimits:
     """Tests for notification_rate_limits in /settings/preferences."""
 

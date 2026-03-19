@@ -38,6 +38,7 @@ class PreferencesRequest(BaseModel):
     language: str | None = None
     privacy_mode: bool
     terminology_mode: Literal["simplified", "expert"] | None = None
+    default_display_currency: str | None = None
     notification_preferences: dict[str, bool] | None = None
     notification_rate_limits: dict[str, dict[str, int]] | None = None
 
@@ -48,6 +49,7 @@ class PreferencesResponse(BaseModel):
     language: str
     privacy_mode: bool
     terminology_mode: Literal["simplified", "expert"] = "simplified"
+    default_display_currency: str = "USD"
     notification_preferences: dict[str, bool]
     notification_rate_limits: dict[str, dict[str, int]]
 
