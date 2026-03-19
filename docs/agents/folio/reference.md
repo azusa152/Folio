@@ -360,7 +360,7 @@ Array of insight objects:
 - `wrapper_annual_remaining`: remaining annual quota for this wrapper (JPY)
 - `combined_annual_remaining`: remaining combined Tsumitate+Growth annual (max 3.6M)
 - `lifetime_remaining`: remaining shared lifetime quota (max 18M)
-- `growth_sub_limit_remaining`: remaining Growth sub-limit (max 12M within 18M)
+- `growth_sub_limit_remaining`: remaining Growth lifetime limit (max 12M within combined 18M)
 - `restoration_policy`: `next_year` (2024-2025) or `same_day` (2026+)
 
 ### Routing Request

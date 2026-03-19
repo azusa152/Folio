@@ -2178,7 +2178,7 @@
     "dashboard": {
       "title": "NISA枠ダッシュボード",
       "lifetime_combined": "生涯共通枠",
-      "growth_sub_limit": "成長投資枠サブ上限",
+      "growth_sub_limit": "成長投資枠 保有限度額",
       "used_remaining": "使用 {{used}} / 残り {{remaining}}",
       "progress_tooltip": "使用 {{used}} / 残り {{remaining}} / 上限 {{limit}}",
       "restoration_forecast": "復活予定",

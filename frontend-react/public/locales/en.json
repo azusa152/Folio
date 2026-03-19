@@ -2178,7 +2178,7 @@
     "dashboard": {
       "title": "NISA Quota Dashboard",
       "lifetime_combined": "Combined lifetime quota",
-      "growth_sub_limit": "Growth sub-limit",
+      "growth_sub_limit": "Growth lifetime limit",
       "used_remaining": "{{used}} used / {{remaining}} remaining",
       "progress_tooltip": "Used {{used}} / Remaining {{remaining}} / Limit {{limit}}",
       "restoration_forecast": "Restoration forecast",

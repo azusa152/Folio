@@ -2178,7 +2178,7 @@
     "dashboard": {
       "title": "NISA 額度儀表板",
       "lifetime_combined": "終身共用額度",
-      "growth_sub_limit": "成長額度子上限",
+      "growth_sub_limit": "成長額度 保有限額",
       "used_remaining": "已用 {{used}} / 剩餘 {{remaining}}",
       "progress_tooltip": "已用 {{used}} / 剩餘 {{remaining}} / 上限 {{limit}}",
       "restoration_forecast": "額度恢復預測",
