@@ -3,19 +3,13 @@ import { Treemap, Tooltip, ResponsiveContainer } from "recharts"
 import type { EnrichedStock } from "@/api/types/dashboard"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { HEATMAP_COLORS } from "@/lib/constants"
+import { inferCurrencySymbol } from "@/lib/market"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface Props {
   enrichedStocks: EnrichedStock[]
   isLoading?: boolean
-}
-
-function inferCurrencySymbol(ticker: string): string {
-  if (ticker.endsWith(".TW")) return "NT$"
-  if (ticker.endsWith(".T")) return "¥"
-  if (ticker.endsWith(".HK")) return "HK$"
-  return "$"
 }
 
 function getChangeColor(changePct: number | undefined | null): string {
@@ -34,11 +28,12 @@ interface TreemapLeaf {
   name: string
   size: number
   ticker: string
+  category?: string
   changePct: number | null
   price: number | null
   rsi: number | null
   sector: string
-  // `fill` is the standard Recharts key for custom cell color in Treemap
+  // Recharts uses `fill` for custom cell color in Treemap
   fill: string
 }
 
@@ -99,6 +94,7 @@ function HeatCell({ x = 0, y = 0, width = 0, height = 0, name, changePct, fill =
 
 interface TooltipPayload {
   ticker?: string
+  category?: string
   sector?: string
   changePct?: number | null
   price?: number | null
@@ -120,7 +116,7 @@ function HeatmapTooltip({
   const d = payload[0]?.payload
   if (!d?.ticker) return null
   const sign = (d.changePct ?? 0) >= 0 ? "+" : ""
-  const currencySymbol = inferCurrencySymbol(d.ticker)
+  const currencySymbol = inferCurrencySymbol(d.ticker, d.category)
 
   return (
     <div style={{ ...theme.tooltipStyle, padding: "8px 12px", minWidth: 140 }}>
@@ -202,6 +198,7 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
       name: s.ticker,
       size: 1,
       ticker: s.ticker,
+      category: s.category,
       changePct: s.change_pct ?? null,
       price: s.price ?? null,
       rsi: s.rsi ?? null,

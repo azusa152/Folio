@@ -146,6 +146,7 @@ class SignalActivityItem(BaseModel):
     changed_at: str | None = None
     consecutive_scans: int = 1
     is_new: bool = False
+    trigger_context: str | None = None
 
 
 class ScanLogResponse(BaseModel):

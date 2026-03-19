@@ -8,6 +8,7 @@ import {
   getTransactionQuantityUnitKey,
   formatQuantity,
   formatRatio,
+  getNextMarketOpenInfo,
   isMarketOpen,
 } from "../format"
 
@@ -121,6 +122,71 @@ describe("isMarketOpen", () => {
     // 2025-02-25 (Tuesday) 05:31 UTC = 13:31 CST
     vi.setSystemTime(new Date("2025-02-25T05:31:00Z"))
     expect(isMarketOpen("TW")).toBe(false)
+  })
+})
+
+describe("getNextMarketOpenInfo", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("returns null for unknown market", () => {
+    vi.setSystemTime(new Date("2025-02-25T15:00:00Z"))
+    expect(getNextMarketOpenInfo("UNKNOWN")).toBeNull()
+  })
+
+  it("returns null when market is currently open", () => {
+    vi.setSystemTime(new Date("2025-02-25T15:00:00Z")) // Tue 10:00 EST
+    expect(getNextMarketOpenInfo("US")).toBeNull()
+  })
+
+  it("returns dayOffset=0 (today) when before open on a weekday", () => {
+    vi.setSystemTime(new Date("2025-02-25T13:00:00Z")) // Tue 08:00 EST — before 09:30 open
+    const info = getNextMarketOpenInfo("US")
+    expect(info).not.toBeNull()
+    expect(info!.dayOffset).toBe(0)
+    expect(info!.time).toBe("09:30")
+    expect(info!.shortTz).toBe("ET")
+  })
+
+  it("returns dayOffset=1 (tomorrow) when after close", () => {
+    vi.setSystemTime(new Date("2025-02-25T21:01:00Z")) // Tue 16:01 EST
+    expect(getNextMarketOpenInfo("US")).toEqual({
+      dayOffset: 1,
+      time: "09:30",
+      tz: "America/New_York",
+      shortTz: "ET",
+    })
+  })
+
+  it("returns dayOffset=2 when called on Saturday", () => {
+    vi.setSystemTime(new Date("2025-02-22T15:00:00Z")) // Sat
+    expect(getNextMarketOpenInfo("US")).toEqual({
+      dayOffset: 2,
+      time: "09:30",
+      tz: "America/New_York",
+      shortTz: "ET",
+    })
+  })
+
+  it("returns dayOffset=1 when called on Sunday", () => {
+    vi.setSystemTime(new Date("2025-02-23T15:00:00Z")) // Sun
+    expect(getNextMarketOpenInfo("US")).toEqual({
+      dayOffset: 1,
+      time: "09:30",
+      tz: "America/New_York",
+      shortTz: "ET",
+    })
+  })
+
+  it("returns dayOffset=3 (Mon) when called on Friday after close", () => {
+    vi.setSystemTime(new Date("2025-02-28T21:01:00Z")) // Fri 16:01 EST
+    const info = getNextMarketOpenInfo("US")
+    expect(info!.dayOffset).toBe(3)
   })
 })
 

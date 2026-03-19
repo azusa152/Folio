@@ -24,7 +24,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useTransactions } from "@/api/hooks/useTransactions"
-import { ACCOUNT_TYPES } from "@/lib/constants"
+import {
+  ACCOUNT_TYPES,
+  isTaxWrapperType,
+  TAX_WRAPPER_ICONS,
+  TAX_WRAPPER_TYPES,
+  type TaxWrapperType,
+} from "@/lib/constants"
 import { formatPrice, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
@@ -53,7 +59,9 @@ export function AccountsTab({
   const [name, setName] = useState("")
   const [broker, setBroker] = useState("")
   const [accountType, setAccountType] = useState<(typeof ACCOUNT_TYPES)[number]>("brokerage")
+  const [taxWrapper, setTaxWrapper] = useState<TaxWrapperType | null>(null)
   const [currency, setCurrency] = useState("USD")
+  const [market, setMarket] = useState("")
   const [institution, setInstitution] = useState("")
   const [note, setNote] = useState("")
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
@@ -110,7 +118,9 @@ export function AccountsTab({
     setName("")
     setBroker("")
     setAccountType("brokerage")
+    setTaxWrapper(null)
     setCurrency("USD")
+    setMarket("")
     setInstitution("")
     setNote("")
   }
@@ -125,7 +135,9 @@ export function AccountsTab({
     name: string
     broker: string
     account_type: string
+    tax_wrapper?: string | null
     currency: string
+    market?: string | null
     institution: string
     note: string
   }) => {
@@ -137,7 +149,13 @@ export function AccountsTab({
         ? (account.account_type as (typeof ACCOUNT_TYPES)[number])
         : "other",
     )
+    setTaxWrapper(
+      isTaxWrapperType(account.tax_wrapper)
+        ? account.tax_wrapper
+        : null,
+    )
     setCurrency(account.currency || "USD")
+    setMarket(account.market || "")
     setInstitution(account.institution || "")
     setNote(account.note || "")
     setFormOpen(true)
@@ -149,11 +167,14 @@ export function AccountsTab({
       return
     }
 
+    const trimmedMarket = market.trim().toUpperCase()
     const payload = {
       name: name.trim(),
       broker: broker.trim(),
       account_type: accountType,
+      tax_wrapper: taxWrapper,
       currency: currency.trim().toUpperCase() || "USD",
+      market: trimmedMarket || null,
       institution: institution.trim(),
       note: note.trim(),
     }
@@ -306,11 +327,38 @@ export function AccountsTab({
                 </option>
               ))}
             </select>
+            <select
+              aria-label={t("wrapper.select_wrapper")}
+              value={taxWrapper ?? ""}
+              onChange={(event) => {
+                const value = event.target.value
+                setTaxWrapper(
+                  isTaxWrapperType(value)
+                    ? value
+                    : null,
+                )
+              }}
+              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
+            >
+              <option value="">{t("wrapper.no_wrapper")}</option>
+              {TAX_WRAPPER_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {TAX_WRAPPER_ICONS[value]} {t(`wrapper.${value}`)}
+                </option>
+              ))}
+            </select>
             <Input
               aria-label={t("accounts.form.currency")}
               value={currency}
               onChange={(event) => setCurrency(event.target.value.toUpperCase())}
               placeholder={t("accounts.form.currency")}
+              className="text-xs"
+            />
+            <Input
+              aria-label={t("accounts.form.market")}
+              value={market}
+              onChange={(event) => setMarket(event.target.value.toUpperCase())}
+              placeholder={t("accounts.form.market")}
               className="text-xs"
             />
             <Input
@@ -375,7 +423,15 @@ export function AccountsTab({
                 className="text-left flex-1"
                 onClick={() => setSelectedAccountId(account.id)}
               >
-                <p className="text-sm font-semibold">{account.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">{account.name}</p>
+                  {isTaxWrapperType(account.tax_wrapper) ? (
+                    <Badge variant="outline" className="text-[11px]">
+                      {TAX_WRAPPER_ICONS[account.tax_wrapper]}{" "}
+                      {t(`wrapper.${account.tax_wrapper}`)}
+                    </Badge>
+                  ) : null}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
                 </p>
@@ -439,7 +495,15 @@ export function AccountsTab({
       {selectedAccount ? (
         <div className="rounded-md border border-border p-3 space-y-3">
           <div>
-            <p className="text-sm font-semibold">{selectedAccount.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">{selectedAccount.name}</p>
+              {isTaxWrapperType(selectedAccount.tax_wrapper) ? (
+                <Badge variant="outline" className="text-[11px]">
+                  {TAX_WRAPPER_ICONS[selectedAccount.tax_wrapper]}{" "}
+                  {t(`wrapper.${selectedAccount.tax_wrapper}`)}
+                </Badge>
+              ) : null}
+            </div>
             <p className="text-xs text-muted-foreground">
               {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)} · {selectedAccount.currency}
             </p>

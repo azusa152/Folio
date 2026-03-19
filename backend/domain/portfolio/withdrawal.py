@@ -33,6 +33,7 @@ class HoldingData:
     currency: str
     is_cash: bool
     fx_rate: float = 1.0  # 持倉幣別 → display_currency 的匯率
+    tax_wrapper: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,21 @@ class WithdrawalPlan:
     target_amount: float = 0.0
     shortfall: float = 0.0  # > 0 表示持倉不足以覆蓋目標金額
     post_sell_drifts: dict[str, dict] = field(default_factory=dict)
+
+
+WRAPPER_SELL_PRIORITY = {
+    "withdrawal": ["tokutei", "ippan", "nisa_growth", "nisa_tsumitate", "ideco"],
+    "rebalance_regular": ["tokutei", "ippan"],
+    "rebalance_emergency": [
+        "tokutei",
+        "ippan",
+        "nisa_growth",
+        "nisa_tsumitate",
+        "ideco",
+    ],
+}
+
+REBALANCE_EMERGENCY_THRESHOLD = 5.0
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +202,7 @@ def plan_withdrawal(
     category_drifts: dict[str, float],
     total_portfolio_value: float,
     target_config: dict[str, float],
+    mode: str = "withdrawal",
 ) -> WithdrawalPlan:
     """
     聰明提款演算法 (Liquidity Waterfall)。
@@ -212,6 +229,21 @@ def plan_withdrawal(
             target_amount=target_amount,
             shortfall=max(0.0, target_amount),
         )
+
+    allowed_wrappers = WRAPPER_SELL_PRIORITY.get(mode)
+    if allowed_wrappers:
+        wrappers_present = any(h.tax_wrapper for h in holdings_data)
+        if wrappers_present:
+            holdings_data = [
+                h
+                for h in holdings_data
+                if not h.tax_wrapper or h.tax_wrapper in allowed_wrappers
+            ]
+            if not holdings_data:
+                return WithdrawalPlan(
+                    target_amount=target_amount,
+                    shortfall=round(max(0.0, target_amount), 2),
+                )
 
     recommendations: list[SellRecommendation] = []
     remaining = target_amount

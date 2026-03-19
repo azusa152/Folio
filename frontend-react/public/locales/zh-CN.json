@@ -8,6 +8,7 @@
     "radar": "投资雷达",
     "backtest": "信号回测",
     "allocation": "个人资产配置",
+    "nisa": "NISA",
     "fx_watch": "外汇总览",
     "smart_money": "大师足迹"
   },
@@ -89,7 +90,17 @@
       "growth": "🚀 成长梦想 (Growth)",
       "bond": "🛡️ 债券 (Bond)",
       "crypto": "₿ 加密货币 (Crypto)",
-      "cash": "💵 现金 (Cash)"
+      "cash": "💵 现金 (Cash)",
+      "mutual_fund": "🧺 公募基金"
+    },
+    "category_desc": {
+      "trend_setter": "以大型 ETF 与龙头股为主，跟踪资金流与消费趋势。",
+      "moat": "供应链中难以替代的“卖铲子”型公司。",
+      "growth": "波动较高、但上行空间较大的成长型股票。",
+      "mutual_fund": "公募基金与指数基金（例如 eMAXIS Slim）。",
+      "bond": "国债与投资级债券 ETF（例如 TLT、BND）。",
+      "crypto": "BTC、ETH 及其他加密资产。",
+      "cash": "闲置现金头寸（USD、TWD、JPY）。"
     },
     "market": {
       "us": "🇺🇸 美股",
@@ -217,7 +228,8 @@
     "samples": "样本数是用于计算的历史信号条数。",
     "forward_returns": "未来回报显示信号出现后不同天数区间的表现。",
     "confidence": "信心等级反映回测信号的稳定性与可信度。",
-    "market_status": "市场状态描述信号发生当下的整体市场环境。"
+    "market_status": "市场状态描述信号发生当下的整体市场环境。",
+    "trailing_pe": "市盈率是股价相对每股年度盈利的倍数。"
   },
   "dashboard": {
     "title": "📊 投资组合总览",
@@ -230,6 +242,12 @@
     "last_scan": "🔍 上次扫描：{{timestamp}}",
     "scan_stale_suffix": "（数据偏旧：{{relative}}）",
     "market_closed": "（休市）",
+    "market_open": "（开市）",
+    "market_open_short": "开市",
+    "market_closed_short": "休市",
+    "next_market_open_today": "今日 {{time}} 开市（{{tz}}）",
+    "next_market_open_tomorrow": "明日 {{time}} 开市（{{tz}}）",
+    "next_market_open": "{{days}} 天后开市（{{time}}，{{tz}}）",
     "no_update_record": "⏳ 尚无资料更新记录",
     "digest_tooltip": "发送每周摘要",
     "welcome": "👋 欢迎使用 Folio！开始设定你的投资组合。",
@@ -276,6 +294,10 @@
     "no_tracking_stocks_description": "在投资雷达中新增追踪股票，Folio 会自动监控信号。",
     "onboarding_title": "两步骤启动你的投资组合",
     "onboarding_description": "先到投资雷达新增第一支股票，再到资产配置创建账户并记录交易，即可开始追踪投资组合。",
+    "onboarding_steps_title": "新手三步骤",
+    "onboarding_step_1": "先在投资雷达添加第一只追踪股票。",
+    "onboarding_step_2": "系统会在后台自动扫描并生成信号。",
+    "onboarding_step_3": "查看信号警报，并在资产配置记录交易。",
     "onboarding_goto_radar": "前往雷达",
     "onboarding_goto_allocation": "前往资产配置",
     "section_market_pulse": "市场脉搏",
@@ -418,7 +440,20 @@
     "caption": "智能资产配置 — 追踪讯号 · 版控观点 · 自动提醒",
     "sop": {
       "title": "📖 投资雷达：使用说明书",
+      "learn_more_title": "了解投资雷达操作流程",
+      "quick_title": "快速上手",
+      "show_full": "显示完整说明",
+      "hide_full": "隐藏完整说明",
       "content": "### 系统总览\n\n本系统整体共有**六大资产类别**。投资雷达现可监控股票、债券与**加密货币**（价格图与基础警报），现金仍在「个人资产配置」页面管理：\n\n| 分类 | 说明 |\n|------|------|\n| 🌊 **风向球 (Trend Setter)** | 大盘 ETF、巨头，观察资金流向与 Capex |\n| 🏰 **护城河 (Moat)** | 供应链中不可替代的卖铲子公司 |\n| 🚀 **成长梦想 (Growth)** | 高波动、具想象空间的成长股 |\n| 🛡️ **债券 (Bond)** | 国债、投资等级债券 ETF（如 TLT, BND, SGOV）|\n| ₿ **加密货币 (Crypto)** | BTC/ETH 等加密资产 — 监控 24h 价格变化与基础警报 |\n| 💵 **现金 (Cash)** | 闲置现金（USD, TWD, JPY）— 于「个人资产配置」页面管理 |\n\n> 💡 系统分为两大页面：**投资雷达**（本页）负责股票追踪与扫描，**个人资产配置**负责现金管理、持仓记录与再平衡分析。可通过左侧导航栏切换。\n\n---\n\n### 操作流程\n\n---\n\n#### 1. 抬头看天气 — 点击「🚀 执行扫描」\n\n页面加载时，上方会显示**加载状态指示器**（📡 加载股票数据中...），完成后自动收合为「✅ 已加载 N 只股票」。\n\n点击左侧面板的扫描按钮，系统会在**后台**执行 **V2 三层漏斗分析**（并行扫描 4 只，约 30 秒完成）。系统也会每 15 分钟自动扫描一次。\n\n首先观察 **Layer 1 市场情绪**：\n\n| 灯号 | 跌破60MA% | 意义 | 建议 |\n|------|:---:|------|------|\n| ☀️ **晴天** (强势看多) | 0–10% | 几乎所有风向球站稳60MA | 全面进攻 — 条件极佳 |\n| 🌤️ **晴时多云** (看多) | 10–30% | 市场宽度正常 | 标准仓位管理 |\n| ⛅ **多云** (中性) | 30–50% | 信号混合，过渡区间 | 减少新建仓，精选标的 |\n| 🌧️ **雨天** (看空) | 50–70% | 多数风向球转弱 | 防御为主，缩减曝险 |\n| ⛈️ **暴风雨** (强势看空) | >70% | 极端市场宽度弱势 | 最大谨慎 — 寻找逆向机会 |\n\n> **注意**：ETF（如 VTI、VT）不参与市场情绪计算，因其本身即为大盘指数，会造成循环推理。仅个股作为风向球。\n\n扫描结果通过 **Telegram 差异通知**推送 — 只有信号发生**变化**时才会收到通知，不会重复推送相同信号。\n\n同时观察 **恐惧与贪婪指数**（仪表板页面的 KPI 区域）：\n\n| 等级 | 分数范围 | 建议 |\n|------|----------|------|\n| 😱 **极度恐惧** | 0–25 | 「别人恐惧我贪婪」— 可积极寻找错杀机会 |\n| 😨 **恐惧** | 25–45 | 市场偏空，分批布局而非重仓 |\n| 😐 **中性** | 45–55 | 观望为主，等待方向明朗 |\n| 🤑 **贪婪** | 55–75 | 市场偏多，留意是否过热 |\n| 🤯 **极度贪婪** | 75–100 | 「别人贪婪我恐惧」— 考虑逢高减码 |\n\n> 恐惧贪婪指数结合 **VIX 波动率指数**与 **CNN Fear & Greed Index**，每 15 分钟更新一次。\n\n> 💡 这一步决定你的「仓位水位」，天气不好就不要出海。\n\n---\n\n#### 2. 检查护城河 — 开启 🏰 护城河标签\n\n展开股票卡片后，点击 **🏰 护城河** 标签，包含：\n- **毛利率指标**：最新毛利率 + YoY 变化量（百分点）\n- **5 季走势图**：折线图直观呈现毛利率趋势\n- **五级自动诊断**：\n  - 🔴 **Thesis Broken** — 毛利 YoY 衰退超过 2pp，护城河受损，勿接刀\n  - 🟢 **错杀机会** — 股价回调（乖离率 < -5%）但毛利成长，基本面强劲\n  - 🟢 **护城河稳固** — 毛利率 YoY 成长，基本面健康\n  - 🟡 **股价偏弱** — 乖离率偏低但护城河数据持平，留意后续季报\n  - ⚪ **观察中** — 护城河数据持平，持续观察\n\n> 💡 股价下跌不可怕，可怕的是基本面跟着下跌。毛利率是判断护城河最直接的指标。\n\n---\n\n#### 3. 判断灯号 — 开启 📈 扫描历史标签\n\n扫描完成后，系统对每只股票产生决策信号。展开卡片后点击 **📈 扫描历史** 标签，可查看最近 10 次扫描结果，以及**连续异常次数**提示：\n\n| 灯号 | 触发条件 | 操作建议 |\n|------|----------|----------|\n| 💎 **低估机会** | 乖离率 < −20% 且 RSI < 35（分类感知调整） | 最高信心入场 — 双指标确认深度折价，分批积极建仓 |\n| 📉 **急跌信号** | 乖离率 < −20%（RSI ≥ 35） | 价格超跌 — 等待 RSI 确认后再行动 |\n| 🟢 **反弹起点** | RSI < 35（分类感知调整） | RSI 超卖 — 脚尖试水温，分批布局 |\n| 🎯 **接近入场区** | RSI < 37（分类感知调整）+ 乖离率 < −15% | 积累区 — 开始密切观察 |\n| 🔥 **过热风险** | 乖离率 > 20% 且 RSI > 70 | 双指标过热 — 勿追高，考虑减仓 |\n| ⚠️ **风险偏高** | 乖离率 > 20% 或 RSI > 70 | 单一指标高位 — 减少新增仓位，收紧止损 |\n| 🔻 **动能转弱** | 乖离率 < −15% 且 RSI < 38 | 早期走弱 — 密切观察 |\n| 🚨 **投资逻辑有风险** | 毛利率 YoY 衰退超过 2 个百分点 | 基本面恶化 — 建议止损出场 |\n| ➖ **NORMAL** | 无异常 | 持续观察 |\n| 🌊 **疯狗浪 (ROGUE WAVE)** | 乖离率 ≥ P95 + 量比 ≥ 1.5x | 派对接近尾声 — 切勿加杠杆追高，考虑减码 |\n\n> 💡 「不要跟股票谈恋爱」— 当 Thesis Broken 出现时，果断执行止损。\n\n---\n\n#### 4. 设定价格警报 — 开启 🔔 价格警报标签\n\n展开卡片后点击 **🔔 价格警报** 标签，可以：\n- **建立自定义警报**：选择指标（RSI / 价格 / 乖离率）、条件（< 或 >）、阈值\n- **查看现有警报**：查看所有已设定的警报及触发记录\n- **删除警报**：不再需要时一键移除\n\n触发时系统通过 **Telegram 即时通知**，每个警报有 **4 小时冷却期**避免重复推送。\n\n> 💡 善用 RSI < 30 或 Bias < -20% 等条件，让系统帮你盯盘。\n\n---\n\n#### 5. 确认大户动向 — 开启 🐳 筹码面标签\n\n展开卡片后点击 **🐳 筹码面** 标签，提供：\n- **WhaleWisdom 链接**：一键查看完整 13F 机构持仓报告\n- **前五大机构持有者**：若数据可获取，直接显示表格\n- 重点观察：\n  - **New / Add（新进 / 加码）** → 大户正在布局\n  - **Reduce / Sold Out（减码 / 清仓）** → 大户正在撤退\n\n> 💡 跟单要跟「新增」而非库存。观察波克夏、桥水、文艺复兴等指标性机构。\n\n---\n\n#### 6. 查看财报日与股息 — 开启 📊 技术指标标签\n\n展开卡片后点击 **📊 技术指标** 标签，底部显示：\n- **📅 财报日**：下次财报发布日期，14 天内显示倒数天数\n- **💰 殖利率**（护城河 / 债券类）：当前股息殖利率与除息日\n\n> 💡 财报前后是护城河论点被验证的关键时刻，提前做好准备。\n\n---\n\n#### 股票卡片信息说明\n\n每张股票卡片标题包含以下信息：\n\n`📉 NVDA — 🌊 风向球 | $120.5 (▲1.2%) | 🇺🇸 美股 | 超卖`\n\n- **灯号**（🟢🔥🚨➖…）— 实时信号，由即时 RSI 与乖离率计算（非上次扫描结果）\n- **股票代号** — 如 NVDA、2330.TW\n- **分类** — 风向球 / 护城河 / 成长梦想 / 债券\n- **现价与涨跌** — 最新股价及当日涨跌幅\n- **市场旗帜** — 🇺🇸 美股 / 🇹🇼 台股 / 🇯🇵 日股 / 🇭🇰 港股（根据代号后缀自动判断）\n- **信号标签** — 非 NORMAL 时显示信号名称（如 超卖、过热）\n\n展开卡片后分为两层：\n\n**第一层 — 快览区**（永远可见）：\n- 信号摘要行：RSI · 乖离率 · 量比 彩色表情符号提示\n- 当前投资观点\n- 股价走势图\n- 标签\n\n**第二层 — 详细标签列**：\n- **📊 技术指标** — 完整指标（RSI、MA200、MA60、乖离率、量比）、财报日、殖利率、大师共鸣\n- **🏰 护城河** — 毛利率走势与护城河诊断（风向球 / 护城河 / 成长类适用）\n- **📈 扫描历史** — 最近 10 次扫描结果与灯号\n- **🐳 筹码面** — 机构持仓与 WhaleWisdom 链接\n- **🔔 价格警报** — 设定与管理股价 / RSI / 乖离率警报\n- **📝 观点版控** — 完整观点历史与版本号\n- **🔄 切换分类** — 将股票移至其他分类\n- **🗑️ 移除** — 从观察名单移除（需填理由）\n\n**📊 技术指标** 标签内亦显示 **🕐 数据更新时间**（自动转换为浏览器本地时间）。\n\n---\n\n#### 7. 记录观点 — 开启 📝 观点版控标签\n\n投资决策需要留下记录，避免事后偏差：\n- 展开卡片后点击 **📝 观点版控** 标签，可查看**完整历史观点**（含版本号与日期）\n- 每次更新观点，系统自动递增版本号（v1 → v2 → v3...）\n- 可同时设定**领域标签**（AI、Cloud、SaaS...），标签随观点一并版控快照\n\n> 💡 定期回顾观点演进，才能发现自己的盲点与进步。\n\n---\n\n#### 市场筛选器（多市场组合适用）\n\n当追踪清单同时涵盖多个市场（如美股 + 日股）时，分类标签上方会自动出现**市场筛选药丸**（ALL / US / JP / TW / HK）。点击任一市场可只显示该市场的股票；点击「ALL」恢复全部显示。市场标签根据股票代号后缀自动判断（`.T` = 🇯🇵 日股、`.TW` = 🇹🇼 台股、`.HK` = 🇭🇰 港股、其他 = 🇺🇸 美股）。\n\n---\n\n#### 8. 管理清单 — 排序、分类、导出、导入\n\n- **↕️ 拖拽排序**：每个分页顶部勾选「↕️ 拖拽排序」开启排序模式，拖拽调整后点击「💾 保存排序」写入数据库\n- **🔄 切换分类**：展开卡片后点击 **🔄 切换分类** 标签，切换分类（例如从风向球移至护城河）\n- **🗑️ 移除追踪**：展开卡片后点击 **🗑️ 移除** 标签，需填写原因，移除后可在「📦 已移除」分页查看历史\n- **🔄 重新启用**：在「📦 已移除」分页，可将已移除的股票重新启用到任意分类\n- **📥 导出观察名单**：左侧面板可下载 JSON 格式的完整观察名单（含观点与标签）\n- **📤 导入观察名单**：左侧面板可上传 JSON 文件批量导入（支持 upsert）\n\n---\n\n#### 9. 每周摘要\n\n每周日 18:00 UTC，系统自动发送 **Telegram 投资组合健康报告**，包含：\n- **健康分数**：正常股票占比（例如 85%）\n- **异常股票清单**：目前非 NORMAL 的股票及其信号\n- **本周信号变化**：过去 7 天内信号变动的股票与变动次数\n\n> 💡 每周花 5 分钟看摘要，掌握整体投资组合状态。"
+    },
+    "first_visit": {
+      "title": "第一次使用投资雷达？",
+      "description": "先看快速上手，再按需打开完整说明。",
+      "step_1": "添加或导入追踪股票。",
+      "step_2": "执行扫描并先看买入机会与风险警示。",
+      "step_3": "展开卡片查看基本面与投资观点脉络。",
+      "learn_more": "打开完整说明",
+      "dismiss": "我知道了"
     },
     "fundamentals_note": "新功能：展开股票卡片后可切换到「基本面」分页，以白话方式解读关键指标，并可点击「查看完整分析」深入了解。",
     "pwa_note": "新功能：可从浏览器菜单将 Folio 安装为 PWA，加入主屏幕后可使用离线 App Shell 缓存与版本更新提示。",
@@ -546,6 +581,7 @@
       "growth": "🚀 成长梦想 ({{count}})",
       "bond": "🛡️ 债券 ({{count}})",
       "crypto": "₿ 加密货币 ({{count}})",
+      "mutual_fund": "🧺 公募基金 ({{count}})",
       "removed": "📦 已移除 ({{count}})"
     },
     "market": {
@@ -661,9 +697,27 @@
         "profit_margins_tip": "每 100 元营收最终留下多少净利润。",
         "operating_margins_tip": "主营业务盈利能力，不含营业外项目。",
         "revenue_growth_tip": "公司营收相较去年同期的增长速度。",
-        "earnings_growth_tip": "公司利润相较去年同期的增长速度。"
+        "earnings_growth_tip": "公司利润相较去年同期的增长速度。",
+        "health_good": "健康",
+        "health_watch": "观察",
+        "health_risk": "风险",
+        "label_hint": {
+          "trailing_pe": "股价相对历史盈利",
+          "price_to_book": "股价相对净资产",
+          "price_to_sales": "股价相对年营收",
+          "return_on_equity": "股东资金盈利效率",
+          "profit_margins": "最终净利率",
+          "operating_margins": "主营利润率",
+          "revenue_growth": "营收增长速度",
+          "earnings_growth": "利润增长速度",
+          "trailing_eps": "过去12个月每股收益",
+          "forward_eps": "预估每股收益",
+          "market_cap": "公司市场规模"
+        }
       }
-    }
+    },
+    "nav_badge": "基准价额",
+    "nav_as_of": "截至 {{date}}"
   },
   "backtest": {
     "title": "🧪 信号回测",
@@ -782,7 +836,7 @@
     },
     "tab_teaser": {
       "risk_desc": "分析货币敞口，并对投资组合进行市场崩盘压力测试。",
-      "actions_desc": "智能卖出建议，最小化偏离与税务影响。",
+      "actions_desc": "基于当前持仓与现金余额的智能提领规划。",
       "show_details": "显示详情",
       "hide_details": "隐藏详情"
     },
@@ -876,6 +930,7 @@
       "today_tooltip": "相较前一交易日收盘价的变动。",
       "total_return": "总回报",
       "total_return_tooltip": "自买入以来的未实现盈亏。",
+      "unrealized_pl_tooltip": "自买入以来的账面盈亏。",
       "home_return": "本币: {{pct}}",
       "fx_return": "汇率: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -1874,6 +1929,8 @@
       "account_empty_hint": "当前还没有投资账户。",
       "create_account": "前往账户分页创建账户",
       "available_cash": "可用现金（{{currency}}）：{{amount}}",
+      "nisa_quota_summary": "{{wrapper}} 年度额度剩余：{{remaining}} / {{annual}}",
+      "nisa_quota_unavailable": "当前无法获取 NISA 额度信息。",
       "proceeds_hint": "卖出/股息款项将计入 {{account}} 现金余额。",
       "insufficient_balance": "余额不足（{{currency}}）。可用：{{available}}，需求：{{required}}。",
       "deposit_cash": "先存入现金",
@@ -1881,6 +1938,7 @@
       "thesis": "投资观点",
       "thesis_hint": "选填 - 可填写投资理由。未填写时默认使用“通过交易自动追踪”。",
       "category": "类别",
+      "mutual_fund_category_hint": "该资产为合格基金，类别已自动设为“共同基金”。",
       "quantity": "数量",
       "price": "每单位价格",
       "price_hint": "若此交易没有单价可留空。",
@@ -1910,6 +1968,23 @@
       "deposit_success_trade": "资金已入账，要立即记录买入吗？",
       "buy_no_account_banner": "请先创建投资账户，才能追踪交易与资金变化。",
       "buy_no_balance_hint": "该账户当前没有可用资金，请先存入现金。"
+    },
+    "sell_picker": {
+      "placeholder": "选择要卖出的持仓",
+      "placeholder_dividend": "选择持仓",
+      "search": "按 ticker 或名称搜索...",
+      "empty": "该账户没有可卖出的持仓",
+      "loading": "正在加载持仓...",
+      "load_error": "持仓加载失败，请重试。",
+      "available": "可用数量：{{quantity}} {{unit}}",
+      "unit_shares": "股",
+      "unit_units": "份",
+      "max": "全部",
+      "price_unavailable": "暂无价格",
+      "value_fallback_label": "按成本估算",
+      "value_source_live": "实时价格",
+      "value_source_cost_basis": "按成本估算",
+      "value_source_unavailable": "估值未知"
     },
     "toast": {
       "created": "已新增交易记录。",
@@ -1988,6 +2063,7 @@
       "broker": "券商",
       "account_type": "账户类型",
       "currency": "基准币种",
+      "market": "市场（自动检测）",
       "institution": "机构名称（选填）",
       "note": "备注（选填）",
       "save": "保存",
@@ -2045,6 +2121,9 @@
     "contribution_label": "总投入",
     "growth_label": "市值"
   },
+  "holding": {
+    "auto_radar": "该标的已自动添加至雷达监控列表。"
+  },
   "insight": {
     "title": "投资组合洞察",
     "show_more": "显示更多洞察",
@@ -2084,5 +2163,207 @@
     "mode_simplified": "简化（推荐大多数用户使用）",
     "mode_expert": "专业（显示完整金融术语）",
     "terminology_hint": "控制应用中金融术语的显示方式。"
+  },
+  "wrapper": {
+    "tokutei": "特定账户（应税）",
+    "nisa_tsumitate": "NISA 定投额度",
+    "nisa_growth": "NISA 成长额度",
+    "ideco": "iDeCo（个人型确定缴费年金）",
+    "ippan": "一般账户",
+    "tax_free": "免税",
+    "taxable": "应税",
+    "tax_deferred": "递延纳税",
+    "no_wrapper": "无税制账户",
+    "select_wrapper": "选择税制账户类型（可选）",
+    "dashboard": {
+      "title": "NISA 额度看板",
+      "lifetime_combined": "终身共享额度",
+      "growth_sub_limit": "成长额度 保有限额",
+      "used_remaining": "已用 {{used}} / 剩余 {{remaining}}",
+      "progress_tooltip": "已用 {{used}} / 剩余 {{remaining}} / 上限 {{limit}}",
+      "restoration_forecast": "额度恢复预测",
+      "restoration_empty": "暂无待恢复额度",
+      "policy_next_year": "恢复：次年",
+      "policy_same_day": "恢复：当日"
+    }
+  },
+  "eligibility": {
+    "checking": "正在检查可投资格...",
+    "eligible": "可投资",
+    "not_eligible": "不可投资",
+    "nisa_picker_placeholder": "选择 NISA 可投资产",
+    "nisa_picker_search": "按基金名或代码搜索",
+    "nisa_picker_empty": "未找到可投资产",
+    "nisa_picker_loading": "正在加载可投资产…",
+    "nisa_picker_limit_hint": "最多显示 50 条结果。输入名称或代码可进一步筛选。",
+    "nisa_picker_hint_tsumitate": "NISA 定投额度仅可购买金融厅核准基金。",
+    "nisa_picker_hint_growth": "NISA 成长额度可购买核准股票、ETF、基金和 REIT。可先选类别再缩小范围。",
+    "nisa_trust_fee_label": "信托费率",
+    "switch_to_suggested_account": "切换到 {{wrapper}} 账户",
+    "no_suggested_account": "未找到可用的 {{wrapper}} 账户。",
+    "not_in_tsumitate_approved_list": "不在 NISA 定投额度核准名单中。",
+    "not_in_growth_approved_list": "不在 NISA 成长额度核准资产名单中。",
+    "excluded_flag": "该资产不符合 NISA 成长额度规则。",
+    "trust_period_too_short": "信托期限不足 20 年。",
+    "not_in_ideco_lineup": "不在您的 iDeCo 产品清单中。",
+    "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
+    "try_instead": "可改用 {{wrapper}}。",
+    "last_updated_compact": "名单更新 - 定投: {{tsumitate}}, 成长: {{growth}}",
+    "data_management_title": "NISA 可投数据",
+    "data_management_hint": "请保持核准基金名单最新，以确保资格判断准确。",
+    "data_count_label": "有效基金数：{{count}}",
+    "data_last_updated_label": "最后更新：{{date}}",
+    "refresh_now": "从官方来源刷新",
+    "refresh_hint": "刷新会从官方 NISA 名单同步最新可投数据。",
+    "refresh_success": "可投基金名单已刷新",
+    "refresh_failed": "可投基金名单刷新失败",
+    "upload_title": "上传本地名单文件 (.csv/.xlsx)",
+    "upload_button": "上传名单文件",
+    "upload_hint": "上传可导入你自己的 CSV / XLSX 名单用于自定义筛选。",
+    "upload_success": "可投基金名单已上传",
+    "upload_failed": "可投基金名单上传失败"
+  },
+  "nisa": {
+    "title": "NISA 中心",
+    "caption": "在一个页面集中管理可投名单、额度使用和缴款台账。",
+    "tabs": {
+      "eligible": "可投资产",
+      "quota": "额度与状态",
+      "contributions": "缴款记录",
+      "actions": "操作",
+      "data": "数据管理"
+    },
+    "sop": {
+      "title": "NISA SOP（新手指南）",
+      "content": "1) 什么是 NISA？\nNISA 是面向日本居民的税务优惠投资账户。\n\n2) 定投额度 vs 成长度\n- 定投额度：仅可买入合规的长期基金。\n- 成长度：可投资范围更广（股票、ETF、基金等）。\n\n3) 额度速览\n- 定投额度年上限：1,200,000 日元\n- 成长度年上限：2,400,000 日元\n- 年合计上限：3,600,000 日元\n- 终身总上限：18,000,000 日元\n\n4) 卖出后会怎样\n额度恢复遵循制度规则（通常次年恢复）。\n\n5) 什么是“可投名单”\n指该账户类型允许买入的官方产品，请在“可投资产”页确认。\n\n6) 如何记录缴款\n系统通过台账记录（缴款/恢复/调整）计算额度使用情况。\n\n7) 操作页如何工作\n操作页会根据你的账户与剩余额度，给出买入路由和 DeTAX 建议。\n\n8) 常见问题\n问：定投额度可以买美股吗？\n答：不可以，定投额度仅支持合规基金。\n\n问：特定账户是什么？\n答：特定账户是普通应税账户（非免税）。"
+    },
+    "actions": {
+      "empty_title": "先完成账户设置后再使用操作",
+      "empty": "未找到日本税务账户。请先创建 JPY 的 NISA/iDeCo/特定账户后再使用此操作。",
+      "empty_cta": "创建账户"
+    },
+    "onboarding": {
+      "title": "开始使用 NISA",
+      "description": "先创建一个日本税务账户，即可解锁 NISA 工具。",
+      "step1": "创建日本市场的 NISA / 特定 / iDeCo 账户",
+      "step2": "向该账户入金",
+      "step3": "从可投名单中买入合规资产",
+      "create_account": "创建 NISA 账户",
+      "learn_more": "了解更多"
+    },
+    "education": {
+      "title": "NISA 额度说明",
+      "summary": "如果你刚开始使用 NISA，可先查看这份快速说明。",
+      "tsumitate_limit": "定投额度年上限：1,200,000 日元",
+      "growth_limit": "成长额度年上限：2,400,000 日元",
+      "combined_annual_limit": "年合计上限：3,600,000 日元",
+      "combined_lifetime_limit": "终身总上限：18,000,000 日元"
+    },
+    "eligible": {
+      "title": "可投名单",
+      "hint": "可按基金名称或代码检索定投额度与成长额度的核准产品。",
+      "stocks_note": "成长额度中的股票通常覆盖上市股票（不含被列为监理/整理状态的股票）。个股请通过自选列表或股票检索功能选择。",
+      "stocks_input_hint": "在成长额度买入上市标的（股票/REIT）时，请输入代码（例如：股票 7203.T / REIT 8951.T）。仅输入4位数字（如：7203 / 8951）时，将自动补充 .T 后缀。",
+      "stocks_eligibility_disclaimer": "被列为监理/整理状态的上市标的（含股票/REIT）不在成长额度适用范围内，但此处无法自动核验。购买前请向券商确认。",
+      "listed_input_hint": "在成长额度买入上市标的（股票/REIT）时，请输入代码（例如：股票 7203.T / REIT 8951.T）。仅输入4位数字（如：7203 / 8951）时，将自动补充 .T 后缀。",
+      "listed_eligibility_disclaimer": "被列为监理/整理状态的上市标的（股票/REIT）不在成长额度适用范围内，但此处无法自动核验。购买前请向券商确认。",
+      "search_placeholder": "按基金名或代码搜索",
+      "filter_asset_type": "资产类型",
+      "filter_all": "全部",
+      "asset_type": {
+        "mutual_fund": "公募基金",
+        "etf": "ETF",
+        "stock": "股票",
+        "reit": "不动产投资信托(REIT)"
+      },
+      "table_fund_name": "基金名称",
+      "table_ticker": "代码",
+      "table_asset_type": "资产类型",
+      "table_trust_fee": "信托费率",
+      "trust_fee_help": "信托费率是基金每年的管理成本。通常费率越低，长期可留给投资者的回报越多。",
+      "trust_fee_unknown": "未提供",
+      "empty_title": "尚未加载可投资产",
+      "empty": "请在数据管理标签中上传或刷新可投资产列表。",
+      "empty_cta": "前往数据管理",
+      "filter_no_match_title": "无匹配资产",
+      "filter_no_match": "当前筛选条件下无匹配资产，请尝试其他资产类型。",
+      "clear_filter": "清除筛选",
+      "clear_search": "清除搜索",
+      "showing_count": "共 {{total}} 条匹配，当前显示 {{count}} 条",
+      "load_more": "显示更多结果"
+    },
+    "contributions": {
+      "title": "缴款台账",
+      "hint": "查看用于 NISA 额度计算的台账记录。",
+      "summary_net_ledger_label": "台账净额",
+      "summary_contribution_only_label": "仅缴款记录：{{amount}}",
+      "filter_wrapper": "账户类型",
+      "filter_all_wrappers": "全部账户类型",
+      "filter_year": "财政年度",
+      "table_date": "日期",
+      "table_wrapper": "账户类型",
+      "table_type": "记录类型",
+      "table_amount": "金额",
+      "table_note": "备注",
+      "empty": "当前筛选条件下暂无记录。",
+      "error_title": "无法加载缴款台账",
+      "error_hint": "请检查网络连接后重试。",
+      "retry": "重试",
+      "entry_type": {
+        "contribution": "缴款",
+        "restoration": "额度恢复",
+        "adjustment": "调整"
+      }
+    },
+    "nav_sync": {
+      "button": "更新净值",
+      "syncing": "更新中…",
+      "cooldown": "{{seconds}} 秒后可重试",
+      "success": "净值已更新：{{synced}} 条成功、{{failed}} 条失败",
+      "partial": "净值已更新：{{synced}} 条成功、{{failed}} 条失败（{{details}}）",
+      "failed": "净值更新失败",
+      "reason_missing_isin": "缺少 ISIN",
+      "reason_download_error": "下载失败",
+      "reason_empty_csv": "无可用净值数据",
+      "reason_upsert_error": "数据写入失败",
+      "pre_refresh_skipped": "目标清单刷新已跳过，但净值同步已继续。"
+    }
+  },
+  "routing": {
+    "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",
+    "nisa_tsumitate_tax_free": "优先在 NISA 定投额度买入（收益免税）",
+    "ideco_tax_deferred": "在 iDeCo 买入（缴费可税前扣除）",
+    "tokutei_overflow": "剩余金额在特定账户买入（常规纳税）",
+    "suggest_title": "最优买入路由建议"
+  },
+  "detax": {
+    "harvest_loss": "先卖后买实现亏损，用于抵扣税负",
+    "title": "税损收割机会",
+    "estimated_saving": "预计节税：{{amount}}",
+    "disclaimer": "DeTAX 是递延纳税，不是免税。请咨询专业税务顾问。"
+  },
+  "location": {
+    "title": "资产配置位置优化",
+    "efficiency_score": "税务效率评分",
+    "score_optimal": "最优 — 高成长资产已优先放入免税账户",
+    "score_good": "良好 — 仍有小幅优化空间",
+    "score_needs_work": "需关注 — 仍有显著节税空间",
+    "move_suggestion": "将 {{amount}} 的 {{category}} 从 {{from}} 调整到 {{to}}",
+    "tax_savings": "预计年度节税",
+    "projected_10yr": "10 年节税预测",
+    "projected_20yr": "20 年节税预测",
+    "tsumitate_migration": "可设置每月定投迁移",
+    "tsumitate_reason": "每月将 {{amount}} 从 {{source}} 转入定投额度，以降低费率",
+    "setup_monthly_migration": "设置每月迁移"
+  },
+  "smart_actions": {
+    "ticker_placeholder": "代码",
+    "amount_placeholder": "金额",
+    "apply_suggestion": "应用建议",
+    "review_button": "查看",
+    "why_toggle": "为什么这样建议？",
+    "split_purchase": "拆分买入",
+    "split_success": "已创建 {{count}} 笔拆分买入交易",
+    "split_rollback_failed": "拆分买入部分失败，且自动回滚未能完全完成。"
   }
 }

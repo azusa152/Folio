@@ -29,7 +29,7 @@ from application.stock.stock_service import (  # noqa: F401
     get_enriched_stocks,
     get_market_sentiment_multi,
     get_moat_for_ticker,
-    get_price_history,
+    get_price_history_for_ticker,
     get_removal_history,
     get_signals_for_ticker,
     get_thesis_history,
@@ -37,6 +37,7 @@ from application.stock.stock_service import (  # noqa: F401
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,
+    reclassify_mutual_fund_stocks,
     update_display_order,
     update_stock_category,
 )

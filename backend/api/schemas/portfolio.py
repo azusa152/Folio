@@ -2,6 +2,8 @@
 API — Portfolio / Holding / Rebalance / Withdrawal / StressTest / Currency Schemas。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from domain.enums import StockCategory
@@ -40,6 +42,26 @@ class HoldingResponse(BaseModel):
     is_cash: bool
     purchase_fx_rate: float | None = None
     updated_at: str
+
+
+class SellablePositionItem(BaseModel):
+    """單一可賣出部位（SELL / DIVIDEND picker 用）。"""
+
+    ticker: str
+    fund_name: str
+    quantity: float
+    cost_basis: float | None = None
+    current_price: float | None = None
+    market_value: float | None = None
+    currency: str = "USD"
+    value_source: Literal["live_price", "cost_basis", "unavailable"] = "unavailable"
+
+
+class SellablePositionsResponse(BaseModel):
+    """指定帳戶可賣出部位清單。"""
+
+    items: list[SellablePositionItem] = []
+    count: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +130,37 @@ class SectorExposureItem(BaseModel):
     equity_pct: float  # 佔股票部位 %
 
 
+class WrapperAllocationItem(BaseModel):
+    wrapper: str
+    categories: dict[str, float]
+    total: float
+
+
+class PlacementSuggestionItem(BaseModel):
+    ticker: str
+    category: str
+    from_wrapper: str
+    to_wrapper: str
+    amount: float
+    reason: str
+
+
+class TaxSavingsEstimateItem(BaseModel):
+    annual_nisa_benefit: float
+    annual_detax_benefit: float
+    annual_ideco_deduction: float
+    total_annual: float
+    projected_10yr: float
+    projected_20yr: float
+
+
+class TsumitateMigrationItem(BaseModel):
+    monthly_amount: float
+    source_wrapper: str
+    eligible_tickers: list[str]
+    reason: str
+
+
 class RebalanceResponse(BaseModel):
     """GET /rebalance 回傳的再平衡分析。"""
 
@@ -128,6 +181,11 @@ class RebalanceResponse(BaseModel):
     health_score: int = 100
     health_level: str = "healthy"  # "healthy" | "caution" | "alert"
     sector_exposure: list[SectorExposureItem] = []
+    wrapper_allocations: list[WrapperAllocationItem] | None = None
+    placement_suggestions: list[PlacementSuggestionItem] | None = None
+    tax_savings_estimate: TaxSavingsEstimateItem | None = None
+    tax_efficiency_score: float | None = None
+    tsumitate_migration: TsumitateMigrationItem | None = None
     geographic_allocation: dict[str, float] = Field(
         default_factory=dict, description="Market value by geographic region"
     )

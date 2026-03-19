@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { cn, parseUtc, formatLocalTime, formatRelativeTime } from "../utils";
+import {
+  cn,
+  parseUtc,
+  formatLocalTime,
+  formatRelativeTime,
+  getErrorMessage,
+} from "../utils";
 
 describe("cn", () => {
   it("returns a single class unchanged", () => {
@@ -85,5 +91,20 @@ describe("formatRelativeTime", () => {
   it("returns an empty string for non-finite values", () => {
     expect(formatRelativeTime(Number.NaN, "en")).toBe("");
     expect(formatRelativeTime(Number.POSITIVE_INFINITY, "en")).toBe("");
+  });
+});
+
+describe("getErrorMessage", () => {
+  it("extracts message from FastAPI validation detail array", () => {
+    const err = {
+      detail: [
+        {
+          type: "string_too_long",
+          loc: ["body", "ticker"],
+          msg: "String should have at most 50 characters",
+        },
+      ],
+    };
+    expect(getErrorMessage(err)).toBe("String should have at most 50 characters");
   });
 });

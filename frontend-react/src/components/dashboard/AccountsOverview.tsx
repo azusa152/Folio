@@ -3,12 +3,14 @@ import { BriefcaseBusiness, ChevronDown, CircleHelp, Landmark, PiggyBank, Wallet
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
+import { isTaxWrapperType, TAX_WRAPPER_ICONS } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { formatCurrency, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import type { AccountSummaryItem } from "@/api/types/account"
@@ -27,6 +29,7 @@ interface AccountRow {
   name: string
   broker: string
   accountType: string
+  taxWrapper?: string | null
   holdingsCount: number
   cashBalances: Array<{ currency: string; balance: number }>
   missingFxCurrencies: string[]
@@ -255,6 +258,7 @@ export function AccountsOverview({
           name: account.name,
           broker: account.broker,
           accountType: account.account_type,
+          taxWrapper: account.tax_wrapper,
           holdingsCount: item.holdings_count ?? 0,
           cashBalances: balances,
           missingFxCurrencies: Array.from(missingFxCurrencies),
@@ -472,6 +476,11 @@ export function AccountsOverview({
                             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
                             <AccountTypeIcon accountType={row.accountType} />
                             <span className="truncate text-sm font-semibold">{row.name}</span>
+                            {isTaxWrapperType(row.taxWrapper) ? (
+                              <Badge variant="outline" className="hidden text-[11px] sm:inline-flex">
+                                {TAX_WRAPPER_ICONS[row.taxWrapper]} {t(`wrapper.${row.taxWrapper}`)}
+                              </Badge>
+                            ) : null}
                             <span className="hidden truncate text-xs text-muted-foreground sm:inline">{rowMeta}</span>
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground sm:hidden">{rowMeta}</p>

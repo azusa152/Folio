@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlmodel import Session
 
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from domain.analysis import determine_scan_signal
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
@@ -35,6 +36,8 @@ from infrastructure.market_data import (
     get_fundamentals,
     get_jp_volatility_index,
     get_technical_signals,
+    get_ticker_exchange_cached,
+    get_ticker_name_cached,
     get_ticker_sector_cached,
     get_tw_volatility_index,
 )
@@ -45,7 +48,7 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash"}
+_SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash", "Mutual_Fund"}
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +124,36 @@ def _append_thesis_log(
     return log
 
 
+def _is_eligible_mutual_fund(session: Session, ticker: str) -> bool:
+    """Return True if ticker is an active eligible mutual fund."""
+    return repo.is_active_eligible_mutual_fund(session, ticker)
+
+
+def reclassify_mutual_fund_stocks(
+    session: Session,
+    *,
+    autocommit: bool = True,
+) -> int:
+    """Reclassify active stocks to Mutual_Fund when eligible master indicates so."""
+    stocks = repo.find_active_stocks(session)
+    updated = 0
+    for stock in stocks:
+        if stock.category == StockCategory.MUTUAL_FUND:
+            continue
+        if not _is_eligible_mutual_fund(session, stock.ticker):
+            continue
+        stock.category = StockCategory.MUTUAL_FUND
+        stock.is_etf = False
+        repo.update_stock(session, stock)
+        updated += 1
+    if updated:
+        if autocommit:
+            session.commit()
+        else:
+            session.flush()
+    return updated
+
+
 # ---------------------------------------------------------------------------
 # Stock CRUD
 # ---------------------------------------------------------------------------
@@ -154,7 +187,10 @@ def create_stock(
         )
 
     if is_etf is None:
-        is_etf = detect_is_etf(ticker_upper)
+        if category == StockCategory.MUTUAL_FUND:
+            is_etf = False
+        else:
+            is_etf = detect_is_etf(ticker_upper)
 
     stock = Stock(
         ticker=ticker_upper,
@@ -206,10 +242,24 @@ def ensure_stock_on_radar(
                 raise ValueError("category must not be empty")
             resolved_category = StockCategory(normalized_category)
 
+    eligible_mutual_fund = _is_eligible_mutual_fund(session, ticker_upper)
     existing = repo.find_stock_by_ticker(session, ticker_upper)
     if existing:
         if existing.is_active:
-            if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+            if (
+                resolved_category is None
+                and eligible_mutual_fund
+                and existing.category != StockCategory.MUTUAL_FUND
+            ):
+                existing.category = StockCategory.MUTUAL_FUND
+                existing.is_etf = False
+                repo.update_stock(session, existing)
+                return existing, False
+            if (
+                existing.category != StockCategory.MUTUAL_FUND
+                and not bool(existing.is_etf)
+                and detect_is_etf(ticker_upper)
+            ):
                 existing.is_etf = True
                 repo.update_stock(session, existing)
             return existing, False
@@ -217,6 +267,8 @@ def ensure_stock_on_radar(
         has_custom_thesis = bool(thesis and thesis.strip())
         final_thesis = thesis.strip() if has_custom_thesis and thesis else ""
         existing.is_active = True
+        if resolved_category is None and eligible_mutual_fund:
+            resolved_category = StockCategory.MUTUAL_FUND
         if resolved_category is not None:
             existing.category = resolved_category
         if has_custom_thesis:
@@ -224,7 +276,9 @@ def ensure_stock_on_radar(
             existing.current_tags = ""
         existing.last_scan_signal = ScanSignal.NORMAL.value
         existing.signal_since = None
-        if not bool(existing.is_etf) and detect_is_etf(ticker_upper):
+        if existing.category == StockCategory.MUTUAL_FUND:
+            existing.is_etf = False
+        elif not bool(existing.is_etf) and detect_is_etf(ticker_upper):
             existing.is_etf = True
         repo.update_stock(session, existing)
         if has_custom_thesis:
@@ -238,12 +292,18 @@ def ensure_stock_on_radar(
             )
         return existing, True
 
-    is_etf = detect_is_etf(ticker_upper)
-    resolved_category = (
-        resolved_category
-        if resolved_category is not None
-        else (StockCategory.TREND_SETTER if is_etf else StockCategory.GROWTH)
-    )
+    if resolved_category == StockCategory.MUTUAL_FUND:
+        is_etf = False
+    elif resolved_category is None and eligible_mutual_fund:
+        resolved_category = StockCategory.MUTUAL_FUND
+        is_etf = False
+    else:
+        is_etf = detect_is_etf(ticker_upper)
+    if resolved_category is None:
+        if is_etf:
+            resolved_category = StockCategory.TREND_SETTER
+        else:
+            resolved_category = StockCategory.GROWTH
     lang = get_user_language(session)
     final_thesis = (
         thesis.strip()
@@ -602,7 +662,10 @@ def import_stocks(session: Session, stock_list: list[dict]) -> dict:
             # 新增：auto-detect ETF if not specified
             imported_is_etf = item.get("is_etf")
             if imported_is_etf is None:
-                imported_is_etf = detect_is_etf(ticker)
+                if category == StockCategory.MUTUAL_FUND:
+                    imported_is_etf = False
+                else:
+                    imported_is_etf = detect_is_etf(ticker)
             stock = Stock(
                 ticker=ticker,
                 category=category,
@@ -761,9 +824,63 @@ def _refresh_enriched_cache_background() -> list[dict]:
         return _compute_enriched_stocks(stocks)
 
 
+def build_nav_signals(nav_row: object, *, include_nav_date: bool = False) -> dict:
+    """Convert a MutualFundNav row into an enrichment-compatible signals dict.
+
+    Shared by stock_service (enrichment pipeline) and scan_service (scan loop).
+    """
+    prev = nav_row.nav_previous  # type: ignore[attr-defined]
+    change_pct = ((nav_row.nav - prev) / prev * 100) if prev else None  # type: ignore[attr-defined]
+    result: dict = {
+        "price": nav_row.nav,  # type: ignore[attr-defined]
+        "previous_close": prev,
+        "change_pct": change_pct,
+        "rsi": None,
+        "bias": None,
+        "bias_200": None,
+        "volume_ratio": None,
+    }
+    if include_nav_date:
+        result["nav_date"] = str(nav_row.nav_date)  # type: ignore[attr-defined]
+    return result
+
+
 def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
     """Inner computation: fetch signals/earnings/dividends for all stocks in parallel."""
     logger.info("批次取得 %d 檔股票的豐富資料...", len(stocks))
+
+    # Pre-fetch NAV data for Mutual_Fund stocks (single DB read, not per-thread)
+    nav_cache: dict[str, dict] = {}
+    fund_name_by_ticker: dict[str, str] = {}
+    mf_tickers = [
+        s.ticker
+        for s in stocks
+        if (s.category.value if hasattr(s.category, "value") else str(s.category))
+        == StockCategory.MUTUAL_FUND.value
+    ]
+    if mf_tickers:
+        with Session(engine) as nav_session:
+            fund_name_by_ticker = repo.find_fund_names_by_tickers(
+                nav_session, mf_tickers
+            )
+            for ticker in mf_tickers:
+                nav_row = repo.get_latest_nav(nav_session, ticker)
+                if nav_row:
+                    nav_cache[ticker] = build_nav_signals(
+                        nav_row, include_nav_date=True
+                    )
+
+            missing_mf = [tk for tk in mf_tickers if tk not in nav_cache]
+            for ticker in missing_mf:
+                try:
+                    if sync_single_fund_nav(nav_session, ticker):
+                        nav_row = repo.get_latest_nav(nav_session, ticker)
+                        if nav_row:
+                            nav_cache[ticker] = build_nav_signals(
+                                nav_row, include_nav_date=True
+                            )
+                except Exception:
+                    logger.debug("Enrichment NAV fallback failed for %s", ticker)
 
     # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
     enriched: dict[str, dict] = {}
@@ -779,6 +896,8 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
+            "name": get_ticker_name_cached(stock.ticker),
+            "exchange": get_ticker_exchange_cached(stock.ticker),
             "sector": get_ticker_sector_cached(stock.ticker),
             "signals": None,
             "earnings": None,
@@ -790,6 +909,8 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "rsi": None,
             "market_cap": None,
             "trailing_pe": None,
+            "nav_date": None,
+            "fund_name": fund_name_by_ticker.get(stock.ticker.strip().upper()),
         }
 
     def _fetch_enrichment(
@@ -823,13 +944,16 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                 "bias_200": None,
                 "volume_ratio": None,
             }
+        elif cat_value == StockCategory.MUTUAL_FUND.value:
+            signals = nav_cache.get(ticker)
         elif cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
             signals = get_technical_signals(ticker)
 
-        try:
-            earnings = get_earnings_date(ticker)
-        except Exception:
-            earnings = None
+        if cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
+            try:
+                earnings = get_earnings_date(ticker)
+            except Exception:
+                earnings = None
 
         if cat_value not in _SKIP_DIVIDEND_CATEGORIES:
             try:
@@ -837,10 +961,11 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             except Exception:
                 dividend = None
 
-        try:
-            fundamentals = get_fundamentals(ticker)
-        except Exception:
-            fundamentals = None
+        if cat_value not in SKIP_PRICE_FETCH_CATEGORIES:
+            try:
+                fundamentals = get_fundamentals(ticker)
+            except Exception:
+                fundamentals = None
 
         return ticker, signals, earnings, dividend, fundamentals
 
@@ -872,6 +997,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     enriched[ticker]["price"] = (signals or {}).get("price")
                     enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
                     enriched[ticker]["rsi"] = (signals or {}).get("rsi")
+                    enriched[ticker]["nav_date"] = (signals or {}).get("nav_date")
                     # Hybrid loading: quick-scan metrics also exposed at top-level.
                     enriched[ticker]["market_cap"] = (fundamentals or {}).get(
                         "market_cap"
@@ -914,32 +1040,78 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def get_signals_for_ticker(ticker: str) -> dict | None:
-    """Fetch technical signals and bias distribution for a ticker."""
-    signals = get_technical_signals(ticker)
+def get_signals_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware signals routing — single entry point for all callers.
+
+    Mutual_Fund -> NAV from DB; SKIP categories -> empty; others -> yfinance.
+    """
+    upper = ticker.upper()
+    cat = _resolve_stock_category(session, upper)
+    if cat == StockCategory.MUTUAL_FUND.value:
+        nav_row = repo.get_latest_nav(session, upper)
+        return build_nav_signals(nav_row) if nav_row else {}
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return {}
+    signals = get_technical_signals(upper)
     if signals:
-        signals["bias_distribution"] = get_bias_distribution(ticker)
+        signals["bias_distribution"] = get_bias_distribution(upper)
     return signals
 
 
-def get_price_history(ticker: str) -> list[dict] | None:
-    """Fetch price history for charting."""
-    return _get_price_history(ticker)
+def get_price_history_for_ticker(session: Session, ticker: str) -> list[dict]:
+    """Resolve category once and return the appropriate price history."""
+    upper = ticker.upper()
+    cat = _resolve_stock_category(session, upper)
+    if cat == StockCategory.MUTUAL_FUND.value:
+        rows = repo.get_nav_history(session, upper)
+        return [{"date": str(r.nav_date), "close": r.nav} for r in reversed(rows)]
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return []
+    return _get_price_history(upper) or []
 
 
-def get_earnings_for_ticker(ticker: str) -> dict | None:
-    """Fetch next earnings date for a ticker."""
-    return get_earnings_date(ticker)
+def _resolve_stock_category(session: Session, ticker: str) -> str | None:
+    """Look up a stock's category from Stock table, falling back to Holding table."""
+    upper = ticker.upper()
+    stock = repo.find_stock_by_ticker(session, upper)
+    if stock:
+        return (
+            stock.category.value
+            if hasattr(stock.category, "value")
+            else str(stock.category)
+        )
+    holding = repo.find_holding_by_ticker(session, upper)
+    if holding:
+        return (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
+        )
+    return None
 
 
-def get_dividend_for_ticker(ticker: str) -> dict | None:
-    """Fetch dividend info for a ticker."""
-    return get_dividend_info(ticker)
+def get_earnings_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware earnings fetch. Returns None for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return None
+    return get_earnings_date(ticker.upper())
 
 
-def get_fundamentals_for_ticker(ticker: str) -> dict:
-    """Fetch fundamentals for a ticker."""
-    return get_fundamentals(ticker)
+def get_dividend_for_ticker(session: Session, ticker: str) -> dict | None:
+    """Category-aware dividend fetch. Returns None for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in _SKIP_DIVIDEND_CATEGORIES:
+        return None
+    return get_dividend_info(ticker.upper())
+
+
+def get_fundamentals_for_ticker(session: Session, ticker: str) -> dict:
+    """Category-aware fundamentals fetch. Returns ticker-only dict for non-yfinance categories."""
+    cat = _resolve_stock_category(session, ticker)
+    if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
+        return {"ticker": ticker.upper()}
+    return get_fundamentals(ticker.upper())
 
 
 def get_market_sentiment_multi(session: Session) -> dict:

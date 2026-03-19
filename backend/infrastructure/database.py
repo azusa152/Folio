@@ -4,6 +4,7 @@ Infrastructure — 資料庫連線與 Session 管理。
 """
 
 import os
+import unicodedata
 from collections.abc import Generator
 
 from sqlalchemy import event
@@ -126,6 +127,96 @@ def _run_migrations() -> None:
         # FX Watch: target-rate alert support
         "ALTER TABLE fxwatchconfig ADD COLUMN target_rate REAL;",
         "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
+        # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
+        "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
+        # Account: 新增市場欄位（US / JP / TW / HK ...）
+        "ALTER TABLE account ADD COLUMN market VARCHAR;",
+        # Account: 依帳戶幣別回填市場（既有資料遷移）
+        (
+            "UPDATE account SET market = CASE UPPER(COALESCE(currency, 'USD')) "
+            "WHEN 'JPY' THEN 'JP' "
+            "WHEN 'TWD' THEN 'TW' "
+            "WHEN 'HKD' THEN 'HK' "
+            "WHEN 'EUR' THEN 'EU' "
+            "WHEN 'GBP' THEN 'UK' "
+            "WHEN 'CNY' THEN 'CN' "
+            "WHEN 'SGD' THEN 'SG' "
+            "WHEN 'THB' THEN 'TH' "
+            "ELSE 'US' END "
+            "WHERE market IS NULL OR TRIM(market) = '';"
+        ),
+        # Contribution ledger: append-only quota accounting for NISA/iDeCo
+        (
+            "CREATE TABLE IF NOT EXISTS contributionledgerentry ("
+            "id INTEGER PRIMARY KEY, "
+            "user_id VARCHAR NOT NULL DEFAULT 'default', "
+            "tax_wrapper VARCHAR NOT NULL, "
+            "entry_type VARCHAR NOT NULL, "
+            "fiscal_year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "
+            "transaction_id INTEGER, "
+            "effective_date DATE NOT NULL, "
+            "note VARCHAR NOT NULL DEFAULT '', "
+            "created_at DATETIME NOT NULL, "
+            'FOREIGN KEY(transaction_id) REFERENCES "transaction"(id)'
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_contrib_user_wrapper_year ON contributionledgerentry (user_id, tax_wrapper, fiscal_year);",
+        "CREATE INDEX IF NOT EXISTS ix_contrib_transaction ON contributionledgerentry (transaction_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_contrib_transaction_entry_type ON contributionledgerentry (transaction_id, entry_type) WHERE transaction_id IS NOT NULL;",
+        # Eligible asset master for wrapper placement validation.
+        (
+            "CREATE TABLE IF NOT EXISTS eligibleasset ("
+            "id INTEGER PRIMARY KEY, "
+            "tax_wrapper VARCHAR NOT NULL, "
+            "ticker VARCHAR NOT NULL, "
+            "fund_name VARCHAR NOT NULL DEFAULT '', "
+            "asset_type VARCHAR NOT NULL DEFAULT 'mutual_fund', "
+            "broker VARCHAR, "
+            "trust_fee_pct REAL, "
+            "is_active BOOLEAN NOT NULL DEFAULT 1, "
+            "updated_at DATETIME NOT NULL"
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_ticker ON eligibleasset (tax_wrapper, ticker);",
+        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
+        # Add isin_code to eligible asset (for toushin-lib NAV lookup).
+        "ALTER TABLE eligibleasset ADD COLUMN isin_code VARCHAR;",
+        # One-time canonicalization: ensure asset_type is lowercase-trimmed.
+        # Rows already canonical are untouched; runs as a cheap SQL scan.
+        (
+            "UPDATE eligibleasset SET asset_type = "
+            "CASE WHEN LOWER(TRIM(COALESCE(asset_type, ''))) = '' THEN 'mutual_fund' "
+            "ELSE LOWER(TRIM(asset_type)) END "
+            "WHERE asset_type IS NULL OR TRIM(asset_type) = '' "
+            "OR asset_type != LOWER(TRIM(asset_type));"
+        ),
+        # Eligible asset sync metadata.
+        (
+            "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("
+            "tax_wrapper VARCHAR PRIMARY KEY, "
+            "source VARCHAR NOT NULL DEFAULT 'unknown', "
+            "last_refreshed_at DATETIME NOT NULL, "
+            "updated_at DATETIME NOT NULL"
+            ");"
+        ),
+        # Mutual fund NAV cache for daily toushin-lib sync.
+        (
+            "CREATE TABLE IF NOT EXISTS mutualfundnav ("
+            "id INTEGER PRIMARY KEY, "
+            "fund_code VARCHAR NOT NULL, "
+            "isin_code VARCHAR NOT NULL, "
+            "nav REAL NOT NULL, "
+            "nav_previous REAL, "
+            "nav_date DATE NOT NULL, "
+            "net_assets REAL, "
+            "fetched_at DATETIME NOT NULL"
+            ");"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_mfnav_fund_code ON mutualfundnav (fund_code);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_mfnav_fund_code_date ON mutualfundnav (fund_code, nav_date);",
     ]
 
     with engine.connect() as conn:
@@ -338,6 +429,32 @@ def _backfill_signal_since() -> None:
             logger.info("signal_since 回填完成：%d 筆。", updated)
 
 
+def _normalize_eligible_fund_names() -> None:
+    """One-time NFKC normalization for existing eligible-asset fund names."""
+    from domain.entities import EligibleAsset
+
+    with Session(engine) as session:
+        assets = session.exec(select(EligibleAsset)).all()
+        if not assets:
+            logger.debug("eligible fund_name 正規化：無資料可更新。")
+            return
+
+        updated = 0
+        for asset in assets:
+            normalized_name = unicodedata.normalize("NFKC", str(asset.fund_name or ""))
+            if normalized_name == asset.fund_name:
+                continue
+            asset.fund_name = normalized_name
+            session.add(asset)
+            updated += 1
+
+        if updated:
+            session.commit()
+            logger.info("eligible fund_name NFKC 正規化完成：%d 筆。", updated)
+        else:
+            logger.debug("eligible fund_name 已為 NFKC，無需更新。")
+
+
 def create_db_and_tables() -> None:
     """建立所有 SQLModel 定義的資料表（若不存在），並執行遷移與資料載入。"""
     # 確保所有 Entity 已被 import，SQLModel metadata 才會完整
@@ -357,6 +474,7 @@ def create_db_and_tables() -> None:
     logger.info("人格範本就緒。")
 
     _encrypt_plaintext_tokens()
+    _normalize_eligible_fund_names()
     _backfill_signal_since()
 
 

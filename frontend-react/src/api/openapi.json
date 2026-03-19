@@ -692,6 +692,65 @@
         }
       }
     },
+    "/accounts/{account_id}/sellable-positions": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Get Account Sellable Positions",
+        "description": "Return sellable non-cash positions for a given account.",
+        "operationId": "get_account_sellable_positions_accounts__account_id__sellable_positions_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellablePositionsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/accounts/{account_id}/transactions": {
       "get": {
         "tags": [
@@ -1040,8 +1099,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/components/schemas/EnrichedStockResponse"
                   },
                   "title": "Response List Enriched Stocks Route Stocks Enriched Get"
                 }
@@ -1121,7 +1179,7 @@
     "/ticker/{ticker}/signals": {
       "get": {
         "summary": "Get technical signals for a stock",
-        "description": "\u53d6\u5f97\u6307\u5b9a\u80a1\u7968\u7684\u6280\u8853\u8a0a\u865f\uff08yfinance\uff0c\u542b\u5feb\u53d6\uff09\u3002",
+        "description": "\u53d6\u5f97\u6307\u5b9a\u80a1\u7968\u7684\u6280\u8853\u8a0a\u865f\uff08\u542b\u5feb\u53d6\uff09\u3002",
         "operationId": "get_signals_route_ticker__ticker__signals_get",
         "parameters": [
           {
@@ -6510,6 +6568,811 @@
           }
         }
       }
+    },
+    "/wrappers/quota": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Quota Status",
+        "operationId": "quota_status_wrappers_quota_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllQuotasResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/restoration-forecast": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Restoration Forecast",
+        "operationId": "restoration_forecast_wrappers_restoration_forecast_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestorationForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/contributions": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Contributions History",
+        "operationId": "contributions_history_wrappers_contributions_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContributionsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error or domain input error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "detail": {
+                          "type": "object",
+                          "properties": {
+                            "error_code": {
+                              "type": "string"
+                            },
+                            "detail": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "error_code",
+                            "detail"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "detail"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/check-eligibility": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Check Eligibility Endpoint",
+        "operationId": "check_eligibility_endpoint_wrappers__wrapper__check_eligibility_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "ticker",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Ticker"
+            }
+          },
+          {
+            "name": "broker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Broker"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/eligible-assets": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "List Eligible Assets",
+        "operationId": "list_eligible_assets_wrappers__wrapper__eligible_assets_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "broker",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Broker"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "asset_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "mutual_fund",
+                    "etf",
+                    "stock",
+                    "reit"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleAssetsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/eligible-assets/metadata": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Eligible Assets Metadata",
+        "operationId": "eligible_assets_metadata_wrappers__wrapper__eligible_assets_metadata_get",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleAssetsMetadataResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/eligible-assets/refresh": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Refresh Eligible Assets Endpoint",
+        "operationId": "refresh_eligible_assets_endpoint_wrappers__wrapper__eligible_assets_refresh_post",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleAssetsRefreshResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/{wrapper}/eligible-assets/upload": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Upload Eligible Assets",
+        "operationId": "upload_eligible_assets_wrappers__wrapper__eligible_assets_upload_post",
+        "parameters": [
+          {
+            "name": "wrapper",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wrapper"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_eligible_assets_wrappers__wrapper__eligible_assets_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleAssetsUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/suggest-routing": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Suggest Routing",
+        "operationId": "suggest_routing_wrappers_suggest_routing_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutingSuggestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutingSuggestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nav/sync": {
+      "post": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Sync Nav Endpoint",
+        "description": "Trigger on-demand NAV sync for all active Mutual_Fund stocks.",
+        "operationId": "sync_nav_endpoint_nav_sync_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavSyncResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wrappers/detax": {
+      "get": {
+        "tags": [
+          "wrapper"
+        ],
+        "summary": "Detax Opportunities",
+        "operationId": "detax_opportunities_wrappers_detax_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeTaxResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6571,11 +7434,33 @@
             "title": "Account Type",
             "default": "brokerage"
           },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "currency": {
             "type": "string",
             "maxLength": 10,
             "title": "Currency",
             "default": "USD"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
           },
           "institution": {
             "type": "string",
@@ -6619,9 +7504,30 @@
             "type": "string",
             "title": "Account Type"
           },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "currency": {
             "type": "string",
             "title": "Currency"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
           },
           "institution": {
             "type": "string",
@@ -6733,6 +7639,16 @@
             ],
             "title": "Account Type"
           },
+          "tax_wrapper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxWrapperType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "currency": {
             "anyOf": [
               {
@@ -6743,6 +7659,18 @@
               }
             ],
             "title": "Currency"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
           },
           "institution": {
             "anyOf": [
@@ -6829,6 +7757,38 @@
         ],
         "title": "ActivityFeedItem",
         "description": "\u55ae\u4e00\u80a1\u7968\u7684\u8cb7\u5165\u6216\u8ce3\u51fa\u6d3b\u52d5\u6458\u8981\u3002"
+      },
+      "AllQuotasResponse": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of"
+          },
+          "restoration_policy": {
+            "type": "string",
+            "title": "Restoration Policy"
+          },
+          "quotas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/QuotaStatusResponse"
+            },
+            "type": "object",
+            "title": "Quotas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "as_of",
+          "restoration_policy",
+          "quotas"
+        ],
+        "title": "AllQuotasResponse"
       },
       "BackfillStatusResponse": {
         "properties": {
@@ -6958,6 +7918,20 @@
           "total_signals_evaluated"
         ],
         "title": "BacktestSummaryResponse"
+      },
+      "Body_upload_eligible_assets_wrappers__wrapper__eligible_assets_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_eligible_assets_wrappers__wrapper__eligible_assets_upload_post"
       },
       "CNNFearGreedData": {
         "properties": {
@@ -7123,6 +8097,67 @@
         "title": "ConsensusStockItem",
         "description": "\u88ab\u591a\u4f4d\u5927\u5e2b\u540c\u6642\u6301\u6709\u7684\u5171\u8b58\u80a1\u7968\u3002"
       },
+      "ContributionEntryItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tax_wrapper": {
+            "type": "string",
+            "title": "Tax Wrapper"
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type"
+          },
+          "fiscal_year": {
+            "type": "integer",
+            "title": "Fiscal Year"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Id"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective Date"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tax_wrapper",
+          "entry_type",
+          "fiscal_year",
+          "amount",
+          "effective_date",
+          "note",
+          "created_at"
+        ],
+        "title": "ContributionEntryItem"
+      },
       "ContributionGrowthPoint": {
         "properties": {
           "date": {
@@ -7151,6 +8186,27 @@
           "market_value"
         ],
         "title": "ContributionGrowthPoint"
+      },
+      "ContributionsResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionEntryItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "items"
+        ],
+        "title": "ContributionsResponse"
       },
       "CryptoPrice": {
         "properties": {
@@ -7430,6 +8486,65 @@
         "title": "DashboardResponse",
         "description": "GET /gurus/dashboard \u5b8c\u6574\u56de\u61c9\u3002"
       },
+      "DeTaxOpportunityItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "unrealized_loss": {
+            "type": "number",
+            "title": "Unrealized Loss"
+          },
+          "estimated_tax_saved": {
+            "type": "number",
+            "title": "Estimated Tax Saved"
+          },
+          "sell_quantity": {
+            "type": "number",
+            "title": "Sell Quantity"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "account_id",
+          "unrealized_loss",
+          "estimated_tax_saved",
+          "sell_quantity",
+          "reason"
+        ],
+        "title": "DeTaxOpportunityItem"
+      },
+      "DeTaxResponse": {
+        "properties": {
+          "total_estimated_savings": {
+            "type": "number",
+            "title": "Total Estimated Savings"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/DeTaxOpportunityItem"
+            },
+            "type": "array",
+            "title": "Opportunities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_estimated_savings",
+          "opportunities"
+        ],
+        "title": "DeTaxResponse"
+      },
       "DeactivateRequest": {
         "properties": {
           "reason": {
@@ -7471,6 +8586,471 @@
           "peak_value"
         ],
         "title": "DrawdownPointResponse"
+      },
+      "EligibilityCheckResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "suggested_wrapper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Wrapper"
+          },
+          "asset_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "wrapper",
+          "eligible",
+          "reasons"
+        ],
+        "title": "EligibilityCheckResponse"
+      },
+      "EligibleAssetItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "fund_name": {
+            "type": "string",
+            "title": "Fund Name"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "broker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker"
+          },
+          "trust_fee_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Fee Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "fund_name",
+          "asset_type"
+        ],
+        "title": "EligibleAssetItem"
+      },
+      "EligibleAssetsMetadataResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "last_refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Refreshed At"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "count",
+          "source"
+        ],
+        "title": "EligibleAssetsMetadataResponse"
+      },
+      "EligibleAssetsRefreshResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/EligibleAssetsRefreshStats"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EligibleAssetsMetadataResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "source",
+          "stats",
+          "metadata"
+        ],
+        "title": "EligibleAssetsRefreshResponse"
+      },
+      "EligibleAssetsRefreshStats": {
+        "properties": {
+          "added": {
+            "type": "integer",
+            "title": "Added"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "deactivated": {
+            "type": "integer",
+            "title": "Deactivated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "added",
+          "updated",
+          "deactivated"
+        ],
+        "title": "EligibleAssetsRefreshStats"
+      },
+      "EligibleAssetsResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EligibleAssetItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "count",
+          "total_count",
+          "items"
+        ],
+        "title": "EligibleAssetsResponse"
+      },
+      "EligibleAssetsUploadResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/EligibleAssetsRefreshStats"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/EligibleAssetsMetadataResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "filename",
+          "source",
+          "stats",
+          "metadata"
+        ],
+        "title": "EligibleAssetsUploadResponse"
+      },
+      "EnrichedStockResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "current_thesis": {
+            "type": "string",
+            "title": "Current Thesis",
+            "default": ""
+          },
+          "current_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Current Tags",
+            "default": []
+          },
+          "display_order": {
+            "type": "integer",
+            "title": "Display Order",
+            "default": 0
+          },
+          "last_scan_signal": {
+            "type": "string",
+            "title": "Last Scan Signal",
+            "default": "NORMAL"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "is_etf": {
+            "type": "boolean",
+            "title": "Is Etf",
+            "default": false
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          },
+          "earnings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earnings"
+          },
+          "dividend": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dividend"
+          },
+          "fundamentals": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundamentals"
+          },
+          "computed_signal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed Signal"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "rsi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rsi"
+          },
+          "market_cap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Cap"
+          },
+          "trailing_pe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Pe"
+          },
+          "nav_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nav Date"
+          },
+          "fund_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "category"
+        ],
+        "title": "EnrichedStockResponse",
+        "description": "GET /stocks/enriched \u55ae\u7b46\u56de\u50b3\u8cc7\u6599\u3002"
       },
       "FXAlertResponse": {
         "properties": {
@@ -9647,6 +11227,105 @@
         "title": "MessageResponse",
         "description": "\u901a\u7528\u64cd\u4f5c\u7d50\u679c\u56de\u61c9\uff08\u522a\u9664\u3001\u505c\u7528\u3001\u91cd\u65b0\u555f\u7528\u3001\u532f\u5165\u7b49\uff09\u3002"
       },
+      "NavSyncFailedDetail": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "reason"
+        ],
+        "title": "NavSyncFailedDetail"
+      },
+      "NavSyncPreRefreshStatus": {
+        "properties": {
+          "attempted": {
+            "type": "boolean",
+            "title": "Attempted"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "wrappers_synced": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wrappers Synced"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attempted",
+          "success",
+          "wrappers_synced"
+        ],
+        "title": "NavSyncPreRefreshStatus"
+      },
+      "NavSyncResponse": {
+        "properties": {
+          "synced": {
+            "type": "integer",
+            "title": "Synced"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "failed_tickers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failed Tickers"
+          },
+          "failed_details": {
+            "items": {
+              "$ref": "#/components/schemas/NavSyncFailedDetail"
+            },
+            "type": "array",
+            "title": "Failed Details"
+          },
+          "pre_refresh": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NavSyncPreRefreshStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "synced",
+          "failed",
+          "failed_tickers",
+          "failed_details"
+        ],
+        "title": "NavSyncResponse"
+      },
       "PersonaTemplateResponse": {
         "properties": {
           "id": {
@@ -9686,6 +11365,44 @@
         ],
         "title": "PersonaTemplateResponse",
         "description": "GET /personas/templates \u56de\u50b3\u7684\u55ae\u4e00\u7bc4\u672c\u3002"
+      },
+      "PlacementSuggestionItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "from_wrapper": {
+            "type": "string",
+            "title": "From Wrapper"
+          },
+          "to_wrapper": {
+            "type": "string",
+            "title": "To Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "category",
+          "from_wrapper",
+          "to_wrapper",
+          "amount",
+          "reason"
+        ],
+        "title": "PlacementSuggestionItem"
       },
       "PreferencesRequest": {
         "properties": {
@@ -10129,6 +11846,71 @@
         "title": "QuarterResult",
         "description": "Per-quarter return result in guru backtest."
       },
+      "QuotaStatusResponse": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "wrapper_annual_remaining": {
+            "type": "number",
+            "title": "Wrapper Annual Remaining"
+          },
+          "combined_annual_remaining": {
+            "type": "number",
+            "title": "Combined Annual Remaining"
+          },
+          "lifetime_remaining": {
+            "type": "number",
+            "title": "Lifetime Remaining"
+          },
+          "growth_sub_limit_remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Sub Limit Remaining"
+          },
+          "wrapper_annual_used": {
+            "type": "number",
+            "title": "Wrapper Annual Used"
+          },
+          "combined_annual_used": {
+            "type": "number",
+            "title": "Combined Annual Used"
+          },
+          "lifetime_used": {
+            "type": "number",
+            "title": "Lifetime Used"
+          },
+          "growth_sub_limit_used": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Sub Limit Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "wrapper_annual_remaining",
+          "combined_annual_remaining",
+          "lifetime_remaining",
+          "wrapper_annual_used",
+          "combined_annual_used",
+          "lifetime_used"
+        ],
+        "title": "QuotaStatusResponse"
+      },
       "ReactivateRequest": {
         "properties": {
           "category": {
@@ -10261,6 +12043,65 @@
             "type": "array",
             "title": "Sector Exposure",
             "default": []
+          },
+          "wrapper_allocations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WrapperAllocationItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wrapper Allocations"
+          },
+          "placement_suggestions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PlacementSuggestionItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Suggestions"
+          },
+          "tax_savings_estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaxSavingsEstimateItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tax_efficiency_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Efficiency Score"
+          },
+          "tsumitate_migration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TsumitateMigrationItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "geographic_allocation": {
             "additionalProperties": {
@@ -10445,6 +12286,67 @@
         "title": "ResonanceTickerResponse",
         "description": "GET /resonance/{ticker} \u56de\u50b3\u7684\u5927\u5e2b\u5171\u9cf4\u8cc7\u6599\u3002"
       },
+      "RestorationForecastItem": {
+        "properties": {
+          "tax_wrapper": {
+            "type": "string",
+            "title": "Tax Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective Date"
+          },
+          "source_transaction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Transaction Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tax_wrapper",
+          "amount",
+          "effective_date"
+        ],
+        "title": "RestorationForecastItem"
+      },
+      "RestorationForecastResponse": {
+        "properties": {
+          "pending": {
+            "items": {
+              "$ref": "#/components/schemas/RestorationForecastItem"
+            },
+            "type": "array",
+            "title": "Pending"
+          },
+          "total_pending": {
+            "type": "number",
+            "title": "Total Pending"
+          },
+          "restoration_policy": {
+            "type": "string",
+            "title": "Restoration Policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "total_pending",
+          "restoration_policy"
+        ],
+        "title": "RestorationForecastResponse"
+      },
       "RiskMetricsResponse": {
         "properties": {
           "annualized_return": {
@@ -10505,6 +12407,84 @@
           "trading_days"
         ],
         "title": "RiskMetricsResponse"
+      },
+      "RoutingSuggestRequest": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "total_amount"
+        ],
+        "title": "RoutingSuggestRequest"
+      },
+      "RoutingSuggestResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "total_amount": {
+            "type": "number",
+            "title": "Total Amount"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/RoutingSuggestionItem"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "total_amount",
+          "suggestions"
+        ],
+        "title": "RoutingSuggestResponse"
+      },
+      "RoutingSuggestionItem": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "amount",
+          "reason"
+        ],
+        "title": "RoutingSuggestionItem"
       },
       "ScanSignal": {
         "type": "string",
@@ -10729,6 +12709,98 @@
         "title": "SellRecommendationResponse",
         "description": "\u55ae\u7b46\u8ce3\u51fa\u5efa\u8b70\u3002"
       },
+      "SellablePositionItem": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "fund_name": {
+            "type": "string",
+            "title": "Fund Name"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          },
+          "current_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Price"
+          },
+          "market_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Value"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "value_source": {
+            "type": "string",
+            "enum": [
+              "live_price",
+              "cost_basis",
+              "unavailable"
+            ],
+            "title": "Value Source",
+            "default": "unavailable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "fund_name",
+          "quantity"
+        ],
+        "title": "SellablePositionItem",
+        "description": "\u55ae\u4e00\u53ef\u8ce3\u51fa\u90e8\u4f4d\uff08SELL / DIVIDEND picker \u7528\uff09\u3002"
+      },
+      "SellablePositionsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SellablePositionItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "SellablePositionsResponse",
+        "description": "\u6307\u5b9a\u5e33\u6236\u53ef\u8ce3\u51fa\u90e8\u4f4d\u6e05\u55ae\u3002"
+      },
       "SignalActivityItem": {
         "properties": {
           "ticker": {
@@ -10792,6 +12864,17 @@
             "type": "boolean",
             "title": "Is New",
             "default": false
+          },
+          "trigger_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Context"
           }
         },
         "type": "object",
@@ -10937,6 +13020,7 @@
           "Trend_Setter",
           "Moat",
           "Growth",
+          "Mutual_Fund",
           "Bond",
           "Cash",
           "Crypto"
@@ -11274,6 +13358,56 @@
         "title": "SyncResponse",
         "description": "POST /gurus/{guru_id}/sync \u56de\u50b3\u7684\u540c\u6b65\u7d50\u679c\u3002"
       },
+      "TaxSavingsEstimateItem": {
+        "properties": {
+          "annual_nisa_benefit": {
+            "type": "number",
+            "title": "Annual Nisa Benefit"
+          },
+          "annual_detax_benefit": {
+            "type": "number",
+            "title": "Annual Detax Benefit"
+          },
+          "annual_ideco_deduction": {
+            "type": "number",
+            "title": "Annual Ideco Deduction"
+          },
+          "total_annual": {
+            "type": "number",
+            "title": "Total Annual"
+          },
+          "projected_10yr": {
+            "type": "number",
+            "title": "Projected 10Yr"
+          },
+          "projected_20yr": {
+            "type": "number",
+            "title": "Projected 20Yr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "annual_nisa_benefit",
+          "annual_detax_benefit",
+          "annual_ideco_deduction",
+          "total_annual",
+          "projected_10yr",
+          "projected_20yr"
+        ],
+        "title": "TaxSavingsEstimateItem"
+      },
+      "TaxWrapperType": {
+        "type": "string",
+        "enum": [
+          "tokutei",
+          "nisa_tsumitate",
+          "nisa_growth",
+          "ideco",
+          "ippan"
+        ],
+        "title": "TaxWrapperType",
+        "description": "\u7a0e\u5236\u53e3\u5ea7\u30e9\u30c3\u30d1\u30fc\u7a2e\u5225\u3002"
+      },
       "TelegramSettingsRequest": {
         "properties": {
           "telegram_chat_id": {
@@ -11416,7 +13550,7 @@
           },
           "ticker": {
             "type": "string",
-            "maxLength": 20,
+            "maxLength": 50,
             "minLength": 1,
             "title": "Ticker"
           },
@@ -11547,7 +13681,7 @@
           },
           "ticker": {
             "type": "string",
-            "maxLength": 20,
+            "maxLength": 50,
             "minLength": 1,
             "title": "Ticker"
           },
@@ -11782,6 +13916,37 @@
           "created_at"
         ],
         "title": "TransactionResponse"
+      },
+      "TsumitateMigrationItem": {
+        "properties": {
+          "monthly_amount": {
+            "type": "number",
+            "title": "Monthly Amount"
+          },
+          "source_wrapper": {
+            "type": "string",
+            "title": "Source Wrapper"
+          },
+          "eligible_tickers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Eligible Tickers"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly_amount",
+          "source_wrapper",
+          "eligible_tickers",
+          "reason"
+        ],
+        "title": "TsumitateMigrationItem"
       },
       "TwrResponse": {
         "properties": {
@@ -12062,6 +14227,32 @@
         "type": "object",
         "title": "WithdrawResponse",
         "description": "POST /withdraw \u56de\u50b3\u7684\u63d0\u6b3e\u8a08\u5283\u3002"
+      },
+      "WrapperAllocationItem": {
+        "properties": {
+          "wrapper": {
+            "type": "string",
+            "title": "Wrapper"
+          },
+          "categories": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Categories"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wrapper",
+          "categories",
+          "total"
+        ],
+        "title": "WrapperAllocationItem"
       },
       "XRayAlertResponse": {
         "properties": {

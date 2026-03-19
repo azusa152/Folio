@@ -47,7 +47,7 @@ _ALTER_TABLE_PATTERN = re.compile(
 )
 
 _SQL_STRING_PATTERN = re.compile(
-    r'"((?:ALTER TABLE|UPDATE)\s[^"]+)"',
+    r'"((?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s[^"]+)"',
 )
 
 
@@ -185,3 +185,121 @@ class TestMigrationCompleteness:
                 f"but this column does not exist in the SQLModel entity. "
                 f"Known columns: {sorted(entity_columns[table_name])}"
             )
+
+    def test_account_tax_wrapper_migration_should_be_declared_and_idempotent(self):
+        """
+        Ensure the new account.tax_wrapper migration target exists and can be
+        safely re-applied (duplicate-column error is tolerated) like production.
+        """
+        migration_sqls = _extract_migration_sql()
+        add_targets = _extract_add_column_targets(migration_sqls)
+        assert ("account", "tax_wrapper") in add_targets
+
+        test_engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+
+        baseline_meta = MetaData()
+        for table in SQLModel.metadata.sorted_tables:
+            cols = []
+            for col in table.columns:
+                if (
+                    table.name.lower() == "account"
+                    and col.name.lower() == "tax_wrapper"
+                ):
+                    continue
+                cols.append(
+                    Column(
+                        col.name,
+                        col.type,
+                        primary_key=col.primary_key,
+                        nullable=True,
+                    )
+                )
+            if cols:
+                Table(table.name, baseline_meta, *cols)
+        baseline_meta.create_all(test_engine)
+
+        account_migration_sql = ""
+        for sql in migration_sqls:
+            match = _ALTER_TABLE_PATTERN.match(sql)
+            if not match:
+                continue
+            if (
+                match.group(1).lower() == "account"
+                and match.group(2).lower() == "tax_wrapper"
+            ):
+                account_migration_sql = sql
+                break
+        assert account_migration_sql
+
+        with test_engine.connect() as conn:
+            # First apply should create the column.
+            conn.execute(text(account_migration_sql))
+            conn.commit()
+
+            # Second apply should fail with duplicate column; production code
+            # catches this OperationalError and rolls back.
+            duplicate_error = None
+            try:
+                conn.execute(text(account_migration_sql))
+                conn.commit()
+            except Exception as exc:
+                duplicate_error = exc
+                conn.rollback()
+            assert duplicate_error is not None
+
+        insp = sa_inspect(test_engine)
+        actual_cols = {c["name"].lower() for c in insp.get_columns("account")}
+        assert "tax_wrapper" in actual_cols
+        test_engine.dispose()
+
+    def test_contribution_ledger_table_migration_should_be_declared(self):
+        """Ensure contributionledgerentry table/index creation SQL exists."""
+        migration_sqls = _extract_migration_sql()
+        normalized_sqls = [sql.lower() for sql in migration_sqls]
+
+        assert any(
+            "create table if not exists contributionledgerentry" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_contrib_user_wrapper_year" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_contrib_transaction" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_contrib_transaction_entry_type" in sql
+            for sql in normalized_sqls
+        )
+
+    def test_eligible_asset_table_migration_should_be_declared(self):
+        """Ensure eligibleasset table/index creation SQL exists."""
+        migration_sqls = _extract_migration_sql()
+        normalized_sqls = [sql.lower() for sql in migration_sqls]
+
+        assert any(
+            "create table if not exists eligibleasset" in sql for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_eligible_wrapper_ticker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create index if not exists ix_eligible_wrapper_broker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_eligible_wrapper_ticker_broker" in sql
+            for sql in normalized_sqls
+        )
+        assert any(
+            "create unique index if not exists uq_eligible_wrapper_ticker_null_broker"
+            in sql
+            for sql in normalized_sqls
+        )

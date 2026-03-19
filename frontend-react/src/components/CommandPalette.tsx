@@ -43,6 +43,7 @@ export function CommandPalette() {
       { path: "/", label: t("nav.dashboard") },
       { path: "/radar", label: t("nav.radar") },
       { path: "/allocation", label: t("nav.allocation") },
+      { path: "/nisa", label: t("nav.nisa") },
       { path: "/fx-watch", label: t("nav.fx_watch") },
       { path: "/smart-money", label: t("nav.smart_money") },
       { path: "/backtest", label: t("nav.backtest") },

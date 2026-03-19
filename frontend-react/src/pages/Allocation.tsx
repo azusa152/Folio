@@ -22,6 +22,7 @@ import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
+import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
 
 type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 
@@ -53,6 +54,7 @@ export default function Allocation() {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: holdings, isLoading: holdingsLoading, dataUpdatedAt: holdingsUpdatedAt } = useHoldings()
   const { data: accounts, isLoading: accountsLoading } = useAccounts()
+  const hasWrappedAccounts = (accounts ?? []).some((account) => !!account.tax_wrapper)
   const privacyMode = usePrivacyMode((s) => s.isPrivate)
 
   const isLoading = profileLoading || holdingsLoading
@@ -145,7 +147,6 @@ export default function Allocation() {
 
   const hasSetup = holdings.length > 0
   const showQuickStart = !accountsLoading && (accounts?.length ?? 0) === 0
-
   return (
     <div className="p-3 sm:p-6 space-y-4">
       {/* Header */}
@@ -292,6 +293,7 @@ export default function Allocation() {
 
         {/* Accounts tab */}
         <TabsContent value="accounts" className="mt-4 space-y-4">
+          {hasWrappedAccounts ? <QuotaDashboard enabled={activeTab === "accounts"} /> : null}
           <AccountsTab
             enabled={activeTab === "accounts"}
             onDepositToAccount={(accountId, currency) =>

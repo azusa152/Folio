@@ -102,7 +102,10 @@ export function HoldingsTable({
   portfolioTodayChangePct,
 }: Props) {
   const { t } = useTranslation()
-  const { term } = useTerminology()
+  const { term, isSimplified } = useTerminology()
+  const totalReturnTooltip = isSimplified
+    ? t("allocation.col.unrealized_pl_tooltip")
+    : t("allocation.col.total_return_tooltip")
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDirection }>({
     key: "weight_pct",
     dir: "desc",
@@ -368,7 +371,7 @@ export function HoldingsTable({
               <th className="text-right py-0.5" aria-sort={getAriaSort("total_gain_value")}>
                 <div className="inline-flex items-center justify-end gap-1">
                   <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("total_gain_value")}>
-                    <span>{t("allocation.col.total_return")}</span>
+                    <span>{term("unrealized_pl", t("allocation.col.total_return"))}</span>
                     {renderSortIcon("total_gain_value")}
                   </button>
                   <TooltipProvider>
@@ -376,11 +379,11 @@ export function HoldingsTable({
                       <TooltipTrigger asChild>
                         <Info
                           className="h-3 w-3 cursor-help text-muted-foreground"
-                          aria-label={t("allocation.col.total_return_tooltip")}
+                          aria-label={totalReturnTooltip}
                         />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="max-w-[220px]">{t("allocation.col.total_return_tooltip")}</p>
+                        <p className="max-w-[220px]">{totalReturnTooltip}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -539,7 +542,9 @@ export function HoldingsTable({
                   {formatSignedMoney(totals.totalGainValue, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
                 </div>
                 <div className={getValueClass(totals.totalGainPct)}>
-                  {totals.totalGainPct != null ? `${t("allocation.col.total_return")}: ${fmtPct(totals.totalGainPct)}` : "—"}
+                  {totals.totalGainPct != null
+                    ? `${term("unrealized_pl", t("allocation.col.total_return"))}: ${fmtPct(totals.totalGainPct)}`
+                    : "—"}
                 </div>
               </td>
             </tr>

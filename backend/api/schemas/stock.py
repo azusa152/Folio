@@ -2,6 +2,8 @@
 API — Stock / Ticker / Thesis / Import Schemas。
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from domain.enums import ScanSignal, StockCategory
@@ -126,6 +128,34 @@ class StockExportItem(BaseModel):
     thesis: str = ""
     tags: list[str] = []
     is_etf: bool = False
+
+
+class EnrichedStockResponse(BaseModel):
+    """GET /stocks/enriched 單筆回傳資料。"""
+
+    ticker: str
+    category: str
+    current_thesis: str = ""
+    current_tags: list[str] = []
+    display_order: int = 0
+    last_scan_signal: str = "NORMAL"
+    is_active: bool = True
+    is_etf: bool = False
+    name: str | None = None
+    exchange: str | None = None
+    sector: str | None = None
+    signals: dict[str, Any] | None = None
+    earnings: dict[str, Any] | None = None
+    dividend: dict[str, Any] | None = None
+    fundamentals: dict[str, Any] | None = None
+    computed_signal: str | None = None
+    price: float | None = None
+    change_pct: float | None = None
+    rsi: float | None = None
+    market_cap: float | None = None
+    trailing_pe: float | None = None
+    nav_date: str | None = None
+    fund_name: str | None = None
 
 
 class FundamentalsResponse(BaseModel):

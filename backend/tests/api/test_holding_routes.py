@@ -13,7 +13,7 @@ HOLDING_PAYLOAD = {
 _PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
 
 
-def _create_account(client) -> int:
+def _create_account(client, tax_wrapper: str | None = None) -> int:
     resp = client.post(
         "/accounts",
         json={
@@ -21,14 +21,20 @@ def _create_account(client) -> int:
             "broker": "Default",
             "account_type": "brokerage",
             "currency": "USD",
+            "tax_wrapper": tax_wrapper,
         },
     )
     assert resp.status_code == 201
     return resp.json()["id"]
 
 
-def _seed_equity_holding(client, ticker: str = "NVDA", quantity: float = 10) -> int:
-    account_id = _create_account(client)
+def _seed_equity_holding(
+    client,
+    ticker: str = "NVDA",
+    quantity: float = 10,
+    tax_wrapper: str | None = None,
+) -> int:
+    account_id = _create_account(client, tax_wrapper=tax_wrapper)
     deposit_resp = client.post(
         "/transactions",
         json={
@@ -107,6 +113,42 @@ class TestRebalanceResponse:
         assert isinstance(data["asset_class_allocation"], dict)
         assert "US" in data["geographic_allocation"]
         assert "Equity" in data["asset_class_allocation"]
+
+    def test_should_include_asset_location_fields_when_wrapper_accounts_exist(
+        self, client
+    ):
+        _seed_equity_holding(client, ticker="NVDA", tax_wrapper="nisa_growth")
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        resp = client.get("/rebalance")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert isinstance(data["wrapper_allocations"], list)
+        assert isinstance(data["placement_suggestions"], list)
+        assert isinstance(data["tax_savings_estimate"], dict)
+        assert isinstance(data["tax_efficiency_score"], float)
+        assert data["tax_efficiency_score"] >= 0
+        assert data["tax_efficiency_score"] <= 100
+        assert data["tsumitate_migration"] is None or isinstance(
+            data["tsumitate_migration"], dict
+        )
+
+    def test_should_keep_asset_location_fields_null_when_no_wrapper_accounts(
+        self, client
+    ):
+        _seed_equity_holding(client, ticker="NVDA")
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        resp = client.get("/rebalance")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["wrapper_allocations"] is None
+        assert data["placement_suggestions"] is None
+        assert data["tax_savings_estimate"] is None
+        assert data["tax_efficiency_score"] is None
+        assert data["tsumitate_migration"] is None
 
     def test_should_include_non_usd_cash_currency_region_in_geographic_allocation(
         self, client

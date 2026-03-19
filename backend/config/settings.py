@@ -5,11 +5,46 @@ Config — 從環境變數覆寫 domain 常數。
 
 import os
 
-from domain import constants
+ELIGIBLE_TSUMITATE_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
+ELIGIBLE_GROWTH_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
+ELIGIBLE_SYNC_INTERVAL_HOURS = 168
+NAV_SYNC_INTERVAL_HOURS = 24
+TOUSHIN_LIB_CSV_URL = (
+    "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST030000/csv-file-download"
+)
+TOUSHIN_LIB_SEARCH_URL = (
+    "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST999900/fundDataSearch"
+)
 
 
 def init_settings() -> None:
     """Override domain constants from environment. Call once at startup."""
-    data_dir = os.getenv("DATA_DIR")
-    if data_dir:
-        constants.DATA_DIR = data_dir
+    global \
+        ELIGIBLE_GROWTH_URL, \
+        ELIGIBLE_SYNC_INTERVAL_HOURS, \
+        ELIGIBLE_TSUMITATE_URL, \
+        NAV_SYNC_INTERVAL_HOURS, \
+        TOUSHIN_LIB_CSV_URL, \
+        TOUSHIN_LIB_SEARCH_URL
+    ELIGIBLE_TSUMITATE_URL = os.getenv(
+        "ELIGIBLE_TSUMITATE_URL",
+        ELIGIBLE_TSUMITATE_URL,
+    )
+    ELIGIBLE_GROWTH_URL = os.getenv(
+        "ELIGIBLE_GROWTH_URL",
+        ELIGIBLE_GROWTH_URL,
+    )
+    ELIGIBLE_SYNC_INTERVAL_HOURS = int(
+        os.getenv("ELIGIBLE_SYNC_INTERVAL_HOURS", str(ELIGIBLE_SYNC_INTERVAL_HOURS))
+    )
+    NAV_SYNC_INTERVAL_HOURS = int(
+        os.getenv("NAV_SYNC_INTERVAL_HOURS", str(NAV_SYNC_INTERVAL_HOURS))
+    )
+    TOUSHIN_LIB_CSV_URL = os.getenv(
+        "TOUSHIN_LIB_CSV_URL",
+        TOUSHIN_LIB_CSV_URL,
+    )
+    TOUSHIN_LIB_SEARCH_URL = os.getenv(
+        "TOUSHIN_LIB_SEARCH_URL",
+        TOUSHIN_LIB_SEARCH_URL,
+    )

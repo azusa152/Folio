@@ -5,6 +5,31 @@ from domain.portfolio.allocation import (  # noqa: F401
     compute_asset_class_allocation,
     compute_geographic_allocation,
 )
+from domain.portfolio.asset_location import (  # noqa: F401
+    EXPECTED_ANNUAL_RETURN,
+    NISA_PRIORITY_RANK,
+    AssetLocationPlan,
+    PlacementSuggestion,
+    TaxSavingsEstimate,
+    TsumitateMigrationPlan,
+    WrapperAllocation,
+    compute_optimal_location,
+    compute_tax_efficiency_score,
+    estimate_tax_savings,
+    suggest_tsumitate_migration,
+)
+from domain.portfolio.detax import (  # noqa: F401
+    DETAX_MIN_BENEFIT_JPY,
+    DeTaxOpportunity,
+    find_detax_opportunities,
+)
+from domain.portfolio.eligibility import (  # noqa: F401
+    EligibilityResult,
+    check_eligibility,
+    check_growth_eligibility,
+    check_ideco_eligibility,
+    check_tsumitate_eligibility,
+)
 from domain.portfolio.insights import (  # noqa: F401
     Insight,
     InsightSeverity,
@@ -15,13 +40,25 @@ from domain.portfolio.rebalance import (  # noqa: F401
     calculate_rebalance,
     compute_portfolio_health_score,
 )
+from domain.portfolio.routing import (  # noqa: F401
+    RoutingSuggestion,
+    suggest_purchase_routing,
+)
 from domain.portfolio.stress_test import (  # noqa: F401
     calculate_portfolio_beta,
     calculate_stress_test,
     classify_pain_level,
     generate_advice,
 )
+from domain.portfolio.tax_wrapper import (  # noqa: F401
+    QuotaStatus,
+    compute_restoration_effective_date,
+    get_available_quota,
+    validate_nisa_purchase,
+)
 from domain.portfolio.withdrawal import (  # noqa: F401
+    REBALANCE_EMERGENCY_THRESHOLD,
+    WRAPPER_SELL_PRIORITY,
     HoldingData,
     SellRecommendation,
     WithdrawalPlan,

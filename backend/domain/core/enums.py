@@ -18,6 +18,7 @@ class StockCategory(StrEnum):
     TREND_SETTER = "Trend_Setter"
     MOAT = "Moat"
     GROWTH = "Growth"
+    MUTUAL_FUND = "Mutual_Fund"
     BOND = "Bond"
     CASH = "Cash"
     CRYPTO = "Crypto"
@@ -80,6 +81,7 @@ CATEGORY_LABEL: dict[str, str] = {
     "Trend_Setter": "風向球",
     "Moat": "護城河",
     "Growth": "成長夢想",
+    "Mutual_Fund": "投資信託",
     "Bond": "債券",
     "Cash": "現金",
     "Crypto": "加密貨幣",
@@ -143,3 +145,57 @@ class TransactionType(StrEnum):
     ADJUSTMENT = "ADJUSTMENT"
     TRANSFER_IN = "TRANSFER_IN"
     TRANSFER_OUT = "TRANSFER_OUT"
+
+
+class TaxWrapperType(StrEnum):
+    """税制口座ラッパー種別。"""
+
+    TOKUTEI = "tokutei"
+    NISA_TSUMITATE = "nisa_tsumitate"
+    NISA_GROWTH = "nisa_growth"
+    IDECO = "ideco"
+    IPPAN = "ippan"
+
+
+class TaxTreatment(StrEnum):
+    """税制上の取扱い。"""
+
+    TAXABLE = "taxable"
+    TAX_FREE = "tax_free"
+    TAX_DEFERRED = "tax_deferred"
+
+
+class RestorationPolicy(StrEnum):
+    """NISA 非課税保有限度額の枠復活タイミング。"""
+
+    NEXT_YEAR = "next_year"
+    SAME_DAY = "same_day"
+
+
+class IDeCoEmploymentType(StrEnum):
+    """iDeCo 加入者区分（掛金上限を決定）。"""
+
+    SELF_EMPLOYED = "self_employed"
+    EMPLOYEE_NO_PENSION = "employee_no_pension"
+    EMPLOYEE_DC_ONLY = "employee_dc_only"
+    EMPLOYEE_WITH_DB = "employee_with_db"
+    PUBLIC_SERVANT = "public_servant"
+    HOMEMAKER = "homemaker"
+
+
+TAX_WRAPPER_LABEL: dict[str, str] = {
+    "tokutei": "wrapper.tokutei",
+    "nisa_tsumitate": "wrapper.nisa_tsumitate",
+    "nisa_growth": "wrapper.nisa_growth",
+    "ideco": "wrapper.ideco",
+    "ippan": "wrapper.ippan",
+}
+
+
+TAX_WRAPPER_TREATMENT: dict[str, str] = {
+    "tokutei": "taxable",
+    "nisa_tsumitate": "tax_free",
+    "nisa_growth": "tax_free",
+    "ideco": "tax_deferred",
+    "ippan": "taxable",
+}

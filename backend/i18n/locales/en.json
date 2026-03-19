@@ -40,6 +40,7 @@
     "accounts_summary": "{count} accounts configured",
     "analytics_summary": "Portfolio risk metrics computed",
     "insights_summary": "Generated {count} portfolio insights",
+    "quota_summary": "NISA quota status is ready for {count} wrappers",
     "missing_required_params": "Missing required parameters",
     "interpretation": {
       "signal_ready": "Signal snapshot is ready.",
@@ -61,7 +62,8 @@
       "transaction_recorded": "Transaction has been recorded.",
       "accounts_ready": "Account summary is ready.",
       "analytics_ready": "Sharpe ratio: {sharpe}, max drawdown: {max_dd}.",
-      "insights_ready": "Portfolio insights are ready."
+      "insights_ready": "Portfolio insights are ready.",
+      "quota_ready": "NISA quota status is ready."
     }
   },
   "stock": {
@@ -379,5 +381,68 @@
   "analytics": {
     "date_range_both_required": "start and end must both be provided",
     "date_range_invalid_order": "start must not be later than end"
+  },
+  "wrapper": {
+    "tokutei": "Tokutei (Taxable)",
+    "nisa_tsumitate": "NISA Tsumitate",
+    "nisa_growth": "NISA Growth",
+    "ideco": "iDeCo",
+    "ippan": "General Account",
+    "tax_free": "Tax-Free",
+    "taxable": "Taxable",
+    "tax_deferred": "Tax-Deferred",
+    "no_wrapper": "No tax wrapper",
+    "select_wrapper": "Select tax account type (optional)",
+    "quota_exceeded": "This purchase would exceed your NISA quota limit.",
+    "quota_exceeded_annual": "Annual investment limit exceeded.",
+    "quota_exceeded_lifetime": "Lifetime non-taxable limit exceeded."
+  },
+  "eligibility": {
+    "not_eligible": "This asset is not eligible for the selected tax wrapper.",
+    "not_in_tsumitate_approved_list": "Not in the approved fund list for NISA Tsumitate.",
+    "not_in_growth_approved_list": "Not in the approved asset list for NISA Growth.",
+    "excluded_flag": "This asset is excluded from NISA Growth (leveraged, monthly distribution, inverse, or supervisory watch).",
+    "trust_period_too_short": "Trust period is less than 20 years.",
+    "not_in_ideco_lineup": "Not in your broker's iDeCo product lineup.",
+    "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
+    "try_instead": "Try {{wrapper}} instead.",
+    "refresh_unsupported_wrapper": "Official refresh is available only for NISA wrappers.",
+    "contributions_unsupported_wrapper": "Contribution history is available only for NISA wrappers.",
+    "upload_unsupported_wrapper": "Eligible-asset upload is available only for NISA wrappers.",
+    "refresh_failed": "Refresh failed because the source data could not be parsed safely.",
+    "upload_invalid_format": "Only .csv and .xlsx uploads are supported.",
+    "upload_file_too_large": "File too large (max 10 MB).",
+    "upload_failed": "Upload failed because the source data could not be parsed safely."
+  },
+  "nav_sync": {
+    "failed": "Failed to update NAV data."
+  },
+  "routing": {
+    "nisa_growth_tax_free": "Buy in NISA Growth (tax-free gains)",
+    "nisa_tsumitate_tax_free": "Buy in NISA Tsumitate (tax-free gains)",
+    "ideco_tax_deferred": "Buy in iDeCo (tax-deductible contribution)",
+    "tokutei_overflow": "Remaining in Tokutei (standard taxable)",
+    "suggest_title": "Optimal purchase routing",
+    "why_toggle": "Why this suggestion?"
+  },
+  "detax": {
+    "harvest_loss": "Sell and rebuy to realize loss for tax offsetting",
+    "title": "Tax-Loss Harvesting Opportunity",
+    "estimated_saving": "Estimated tax saving: {{amount}}",
+    "disclaimer": "DeTAX defers taxes — it does not eliminate them. Consult a tax advisor."
+  },
+  "location": {
+    "title": "Asset Location Optimization",
+    "efficiency_score": "Tax Efficiency Score",
+    "score_optimal": "Optimal — your high-growth assets are tax-sheltered",
+    "score_good": "Good — minor optimization opportunities",
+    "score_needs_work": "Needs attention — significant tax savings available",
+    "move_suggestion": "Move {{amount}} of {{category}} from {{from}} to {{to}}",
+    "tax_savings": "Estimated annual tax savings",
+    "projected_10yr": "10-year projected savings",
+    "projected_20yr": "20-year projected savings",
+    "tsumitate_migration": "Monthly Tsumitate migration available",
+    "tsumitate_reason": "Move {{amount}}/month from {{source}} to Tsumitate for lower fees",
+    "setup_monthly_migration": "Set up monthly migration"
   }
 }

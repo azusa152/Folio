@@ -257,6 +257,45 @@ def test_create_transaction_should_auto_add_new_stock_with_custom_thesis(
     assert qqq["current_thesis"] == "Core ETF thesis"
 
 
+def test_create_transaction_should_auto_classify_mutual_fund_ticker(
+    client: TestClient, db_session
+):
+    from domain.entities import EligibleAsset
+
+    db_session.add(
+        EligibleAsset(
+            tax_wrapper="nisa_tsumitate",
+            ticker="0131217A",
+            fund_name="テスト投信",
+            asset_type="mutual_fund",
+            is_active=True,
+        )
+    )
+    db_session.commit()
+
+    account_id = _create_account(client)
+    resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "0131217A",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "JPY",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["auto_radar"] is True
+
+    stocks_resp = client.get("/stocks")
+    assert stocks_resp.status_code == 200
+    fund = next(stock for stock in stocks_resp.json() if stock["ticker"] == "0131217A")
+    assert fund["category"] == "Mutual_Fund"
+
+
 def test_create_transaction_should_not_recreate_existing_radar_stock(
     client: TestClient,
 ):

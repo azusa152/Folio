@@ -37,6 +37,7 @@ from api.routes.stock_routes import router as stock_router
 from api.routes.telegram_routes import router as telegram_router
 from api.routes.thesis_routes import router as thesis_router
 from api.routes.transaction_routes import router as transaction_router
+from api.routes.wrapper_routes import router as wrapper_router
 from api.schemas import HealthResponse
 from config.settings import init_settings
 from infrastructure.database import create_db_and_tables
@@ -63,17 +64,45 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     # 種入系統預設大師（冪等）
     from application.guru.guru_service import seed_default_gurus
     from application.portfolio.account_service import ensure_default_account
+    from application.portfolio.eligibility_service import (
+        seed_default_eligible_assets_if_empty,
+    )
+    from application.portfolio.eligible_sync_service import start_eligible_sync_loop
+    from application.portfolio.nav_sync_service import start_nav_sync_loop
+    from application.portfolio.settlement_service import (
+        reclassify_mutual_fund_holdings,
+    )
+    from application.stock.stock_service import reclassify_mutual_fund_stocks
     from infrastructure.database import engine
 
     with Session(engine) as _session:
         seed_default_gurus(_session)
         ensure_default_account(_session)
+        seeded = seed_default_eligible_assets_if_empty(_session)
+        if seeded:
+            logger.info("NISA eligible asset snapshots seeded: %s", seeded)
+        reclassified = reclassify_mutual_fund_stocks(_session)
+        if reclassified:
+            logger.info(
+                "Reclassified %d active stocks to Mutual_Fund.",
+                reclassified,
+            )
+        reclassified_h = reclassify_mutual_fund_holdings(_session)
+        if reclassified_h:
+            logger.info(
+                "Reclassified %d holdings to Mutual_Fund.",
+                reclassified_h,
+            )
 
     # 背景快取預熱（非阻塞，daemon=True 確保不影響關閉）
     from application.scan.prewarm_service import prewarm_all_caches
 
     threading.Thread(target=prewarm_all_caches, daemon=True).start()
     logger.info("背景快取預熱已啟動。")
+    start_eligible_sync_loop()
+    logger.info("NISA eligible-list 週期同步已啟動。")
+    start_nav_sync_loop()
+    logger.info("投資信託 NAV 週期同步已啟動。")
 
     yield
     logger.info("Folio 後端關閉中...")
@@ -176,3 +205,4 @@ app.include_router(guru_router, dependencies=auth_deps)
 app.include_router(resonance_router, dependencies=auth_deps)
 app.include_router(snapshot_router, dependencies=auth_deps)
 app.include_router(transaction_router, dependencies=auth_deps)
+app.include_router(wrapper_router, dependencies=auth_deps)

@@ -19,10 +19,15 @@ from application.portfolio.analytics_service import (
 )
 from application.portfolio.fx_watch_service import send_fx_watch_alerts
 from application.portfolio.insight_service import get_portfolio_insights
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.portfolio.rebalance_service import calculate_withdrawal
 from application.portfolio.transaction_service import (
     create_transaction,
     list_transactions,
+)
+from application.portfolio.wrapper_service import (
+    get_all_wrapper_quotas,
+    get_restoration_forecast,
 )
 from application.scan.scan_service import list_price_alerts, run_scan
 from application.stock.filing_service import sync_all_gurus
@@ -31,9 +36,12 @@ from application.stock.stock_service import (
     StockNotFoundError,
     create_stock,
     get_fundamentals_for_ticker,
+    get_moat_for_ticker,
+    get_signals_for_ticker,
 )
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
+    DEFAULT_USER_ID,
     DEFAULT_WEBHOOK_THESIS,
     ERROR_INTERNAL_ERROR,
     ERROR_INVALID_INPUT,
@@ -45,9 +53,7 @@ from domain.constants import (
 from domain.enums import StockCategory
 from i18n import get_user_language, t
 from infrastructure.market_data import (
-    analyze_moat_trend,
     get_fear_greed_index,
-    get_technical_signals,
 )
 from logging_config import get_logger
 
@@ -146,6 +152,8 @@ def handle_webhook(
                     "sell_decision": "withdraw {amount, currency}",
                     "asset_review": "dashboard -> analytics -> insights -> transactions {ticker}",
                     "record_trade": "add_transaction {ticker} -> transactions {ticker}",
+                    "nisa_check": "quota -> dashboard",
+                    "tax_optimization": "quota -> insights",
                 },
                 "model_hint": t("webhook.help_model_hint", lang=lang),
             },
@@ -189,7 +197,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        result = get_technical_signals(ticker)
+        result = get_signals_for_ticker(session, ticker)
         if not result or "error" in result:
             message = (
                 result.get("error", t("webhook.signals_unavailable", lang=lang))
@@ -232,7 +240,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        signals = get_technical_signals(ticker)
+        signals = get_signals_for_ticker(session, ticker)
         if not signals or "error" in signals:
             message = (
                 signals.get("error", t("webhook.signals_unavailable", lang=lang))
@@ -246,8 +254,8 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INTERNAL_ERROR,
             )
-        moat = analyze_moat_trend(ticker)
-        fundamentals = get_fundamentals_for_ticker(ticker)
+        moat = get_moat_for_ticker(session, ticker)
+        fundamentals = get_fundamentals_for_ticker(session, ticker)
         message = t(
             "webhook.analyze_line",
             lang=lang,
@@ -294,7 +302,7 @@ def handle_webhook(
                 params=params,
                 error_code=ERROR_INVALID_INPUT,
             )
-        result = analyze_moat_trend(ticker)
+        result = get_moat_for_ticker(session, ticker)
         details = result.get("details", "N/A")
         return _wrap_response(
             success=True,
@@ -387,6 +395,8 @@ def handle_webhook(
             stock = create_stock(
                 session, str(t_ticker), StockCategory(cat_str), thesis, tags
             )
+            if stock.category == StockCategory.MUTUAL_FUND:
+                sync_single_fund_nav(session, stock.ticker)
             return _wrap_response(
                 success=True,
                 message=t(
@@ -694,6 +704,35 @@ def handle_webhook(
             ),
             params=params,
             data=metrics,
+        )
+
+    if action == "quota":
+        as_of = date_type.today()
+        year_raw = params.get("year")
+        try:
+            year = int(year_raw) if year_raw is not None else as_of.year
+        except (TypeError, ValueError):
+            return _wrap_response(
+                success=False,
+                message=t(GENERIC_VALIDATION_ERROR, lang=lang),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INVALID_INPUT,
+            )
+        quotas = get_all_wrapper_quotas(session, DEFAULT_USER_ID, year, as_of)
+        forecast = get_restoration_forecast(session, DEFAULT_USER_ID)
+        return _wrap_response(
+            success=True,
+            message=t("webhook.quota_summary", lang=lang, count=len(quotas)),
+            interpretation=t("webhook.interpretation.quota_ready", lang=lang),
+            params=params,
+            data={
+                "year": year,
+                "as_of": as_of.isoformat(),
+                "restoration_policy": forecast.get("restoration_policy"),
+                "quotas": quotas,
+                "restoration_forecast": forecast,
+            },
         )
 
     if action == "insights":

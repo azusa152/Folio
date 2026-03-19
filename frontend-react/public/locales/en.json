@@ -8,6 +8,7 @@
     "radar": "Investment Radar",
     "backtest": "Signal Backtest",
     "allocation": "Asset Allocation",
+    "nisa": "NISA",
     "fx_watch": "FX Monitor",
     "smart_money": "Smart Money"
   },
@@ -89,7 +90,17 @@
       "growth": "🚀 Growth",
       "bond": "🛡️ Bond",
       "crypto": "₿ Crypto",
-      "cash": "💵 Cash"
+      "cash": "💵 Cash",
+      "mutual_fund": "🧺 Mutual Fund"
+    },
+    "category_desc": {
+      "trend_setter": "Large-cap ETFs and mega-caps that track capital flow and spending trends.",
+      "moat": "Irreplaceable pick-and-shovel companies in the supply chain.",
+      "growth": "High-volatility stocks with significant upside potential.",
+      "mutual_fund": "Mutual funds and index funds (e.g. eMAXIS Slim).",
+      "bond": "Government bonds and investment-grade bond ETFs (e.g. TLT, BND).",
+      "crypto": "BTC, ETH, and other crypto assets.",
+      "cash": "Idle cash holdings (USD, TWD, JPY)."
     },
     "market": {
       "us": "🇺🇸 US Market",
@@ -217,7 +228,8 @@
     "samples": "Samples is the number of historical signal occurrences used in the calculation.",
     "forward_returns": "Forward returns show how prices performed after a signal across multiple day windows.",
     "confidence": "Confidence reflects how reliable the backtest signal is based on data quality and consistency.",
-    "market_status": "Market status describes broad market conditions at the time the signal occurred."
+    "market_status": "Market status describes broad market conditions at the time the signal occurred.",
+    "trailing_pe": "P/E compares share price to annual earnings per share."
   },
   "dashboard": {
     "title": "📊 Portfolio Overview",
@@ -230,6 +242,12 @@
     "last_scan": "🔍 Last scan: {{timestamp}}",
     "scan_stale_suffix": "(stale: {{relative}})",
     "market_closed": "(market closed)",
+    "market_open": "(market open)",
+    "market_open_short": "Open",
+    "market_closed_short": "Closed",
+    "next_market_open_today": "opens today at {{time}} ({{tz}})",
+    "next_market_open_tomorrow": "opens tomorrow at {{time}} ({{tz}})",
+    "next_market_open": "opens in {{days}}d at {{time}} ({{tz}})",
     "no_update_record": "⏳ No update record available",
     "digest_tooltip": "Send Weekly Digest",
     "welcome": "👋 Welcome to Folio! Start setting up your portfolio.",
@@ -276,6 +294,10 @@
     "no_tracking_stocks_description": "Add stocks to your watchlist in Radar so Folio can monitor signals for you.",
     "onboarding_title": "Start your portfolio in 2 steps",
     "onboarding_description": "Add your first stock in Radar, then create an account and record transactions in Allocation to track your portfolio.",
+    "onboarding_steps_title": "Quick start for first-time investors",
+    "onboarding_step_1": "Add your first stock to your watchlist in Radar.",
+    "onboarding_step_2": "Folio scans your watchlist automatically in the background.",
+    "onboarding_step_3": "Review signal alerts and record transactions in Allocation.",
     "onboarding_goto_radar": "Go to Radar",
     "onboarding_goto_allocation": "Go to Allocation",
     "section_market_pulse": "Market Pulse",
@@ -418,7 +440,20 @@
     "caption": "Smart Asset Allocation — Track · Version · Alert",
     "sop": {
       "title": "📖 Investment Radar: User Manual",
+      "learn_more_title": "Learn the radar workflow",
+      "quick_title": "Quick start",
+      "show_full": "Show full guide",
+      "hide_full": "Hide full guide",
       "content": "### System Overview\n\nThe system has **six asset categories** overall. Investment Radar now tracks stocks, bonds, and **Crypto** for monitoring (price chart + basic alerts), while Cash remains managed on the Asset Allocation page:\n\n| Category | Description |\n|----------|-------------|\n| 🌊 **Trend Setter** | Large-cap ETFs and mega-caps — tracks capital flow and Capex |\n| 🏰 **Moat** | Irreplaceable pick-and-shovel companies in the supply chain |\n| 🚀 **Growth** | High-volatility stocks with significant upside potential |\n| 🛡️ **Bond** | Government bonds & investment-grade bond ETFs (e.g., TLT, BND, SGOV) |\n| ₿ **Crypto** | BTC/ETH and other crypto assets — monitor 24h price and set basic alerts |\n| 💵 **Cash** | Idle cash (USD, TWD, JPY) — managed on the Asset Allocation page |\n\n> 💡 The system has two main pages: **Investment Radar** (this page) for stock tracking and scanning, and **Asset Allocation** for cash management, holdings, and rebalance analysis. Switch between them using the sidebar navigation.\n\n---\n\n### Workflow\n\n---\n\n#### 1. Check the Weather — Click \"🚀 Run Scan\"\n\nWhen the page loads, a **loading indicator** appears at the top (📡 Loading stock data...), collapsing to \"✅ Loaded N stocks\" when complete.\n\nClick the scan button in the left panel. The system runs a **V2 Three-Layer Funnel Analysis** in the background (parallel scanning 4 stocks, ~30 seconds). The system also auto-scans every 15 minutes.\n\nFirst, observe **Layer 1 — Market Sentiment**:\n\n| Signal | % Below 60MA | Meaning | Suggestion |\n|--------|:---:|---------|------------|\n| ☀️ **Sunny** (Strong Bullish) | 0–10% | Nearly all trend setters above 60MA | Full risk-on — great conditions |\n| 🌤️ **Mostly Sunny** (Bullish) | 10–30% | Normal healthy breadth | Standard position sizing |\n| ⛅ **Partly Cloudy** (Neutral) | 30–50% | Mixed signals, transition zone | Reduce new entries, be selective |\n| 🌧️ **Rainy** (Bearish) | 50–70% | Majority weakening | Defensive — scale down exposure |\n| ⛈️ **Stormy** (Strong Bearish) | >70% | Extreme breadth weakness | Maximum caution — look for contrarian opportunities |\n\n> **Note**: ETFs (e.g., VTI, VT) are excluded from market sentiment calculation because they ARE the market, which would create circular reasoning. Only individual stocks serve as trend setters.\n\nScan results are pushed via **Telegram differential notifications** — you only receive notifications when signals **change**, avoiding duplicate alerts.\n\nAlso monitor the **Fear & Greed Index** (on the Dashboard KPI area):\n\n| Level | Score Range | Suggestion |\n|-------|-------------|------------|\n| 😱 **Extreme Fear** | 0–25 | \"Be greedy when others are fearful\" — actively seek mispriced opportunities |\n| 😨 **Fear** | 25–45 | Market bearish — scale in gradually, don't go all-in |\n| 😐 **Neutral** | 45–55 | Wait and watch, wait for clarity |\n| 🤑 **Greed** | 55–75 | Market bullish — watch for overheating |\n| 🤯 **Extreme Greed** | 75–100 | \"Be fearful when others are greedy\" — consider taking profits |\n\n> The Fear & Greed Index combines **VIX volatility** and **CNN Fear & Greed Index**, updated every 15 minutes.\n\n> 💡 This step determines your \"position size\" — don't sail out in bad weather.\n\n---\n\n#### 2. Check the Moat — Open the 🏰 Moat Tab\n\nExpand a stock card, then click the **🏰 Moat** tab. It contains:\n- **Gross Margin Metrics**: Latest gross margin + YoY change (percentage points)\n- **5-Quarter Trend Chart**: Line chart showing gross margin trajectory\n- **Five-Level Auto Diagnosis**:\n  - 🔴 **Thesis Broken** — Gross margin YoY decline >2pp, moat compromised — don't catch falling knives\n  - 🟢 **Mispriced Opportunity** — Price pulled back (bias < -5%) but gross margin growing — strong fundamentals\n  - 🟢 **Moat Intact** — Gross margin YoY growth — healthy fundamentals\n  - 🟡 **Price Weakening** — Bias low but moat data flat — watch next quarter\n  - ⚪ **Monitoring** — Moat data flat — continue observing\n\n> 💡 A falling stock price isn't scary — what's scary is when fundamentals fall too. Gross margin is the most direct moat indicator.\n\n---\n\n#### 3. Read the Signals — Open the 📈 Scan History Tab\n\nAfter scanning, the system generates a decision signal for each stock. Expand a card and click the **📈 Scan History** tab to view the last 10 scan results and **consecutive anomaly count**:\n\n| Signal | Trigger Condition | Action |\n|--------|-------------------|--------|\n| 💎 **Undervalued Opportunity** | Bias < −20% AND RSI < 35 (category-adjusted) | Highest-conviction entry — both indicators confirm deep discount |\n| 📉 **Heavy Selloff** | Bias < −20% (RSI ≥ 35) | Price deeply discounted — wait for RSI confirmation before acting |\n| 🟢 **Early Rebound Setup** | RSI < 35 (category-adjusted) | RSI oversold — dip your toes, scale in gradually |\n| 🎯 **Near Entry Zone** | RSI < 37 (category-adjusted) + Bias < −15% | Accumulation zone — start watching closely |\n| 🔥 **Overheating Risk** | Bias > 20% AND RSI > 70 | Both indicators overheated — don't chase, consider trimming |\n| ⚠️ **Elevated Risk** | Bias > 20% OR RSI > 70 | Single indicator elevated — reduce new positions, tighten stops |\n| 🔻 **Momentum Weakening** | Bias < −15% AND RSI < 38 | Early weakness detected — monitor closely |\n| 🚨 **Thesis At Risk** | Gross margin YoY decline > 2 percentage points | Fundamentals deteriorating — consider stop-loss |\n| ➖ **NORMAL** | No anomalies | Continue monitoring |\n| 🌊 **Unusual Price Drop** | Bias ≥ 95th percentile + volume ratio ≥ 1.5x | Party likely peaking — no leveraged chasing, consider reducing exposure |\n\n> 💡 \"Don't fall in love with a stock\" — when Thesis Broken appears, execute stop-loss decisively.\n\n---\n\n#### 4. Set Price Alerts — Open the 🔔 Price Alerts Tab\n\nExpand a card and click the **🔔 Price Alerts** tab to:\n- **Create custom alerts**: Choose metric (RSI / Price / Bias), condition (< or >), and threshold\n- **View existing alerts**: See all configured alerts and trigger history\n- **Delete alerts**: One-click removal when no longer needed\n\nAlerts trigger via **Telegram instant notifications**, with a **4-hour cooldown** to prevent spam.\n\n> 💡 Use conditions like RSI < 30 or Bias < -20% to let the system watch the market for you.\n\n---\n\n#### 5. Track Institutional Moves — Open the 🐳 Chips Tab\n\nExpand a card and click the **🐳 Chips (13F)** tab. It provides:\n- **WhaleWisdom link**: One-click access to full 13F institutional holdings report\n- **Top 5 Institutional Holders**: Displayed as a table when available\n- Key observations:\n  - **New / Add** → Institutions are accumulating\n  - **Reduce / Sold Out** → Institutions are exiting\n\n> 💡 Follow \"new positions\", not existing inventory. Watch benchmark institutions like Berkshire, Bridgewater, Renaissance.\n\n---\n\n#### 6. Check Earnings & Dividends — Open the 📊 Metrics Tab\n\nExpand a card and click the **📊 Metrics** tab. At the bottom you will find:\n- **📅 Earnings Date**: Next earnings release date, with countdown when within 14 days\n- **💰 Dividend Yield** (Moat/Bond categories): Current dividend yield and ex-dividend date\n\n> 💡 Earnings season is the critical moment when your moat thesis gets validated — prepare in advance.\n\n---\n\n#### Stock Card Information\n\nEach stock card header shows:\n\n`📉 NVDA — 🌊 Trend Setter | $120.5 (▲1.2%) | 🇺🇸 US | Oversold`\n\n- **Signal Icon** (🟢🔥🚨➖…) — Live signal computed from real-time RSI and bias (not the last manual scan)\n- **Ticker** — e.g., NVDA, 2330.TW\n- **Category** — Trend Setter / Moat / Growth / Bond\n- **Price & Change** — Latest price with daily change percentage\n- **Market Flag** — 🇺🇸 US / 🇹🇼 TW / 🇯🇵 JP / 🇭🇰 HK (auto-detected from ticker suffix)\n- **Signal Label** — Human-readable signal name when non-NORMAL (e.g., Oversold, Overheated)\n\nWhen expanded, the card has two tiers:\n\n**Tier 1 — At-a-Glance** (always visible):\n- Signal summary bar: RSI · Bias · Volume Ratio chips with color-coded emoji\n- Current investment thesis\n- Price trend chart\n- Tags\n\n**Tier 2 — Detail Tabs**:\n- **📊 Metrics** — Full indicators (RSI, MA200, MA60, Bias, Volume Ratio), earnings date, dividend yield, guru resonance\n- **🏰 Moat** — Gross margin trend and moat diagnosis (Trend Setter / Moat / Growth only)\n- **📈 Scan History** — Last 10 scan results with signal icons\n- **🐳 Chips (13F)** — Institutional holdings and WhaleWisdom link\n- **🔔 Price Alerts** — Configure and manage price/RSI/bias alerts\n- **📝 Thesis Versioning** — Full thesis history with version numbers\n- **🔄 Change Category** — Switch the stock to a different category\n- **🗑️ Remove** — Remove from watchlist (requires reason)\n\nThe **📊 Metrics** tab also shows **🕐 Data Updated** time (auto-converted to your browser's local timezone).\n\n---\n\n#### 7. Record Your Thesis — Open the 📝 Thesis Versioning Tab\n\nInvestment decisions need documentation to avoid hindsight bias:\n- Expand a card and click **📝 Thesis Versioning** to view **complete thesis history** (with version numbers and dates)\n- Each update auto-increments the version (v1 → v2 → v3...)\n- **Tags** (AI, Cloud, SaaS...) are versioned alongside the thesis\n\n> 💡 Regularly review your thesis evolution to discover blind spots and track your growth.\n\n---\n\n#### Market Filter Pills (Multi-Market Portfolios)\n\nWhen your watchlist includes stocks from multiple markets (e.g., US + JP), **market filter pills** (ALL / US / JP / TW / HK) automatically appear above the category tabs. Click any market to show only that market's stocks; click \"ALL\" to restore the full view. Market labels are auto-detected from ticker suffixes (`.T` = 🇯🇵 JP, `.TW` = 🇹🇼 TW, `.HK` = 🇭🇰 HK, others = 🇺🇸 US).\n\n---\n\n#### 8. Manage Watchlist — Sort, Categorize, Export, Import\n\n- **↕️ Drag to Reorder**: Check \"↕️ Drag to Reorder\" at the top of each tab, drag to rearrange, then click \"💾 Save Order\"\n- **🔄 Change Category**: Open the **🔄 Change Category** tab inside a card to switch categories (e.g., Trend Setter → Moat)\n- **🗑️ Remove**: Open the **🗑️ Remove** tab — requires a reason; removed stocks appear in the \"📦 Removed\" tab\n- **🔄 Reactivate**: In the \"📦 Removed\" tab, reactivate stocks to any category\n- **📥 Export Watchlist**: Download JSON of your complete watchlist (with thesis and tags) from the left panel\n- **📤 Import Watchlist**: Upload JSON for batch import (supports upsert) from the left panel\n\n---\n\n#### 9. Weekly Digest\n\nEvery Sunday at 18:00 UTC, the system sends a **Telegram portfolio health report** containing:\n- **Health Score**: Percentage of stocks with normal signals (e.g., 85%)\n- **Anomaly List**: Stocks currently not NORMAL and their signals\n- **Weekly Signal Changes**: Stocks with signal changes in the past 7 days and change counts\n\n> 💡 Spend 5 minutes reviewing the weekly digest to stay on top of your portfolio."
+    },
+    "first_visit": {
+      "title": "New to Radar?",
+      "description": "Start with a quick workflow, then open the full guide if needed.",
+      "step_1": "Add or import stocks in the watchlist.",
+      "step_2": "Run scan and review Buy vs Risk signals.",
+      "step_3": "Open cards to read fundamentals and thesis context.",
+      "learn_more": "Open full guide",
+      "dismiss": "Got it"
     },
     "fundamentals_note": "New: Open a stock card and switch to the Fundamentals tab to read key metrics with plain-language explanations, then click \"See full analysis\" for deeper context.",
     "pwa_note": "New: install Folio as a PWA from your browser menu for home-screen access, offline app shell caching, and update prompts after new releases.",
@@ -546,6 +581,7 @@
       "growth": "🚀 Growth ({{count}})",
       "bond": "🛡️ Bond ({{count}})",
       "crypto": "₿ Crypto ({{count}})",
+      "mutual_fund": "🧺 Mutual Fund ({{count}})",
       "removed": "📦 Removed ({{count}})"
     },
     "market": {
@@ -661,9 +697,27 @@
         "profit_margins_tip": "What percentage of revenue turns into net profit.",
         "operating_margins_tip": "Core operating profitability before non-operating items.",
         "revenue_growth_tip": "How fast total sales are growing year-over-year.",
-        "earnings_growth_tip": "How fast net earnings are growing year-over-year."
+        "earnings_growth_tip": "How fast net earnings are growing year-over-year.",
+        "health_good": "healthy",
+        "health_watch": "watch",
+        "health_risk": "risk",
+        "label_hint": {
+          "trailing_pe": "Price vs past earnings",
+          "price_to_book": "Price vs net assets",
+          "price_to_sales": "Price vs annual sales",
+          "return_on_equity": "Profit from shareholder capital",
+          "profit_margins": "Take-home profit rate",
+          "operating_margins": "Core business margin",
+          "revenue_growth": "Sales growth pace",
+          "earnings_growth": "Profit growth pace",
+          "trailing_eps": "Past 12-month profit per share",
+          "forward_eps": "Expected profit per share",
+          "market_cap": "Company size in market"
+        }
       }
-    }
+    },
+    "nav_badge": "NAV",
+    "nav_as_of": "as of {{date}}"
   },
   "backtest": {
     "title": "🧪 Signal Backtesting",
@@ -782,7 +836,7 @@
     },
     "tab_teaser": {
       "risk_desc": "Analyze currency exposure and stress test your portfolio against market crashes.",
-      "actions_desc": "Smart withdrawal recommendations that minimize drift and tax impact.",
+      "actions_desc": "Smart withdrawal planning based on your current positions and cash balances.",
       "show_details": "Show details",
       "hide_details": "Hide details"
     },
@@ -876,6 +930,7 @@
       "today_tooltip": "Change since previous market close.",
       "total_return": "Total Return",
       "total_return_tooltip": "Unrealized gain/loss since purchase.",
+      "unrealized_pl_tooltip": "Paper gain/loss since purchase.",
       "home_return": "Home: {{pct}}",
       "fx_return": "FX: {{pct}}",
       "fx_rate_info": "1 {{from}} = {{rate}} {{to}}"
@@ -1874,6 +1929,8 @@
       "account_empty_hint": "No investment accounts yet.",
       "create_account": "Create an account in the Accounts tab",
       "available_cash": "Available cash ({{currency}}): {{amount}}",
+      "nisa_quota_summary": "{{wrapper}} annual quota remaining: {{remaining}} / {{annual}}",
+      "nisa_quota_unavailable": "NISA quota information is currently unavailable.",
       "proceeds_hint": "Proceeds will be added to {{account}} cash balance.",
       "insufficient_balance": "Insufficient balance ({{currency}}). Available: {{available}}, Required: {{required}}.",
       "deposit_cash": "Deposit cash",
@@ -1881,6 +1938,7 @@
       "thesis": "Investment Thesis",
       "thesis_hint": "Optional - why you are investing. Default: auto-tracked via transaction.",
       "category": "Category",
+      "mutual_fund_category_hint": "Category is set automatically to Mutual Fund for this eligible asset.",
       "quantity": "Quantity",
       "price": "Price per unit",
       "price_hint": "Leave blank if this transaction has no unit price.",
@@ -1910,6 +1968,23 @@
       "deposit_success_trade": "Funds added. Record a trade?",
       "buy_no_account_banner": "Create an investment account to track trades and balance updates.",
       "buy_no_balance_hint": "No funds yet. Deposit cash to this account first."
+    },
+    "sell_picker": {
+      "placeholder": "Select a holding to sell",
+      "placeholder_dividend": "Select a holding",
+      "search": "Search by ticker or name...",
+      "empty": "No sellable holdings in this account",
+      "loading": "Loading positions...",
+      "load_error": "Failed to load holdings. Please retry.",
+      "available": "Available: {{quantity}} {{unit}}",
+      "unit_shares": "shares",
+      "unit_units": "units",
+      "max": "Max",
+      "price_unavailable": "Price unavailable",
+      "value_fallback_label": "Cost basis value",
+      "value_source_live": "Live price",
+      "value_source_cost_basis": "Based on cost",
+      "value_source_unavailable": "Value unknown"
     },
     "toast": {
       "created": "Transaction recorded.",
@@ -1988,6 +2063,7 @@
       "broker": "Broker",
       "account_type": "Account type",
       "currency": "Base currency",
+      "market": "Market (auto-detected)",
       "institution": "Institution (optional)",
       "note": "Note (optional)",
       "save": "Save",
@@ -2045,6 +2121,9 @@
     "contribution_label": "Total Invested",
     "growth_label": "Market Value"
   },
+  "holding": {
+    "auto_radar": "This ticker has been automatically added to your Radar watchlist."
+  },
   "insight": {
     "title": "Portfolio Insights",
     "show_more": "Show more insights",
@@ -2084,5 +2163,207 @@
     "mode_simplified": "Simplified (recommended for most users)",
     "mode_expert": "Expert (full financial terminology)",
     "terminology_hint": "Controls how financial terms are displayed throughout the app."
+  },
+  "wrapper": {
+    "tokutei": "Tokutei (Taxable)",
+    "nisa_tsumitate": "NISA Tsumitate",
+    "nisa_growth": "NISA Growth",
+    "ideco": "iDeCo",
+    "ippan": "General Account",
+    "tax_free": "Tax-Free",
+    "taxable": "Taxable",
+    "tax_deferred": "Tax-Deferred",
+    "no_wrapper": "No tax wrapper",
+    "select_wrapper": "Select tax account type (optional)",
+    "dashboard": {
+      "title": "NISA Quota Dashboard",
+      "lifetime_combined": "Combined lifetime quota",
+      "growth_sub_limit": "Growth lifetime limit",
+      "used_remaining": "{{used}} used / {{remaining}} remaining",
+      "progress_tooltip": "Used {{used}} / Remaining {{remaining}} / Limit {{limit}}",
+      "restoration_forecast": "Restoration forecast",
+      "restoration_empty": "No pending restorations",
+      "policy_next_year": "Restoration: next year",
+      "policy_same_day": "Restoration: same day"
+    }
+  },
+  "eligibility": {
+    "checking": "Checking eligibility...",
+    "eligible": "Eligible",
+    "not_eligible": "Not eligible",
+    "nisa_picker_placeholder": "Select eligible asset",
+    "nisa_picker_search": "Search by fund name or ticker",
+    "nisa_picker_empty": "No eligible assets found",
+    "nisa_picker_loading": "Loading eligible assets…",
+    "nisa_picker_limit_hint": "Showing up to 50 results. Type a name or code to narrow.",
+    "nisa_picker_hint_tsumitate": "Only FSA-approved funds can be purchased in NISA Tsumitate.",
+    "nisa_picker_hint_growth": "Growth NISA allows approved stocks, ETFs, mutual funds, and REITs. Choose a category to narrow your search.",
+    "nisa_trust_fee_label": "Trust fee",
+    "switch_to_suggested_account": "Switch to {{wrapper}} account",
+    "no_suggested_account": "No account available for {{wrapper}}.",
+    "not_in_tsumitate_approved_list": "Not in the approved fund list for NISA Tsumitate.",
+    "not_in_growth_approved_list": "Not in the approved asset list for NISA Growth.",
+    "excluded_flag": "This asset is excluded from NISA Growth.",
+    "trust_period_too_short": "Trust period is less than 20 years.",
+    "not_in_ideco_lineup": "Not in your broker's iDeCo lineup.",
+    "invalid_asset_type": "This asset type is not eligible for NISA Growth.",
+    "try_instead": "Try {{wrapper}} instead.",
+    "last_updated_compact": "Eligible list updated - Tsumitate: {{tsumitate}}, Growth: {{growth}}",
+    "data_management_title": "NISA Eligible Data",
+    "data_management_hint": "Keep the approved-fund list current for accurate eligibility checks.",
+    "data_count_label": "Active funds: {{count}}",
+    "data_last_updated_label": "Last updated: {{date}}",
+    "refresh_now": "Refresh from official source",
+    "refresh_hint": "Refresh syncs the latest approved list from official NISA sources.",
+    "refresh_success": "Eligible fund list refreshed",
+    "refresh_failed": "Failed to refresh eligible fund list",
+    "upload_title": "Upload local list file (.csv/.xlsx)",
+    "upload_button": "Upload list file",
+    "upload_hint": "Upload lets you import your own CSV/XLSX list for custom screening.",
+    "upload_success": "Eligible fund list uploaded",
+    "upload_failed": "Failed to upload eligible fund list"
+  },
+  "nisa": {
+    "title": "NISA Center",
+    "caption": "Manage approved funds, quota usage, and contribution history in one place.",
+    "tabs": {
+      "eligible": "Eligible Assets",
+      "quota": "Quota & Status",
+      "contributions": "Contributions",
+      "actions": "Actions",
+      "data": "Data Management"
+    },
+    "sop": {
+      "title": "NISA SOP (Beginner Guide)",
+      "content": "1) What is NISA?\nNISA is a tax-advantaged investment wrapper for Japanese residents.\n\n2) Tsumitate vs Growth\n- Tsumitate: long-term, approved mutual funds only.\n- Growth: broader products (stocks, ETFs, funds) within eligible rules.\n\n3) Limits at a glance\n- Tsumitate annual limit: 1,200,000 JPY\n- Growth annual limit: 2,400,000 JPY\n- Combined annual limit: 3,600,000 JPY\n- Combined lifetime limit: 18,000,000 JPY\n\n4) When you sell\nQuota restoration follows policy rules (commonly restored next year).\n\n5) Eligible assets\n\"Eligible\" means products approved for that wrapper. Check the Eligible Assets tab.\n\n6) How contributions are tracked\nThe app uses ledger entries (contribution/restoration/adjustment) to calculate quota usage.\n\n7) How Actions works\nActions tab suggests purchase routing and DeTAX ideas based on your accounts and quota.\n\n8) Quick FAQ\nQ: Can I buy US stocks in Tsumitate?\nA: No, Tsumitate supports approved mutual funds.\n\nQ: What is Tokutei?\nA: Tokutei is a standard taxable account (not tax-free)."
+    },
+    "actions": {
+      "empty_title": "Set up an account to use Actions",
+      "empty": "No Japanese wrapper accounts found. Create a JPY NISA/iDeCo/Tokutei account first to use Actions.",
+      "empty_cta": "Create Account"
+    },
+    "onboarding": {
+      "title": "Get started with NISA",
+      "description": "Set up your first Japanese wrapper account to unlock NISA tools.",
+      "step1": "Create a Japanese-market NISA/Tokutei/iDeCo account",
+      "step2": "Deposit cash into that account",
+      "step3": "Buy eligible assets from the approved list",
+      "create_account": "Create NISA Account",
+      "learn_more": "Learn more"
+    },
+    "education": {
+      "title": "How NISA limits work",
+      "summary": "Use this quick guide if you are new to NISA.",
+      "tsumitate_limit": "Tsumitate annual limit: 1,200,000 JPY",
+      "growth_limit": "Growth annual limit: 2,400,000 JPY",
+      "combined_annual_limit": "Combined annual limit: 3,600,000 JPY",
+      "combined_lifetime_limit": "Combined lifetime limit: 18,000,000 JPY"
+    },
+    "eligible": {
+      "title": "Eligible fund list",
+      "hint": "Search approved funds for NISA Tsumitate and NISA Growth.",
+      "stocks_note": "For Growth NISA, all TSE-listed stocks are generally eligible except supervision/delisting-designated issues. Use the stock search or your watchlist to choose individual stocks.",
+      "stocks_input_hint": "Enter a listed ticker code for Growth NISA (e.g. 7203.T for stocks, 8951.T for REITs). A bare 4-digit code (e.g. 7203 or 8951) will be automatically suffixed with .T.",
+      "stocks_eligibility_disclaimer": "Supervision or delisting-designated listed issues (including stocks/REITs) are ineligible for NISA Growth but cannot be auto-verified here. Please confirm with your broker before purchasing.",
+      "listed_input_hint": "Enter a listed ticker code for Growth NISA (e.g. 7203.T for stocks, 8951.T for REITs). A bare 4-digit code (e.g. 7203 or 8951) will be automatically suffixed with .T.",
+      "listed_eligibility_disclaimer": "Supervision or delisting-designated listed issues (stocks/REITs) are ineligible for NISA Growth but cannot be auto-verified here. Please confirm with your broker before purchasing.",
+      "search_placeholder": "Search by fund name or ticker",
+      "filter_asset_type": "Asset type",
+      "filter_all": "All",
+      "asset_type": {
+        "mutual_fund": "Mutual fund",
+        "etf": "ETF",
+        "stock": "Stock",
+        "reit": "REIT"
+      },
+      "table_fund_name": "Fund name",
+      "table_ticker": "Ticker / Code",
+      "table_asset_type": "Asset type",
+      "table_trust_fee": "Trust fee",
+      "trust_fee_help": "Trust fee is the annual management cost charged by the fund. Lower fees generally leave more long-term return for investors.",
+      "trust_fee_unknown": "N/A",
+      "empty_title": "No eligible assets loaded",
+      "empty": "Upload or refresh the eligible asset list in the Data Management tab.",
+      "empty_cta": "Go to Data Management",
+      "filter_no_match_title": "No matching assets",
+      "filter_no_match": "No assets match the current filter. Try a different asset type.",
+      "clear_filter": "Clear filter",
+      "clear_search": "Clear search",
+      "showing_count": "Showing {{count}} of {{total}} matching records",
+      "load_more": "Show more results"
+    },
+    "contributions": {
+      "title": "Contribution history",
+      "hint": "Review ledger entries used for NISA quota calculations.",
+      "summary_net_ledger_label": "Net ledger amount",
+      "summary_contribution_only_label": "Contribution entries only: {{amount}}",
+      "filter_wrapper": "Wrapper",
+      "filter_all_wrappers": "All wrappers",
+      "filter_year": "Fiscal year",
+      "table_date": "Date",
+      "table_wrapper": "Wrapper",
+      "table_type": "Entry type",
+      "table_amount": "Amount",
+      "table_note": "Note",
+      "empty": "No contribution entries found for this filter.",
+      "error_title": "Unable to load contribution history",
+      "error_hint": "Please check your connection and try again.",
+      "retry": "Retry",
+      "entry_type": {
+        "contribution": "Contribution",
+        "restoration": "Restoration",
+        "adjustment": "Adjustment"
+      }
+    },
+    "nav_sync": {
+      "button": "Update NAV",
+      "syncing": "Updating…",
+      "cooldown": "Wait {{seconds}}s",
+      "success": "NAV updated: {{synced}} synced, {{failed}} failed",
+      "partial": "NAV updated: {{synced}} synced, {{failed}} failed ({{details}})",
+      "failed": "Failed to update NAV data",
+      "reason_missing_isin": "missing ISIN",
+      "reason_download_error": "download failed",
+      "reason_empty_csv": "no NAV rows",
+      "reason_upsert_error": "database write failed",
+      "pre_refresh_skipped": "Eligible-list refresh skipped; NAV sync proceeded."
+    }
+  },
+  "routing": {
+    "nisa_growth_tax_free": "Buy in NISA Growth (tax-free gains)",
+    "nisa_tsumitate_tax_free": "Buy in NISA Tsumitate (tax-free gains)",
+    "ideco_tax_deferred": "Buy in iDeCo (tax-deductible contribution)",
+    "tokutei_overflow": "Remaining in Tokutei (standard taxable)",
+    "suggest_title": "Optimal purchase routing"
+  },
+  "detax": {
+    "harvest_loss": "Sell and rebuy to realize loss for tax offsetting",
+    "title": "Tax-Loss Harvesting Opportunity",
+    "estimated_saving": "Estimated tax saving: {{amount}}",
+    "disclaimer": "DeTAX defers taxes — it does not eliminate them. Consult a tax advisor."
+  },
+  "location": {
+    "title": "Asset Location Optimization",
+    "efficiency_score": "Tax Efficiency Score",
+    "score_optimal": "Optimal — your high-growth assets are tax-sheltered",
+    "score_good": "Good — minor optimization opportunities",
+    "score_needs_work": "Needs attention — significant tax savings available",
+    "move_suggestion": "Move {{amount}} of {{category}} from {{from}} to {{to}}",
+    "tax_savings": "Estimated annual tax savings",
+    "projected_10yr": "10-year projected savings",
+    "projected_20yr": "20-year projected savings",
+    "tsumitate_migration": "Monthly Tsumitate migration available",
+    "tsumitate_reason": "Move {{amount}}/month from {{source}} to Tsumitate for lower fees",
+    "setup_monthly_migration": "Set up monthly migration"
+  },
+  "smart_actions": {
+    "ticker_placeholder": "Ticker",
+    "amount_placeholder": "Amount",
+    "apply_suggestion": "Apply suggestion",
+    "review_button": "Review",
+    "why_toggle": "Why this suggestion?",
+    "split_purchase": "Split purchase",
+    "split_success": "Created {{count}} split buy transactions",
+    "split_rollback_failed": "Split purchase partially failed; automatic rollback did not fully complete."
   }
 }

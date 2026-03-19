@@ -1,0 +1,213 @@
+"""Application service for tax-wrapper asset eligibility."""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from domain.portfolio.eligibility import EligibilityResult, check_eligibility
+from infrastructure import repositories as repo
+from infrastructure.external.eligible_fund_parser import detect_and_parse
+
+if TYPE_CHECKING:
+    from sqlmodel import Session
+
+    from domain.entities import EligibleAsset
+
+
+_JP_STOCK_TICKER_RE = re.compile(r"^\d{4}(?:\.T)?$")
+_BARE_JP_CODE_RE = re.compile(r"^\d{4}$")
+
+
+def _looks_like_tse_listed_ticker(ticker: str) -> bool:
+    """Return True for JP listed ticker forms accepted in Growth NISA flow."""
+    return bool(_JP_STOCK_TICKER_RE.fullmatch(ticker))
+
+
+def _normalize_tse_ticker(ticker: str) -> str:
+    """Append the .T exchange suffix to bare 4-digit JP listed tickers."""
+    if _BARE_JP_CODE_RE.fullmatch(ticker):
+        return f"{ticker}.T"
+    return ticker
+
+
+def check_asset_eligibility(
+    session: Session,
+    ticker: str,
+    wrapper: str,
+    broker: str | None = None,
+) -> EligibilityResult:
+    """Check whether an asset is eligible for the requested tax wrapper."""
+    # NFKC converts full-width digits/punct to ASCII (e.g. ８９５１ → 8951)
+    normalized_ticker = unicodedata.normalize("NFKC", ticker.strip()).upper()
+    normalized_wrapper = wrapper.strip().lower()
+    normalized_broker = broker.strip() if broker else None
+
+    approved_tickers: set[str] | None = None
+    broker_lineup: set[str] | None = None
+    asset_type = "stock"
+
+    if normalized_wrapper == "nisa_tsumitate":
+        approved_tickers = repo.find_eligible_tickers(
+            session=session,
+            wrapper=normalized_wrapper,
+        )
+        asset_type = "mutual_fund"
+    elif normalized_wrapper == "nisa_growth":
+        normalized_ticker = _normalize_tse_ticker(normalized_ticker)
+        approved_tickers = repo.find_eligible_tickers(
+            session=session,
+            wrapper=normalized_wrapper,
+            broker=normalized_broker,
+        )
+        matched_asset = repo.find_eligible_asset_by_ticker(
+            session=session,
+            wrapper=normalized_wrapper,
+            ticker=normalized_ticker,
+            broker=normalized_broker,
+        )
+        if matched_asset and matched_asset.asset_type:
+            asset_type = matched_asset.asset_type.strip().lower()
+        elif (
+            approved_tickers
+            and normalized_ticker not in approved_tickers
+            and not _looks_like_tse_listed_ticker(normalized_ticker)
+        ):
+            return EligibilityResult(
+                eligible=False,
+                reasons=["eligibility.not_in_growth_approved_list"],
+                suggested_wrapper="tokutei",
+                asset_type=asset_type,
+            )
+    elif normalized_wrapper == "ideco":
+        broker_lineup = repo.find_eligible_tickers(
+            session=session,
+            wrapper=normalized_wrapper,
+            broker=normalized_broker,
+        )
+
+    result = check_eligibility(
+        ticker=normalized_ticker,
+        wrapper=normalized_wrapper,
+        asset_type=asset_type,
+        approved_tickers=approved_tickers,
+        broker_lineup=broker_lineup,
+    )
+    return EligibilityResult(
+        eligible=result.eligible,
+        reasons=result.reasons,
+        suggested_wrapper=result.suggested_wrapper,
+        asset_type=asset_type,
+    )
+
+
+def get_eligible_assets(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    asset_type: str | None = None,
+    limit: int = 50,
+) -> list[EligibleAsset]:
+    """List eligible assets for a wrapper with optional filters."""
+    return repo.find_eligible_assets(
+        session=session,
+        wrapper=wrapper.strip().lower(),
+        broker=broker.strip() if broker else None,
+        search=search,
+        asset_type=asset_type.strip().lower() if asset_type else None,
+        limit=limit,
+    )
+
+
+def get_eligible_assets_count(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    asset_type: str | None = None,
+) -> int:
+    """Count eligible assets for a wrapper with optional filters."""
+    return repo.count_eligible_assets(
+        session=session,
+        wrapper=wrapper.strip().lower(),
+        broker=broker.strip() if broker else None,
+        search=search,
+        asset_type=asset_type.strip().lower() if asset_type else None,
+    )
+
+
+def refresh_eligible_assets(
+    session: Session,
+    wrapper: str,
+    file_path: str,
+    broker: str | None = None,
+    *,
+    source: str = "manual_upload",
+    autocommit: bool = True,
+) -> dict[str, int]:
+    """Bulk refresh eligible assets from CSV/XLSX (idempotent upsert + deactivate)."""
+    normalized_wrapper = wrapper.strip().lower()
+    path = Path(file_path)
+    rows = detect_and_parse(path, wrapper=normalized_wrapper)
+    return refresh_eligible_assets_from_rows(
+        session=session,
+        wrapper=normalized_wrapper,
+        rows=rows,
+        broker=broker.strip() if broker else None,
+        source=source,
+        autocommit=autocommit,
+    )
+
+
+def refresh_eligible_assets_from_rows(
+    session: Session,
+    wrapper: str,
+    rows: list[dict],
+    broker: str | None = None,
+    *,
+    source: str = "manual_upload",
+    autocommit: bool = True,
+) -> dict[str, int]:
+    """Bulk refresh eligible assets from normalized rows."""
+    if not rows:
+        raise ValueError("No eligible assets parsed from source file.")
+    return repo.upsert_eligible_assets(
+        session=session,
+        wrapper=wrapper.strip().lower(),
+        rows=rows,
+        broker=broker.strip() if broker else None,
+        source=source,
+        autocommit=autocommit,
+    )
+
+
+def get_eligible_assets_metadata(session: Session, wrapper: str) -> dict[str, object]:
+    """Get eligible-asset freshness metadata for one wrapper."""
+    return repo.get_eligible_assets_metadata(session=session, wrapper=wrapper)
+
+
+def seed_default_eligible_assets_if_empty(
+    session: Session,
+) -> dict[str, dict[str, int]]:
+    """Seed bundled snapshot CSVs for NISA wrappers if tables are empty."""
+    seeded: dict[str, dict[str, int]] = {}
+    base_dir = Path(__file__).resolve().parents[2] / "data"
+    wrapper_to_file = {
+        "nisa_tsumitate": base_dir / "nisa_tsumitate_snapshot.csv",
+        "nisa_growth": base_dir / "nisa_growth_snapshot.csv",
+    }
+    for wrapper, path in wrapper_to_file.items():
+        current = repo.get_eligible_assets_metadata(session=session, wrapper=wrapper)
+        if int(current["count"]) > 0 or not path.exists():
+            continue
+        seeded[wrapper] = refresh_eligible_assets(
+            session=session,
+            wrapper=wrapper,
+            file_path=str(path),
+            source="csv_seed",
+            autocommit=True,
+        )
+    return seeded

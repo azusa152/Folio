@@ -4,6 +4,7 @@ Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史�
 """
 
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 
@@ -11,7 +12,7 @@ from sqlmodel import Session, select
 
 from application.formatters import format_fear_greed_label
 from application.scan.backtest_service import invalidate_backtest_cache
-from application.stock.stock_service import _get_stock_or_raise
+from application.stock.stock_service import _get_stock_or_raise, build_nav_signals
 from domain.analysis import (
     compute_bias_percentile,
     compute_signal_duration,
@@ -61,6 +62,12 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+# Matches metric values in alert strings regardless of surrounding language labels.
+# Both RSI and Bias values are always formatted as plain numbers in all locales.
+_RSI_RE = re.compile(r"\bRSI\s+([\d.]+)")
+_BIAS_RE = re.compile(r"Bias\s+([-\d.]+)%")
 
 
 # ===========================================================================
@@ -152,6 +159,14 @@ def run_scan(session: Session) -> dict:
     fg_label = format_fear_greed_label(fg_level, fg_score, lang=lang)
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
+    # === Pre-fetch NAV data for Mutual_Fund stocks ===
+    _nav_cache: dict[str, dict] = {}
+    for s in all_stocks:
+        if s.category == StockCategory.MUTUAL_FUND:
+            nav_row = repo.get_latest_nav(session, s.ticker)
+            if nav_row:
+                _nav_cache[s.ticker] = build_nav_signals(nav_row)
+
     # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
 
     def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
@@ -173,8 +188,10 @@ def run_scan(session: Session) -> dict:
         moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
         moat_details = moat_result.get("details", "")
 
-        # Cash 不取價格；Crypto 走價格路徑但不做 RSI/bias 計算
-        if stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
+        # Cash 不取價格；Mutual_Fund 走 NAV；Crypto 走 CoinGecko
+        if stock.category == StockCategory.MUTUAL_FUND:
+            signals = _nav_cache.get(ticker)
+        elif stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
             signals = None
         elif stock.category == StockCategory.CRYPTO:
             crypto_data = get_crypto_price(stock.coingecko_id, ticker)
@@ -692,9 +709,36 @@ def get_signal_activity(session: Session) -> list[dict]:
         prev_signal: str | None = None
         changed_at = None
         consecutive_scans = 0
+        trigger_context: str | None = None
         for log in logs:
             if log.signal == current_signal:
                 consecutive_scans += 1
+                if trigger_context is None:
+                    try:
+                        parsed = json.loads(log.details) if log.details else []
+                    except Exception:  # pragma: no cover - malformed historical rows
+                        parsed = []
+                    if isinstance(parsed, list):
+                        for item in parsed:
+                            if not isinstance(item, str) or not item.strip():
+                                continue
+                            # Extract language-neutral metric values so trigger_context
+                            # is consistent regardless of the locale used when scanning.
+                            rsi_m = _RSI_RE.search(item)
+                            bias_m = _BIAS_RE.search(item)
+                            parts: list[str] = []
+                            if rsi_m:
+                                parts.append(f"RSI {rsi_m.group(1)}")
+                            if bias_m:
+                                parts.append(f"Bias {bias_m.group(1)}%")
+                            if parts:
+                                trigger_context = " · ".join(parts)
+                                break
+                            # Fallback: strip HTML and use first non-empty line
+                            cleaned = _HTML_TAG_RE.sub("", item).split("\n")[0].strip()
+                            if cleaned:
+                                trigger_context = cleaned
+                                break
             elif prev_signal is None:
                 prev_signal = log.signal
                 changed_at = log.scanned_at
@@ -712,6 +756,7 @@ def get_signal_activity(session: Session) -> list[dict]:
                 "changed_at": changed_at.isoformat() if changed_at else None,
                 "consecutive_scans": max(consecutive_scans, 1),
                 "is_new": is_new,
+                "trigger_context": trigger_context,
             }
         )
 

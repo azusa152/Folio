@@ -103,8 +103,8 @@ export function filterStocks(
     const enrichment = enrichedMap[stock.ticker]
     const signal = enrichment?.computed_signal ?? enrichment?.last_scan_signal ?? stock.last_scan_signal
     const rsi = enrichment?.rsi ?? enrichment?.signals?.rsi
-    const bias = enrichment?.bias ?? enrichment?.signals?.bias
-    const volumeRatio = enrichment?.volume_ratio ?? enrichment?.signals?.volume_ratio
+    const bias = enrichment?.signals?.bias
+    const volumeRatio = enrichment?.signals?.volume_ratio
     const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
     const trailingPe = enrichment?.trailing_pe ?? enrichment?.fundamentals?.trailing_pe
     const dividendYield = enrichment?.dividend?.dividend_yield

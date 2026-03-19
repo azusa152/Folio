@@ -177,11 +177,9 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
-export function isMarketOpen(marketKey: string): boolean {
+function getMarketClockParts(marketKey: string, at: Date): { weekday: string; currentMinutes: number } | null {
   const hours = MARKET_HOURS[marketKey]
-  if (!hours) return false
-
-  const now = new Date()
+  if (!hours) return null
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: hours.tz,
     hour: "2-digit",
@@ -189,15 +187,26 @@ export function isMarketOpen(marketKey: string): boolean {
     hour12: false,
     weekday: "short",
   })
-  const parts = formatter.formatToParts(now)
+  const parts = formatter.formatToParts(at)
   const weekday = parts.find((p) => p.type === "weekday")?.value
-  if (weekday === "Sat" || weekday === "Sun") return false
+  if (!weekday) return null
 
   const hhmm = parts
     .filter((p) => p.type === "hour" || p.type === "minute")
     .map((p) => p.value)
     .join(":")
-  const currentMinutes = toMinutes(hhmm)
+  return { weekday, currentMinutes: toMinutes(hhmm) }
+}
+
+export function isMarketOpen(marketKey: string, at: Date = new Date()): boolean {
+  const hours = MARKET_HOURS[marketKey]
+  if (!hours) return false
+
+  const clock = getMarketClockParts(marketKey, at)
+  if (!clock) return false
+  const { weekday, currentMinutes } = clock
+  if (weekday === "Sat" || weekday === "Sun") return false
+
   const openMin = toMinutes(hours.open)
   const closeMin = toMinutes(hours.close)
 
@@ -207,4 +216,63 @@ export function isMarketOpen(marketKey: string): boolean {
     if (currentMinutes >= toMinutes(lunchStart) && currentMinutes < toMinutes(lunchEnd)) return false
   }
   return true
+}
+
+const TZ_SHORT: Record<string, string> = {
+  "America/New_York": "ET",
+  "Asia/Tokyo": "JST",
+  "Asia/Taipei": "CST",
+  "Asia/Hong_Kong": "HKT",
+}
+
+export interface NextMarketOpenInfo {
+  /** 0 = today, 1 = tomorrow, 2+ = future weekday */
+  dayOffset: number
+  time: string
+  tz: string
+  shortTz: string
+}
+
+export function getNextMarketOpenInfo(
+  marketKey: string,
+  at: Date = new Date(),
+): NextMarketOpenInfo | null {
+  const hours = MARKET_HOURS[marketKey]
+  if (!hours) return null
+  if (isMarketOpen(marketKey, at)) return null
+
+  const clock = getMarketClockParts(marketKey, at)
+  if (!clock) return null
+  const { weekday, currentMinutes } = clock
+
+  const weekdayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  const dayIdx = weekdayOrder.indexOf(weekday)
+  if (dayIdx === -1) return null
+
+  let dayOffset = 0
+  let nextOpen = hours.open
+
+  if (weekday === "Sat") {
+    dayOffset = 2
+  } else if (weekday === "Sun") {
+    dayOffset = 1
+  } else if (hours.lunch) {
+    const [lunchStart, lunchEnd] = hours.lunch
+    const lunchStartMin = toMinutes(lunchStart)
+    const lunchEndMin = toMinutes(lunchEnd)
+    if (currentMinutes >= lunchStartMin && currentMinutes < lunchEndMin) {
+      nextOpen = lunchEnd
+    } else if (currentMinutes >= toMinutes(hours.close)) {
+      dayOffset = weekday === "Fri" ? 3 : 1
+    }
+  } else if (currentMinutes >= toMinutes(hours.close)) {
+    dayOffset = weekday === "Fri" ? 3 : 1
+  }
+
+  return {
+    dayOffset,
+    time: nextOpen,
+    tz: hours.tz,
+    shortTz: TZ_SHORT[hours.tz] ?? hours.tz,
+  }
 }

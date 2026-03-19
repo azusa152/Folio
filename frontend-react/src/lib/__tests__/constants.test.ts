@@ -10,6 +10,8 @@ import {
   CASH_CURRENCY_OPTIONS,
   DISPLAY_CURRENCIES,
   CURRENCY_TO_REGION,
+  SKIP_PRICE_CATEGORIES,
+  SKIP_MOAT_CATEGORIES,
 } from "../constants";
 
 describe("SCAN_SIGNAL_ICONS", () => {
@@ -70,17 +72,18 @@ describe("STOCK_CATEGORIES", () => {
     expect(STOCK_CATEGORIES[0]).toBe("Trend_Setter");
   });
 
-  it("includes all 6 expected categories", () => {
+  it("includes all 7 expected categories", () => {
     expect(STOCK_CATEGORIES).toContain("Trend_Setter");
     expect(STOCK_CATEGORIES).toContain("Moat");
     expect(STOCK_CATEGORIES).toContain("Growth");
+    expect(STOCK_CATEGORIES).toContain("Mutual_Fund");
     expect(STOCK_CATEGORIES).toContain("Bond");
     expect(STOCK_CATEGORIES).toContain("Crypto");
     expect(STOCK_CATEGORIES).toContain("Cash");
   });
 
-  it("has 6 categories total", () => {
-    expect(STOCK_CATEGORIES).toHaveLength(6);
+  it("has 7 categories total", () => {
+    expect(STOCK_CATEGORIES).toHaveLength(7);
   });
 });
 
@@ -93,8 +96,8 @@ describe("RADAR_CATEGORIES", () => {
     expect(RADAR_CATEGORIES).toContain("Crypto");
   });
 
-  it("has 5 categories total", () => {
-    expect(RADAR_CATEGORIES).toHaveLength(5);
+  it("has 6 categories total", () => {
+    expect(RADAR_CATEGORIES).toHaveLength(6);
   });
 });
 
@@ -114,6 +117,32 @@ describe("CATEGORY_ICON_SHORT and CATEGORY_COLOR_MAP", () => {
   it("every CATEGORY_COLOR_MAP value is a valid hex color", () => {
     for (const color of Object.values(CATEGORY_COLOR_MAP)) {
       expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+});
+
+describe("SKIP_PRICE_CATEGORIES", () => {
+  it("includes Cash only (Mutual_Fund now served by daily NAV)", () => {
+    expect(SKIP_PRICE_CATEGORIES.has("Cash")).toBe(true);
+    expect(SKIP_PRICE_CATEGORIES.has("Mutual_Fund")).toBe(false);
+  });
+
+  it("does not include standard equity categories", () => {
+    expect(SKIP_PRICE_CATEGORIES.has("Growth")).toBe(false);
+    expect(SKIP_PRICE_CATEGORIES.has("Trend_Setter")).toBe(false);
+  });
+});
+
+describe("SKIP_MOAT_CATEGORIES", () => {
+  it("includes Bond, Cash, Crypto, and Mutual_Fund", () => {
+    for (const cat of ["Bond", "Cash", "Crypto", "Mutual_Fund"]) {
+      expect(SKIP_MOAT_CATEGORIES.has(cat)).toBe(true);
+    }
+  });
+
+  it("is a superset of SKIP_PRICE_CATEGORIES", () => {
+    for (const cat of SKIP_PRICE_CATEGORIES) {
+      expect(SKIP_MOAT_CATEGORIES.has(cat)).toBe(true);
     }
   });
 });

@@ -4,6 +4,8 @@ import type {
   AccountCashBalanceItem,
   AccountRequest,
   AccountResponse,
+  SellablePositionItem,
+  SellablePositionsResponse,
   AccountSummaryItem,
   AccountUpdateRequest,
 } from "@/api/types/account"
@@ -68,6 +70,23 @@ export function useAccountPositions(accountId: number | null, enabled = true) {
       })
       if (error) throw error
       return (data ?? []) as unknown as Holding[]
+    },
+    enabled: enabled && accountId != null,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useAccountSellablePositions(accountId: number | null, enabled = true) {
+  return useQuery<SellablePositionItem[]>({
+    queryKey: ["account-sellable-positions", accountId],
+    queryFn: async () => {
+      if (accountId == null) return []
+      const { data, error } = await client.GET("/accounts/{account_id}/sellable-positions", {
+        params: { path: { account_id: accountId } },
+      })
+      if (error) throw error
+      const payload = (data ?? { items: [], count: 0 }) as unknown as SellablePositionsResponse
+      return payload.items ?? []
     },
     enabled: enabled && accountId != null,
     staleTime: 30 * 1000,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, CircleHelp } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { SCAN_SIGNAL_ICONS } from "@/lib/constants"
 import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
@@ -60,7 +61,7 @@ function parseNullableNumber(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-function FilterLabel({ label, tip }: { label: string; tip: string }) {
+function FilterLabel({ label, tip }: { label: ReactNode; tip: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
       {label}
@@ -226,12 +227,15 @@ export function RadarFilterPanel({
                         setDraft(toDraft({ ...DEFAULT_RADAR_FILTERS, ...preset.filters }))
                       }}
                       className={cn(
-                        "text-xs px-2.5 py-1.5 rounded-full border min-h-[36px] transition-colors",
+                        "text-left text-xs px-2.5 py-1.5 rounded-lg border min-h-[36px] transition-colors",
                         isPresetActive(filters, preset.key) ? "bg-foreground text-background" : "hover:bg-muted/50",
                       )}
                       aria-pressed={isPresetActive(filters, preset.key)}
                     >
-                      {t(`radar.filter.preset.${preset.key}`)}
+                      <span className="block font-medium">{t(`radar.filter.preset.${preset.key}`)}</span>
+                      <span className="block text-[10px] opacity-80">
+                        {t(`radar.filter.preset.${preset.key}_desc`)}
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent sideOffset={6} className="max-w-xs">
@@ -272,28 +276,40 @@ export function RadarFilterPanel({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <FilterLabel label={t("radar.filter.rsi")} tip={t("radar.filter.rsi_tip")} />
+              <FilterLabel
+                label={<GlossaryTerm termKey="rsi">{t("radar.filter.rsi")}</GlossaryTerm>}
+                tip={t("radar.filter.rsi_tip")}
+              />
               <div className="flex gap-2">
                 <Input value={draft.rsiMin} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMin: e.target.value }))} placeholder={t("radar.filter.rsi_min_ph")} className="h-8 text-xs" inputMode="decimal" />
                 <Input value={draft.rsiMax} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMax: e.target.value }))} placeholder={t("radar.filter.rsi_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <FilterLabel label={t("radar.filter.bias")} tip={t("radar.filter.bias_tip")} />
+              <FilterLabel
+                label={<GlossaryTerm termKey="bias">{t("radar.filter.bias")}</GlossaryTerm>}
+                tip={t("radar.filter.bias_tip")}
+              />
               <div className="flex gap-2">
                 <Input value={draft.biasMin} onChange={(e) => setDraft((prev) => ({ ...prev, biasMin: e.target.value }))} placeholder={t("radar.filter.bias_min_ph")} className="h-8 text-xs" inputMode="decimal" />
                 <Input value={draft.biasMax} onChange={(e) => setDraft((prev) => ({ ...prev, biasMax: e.target.value }))} placeholder={t("radar.filter.bias_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <FilterLabel label={t("radar.filter.volume_ratio")} tip={t("radar.filter.volume_ratio_tip")} />
+              <FilterLabel
+                label={<GlossaryTerm termKey="volume_ratio">{t("radar.filter.volume_ratio")}</GlossaryTerm>}
+                tip={t("radar.filter.volume_ratio_tip")}
+              />
               <div className="flex gap-2">
                 <Input value={draft.volumeRatioMin} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMin: e.target.value }))} placeholder={t("radar.filter.volume_ratio_min_ph")} className="h-8 text-xs" inputMode="decimal" />
                 <Input value={draft.volumeRatioMax} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMax: e.target.value }))} placeholder={t("radar.filter.volume_ratio_max_ph")} className="h-8 text-xs" inputMode="decimal" />
               </div>
             </div>
             <div className="space-y-1">
-              <FilterLabel label={t("radar.filter.pe")} tip={t("radar.filter.pe_tip")} />
+              <FilterLabel
+                label={<GlossaryTerm termKey="trailing_pe">{t("radar.filter.pe")}</GlossaryTerm>}
+                tip={t("radar.filter.pe_tip")}
+              />
               <div className="flex gap-2">
                 <Input value={draft.peMin} onChange={(e) => setDraft((prev) => ({ ...prev, peMin: e.target.value }))} placeholder={t("radar.filter.pe_min_ph")} className="h-8 text-xs" inputMode="decimal" />
                 <Input value={draft.peMax} onChange={(e) => setDraft((prev) => ({ ...prev, peMax: e.target.value }))} placeholder={t("radar.filter.pe_max_ph")} className="h-8 text-xs" inputMode="decimal" />
