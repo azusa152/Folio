@@ -2436,6 +2436,540 @@
         }
       }
     },
+    "/stock-splits/check": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Check held tickers for stock split events",
+        "operationId": "check_stock_splits_stock_splits_check_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/pending": {
+      "get": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "List pending stock split events",
+        "operationId": "list_pending_stock_splits_stock_splits_pending_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StockSplitEventResponse"
+                  },
+                  "title": "Response List Pending Stock Splits Stock Splits Pending Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/{event_id}/apply": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Apply one stock split event",
+        "operationId": "apply_stock_split_stock_splits__event_id__apply_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/{event_id}/dismiss": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Dismiss one stock split event",
+        "operationId": "dismiss_stock_split_stock_splits__event_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitDismissResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/apply-all": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Apply all pending stock split events",
+        "operationId": "apply_all_stock_splits_stock_splits_apply_all_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitApplyAllResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dividends/check": {
+      "post": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "Check held tickers for dividend events",
+        "operationId": "check_dividends_route_dividends_check_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dividends/pending": {
+      "get": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "List pending dividend events",
+        "operationId": "list_pending_dividends_dividends_pending_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DividendEventResponse"
+                  },
+                  "title": "Response List Pending Dividends Dividends Pending Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dividends/{event_id}/apply": {
+      "post": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "Apply one dividend event",
+        "operationId": "apply_dividend_route_dividends__event_id__apply_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dividends/{event_id}/dismiss": {
+      "post": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "Dismiss one dividend event",
+        "operationId": "dismiss_dividend_route_dividends__event_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendDismissResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dividends/apply-all": {
+      "post": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "Apply all pending dividend events",
+        "operationId": "apply_all_dividends_route_dividends_apply_all_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendApplyAllResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ticker/{ticker}/thesis": {
       "post": {
         "summary": "Add a thesis for a stock",
@@ -3616,6 +4150,145 @@
         }
       }
     },
+    "/rebalance/drift-alert": {
+      "post": {
+        "summary": "Trigger portfolio drift alert via Telegram",
+        "description": "\u6aa2\u67e5\u7d44\u5408\u6f02\u79fb\u4e26\u767c\u9001 Telegram \u8b66\u5831\u6458\u8981\u3002",
+        "operationId": "trigger_drift_alert_rebalance_drift_alert_post",
+        "parameters": [
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FXAlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rebalance/drift-alert/ack": {
+      "post": {
+        "summary": "Acknowledge one drift category and suppress repeats",
+        "description": "\u78ba\u8a8d\u6f02\u79fb\u63d0\u9192\uff08\u540c\u4e00\u985e\u5225\u5f8c\u7e8c\u50c5\u5728\u60e1\u5316\u6216\u53cd\u8f49\u6642\u91cd\u9001\uff09\u3002",
+        "operationId": "acknowledge_drift_rebalance_drift_alert_ack_post",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "drift_pct",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Drift Pct"
+            }
+          },
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/rebalance/xray-alert": {
       "post": {
         "summary": "Trigger X-Ray alert via Telegram",
@@ -3656,6 +4329,88 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/XRayAlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rebalance/xray-alert/ack": {
+      "post": {
+        "summary": "Acknowledge one X-Ray symbol and suppress repeats",
+        "description": "\u78ba\u8a8d X-Ray \u96c6\u4e2d\u5ea6\u63d0\u9192\uff08\u540c\u6a19\u7684\u5f8c\u7e8c\u50c5\u5728\u660e\u986f\u60e1\u5316\u6642\u91cd\u9001\uff09\u3002",
+        "operationId": "acknowledge_xray_rebalance_xray_alert_ack_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "total_weight_pct",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Total Weight Pct"
+            }
+          },
+          {
+            "name": "display_currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "USD",
+              "title": "Display Currency"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -8559,6 +9314,217 @@
         "title": "DeactivateRequest",
         "description": "POST /ticker/{ticker}/deactivate \u8acb\u6c42 Body\u3002"
       },
+      "DividendApplyAllResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DividendApplyResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "applied"
+        ],
+        "title": "DividendApplyAllResponse",
+        "description": "Response payload for applying all pending dividend events."
+      },
+      "DividendApplyResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/DividendEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "applied_accounts": {
+            "type": "integer",
+            "title": "Applied Accounts"
+          },
+          "transactions": {
+            "type": "integer",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status",
+          "applied_accounts",
+          "transactions"
+        ],
+        "title": "DividendApplyResponse",
+        "description": "Response payload for applying a dividend event."
+      },
+      "DividendCheckResponse": {
+        "properties": {
+          "checked_tickers": {
+            "type": "integer",
+            "title": "Checked Tickers"
+          },
+          "detected": {
+            "type": "integer",
+            "title": "Detected"
+          },
+          "auto_applied": {
+            "type": "integer",
+            "title": "Auto Applied"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/DividendEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked_tickers",
+          "detected",
+          "auto_applied"
+        ],
+        "title": "DividendCheckResponse",
+        "description": "Response payload for dividend detection check."
+      },
+      "DividendDismissResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/DividendEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status"
+        ],
+        "title": "DividendDismissResponse",
+        "description": "Response payload for dismissing a dividend event."
+      },
+      "DividendEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "ex_dividend_date": {
+            "type": "string",
+            "title": "Ex Dividend Date"
+          },
+          "amount_per_share": {
+            "type": "number",
+            "title": "Amount Per Share"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detected_at": {
+            "type": "string",
+            "title": "Detected At"
+          },
+          "applied_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "preview": {
+            "items": {
+              "$ref": "#/components/schemas/DividendHoldingPreview"
+            },
+            "type": "array",
+            "title": "Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ticker",
+          "ex_dividend_date",
+          "amount_per_share",
+          "status",
+          "detected_at"
+        ],
+        "title": "DividendEventResponse",
+        "description": "Single dividend event payload."
+      },
+      "DividendHoldingPreview": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "shares": {
+            "type": "number",
+            "title": "Shares"
+          },
+          "amount_per_share": {
+            "type": "number",
+            "title": "Amount Per Share"
+          },
+          "estimated_cash": {
+            "type": "number",
+            "title": "Estimated Cash"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shares",
+          "amount_per_share",
+          "estimated_cash",
+          "currency"
+        ],
+        "title": "DividendHoldingPreview",
+        "description": "Estimated dividend cash impact for one holding."
+      },
       "DrawdownPointResponse": {
         "properties": {
           "date": {
@@ -13023,7 +13989,8 @@
           "Mutual_Fund",
           "Bond",
           "Cash",
-          "Crypto"
+          "Crypto",
+          "ETF"
         ],
         "title": "StockCategory",
         "description": "\u80a1\u7968\u5206\u985e\uff1a\u98a8\u5411\u7403 / \u8b77\u57ce\u6cb3 / \u6210\u9577\u5922\u60f3 / \u50b5\u5238 / \u73fe\u91d1"
@@ -13148,6 +14115,228 @@
         ],
         "title": "StockResponse",
         "description": "GET /stocks \u56de\u50b3\u7684\u55ae\u7b46\u80a1\u7968\u8cc7\u6599\u3002"
+      },
+      "StockSplitApplyAllResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitApplyResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "applied"
+        ],
+        "title": "StockSplitApplyAllResponse",
+        "description": "Response payload for applying all pending split events."
+      },
+      "StockSplitApplyResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/StockSplitEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "applied_accounts": {
+            "type": "integer",
+            "title": "Applied Accounts"
+          },
+          "transactions": {
+            "type": "integer",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status",
+          "applied_accounts",
+          "transactions"
+        ],
+        "title": "StockSplitApplyResponse",
+        "description": "Response payload for applying a split event."
+      },
+      "StockSplitCheckResponse": {
+        "properties": {
+          "checked_tickers": {
+            "type": "integer",
+            "title": "Checked Tickers"
+          },
+          "detected": {
+            "type": "integer",
+            "title": "Detected"
+          },
+          "auto_applied": {
+            "type": "integer",
+            "title": "Auto Applied"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked_tickers",
+          "detected",
+          "auto_applied"
+        ],
+        "title": "StockSplitCheckResponse",
+        "description": "Response payload for split detection check."
+      },
+      "StockSplitDismissResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/StockSplitEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status"
+        ],
+        "title": "StockSplitDismissResponse",
+        "description": "Response payload for dismissing a split event."
+      },
+      "StockSplitEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "split_date": {
+            "type": "string",
+            "title": "Split Date"
+          },
+          "ratio": {
+            "type": "number",
+            "title": "Ratio"
+          },
+          "ratio_label": {
+            "type": "string",
+            "title": "Ratio Label"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detected_at": {
+            "type": "string",
+            "title": "Detected At"
+          },
+          "applied_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "preview": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitHoldingPreview"
+            },
+            "type": "array",
+            "title": "Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ticker",
+          "split_date",
+          "ratio",
+          "ratio_label",
+          "status",
+          "detected_at"
+        ],
+        "title": "StockSplitEventResponse",
+        "description": "Single stock split event payload."
+      },
+      "StockSplitHoldingPreview": {
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "before_qty": {
+            "type": "number",
+            "title": "Before Qty"
+          },
+          "after_qty": {
+            "type": "number",
+            "title": "After Qty"
+          },
+          "before_cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Cost Basis"
+          },
+          "after_cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Cost Basis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "before_qty",
+          "after_qty"
+        ],
+        "title": "StockSplitHoldingPreview",
+        "description": "Before/after preview for one holding that will be affected by the split."
       },
       "StressTestHoldingBreakdown": {
         "properties": {
@@ -13557,11 +14746,10 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
           "price": {
@@ -13688,11 +14876,10 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
           "price": {

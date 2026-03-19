@@ -26,6 +26,7 @@ from domain.constants import (
     ERROR_INSUFFICIENT_BALANCE,
     ERROR_INVALID_INPUT,
 )
+from domain.core.entities import _normalize_stock_category
 from domain.entities import Holding, Transaction
 from domain.enums import StockCategory, TransactionType
 from domain.portfolio.tax_wrapper import validate_nisa_purchase
@@ -51,6 +52,7 @@ STOCK_MODIFY_TYPES = {
     TransactionType.SELL,
     TransactionType.OPENING_BALANCE,
     TransactionType.ADJUSTMENT,
+    TransactionType.STOCK_SPLIT,
 }
 
 # Stock OPENING_BALANCE/ADJUSTMENT represent position snapshots or corrections,
@@ -58,6 +60,7 @@ STOCK_MODIFY_TYPES = {
 SKIP_CASH_FOR_STOCK_TYPES = {
     TransactionType.OPENING_BALANCE,
     TransactionType.ADJUSTMENT,
+    TransactionType.STOCK_SPLIT,
 }
 
 ELIGIBILITY_CHECK_WRAPPERS = {"nisa_tsumitate", "nisa_growth", "ideco"}
@@ -256,6 +259,11 @@ def settle_transaction(
                     required=quantity,
                 )
                 stock_holding.quantity -= quantity
+        elif txn_type == TransactionType.STOCK_SPLIT:
+            ratio = float(txn_data.get("price", 0) or 0)
+            stock_holding.quantity += quantity
+            if ratio > 0 and stock_holding.cost_basis is not None:
+                stock_holding.cost_basis = float(stock_holding.cost_basis) / ratio
 
         stock_holding.updated_at = datetime.now(UTC)
         session.add(stock_holding)
@@ -368,6 +376,20 @@ def reverse_settlement(session: Session, txn: Transaction, lang: str) -> None:
                 stock_holding.quantity -= quantity
             else:
                 stock_holding.quantity += quantity
+        elif txn_type == TransactionType.STOCK_SPLIT:
+            # quantity is the additive delta (positive for forward splits, negative for
+            # reverse splits). Reversing removes that delta — for a reverse split the
+            # delta is negative, so we add abs(quantity) back.
+            abs_quantity = abs(quantity)
+            _raise_if_insufficient_shares(
+                lang=lang,
+                available=stock_holding.quantity,
+                required=abs_quantity,
+            )
+            ratio = float(txn.price or 0)
+            stock_holding.quantity -= quantity  # subtracts the signed delta
+            if ratio > 0 and stock_holding.cost_basis is not None:
+                stock_holding.cost_basis = float(stock_holding.cost_basis) * ratio
 
         stock_holding.updated_at = datetime.now(UTC)
         session.add(stock_holding)
@@ -451,10 +473,7 @@ def _infer_category(session: Session, txn_data: dict) -> StockCategory:
             return StockCategory.MUTUAL_FUND
 
     raw = str(txn_data.get("category", StockCategory.GROWTH.value))
-    try:
-        return StockCategory(raw)
-    except ValueError:
-        return StockCategory.GROWTH
+    return _normalize_stock_category(raw)
 
 
 def _update_cost_basis(holding: Holding, buy_qty: float, txn_data: dict) -> None:
@@ -582,6 +601,11 @@ def verify_positions(session: Session) -> list[dict]:
             & (txn_type_col == TransactionType.ADJUSTMENT.value)
             & (Transaction.total_amount < 0),
             -Transaction.quantity,
+        ),
+        (
+            (~is_cash_ticker_expr)
+            & (txn_type_col == TransactionType.STOCK_SPLIT.value),
+            Transaction.quantity,
         ),
         else_=0.0,
     )

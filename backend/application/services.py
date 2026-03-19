@@ -25,6 +25,10 @@ from application.messaging.notification_service import (  # noqa: F401
 # Webhook Service
 # ---------------------------------------------------------------------------
 from application.messaging.webhook_service import handle_webhook  # noqa: F401
+from application.portfolio.drift_alert_service import (  # noqa: F401
+    acknowledge_drift_alert,
+    send_drift_alerts,
+)
 
 # ---------------------------------------------------------------------------
 # Rebalance Service (rebalance, currency exposure, X-Ray, FX alerts)
@@ -34,6 +38,7 @@ from application.portfolio.insight_service import (  # noqa: F401
 )
 from application.portfolio.rebalance_service import (  # noqa: F401
     _compute_holding_market_values,
+    acknowledge_xray_alert,
     calculate_currency_exposure,
     calculate_rebalance,
     calculate_withdrawal,

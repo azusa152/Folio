@@ -134,6 +134,57 @@ def test_create_transaction_invalid_type_should_return_422(client: TestClient):
     assert resp.status_code == 422
 
 
+def test_create_stock_split_with_zero_quantity_should_return_422(client: TestClient):
+    payload = {
+        "account_id": _create_account(client),
+        "ticker": "AAPL",
+        "transaction_type": "STOCK_SPLIT",
+        "quantity": 0,
+        "price": 2.0,
+        "total_amount": 0.0,
+        "currency": "USD",
+        "transaction_date": "2026-03-15",
+    }
+    resp = client.post("/transactions", json=payload)
+    assert resp.status_code == 422
+
+
+def test_create_stock_split_with_negative_quantity_should_be_allowed(
+    client: TestClient,
+):
+    account_id = _create_account(client)
+    opening_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-10",
+        },
+    )
+    assert opening_resp.status_code == 201
+
+    split_resp = client.post(
+        "/transactions",
+        json={
+            "account_id": account_id,
+            "ticker": "AAPL",
+            "transaction_type": "STOCK_SPLIT",
+            "quantity": -5,  # additive delta for a 1:2 reverse split
+            "price": 0.5,
+            "total_amount": 0.0,
+            "currency": "USD",
+            "transaction_date": "2026-03-15",
+        },
+    )
+    assert split_resp.status_code == 201
+    assert split_resp.json()["transaction_type"] == "STOCK_SPLIT"
+
+
 def test_create_transaction_lowercase_type_should_normalize(client: TestClient):
     account_id = _create_account(client)
     _deposit_cash(client, account_id)

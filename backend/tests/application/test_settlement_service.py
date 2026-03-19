@@ -571,6 +571,68 @@ def test_adjustment_stock_ticker_should_modify_stock_without_touching_cash(
     assert pytest.approx(stock_holding.quantity, rel=1e-9) == 9.0
 
 
+def test_stock_split_should_adjust_quantity_and_cost_basis_without_cash_change(
+    db_session: Session,
+):
+    account = _create_account(db_session)
+    cash_holding = _create_cash_holding(db_session, account.id, 1000.0)
+    stock_holding = _create_stock_holding(db_session, account.id, "AAPL", 10.0)
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "STOCK_SPLIT",
+            "quantity": 10.0,  # additive delta for 2:1 split
+            "price": 2.0,  # split ratio
+            "total_amount": 0.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 12),
+        },
+        "en",
+    )
+
+    db_session.refresh(cash_holding)
+    db_session.refresh(stock_holding)
+    assert created["account_id"] == account.id
+    assert pytest.approx(cash_holding.quantity, rel=1e-9) == 1000.0
+    assert pytest.approx(stock_holding.quantity, rel=1e-9) == 20.0
+    assert pytest.approx(stock_holding.cost_basis or 0.0, rel=1e-9) == 50.0
+
+
+def test_remove_stock_split_should_restore_quantity_and_cost_basis(db_session: Session):
+    account = _create_account(db_session)
+    _create_cash_holding(db_session, account.id, 1000.0)
+    stock_holding = _create_stock_holding(db_session, account.id, "AAPL", 10.0)
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "STOCK_SPLIT",
+            "quantity": 10.0,
+            "price": 2.0,
+            "total_amount": 0.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 12),
+        },
+        "en",
+    )
+    db_session.refresh(stock_holding)
+    assert pytest.approx(stock_holding.quantity, rel=1e-9) == 20.0
+    assert pytest.approx(stock_holding.cost_basis or 0.0, rel=1e-9) == 50.0
+
+    remove_transaction(db_session, int(created["id"]), "en")
+
+    db_session.refresh(stock_holding)
+    assert pytest.approx(stock_holding.quantity, rel=1e-9) == 10.0
+    assert pytest.approx(stock_holding.cost_basis or 0.0, rel=1e-9) == 100.0
+
+
 def test_transfer_in_and_transfer_out_should_adjust_cash_balance(db_session: Session):
     account = _create_account(db_session)
     cash_holding = _create_cash_holding(db_session, account.id, 100.0)
@@ -698,6 +760,59 @@ def test_verify_positions_should_return_empty_for_consistent_data(db_session: Se
             "currency": "USD",
             "fee": 0.0,
             "transaction_date": date(2026, 3, 11),
+        },
+        "en",
+    )
+
+    assert verify_positions(db_session) == []
+
+
+def test_verify_positions_should_include_stock_split_quantity_delta(
+    db_session: Session,
+):
+    account = _create_account(db_session)
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "USD",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 1,
+            "price": 1.0,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 9),
+        },
+        "en",
+    )
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "OPENING_BALANCE",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 9),
+        },
+        "en",
+    )
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "STOCK_SPLIT",
+            "quantity": 10.0,
+            "price": 2.0,
+            "total_amount": 0.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 12),
         },
         "en",
     )

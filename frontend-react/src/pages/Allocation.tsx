@@ -21,6 +21,8 @@ import { TerminologySettings } from "@/components/allocation/settings/Terminolog
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
+import { DividendAlert } from "@/components/allocation/DividendAlert"
+import { StockSplitAlert } from "@/components/allocation/StockSplitAlert"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 import { QuotaDashboard } from "@/components/allocation/wrappers/QuotaDashboard"
 
@@ -293,6 +295,8 @@ export default function Allocation() {
 
         {/* Accounts tab */}
         <TabsContent value="accounts" className="mt-4 space-y-4">
+          <DividendAlert enabled={activeTab === "accounts"} />
+          <StockSplitAlert enabled={activeTab === "accounts"} />
           {hasWrappedAccounts ? <QuotaDashboard enabled={activeTab === "accounts"} /> : null}
           <AccountsTab
             enabled={activeTab === "accounts"}

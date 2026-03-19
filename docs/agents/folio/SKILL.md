@@ -74,8 +74,13 @@ Verbosity (top-level `format` field in request body):
 - `scan` - trigger background scan
 - `guru_sync` - sync all tracked gurus (13F)
 - `guru_summary` - send latest guru digest
+- `stock_splits` - detect stock splits for held tickers (with optional auto-apply)
+- `dividends` - detect dividend events for held tickers (with optional auto-apply)
+- `drift_alerts` - run portfolio drift checks and send alert summary
+- `acknowledge_drift` - suppress repeated drift alerts for one category (`category`, optional `drift_pct`, optional `display_currency`)
+- `acknowledge_xray` - suppress repeated X-Ray alerts for one symbol (`symbol`, optional `total_weight_pct`, optional `display_currency`)
 - `transactions` - list recent transactions (optional `ticker`, `account_id`, `start`, `end`, `limit`)
-- `add_transaction {ticker}` - record transactions (`type`: BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT, required `account_id`, `quantity`, `total_amount`, `date`)
+- `add_transaction {ticker}` - record transactions (`type`: BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT, required `account_id`, `quantity`, `total_amount`, `date`)
 - `accounts` - list accounts with holdings count
 - `analytics` - risk metrics: Sharpe, Sortino, max drawdown (`start`, `end`)
 - `insights` - natural language portfolio insights (`display_currency`)

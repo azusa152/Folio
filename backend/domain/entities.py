@@ -6,6 +6,8 @@ Consumers using ``from domain.entities import X`` continue to work unchanged.
 from domain.core.entities import (  # noqa: F401
     Account,
     ContributionLedgerEntry,
+    DividendEvent,
+    DriftAcknowledgment,
     EligibleAsset,
     EligibleAssetSyncState,
     FXWatchConfig,
@@ -20,6 +22,7 @@ from domain.core.entities import (  # noqa: F401
     RemovalLog,
     ScanLog,
     Stock,
+    StockSplitEvent,
     SystemTemplate,
     ThesisLog,
     Transaction,

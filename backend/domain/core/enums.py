@@ -22,6 +22,7 @@ class StockCategory(StrEnum):
     BOND = "Bond"
     CASH = "Cash"
     CRYPTO = "Crypto"
+    ETF = "ETF"
 
 
 class MoatStatus(StrEnum):
@@ -85,6 +86,7 @@ CATEGORY_LABEL: dict[str, str] = {
     "Bond": "債券",
     "Cash": "現金",
     "Crypto": "加密貨幣",
+    "ETF": "ETF",
 }
 
 
@@ -143,6 +145,7 @@ class TransactionType(StrEnum):
     WITHDRAWAL = "WITHDRAWAL"
     OPENING_BALANCE = "OPENING_BALANCE"
     ADJUSTMENT = "ADJUSTMENT"
+    STOCK_SPLIT = "STOCK_SPLIT"
     TRANSFER_IN = "TRANSFER_IN"
     TRANSFER_OUT = "TRANSFER_OUT"
 

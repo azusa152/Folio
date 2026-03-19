@@ -9,6 +9,11 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
+from application.portfolio.alert_ack_service import (
+    ACK_TYPE_XRAY,
+    acknowledge_alert,
+    should_suppress_alert,
+)
 from application.portfolio.eligibility_service import check_asset_eligibility
 from application.portfolio.pricing_service import (
     build_nav_cache as _build_nav_cache,
@@ -22,10 +27,12 @@ from domain.analysis import compute_daily_change_pct
 from domain.constants import (
     DEFAULT_USER_ID,
     EQUITY_CATEGORIES,
+    ERROR_INVALID_INPUT,
     FX_HISTORY_PERIOD,
     REBALANCE_CACHE_MAXSIZE,
     REBALANCE_CACHE_TTL,
     SKIP_PRICE_FETCH_CATEGORIES,
+    XRAY_ACK_STEP_PCT,
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
@@ -78,7 +85,9 @@ from infrastructure.notification import (
     send_telegram_message_dual,
 )
 from infrastructure.repositories import (
+    delete_drift_acknowledgment,
     find_all_accounts,
+    find_all_drift_acknowledgments,
     find_holdings_for_active_accounts,
     log_notification_sent,
 )
@@ -1077,12 +1086,39 @@ def send_xray_warnings(
     回傳已發送的警告訊息列表。
     """
     lang = get_user_language(session)
+
+    # Cleanup pass: clear stale acks whose concentration has since recovered.
+    # Runs *before* the warning loop so recovered symbols can alert again.
+    xray_pct_map = {
+        str(e.get("symbol", "")).upper().strip(): float(
+            e.get("total_weight_pct", 0.0) or 0.0
+        )
+        for e in xray_entries
+    }
+    for ack in find_all_drift_acknowledgments(session, alert_type=ACK_TYPE_XRAY):
+        current_pct = xray_pct_map.get(ack.alert_key, 0.0)
+        if current_pct <= float(XRAY_SINGLE_STOCK_WARN_PCT):
+            delete_drift_acknowledgment(
+                session, alert_type=ACK_TYPE_XRAY, alert_key=ack.alert_key
+            )
+
     warnings: list[str] = []
+    suppressed_symbols: list[str] = []
     for entry in xray_entries:
         total_pct = entry.get("total_weight_pct", 0.0)
         indirect_val = entry.get("indirect_value", 0.0)
         if total_pct > XRAY_SINGLE_STOCK_WARN_PCT and indirect_val > 0:
             symbol = entry["symbol"]
+            if should_suppress_alert(
+                session,
+                alert_type=ACK_TYPE_XRAY,
+                alert_key=symbol,
+                current_value=float(total_pct),
+                step_threshold=float(XRAY_ACK_STEP_PCT),
+                clear_if_below=float(XRAY_SINGLE_STOCK_WARN_PCT),
+            ):
+                suppressed_symbols.append(str(symbol))
+                continue
             direct_pct = entry.get("direct_weight_pct", 0.0)
             sources = ", ".join(entry.get("indirect_sources", []))
             msg = t(
@@ -1095,21 +1131,68 @@ def send_xray_warnings(
                 threshold=XRAY_SINGLE_STOCK_WARN_PCT,
             )
             warnings.append(msg)
+    if suppressed_symbols:
+        logger.info(
+            "X-Ray alerts suppressed for acknowledged symbols: %s", suppressed_symbols
+        )
 
     if warnings:
         if is_notification_enabled(session, "xray_alerts"):
+            if not is_within_rate_limit(session, "xray_alerts"):
+                logger.info("X-Ray 通知已達頻率上限，跳過發送。")
+                return warnings
             full_msg = (
                 t("rebalance.xray_header", lang=lang) + "\n\n" + "\n\n".join(warnings)
             )
             try:
                 send_telegram_message_dual(full_msg, session)
                 logger.info("已發送 X-Ray 警告（%d 筆）", len(warnings))
+                log_notification_sent(session, "xray_alerts")
             except Exception as e:
                 logger.warning("X-Ray Telegram 警告發送失敗：%s", e)
         else:
             logger.info("X-Ray 通知已被使用者停用，跳過發送。")
 
     return warnings
+
+
+def acknowledge_xray_alert(
+    session: Session,
+    *,
+    symbol: str,
+    total_weight_pct: float | None = None,
+    display_currency: str = "USD",
+) -> dict:
+    """Acknowledge one concentrated symbol to suppress repeated X-Ray alerts."""
+    normalized_symbol = symbol.upper().strip()
+    if not normalized_symbol:
+        raise ValueError(ERROR_INVALID_INPUT)
+
+    current_weight = total_weight_pct
+    if current_weight is None:
+        rebalance = calculate_rebalance(session, display_currency=display_currency)
+        xray_entries = rebalance.get("xray", [])
+        match = next(
+            (
+                row
+                for row in xray_entries
+                if str(row.get("symbol", "")).upper().strip() == normalized_symbol
+            ),
+            None,
+        )
+        if match is None:
+            raise ValueError(ERROR_INVALID_INPUT)
+        current_weight = float(match.get("total_weight_pct", 0.0) or 0.0)
+
+    if float(current_weight) <= float(XRAY_SINGLE_STOCK_WARN_PCT):
+        raise ValueError(ERROR_INVALID_INPUT)
+
+    return acknowledge_alert(
+        session,
+        alert_type=ACK_TYPE_XRAY,
+        alert_key=normalized_symbol,
+        acknowledged_value=float(current_weight),
+    )
 
 
 # ===========================================================================

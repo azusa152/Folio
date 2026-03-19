@@ -9,7 +9,8 @@ import unicodedata
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import or_, update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from domain.constants import (
@@ -21,6 +22,8 @@ from domain.constants import (
 from domain.entities import (
     Account,
     ContributionLedgerEntry,
+    DividendEvent,
+    DriftAcknowledgment,
     EligibleAsset,
     EligibleAssetSyncState,
     FXWatchConfig,
@@ -34,6 +37,7 @@ from domain.entities import (
     RemovalLog,
     ScanLog,
     Stock,
+    StockSplitEvent,
     SystemTemplate,
     ThesisLog,
     Transaction,
@@ -504,6 +508,270 @@ def count_recent_notifications(
         NotificationLog.sent_at >= since,
     )
     return session.exec(statement).one()
+
+
+# ===========================================================================
+# Stock Split Event Repository
+# ===========================================================================
+
+
+def find_stock_split_event_by_id(
+    session: Session, event_id: int
+) -> StockSplitEvent | None:
+    """根據 ID 查詢單一股票分割事件。"""
+    return session.get(StockSplitEvent, event_id)
+
+
+def find_stock_split_events(
+    session: Session,
+    *,
+    status: str | None = None,
+    ticker: str | None = None,
+    limit: int | None = 200,
+) -> list[StockSplitEvent]:
+    """查詢股票分割事件（可依狀態與 ticker 篩選）。"""
+    stmt = select(StockSplitEvent).order_by(StockSplitEvent.detected_at.desc())
+    if status is not None:
+        stmt = stmt.where(StockSplitEvent.status == status)
+    if ticker is not None:
+        stmt = stmt.where(StockSplitEvent.ticker == ticker.upper().strip())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_stock_split_event_by_unique_key(
+    session: Session, *, ticker: str, split_date: date, ratio: float
+) -> StockSplitEvent | None:
+    """依 ticker + split_date + ratio 查詢事件（避免重複建立）。"""
+    normalized_ticker = ticker.upper().strip()
+    stmt = (
+        select(StockSplitEvent)
+        .where(StockSplitEvent.ticker == normalized_ticker)
+        .where(StockSplitEvent.split_date == split_date)
+        .where(StockSplitEvent.ratio == ratio)
+    )
+    return session.exec(stmt).first()
+
+
+def create_stock_split_event(
+    session: Session, event: StockSplitEvent
+) -> StockSplitEvent:
+    """建立股票分割事件（idempotent — 若 unique key 已存在則回傳現有記錄）。"""
+    try:
+        session.add(event)
+        session.commit()
+        session.refresh(event)
+        return event
+    except IntegrityError:
+        session.rollback()
+        existing = find_stock_split_event_by_unique_key(
+            session,
+            ticker=event.ticker,
+            split_date=event.split_date,
+            ratio=event.ratio,
+        )
+        if existing is not None:
+            return existing
+        raise
+
+
+def save_stock_split_event(session: Session, event: StockSplitEvent) -> StockSplitEvent:
+    """更新股票分割事件（含 commit + refresh）。"""
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def try_claim_stock_split_event(
+    session: Session, event_id: int, *, from_status: str, to_status: str
+) -> bool:
+    """Atomic CAS: transition event status from_status -> to_status.
+
+    Returns True when exactly one row was updated (this caller wins the race).
+    Returns False when another writer already moved the row away from from_status.
+    """
+    result = session.exec(  # type: ignore[call-overload]
+        update(StockSplitEvent)
+        .where(StockSplitEvent.id == event_id)
+        .where(StockSplitEvent.status == from_status)
+        .values(status=to_status)
+        .execution_options(synchronize_session="evaluate")
+    )
+    session.commit()
+    return (result.rowcount or 0) == 1
+
+
+# ===========================================================================
+# Dividend Event Repository
+# ===========================================================================
+
+
+def find_dividend_event_by_id(session: Session, event_id: int) -> DividendEvent | None:
+    """根據 ID 查詢單一股息事件。"""
+    return session.get(DividendEvent, event_id)
+
+
+def find_dividend_events(
+    session: Session,
+    *,
+    status: str | None = None,
+    ticker: str | None = None,
+    limit: int | None = 200,
+) -> list[DividendEvent]:
+    """查詢股息事件（可依狀態與 ticker 篩選）。"""
+    stmt = select(DividendEvent).order_by(DividendEvent.detected_at.desc())
+    if status is not None:
+        stmt = stmt.where(DividendEvent.status == status)
+    if ticker is not None:
+        stmt = stmt.where(DividendEvent.ticker == ticker.upper().strip())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_dividend_event_by_unique_key(
+    session: Session, *, ticker: str, ex_dividend_date: date, amount_per_share: float
+) -> DividendEvent | None:
+    """依 ticker + ex_dividend_date + amount_per_share 查詢事件（避免重複建立）。"""
+    normalized_ticker = ticker.upper().strip()
+    stmt = (
+        select(DividendEvent)
+        .where(DividendEvent.ticker == normalized_ticker)
+        .where(DividendEvent.ex_dividend_date == ex_dividend_date)
+        .where(DividendEvent.amount_per_share == amount_per_share)
+    )
+    return session.exec(stmt).first()
+
+
+def create_dividend_event(session: Session, event: DividendEvent) -> DividendEvent:
+    """建立股息事件（idempotent — 若 unique key 已存在則回傳現有記錄）。"""
+    try:
+        session.add(event)
+        session.commit()
+        session.refresh(event)
+        return event
+    except IntegrityError:
+        session.rollback()
+        existing = find_dividend_event_by_unique_key(
+            session,
+            ticker=event.ticker,
+            ex_dividend_date=event.ex_dividend_date,
+            amount_per_share=event.amount_per_share,
+        )
+        if existing is not None:
+            return existing
+        raise
+
+
+def save_dividend_event(session: Session, event: DividendEvent) -> DividendEvent:
+    """更新股息事件（含 commit + refresh）。"""
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def try_claim_dividend_event(
+    session: Session, event_id: int, *, from_status: str, to_status: str
+) -> bool:
+    """Atomic CAS: transition dividend event status from_status -> to_status."""
+    result = session.exec(  # type: ignore[call-overload]
+        update(DividendEvent)
+        .where(DividendEvent.id == event_id)
+        .where(DividendEvent.status == from_status)
+        .values(status=to_status)
+        .execution_options(synchronize_session="evaluate")
+    )
+    session.commit()
+    return (result.rowcount or 0) == 1
+
+
+# ===========================================================================
+# Alert Acknowledgment Repository (drift/xray anti-fatigue)
+# ===========================================================================
+
+
+def find_drift_acknowledgment(
+    session: Session, *, alert_type: str, alert_key: str
+) -> DriftAcknowledgment | None:
+    """Lookup a non-expired acknowledgment by (type, key)."""
+    normalized_type = alert_type.strip().lower()
+    normalized_key = alert_key.strip().upper()
+    stmt = (
+        select(DriftAcknowledgment)
+        .where(DriftAcknowledgment.alert_type == normalized_type)
+        .where(DriftAcknowledgment.alert_key == normalized_key)
+    )
+    ack = session.exec(stmt).first()
+    if ack is None:
+        return None
+    now = datetime.now(UTC).replace(tzinfo=None)
+    if ack.expires_at < now:
+        session.delete(ack)
+        session.commit()
+        return None
+    return ack
+
+
+def upsert_drift_acknowledgment(
+    session: Session,
+    *,
+    alert_type: str,
+    alert_key: str,
+    acknowledged_value: float,
+    expires_at: datetime,
+) -> DriftAcknowledgment:
+    """Create or update acknowledgment state for one alert key."""
+    normalized_type = alert_type.strip().lower()
+    normalized_key = alert_key.strip().upper()
+    existing = find_drift_acknowledgment(
+        session, alert_type=normalized_type, alert_key=normalized_key
+    )
+    if existing is None:
+        ack = DriftAcknowledgment(
+            alert_type=normalized_type,
+            alert_key=normalized_key,
+            acknowledged_value=float(acknowledged_value),
+            acknowledged_at=datetime.now(UTC),
+            expires_at=expires_at,
+        )
+    else:
+        ack = existing
+        ack.acknowledged_value = float(acknowledged_value)
+        ack.acknowledged_at = datetime.now(UTC).replace(tzinfo=None)
+        ack.expires_at = expires_at
+    session.add(ack)
+    session.commit()
+    session.refresh(ack)
+    return ack
+
+
+def delete_drift_acknowledgment(
+    session: Session, *, alert_type: str, alert_key: str
+) -> bool:
+    """Delete one acknowledgment; return whether a row existed."""
+    ack = find_drift_acknowledgment(session, alert_type=alert_type, alert_key=alert_key)
+    if ack is None:
+        return False
+    session.delete(ack)
+    session.commit()
+    return True
+
+
+def find_all_drift_acknowledgments(
+    session: Session, *, alert_type: str
+) -> list[DriftAcknowledgment]:
+    """List all non-expired acknowledgments for the given alert type."""
+    normalized_type = alert_type.strip().lower()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    stmt = (
+        select(DriftAcknowledgment)
+        .where(DriftAcknowledgment.alert_type == normalized_type)
+        .where(DriftAcknowledgment.expires_at > now)
+    )
+    return list(session.exec(stmt).all())
 
 
 # ===========================================================================

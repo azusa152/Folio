@@ -4,9 +4,12 @@ Domain — 資料庫實體 (SQLModel Tables)。
 """
 
 import json as _json
+import logging
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Index, text
+from pydantic import field_validator
+from sqlalchemy import Index, UniqueConstraint, text
+from sqlalchemy.types import TypeDecorator
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
@@ -17,12 +20,63 @@ from domain.constants import (
 )
 from domain.enums import HoldingAction, ScanSignal, StockCategory, TransactionType
 
+logger = logging.getLogger(__name__)
+
+
+def _normalize_stock_category(value: object) -> StockCategory:
+    """Normalize persisted category values and guard against unknown legacy strings.
+
+    Accepts both enum values (e.g. ``"Growth"``, ``"Trend_Setter"``) and uppercase
+    enum member names stored by older DB rows (e.g. ``"GROWTH"``, ``"TREND_SETTER"``).
+    """
+    if isinstance(value, StockCategory):
+        return value
+    raw = str(value or "").strip()
+    if not raw:
+        return StockCategory.GROWTH
+    # 1. Match by enum value (e.g., "Growth", "Trend_Setter", "MUTUAL_FUND").
+    try:
+        return StockCategory(raw)
+    except ValueError:
+        pass
+    # 2. Match by enum member name (e.g., "GROWTH", "TREND_SETTER") for legacy DB rows.
+    try:
+        return StockCategory[raw]
+    except KeyError:
+        pass
+    # 3. Truly unknown value — log and fallback gracefully.
+    logger.warning(
+        "Unknown stock category '%s' encountered; fallback to '%s'",
+        raw,
+        StockCategory.GROWTH.value,
+    )
+    return StockCategory.GROWTH
+
+
+class _StockCategoryType(TypeDecorator):
+    """Resilient DB type for stock category values.
+
+    Stores category as plain text but always returns a valid ``StockCategory``
+    on read, preventing crashes from legacy/unknown raw DB values.
+    """
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value: object, dialect) -> str:
+        return _normalize_stock_category(value).value
+
+    def process_result_value(self, value: object, dialect) -> StockCategory:
+        return _normalize_stock_category(value)
+
 
 class Stock(SQLModel, table=True):
     """追蹤清單中的個股。"""
 
     ticker: str = Field(primary_key=True, description="股票代號")
-    category: StockCategory = Field(description="分類")
+    category: StockCategory = Field(
+        sa_column=Column(_StockCategoryType(), nullable=False), description="分類"
+    )
     coingecko_id: str | None = Field(
         default=None, description="CoinGecko 幣種 ID（加密貨幣用）"
     )
@@ -35,6 +89,11 @@ class Stock(SQLModel, table=True):
     signal_since: datetime | None = Field(default=None, description="目前訊號起始時間")
     is_active: bool = Field(default=True, description="是否追蹤中")
     is_etf: bool = Field(default=False, description="是否為 ETF（市場情緒排除用）")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: object) -> StockCategory:
+        return _normalize_stock_category(value)
 
 
 class ThesisLog(SQLModel, table=True):
@@ -184,7 +243,9 @@ class Holding(SQLModel, table=True):
     coingecko_id: str | None = Field(
         default=None, description="CoinGecko 幣種 ID（加密貨幣用，可選）"
     )
-    category: StockCategory = Field(description="資產分類")
+    category: StockCategory = Field(
+        sa_column=Column(_StockCategoryType(), nullable=False), description="資產分類"
+    )
     quantity: float = Field(description="持有數量（股數或金額）")
     cost_basis: float | None = Field(default=None, description="成本基礎（每單位）")
     broker: str | None = Field(default=None, description="券商名稱")
@@ -203,6 +264,11 @@ class Holding(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         description="更新時間",
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: object) -> StockCategory:
+        return _normalize_stock_category(value)
 
 
 class Transaction(SQLModel, table=True):
@@ -228,7 +294,7 @@ class Transaction(SQLModel, table=True):
     transaction_type: TransactionType = Field(
         description=(
             "交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/"
-            "OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)"
+            "OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT)"
         )
     )
     quantity: float = Field(description="交易數量")
@@ -245,6 +311,73 @@ class Transaction(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         description="建立時間",
     )
+
+
+class StockSplitEvent(SQLModel, table=True):
+    """偵測到的股票分割事件（待處理/已套用/已忽略）。"""
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "split_date", "ratio", name="uq_stock_split_event"),
+        Index("ix_stock_split_event_ticker_date", "ticker", "split_date"),
+        Index("ix_stock_split_event_status", "status"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    ticker: str = Field(description="股票代號")
+    split_date: date = Field(description="分割生效日")
+    ratio: float = Field(description="分割倍率（4:1=4.0，1:20=0.05）")
+    status: str = Field(default="pending", description="pending/applied/dismissed")
+    detected_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="偵測時間",
+    )
+    applied_at: datetime | None = Field(default=None, description="套用時間")
+
+
+class DividendEvent(SQLModel, table=True):
+    """偵測到的股息事件（待處理/已套用/已忽略）。"""
+
+    __table_args__ = (
+        UniqueConstraint(
+            "ticker",
+            "ex_dividend_date",
+            "amount_per_share",
+            name="uq_dividend_event",
+        ),
+        Index("ix_dividend_event_ticker_date", "ticker", "ex_dividend_date"),
+        Index("ix_dividend_event_status", "status"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    ticker: str = Field(description="股票代號")
+    ex_dividend_date: date = Field(description="除息日")
+    amount_per_share: float = Field(description="每股股息（原幣別）")
+    status: str = Field(default="pending", description="pending/applied/dismissed")
+    detected_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="偵測時間",
+    )
+    applied_at: datetime | None = Field(default=None, description="套用時間")
+
+
+class DriftAcknowledgment(SQLModel, table=True):
+    """漂移/X-Ray 告警確認狀態，用於抑制重複提醒。"""
+
+    __table_args__ = (
+        UniqueConstraint("alert_type", "alert_key", name="uq_drift_ack_type_key"),
+        Index("ix_drift_ack_type_key", "alert_type", "alert_key"),
+        Index("ix_drift_ack_expires_at", "expires_at"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    alert_type: str = Field(description="drift/xray")
+    alert_key: str = Field(description="drift=category, xray=symbol")
+    acknowledged_value: float = Field(description="確認當下的偏離值（百分點）")
+    acknowledged_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="確認時間",
+    )
+    expires_at: datetime = Field(description="抑制到期時間")
 
 
 class ContributionLedgerEntry(SQLModel, table=True):

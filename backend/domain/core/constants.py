@@ -42,6 +42,8 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Growth": 2,  # beta ~1.5
     "Mutual_Fund": 0,  # mutual funds do not run RSI scan; keep compatible default
     "Bond": -3,  # beta ~0.3
+    "MUTUAL_FUND": -1,  # typically lower-vol than single-stock equity
+    "ETF": 0,  # broad-market ETF baseline
     "Cash": 0,
     "Crypto": 0,  # crypto 不參與 RSI 掃描，保留 0 作為相容值
 }
@@ -63,6 +65,8 @@ EARNINGS_CACHE_MAXSIZE = 200
 EARNINGS_CACHE_TTL = 86400  # 24 hours
 DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
+STOCK_SPLIT_CACHE_MAXSIZE = 200
+STOCK_SPLIT_CACHE_TTL = 86400  # 24 hours
 FUNDAMENTALS_CACHE_MAXSIZE = 200
 FUNDAMENTALS_CACHE_TTL = 300  # 5 minutes
 YF_INFO_CACHE_MAXSIZE = 200
@@ -118,6 +122,8 @@ BACKFILL_SAMPLE_INTERVAL = 5
 BACKFILL_MARKET_STATUS = "BACKFILL"
 BACKFILL_DEFAULT_MOAT = "STABLE"
 BACKFILL_MIN_HISTORY_DAYS = 200  # MA200 warmup requirement for replay
+STOCK_SPLIT_LOOKBACK_DAYS = 30
+DIVIDEND_LOOKBACK_DAYS = 45
 
 SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
@@ -166,7 +172,8 @@ SKIP_MOAT_CATEGORIES = [
     "Cash",
     "Crypto",
     "Mutual_Fund",
-]  # 非股票類不適用護城河分析
+    "ETF",
+]  # 非個股類不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 
 # ---------------------------------------------------------------------------
@@ -179,7 +186,7 @@ DEFAULT_IMPORT_CATEGORY = "Growth"
 DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 
 # ---------------------------------------------------------------------------
-# Category Display Order & Icons
+# Category Lists & Icons
 # ---------------------------------------------------------------------------
 CATEGORY_DISPLAY_ORDER = [
     "Trend_Setter",
@@ -189,7 +196,23 @@ CATEGORY_DISPLAY_ORDER = [
     "Bond",
     "Crypto",
     "Cash",
+    "ETF",
 ]
+
+# All stock categories supported by API / forms (must be a literal list for check_constant_sync.py).
+STOCK_CATEGORIES = [
+    "Trend_Setter",
+    "Moat",
+    "Growth",
+    "Mutual_Fund",
+    "Bond",
+    "Crypto",
+    "Cash",
+    "ETF",
+]
+
+# Categories shown on Radar tab filters.
+RADAR_CATEGORIES = ["Trend_Setter", "Moat", "Growth", "Mutual_Fund", "Bond", "Crypto"]
 
 CATEGORY_ICON: dict[str, str] = {
     "Trend_Setter": "🌊",
@@ -197,8 +220,9 @@ CATEGORY_ICON: dict[str, str] = {
     "Growth": "🚀",
     "Mutual_Fund": "🧺",
     "Bond": "🛡️",
-    "Cash": "💵",
     "Crypto": "₿",
+    "Cash": "💵",
+    "ETF": "📈",
 }
 
 # ---------------------------------------------------------------------------
@@ -268,6 +292,8 @@ TAX_WRAPPER_OPTIONS = [
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
+DRIFT_ACK_EXPIRE_DAYS = 90  # acknowledged drift/xray suppression safety expiry
+XRAY_ACK_STEP_PCT = 5.0  # re-alert when concentration worsens by another 5pp
 
 # ---------------------------------------------------------------------------
 # i18n Language Support
@@ -290,6 +316,7 @@ CATEGORY_LIQUIDITY_ORDER = [
     "Crypto",
     "Mutual_Fund",
     "Bond",
+    "ETF",
     "Growth",
     "Moat",
     "Trend_Setter",
@@ -475,6 +502,8 @@ DISK_KEY_SIGNALS = "signals"
 DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
+DISK_KEY_DIVIDEND_EVENTS = "dividend_events"
+DISK_KEY_STOCK_SPLIT = "stock_split"
 DISK_KEY_FUNDAMENTALS = "fundamentals"
 DISK_KEY_YF_INFO = "yf_info"
 DISK_KEY_PRICE_HISTORY = "price_history"
@@ -531,7 +560,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": True,
         "params": {
             "ticker": "str (required)",
-            "category": "StockCategory (Trend_Setter|Moat|Growth|Mutual_Fund|Bond|Crypto|Cash)",
+            "category": "StockCategory (Trend_Setter|Moat|Growth|Mutual_Fund|Bond|Crypto|Cash|ETF)",
             "thesis": "str (investment thesis)",
             "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
         },
@@ -551,6 +580,36 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
     "fx_watch": {
         "description": "Check FX watch configs & send Telegram alerts (with cooldown)",
         "requires_ticker": False,
+    },
+    "stock_splits": {
+        "description": "Check stock splits for held tickers and notify/apply updates",
+        "requires_ticker": False,
+    },
+    "dividends": {
+        "description": "Check dividends for held tickers and notify/apply updates",
+        "requires_ticker": False,
+    },
+    "drift_alerts": {
+        "description": "Run portfolio drift checks and send alert summaries",
+        "requires_ticker": False,
+    },
+    "acknowledge_drift": {
+        "description": "Acknowledge one drift category to suppress repeated alerts",
+        "requires_ticker": False,
+        "params": {
+            "category": "str (required — allocation category name)",
+            "drift_pct": "float (optional — current drift percentage points)",
+            "display_currency": "str (optional — default USD)",
+        },
+    },
+    "acknowledge_xray": {
+        "description": "Acknowledge one X-Ray symbol to suppress repeated alerts",
+        "requires_ticker": False,
+        "params": {
+            "symbol": "str (required — concentrated underlying symbol)",
+            "total_weight_pct": "float (optional — current portfolio weight percentage)",
+            "display_currency": "str (optional — default USD)",
+        },
     },
     "guru_sync": {
         "description": "Trigger 13F filing sync for all tracked gurus (EDGAR fetch)",
@@ -575,7 +634,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Record a new transaction",
         "requires_ticker": True,
         "params": {
-            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)",
+            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT)",
             "account_id": "int (required — account identifier)",
             "quantity": "float (required)",
             "price": "float (optional — per-unit price)",
@@ -651,6 +710,9 @@ NOTIFICATION_TYPES = {
     "fx_alerts": "constants.notification_fx_alerts",
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
     "guru_alerts": "constants.notification_guru_alerts",
+    "stock_split_alerts": "constants.notification_stock_split_alerts",
+    "dividend_alerts": "constants.notification_dividend_alerts",
+    "drift_alerts": "constants.notification_drift_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
     NOTIFICATION_TYPES, True
@@ -747,6 +809,7 @@ CATEGORY_FALLBACK_BETA: dict[str, float] = {
     "Moat": 1.2,
     "Growth": 1.5,
     "Mutual_Fund": 0.0,
+    "ETF": 1.0,
     "Bond": 0.3,
     "Cash": 0.0,
     "Crypto": 0.0,
@@ -930,7 +993,9 @@ DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 # ---------------------------------------------------------------------------
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
-EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})
+EQUITY_CATEGORIES: frozenset[str] = frozenset(
+    {"Trend_Setter", "Moat", "Growth", "MUTUAL_FUND", "ETF"}
+)
 
 # ---------------------------------------------------------------------------
 # Crypto Market Data Cache

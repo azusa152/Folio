@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from domain.enums import StockCategory, TransactionType
 
@@ -16,10 +16,10 @@ class TransactionRequest(BaseModel):
         ...,
         description=(
             "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / "
-            "OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
         ),
     )
-    quantity: float = Field(..., gt=0)
+    quantity: float = Field(...)
     price: float | None = None
     total_amount: float = Field(..., description="Total transaction amount")
     currency: str = Field(default="USD", max_length=10)
@@ -65,6 +65,19 @@ class TransactionRequest(BaseModel):
         normalized = v.strip()
         return StockCategory(normalized).value
 
+    @model_validator(mode="after")
+    def validate_quantity_by_type(self):
+        """Allow signed quantity only for STOCK_SPLIT additive delta."""
+        qty = float(self.quantity)
+        txn_type = self.transaction_type.upper().strip()
+        if txn_type == TransactionType.STOCK_SPLIT.value:
+            if abs(qty) <= 0:
+                raise ValueError("quantity must be non-zero for STOCK_SPLIT")
+            return self
+        if qty <= 0:
+            raise ValueError("quantity must be greater than 0")
+        return self
+
 
 class TransactionResponse(BaseModel):
     id: int
@@ -94,10 +107,10 @@ class TransactionImportItem(BaseModel):
         ...,
         description=(
             "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / "
-            "OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
         ),
     )
-    quantity: float = Field(..., gt=0)
+    quantity: float = Field(...)
     price: float | None = None
     total_amount: float = Field(..., description="Total transaction amount")
     currency: str = Field(default="USD", max_length=10)
@@ -121,6 +134,18 @@ class TransactionImportItem(BaseModel):
     def import_validate_transaction_type(cls, v: str) -> str:
         normalized = v.upper().strip()
         return TransactionType(normalized).value
+
+    @model_validator(mode="after")
+    def import_validate_quantity_by_type(self):
+        qty = float(self.quantity)
+        txn_type = self.transaction_type.upper().strip()
+        if txn_type == TransactionType.STOCK_SPLIT.value:
+            if abs(qty) <= 0:
+                raise ValueError("quantity must be non-zero for STOCK_SPLIT")
+            return self
+        if qty <= 0:
+            raise ValueError("quantity must be greater than 0")
+        return self
 
 
 class TransactionImportRequest(BaseModel):

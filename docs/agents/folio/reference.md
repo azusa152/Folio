@@ -31,6 +31,10 @@ Composite actions (token-efficient):
 
 - `dashboard` — portfolio summary + market fear/greed context in one call
 - `analyze` — technical signals + moat trend + fundamentals in one call
+- `stock_splits` — detect split events for held tickers in one call
+- `dividends` — detect dividend events for held tickers in one call
+- `acknowledge_drift` — acknowledge one drift category to suppress repeated drift alerts
+- `acknowledge_xray` — acknowledge one concentrated symbol to suppress repeated X-Ray alerts
 
 ---
 
@@ -191,12 +195,25 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/snapshots` | Historical snapshots — `?days=30` (1–730) or `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
 | `GET` | `/snapshots/twr` | Time-weighted return — `?start=&end=` (defaults YTD); `twr_pct` null when < 2 snapshots |
 | `POST` | `/snapshots/take` | Trigger today's snapshot (background, upsert) |
+| `POST` | `/stock-splits/check` | Detect stock split events for held tickers |
+| `GET` | `/stock-splits/pending` | List pending stock split events |
+| `POST` | `/stock-splits/{event_id}/apply` | Apply one split event to matching holdings |
+| `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
+| `POST` | `/stock-splits/apply-all` | Apply all pending split events |
+| `POST` | `/dividends/check` | Detect dividend events for held tickers |
+| `GET` | `/dividends/pending` | List pending dividend events |
+| `POST` | `/dividends/{event_id}/apply` | Apply one dividend event to matching holdings |
+| `POST` | `/dividends/{event_id}/dismiss` | Dismiss one dividend event |
+| `POST` | `/dividends/apply-all` | Apply all pending dividend events |
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
 | `GET` | `/holdings` | All holdings (materialized position cache derived from transactions) |
 | `GET` | `/rebalance` | Rebalance + X-Ray; add `?display_currency=TWD` |
 | `POST` | `/rebalance/xray-alert` | Telegram alert for stocks with true exposure > 15% |
+| `POST` | `/rebalance/xray-alert/ack` | Acknowledge one symbol concentration and suppress repeated X-Ray alerts |
+| `POST` | `/rebalance/drift-alert` | Telegram alert for allocation drift beyond threshold |
+| `POST` | `/rebalance/drift-alert/ack` | Acknowledge one drift category and suppress repeated drift alerts |
 | `GET` | `/stress-test` | Stress test (`?scenario_drop_pct=-20&display_currency=USD`); returns Beta, expected loss, pain level |
 | `GET` | `/currency-exposure` | Currency exposure: `breakdown`, `cash_breakdown`, `fx_rate_alerts` (three-tier), FX movements |
 | `POST` | `/currency-exposure/alert` | Telegram alert for three-tier FX rate changes (daily >1.5%, 5-day >2%, 3-month >8%) |
@@ -282,7 +299,7 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 |-------|------|----------|-------------|
 | `ticker` | string | Yes (via params or ticker) | Asset symbol |
 | `account_id` | integer | Yes | Account identifier for ledger settlement |
-| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT |
 | `quantity` | float | Yes | Number of shares/units |
 | `price` | float | No | Per-unit price |
 | `total_amount` | float | Yes | Total transaction value |
@@ -320,6 +337,16 @@ Array of insight objects:
 | `POST` | `/transactions` | Create transaction |
 | `GET` | `/transactions/{id}` | Get transaction by ID |
 | `DELETE` | `/transactions/{id}` | Delete transaction |
+| `POST` | `/stock-splits/check` | Detect stock split events for held tickers |
+| `GET` | `/stock-splits/pending` | List pending stock split events |
+| `POST` | `/stock-splits/{event_id}/apply` | Apply one split event |
+| `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
+| `POST` | `/stock-splits/apply-all` | Apply all pending split events |
+| `POST` | `/dividends/check` | Detect dividend events for held tickers |
+| `GET` | `/dividends/pending` | List pending dividend events |
+| `POST` | `/dividends/{event_id}/apply` | Apply one dividend event |
+| `POST` | `/dividends/{event_id}/dismiss` | Dismiss one dividend event |
+| `POST` | `/dividends/apply-all` | Apply all pending dividend events |
 | `GET` | `/accounts` | List accounts |
 | `POST` | `/accounts` | Create account |
 | `PUT` | `/accounts/{id}` | Update account |

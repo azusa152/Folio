@@ -50,6 +50,8 @@ CATEGORY_ASSET_CLASS: dict[str, str] = {
     StockCategory.TREND_SETTER: "Equity",
     StockCategory.MOAT: "Equity",
     StockCategory.GROWTH: "Equity",
+    StockCategory.MUTUAL_FUND: "Equity",
+    StockCategory.ETF: "Equity",
     StockCategory.BOND: "Fixed Income",
     StockCategory.CASH: "Cash",
     StockCategory.CRYPTO: "Alternatives",

@@ -14,10 +14,15 @@ const PREF_KEYS = [
   "fx_alerts",
   "fx_watch_alerts",
   "guru_alerts",
+  "stock_split_alerts",
+  "dividend_alerts",
+  "drift_alerts",
+  "auto_apply_splits",
+  "auto_apply_dividends",
 ]
 
 // Keys that support per-type rate limiting
-const RATE_LIMIT_KEYS = ["fx_alerts", "fx_watch_alerts"]
+const RATE_LIMIT_KEYS = ["fx_alerts", "fx_watch_alerts", "xray_alerts", "drift_alerts"]
 
 type RateLimitConfig = { max_count: number; window_hours: number }
 type RateLimits = Record<string, RateLimitConfig>

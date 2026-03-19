@@ -255,6 +255,38 @@ class TestTriggerXrayAlert:
         assert "message" in data
         assert isinstance(data["warnings"], list)
 
+    def test_ack_should_return_200_when_weight_provided(self, client):
+        _seed_equity_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+        resp = client.post("/rebalance/xray-alert/ack?symbol=NVDA&total_weight_pct=22")
+        assert resp.status_code == 200
+        assert "message" in resp.json()
+
+
+class TestTriggerDriftAlert:
+    """Tests for POST /rebalance/drift-alert."""
+
+    def test_should_return_200_with_alerts_list(self, client):
+        _seed_equity_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+        resp = client.post("/rebalance/drift-alert")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "alerts" in data
+        assert "message" in data
+        assert isinstance(data["alerts"], list)
+
+    def test_ack_should_return_200_when_drift_pct_provided(self, client):
+        _seed_equity_holding(client)
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+        resp = client.post("/rebalance/drift-alert/ack?category=Growth&drift_pct=12")
+        assert resp.status_code == 200
+        assert "message" in resp.json()
+
+    def test_ack_should_return_422_with_invalid_payload(self, client):
+        resp = client.post("/rebalance/drift-alert/ack?category=")
+        assert resp.status_code == 422
+
 
 class TestCurrencyExposure:
     """Contract tests for GET /currency-exposure."""

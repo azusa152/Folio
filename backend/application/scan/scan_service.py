@@ -20,7 +20,6 @@ from domain.analysis import (
     determine_scan_signal,
 )
 from domain.constants import (
-    CATEGORY_DISPLAY_ORDER,
     CATEGORY_ICON,
     DEFAULT_IMPORT_CATEGORY,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
@@ -31,6 +30,7 @@ from domain.constants import (
     SKIP_MOAT_CATEGORIES,
     SKIP_PRICE_FETCH_CATEGORIES,
     SKIP_RSI_CATEGORIES,
+    STOCK_CATEGORIES,
     VOLUME_SURGE_THRESHOLD,
     VOLUME_THIN_THRESHOLD,
 )
@@ -515,13 +515,20 @@ def run_scan(session: Session) -> dict:
                 enriched_alerts.append(f"   {transition}")
                 grouped.setdefault(cat_value, []).extend(enriched_alerts)
 
-            for cat_key in CATEGORY_DISPLAY_ORDER:
+            for cat_key in STOCK_CATEGORIES:
                 if cat_key in grouped:
                     icon = category_icon.get(cat_key, "")
                     label = CATEGORY_LABEL.get(cat_key, cat_key)
                     section_header = f"\n{icon} <b>{label}</b>"
                     section_lines = "\n".join(grouped[cat_key])
                     body_parts.append(f"{section_header}\n{section_lines}")
+            # Safety net: never drop categories that are not in the configured order.
+            for cat_key in sorted(k for k in grouped if k not in STOCK_CATEGORIES):
+                icon = category_icon.get(cat_key, "")
+                label = CATEGORY_LABEL.get(cat_key, cat_key)
+                section_header = f"\n{icon} <b>{label}</b>"
+                section_lines = "\n".join(grouped[cat_key])
+                body_parts.append(f"{section_header}\n{section_lines}")
 
         # 恢復正常的股票（含前訊號與持續時間）
         if resolved:

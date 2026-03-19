@@ -21,6 +21,8 @@ printenv | grep -E "^(FOLIO_API_KEY|SCAN_STALE_SECONDS_MARKET_HOURS|SCAN_STALE_S
 /usr/local/bin/smart-scan.sh
 echo "$(date) Running startup snapshot..."
 /usr/local/bin/take-snapshot.sh || true
+echo "$(date) Running startup benchmark backfill..."
+/usr/local/bin/folio-curl.sh -X POST http://backend:8000/snapshots/backfill-benchmarks > /dev/null 2>&1 || true
 
 # Cron schedule:
 #   */15 * * * *       smart scan every 15 min (market-hours-aware)
@@ -30,6 +32,11 @@ echo "$(date) Running startup snapshot..."
 #   30 */6 * * *       FX watch timing alert every 6 hours (offset 30min to avoid concurrent yfinance calls)
 #   0 2 * * *          13F sync daily 02:00 UTC (sync-13f.sh handles filing-season logic)
 #   0 23 * * *         daily portfolio snapshot 23:00 UTC (after markets close)
+#   0 6 * * *          stock split detection daily 06:00 UTC
+#   0 7 * * *          dividend detection daily 07:00 UTC
+#   0 17 * * 0         weekly X-Ray alert
+#   10 17 * * 0        weekly drift alert
+#   0 1 1 * *          monthly benchmark backfill
 (
   echo "*/15 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"
   echo "15 21 * * 1-5 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/scan > /dev/null 2>&1"
@@ -37,7 +44,12 @@ echo "$(date) Running startup snapshot..."
   echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"
   echo "30 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/fx-watch/alert > /dev/null 2>&1"
   echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"
+  echo "0 6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/stock-splits/check > /dev/null 2>&1"
+  echo "0 7 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/dividends/check > /dev/null 2>&1"
+  echo "0 17 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/rebalance/xray-alert > /dev/null 2>&1"
+  echo "10 17 * * 0 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/rebalance/drift-alert > /dev/null 2>&1"
   echo "0 23 * * * /usr/local/bin/take-snapshot.sh >> /proc/1/fd/1 2>&1"
+  echo "0 1 1 * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/snapshots/backfill-benchmarks > /dev/null 2>&1"
 ) | crontab -
 
 crond -f -l 2

@@ -17,10 +17,10 @@ from application.formatters import (
 )
 from domain.analysis import compute_signal_duration
 from domain.constants import (
-    CATEGORY_DISPLAY_ORDER,
     DATA_DIR,
     DRIFT_THRESHOLD_PCT,
     NOTIFICATION_TYPE_GURU_ALERTS,
+    STOCK_CATEGORIES,
     WEEKLY_DIGEST_LOOKBACK_DAYS,
 )
 from domain.enums import CATEGORY_LABEL, HoldingAction, ScanSignal
@@ -360,7 +360,17 @@ def get_portfolio_summary(session: Session) -> str:
         logger.warning("portfolio_summary: 無法取得再平衡資料：%s", exc)
 
     # --- 類別持倉清單 ---
-    for cat in CATEGORY_DISPLAY_ORDER:
+    for cat in STOCK_CATEGORIES:
+        group = [s for s in stocks if s.category.value == cat]
+        if group:
+            label = CATEGORY_LABEL.get(cat, cat)
+            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+    # Safety net: never drop unexpected categories from summary output.
+    seen_categories = set(STOCK_CATEGORIES)
+    extra_categories = sorted(
+        {s.category.value for s in stocks if s.category.value not in seen_categories}
+    )
+    for cat in extra_categories:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)

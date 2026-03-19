@@ -72,7 +72,7 @@ describe("STOCK_CATEGORIES", () => {
     expect(STOCK_CATEGORIES[0]).toBe("Trend_Setter");
   });
 
-  it("includes all 7 expected categories", () => {
+  it("includes all 8 expected categories", () => {
     expect(STOCK_CATEGORIES).toContain("Trend_Setter");
     expect(STOCK_CATEGORIES).toContain("Moat");
     expect(STOCK_CATEGORIES).toContain("Growth");
@@ -80,10 +80,11 @@ describe("STOCK_CATEGORIES", () => {
     expect(STOCK_CATEGORIES).toContain("Bond");
     expect(STOCK_CATEGORIES).toContain("Crypto");
     expect(STOCK_CATEGORIES).toContain("Cash");
+    expect(STOCK_CATEGORIES).toContain("ETF");
   });
 
-  it("has 7 categories total", () => {
-    expect(STOCK_CATEGORIES).toHaveLength(7);
+  it("has 8 categories total", () => {
+    expect(STOCK_CATEGORIES).toHaveLength(8);
   });
 });
 
