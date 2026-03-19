@@ -177,14 +177,26 @@ export function AddTransactionSheet({
     (transactionType === "SELL" || transactionType === "DIVIDEND") &&
     !isCashMovement &&
     selectedAccountId != null
+  // Stocks are never in the curated eligible list → always free-text.
   const nisaStockFreeInput =
     shouldShowNisaPicker && selectedWrapper === "nisa_growth" && nisaAssetTypeFilter === "stock"
   const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
     search: debouncedNisaPickerSearch || undefined,
     assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
     limit: 50,
+    // Stock mode never queries (no curated list); REIT queries so we can
+    // detect whether curated REIT data exists and show picker vs free-text.
     enabled: shouldShowNisaPicker && !nisaStockFreeInput,
   })
+  // REIT: hybrid — show picker when curated data exists, free-text fallback
+  // only after the query resolves empty (avoids premature free-text flash).
+  const nisaReitFreeInput =
+    shouldShowNisaPicker &&
+    selectedWrapper === "nisa_growth" &&
+    nisaAssetTypeFilter === "reit" &&
+    nisaEligibleAssetsQuery.isFetched &&
+    (nisaEligibleAssetsQuery.data?.items?.length ?? 0) === 0
+  const nisaFreeTickerInput = nisaStockFreeInput || nisaReitFreeInput
   const sellablePositionsQuery = useAccountSellablePositions(selectedAccountId, shouldShowSellPicker)
   const filteredSellablePositions = useMemo(() => {
     const keyword = sellPickerSearch.trim().toLowerCase()
@@ -278,7 +290,7 @@ export function AddTransactionSheet({
     transactionType === "BUY" &&
     splitRoutingPlan.length >= 2 &&
     splitRoutingPlan.every((item) => item.account != null)
-  const previousNisaStockFreeInput = useRef(nisaStockFreeInput)
+  const previousNisaFreeTickerInput = useRef(nisaFreeTickerInput)
 
   useEffect(() => {
     if (!open || isCashMovement || !isNewToRadar || !forcedCategory) return
@@ -313,15 +325,15 @@ export function AddTransactionSheet({
     }
   }, [selectedWrapper])
   useEffect(() => {
-    if (previousNisaStockFreeInput.current === nisaStockFreeInput) return
-    previousNisaStockFreeInput.current = nisaStockFreeInput
+    if (previousNisaFreeTickerInput.current === nisaFreeTickerInput) return
+    previousNisaFreeTickerInput.current = nisaFreeTickerInput
     setTicker("")
     setCachedSelectedNisaAsset(null)
     setNisaPickerSearch("")
     setNisaPickerOpen(false)
     setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
     setInsufficientBalance(null)
-  }, [nisaStockFreeInput])
+  }, [nisaFreeTickerInput])
   useEffect(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) {
@@ -805,18 +817,19 @@ export function AddTransactionSheet({
                   ))}
                 </div>
               ) : null}
-              {nisaStockFreeInput ? (
+              {nisaFreeTickerInput ? (
                 <>
                   <Input
                     value={ticker}
                     aria-label={t("transactions.form.ticker")}
                     onChange={(event) => {
-                      setTicker(event.target.value.toUpperCase())
+                      // NFKC converts full-width JP digits to ASCII (e.g. ８９５１ → 8951)
+                      setTicker(event.target.value.normalize("NFKC").toUpperCase())
                       setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
                       setInsufficientBalance(null)
                     }}
                     onBlur={() => {
-                      // Bare 4-digit JP code → canonical XXXX.T (mirrors backend _normalize_jp_stock_ticker)
+                      // Bare 4-digit JP code → canonical XXXX.T (mirrors backend _normalize_tse_ticker)
                       if (/^\d{4}$/.test(ticker)) {
                         setTicker(`${ticker}.T`)
                       }
@@ -824,9 +837,9 @@ export function AddTransactionSheet({
                     placeholder="e.g. 7203.T"
                     className="text-xs"
                   />
-                  <p className="text-[11px] text-muted-foreground">{t("nisa.eligible.stocks_input_hint")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("nisa.eligible.listed_input_hint")}</p>
                   <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                    {t("nisa.eligible.stocks_eligibility_disclaimer")}
+                    {t("nisa.eligible.listed_eligibility_disclaimer")}
                   </p>
                 </>
               ) : shouldShowNisaPicker ? (
@@ -1140,7 +1153,7 @@ export function AddTransactionSheet({
                   className="text-xs"
                 />
               )}
-              {shouldShowNisaPicker && !nisaStockFreeInput ? (
+              {shouldShowNisaPicker && !nisaFreeTickerInput ? (
                 <p className="text-[11px] text-muted-foreground">
                   {selectedWrapper === "nisa_growth"
                     ? t("eligibility.nisa_picker_hint_growth")

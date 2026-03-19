@@ -100,14 +100,19 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 vi.mock("@/api/hooks/useWrappers", () => ({
   useWrapperEligibility: () => ({ data: wrapperState.eligibility, isLoading: false }),
   useSuggestRouting: () => ({ data: undefined, isLoading: false }),
-  useEligibleAssets: (_wrapper: string | null | undefined, options?: { assetType?: string }) => ({
-    data: {
-      items: options?.assetType
+  useEligibleAssets: (_wrapper: string | null | undefined, options?: { assetType?: string; enabled?: boolean }) => {
+    const enabled = options?.enabled !== false
+    const items = enabled
+      ? options?.assetType
         ? wrapperState.eligibleItems.filter((item) => item.asset_type === options.assetType)
-        : wrapperState.eligibleItems,
-    },
-    isLoading: false,
-  }),
+        : wrapperState.eligibleItems
+      : []
+    return {
+      data: { items },
+      isLoading: false,
+      isFetched: enabled,
+    }
+  },
   useWrapperQuota: () => ({ data: wrapperState.quota, isLoading: false }),
 }))
 
@@ -481,7 +486,7 @@ describe("AddTransactionSheet", () => {
     expect(screen.queryByText("eMAXIS Slim 米国株式")).not.toBeInTheDocument()
   })
 
-  it("falls back to ticker input when growth nisa stock filter is selected", () => {
+  it("falls back to ticker input when growth nisa listed filter is selected (stock)", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
     const queryClient = new QueryClient()
@@ -496,11 +501,11 @@ describe("AddTransactionSheet", () => {
     fireEvent.change(tickerInput, { target: { value: "7203.t" } })
 
     expect(tickerInput.value).toBe("7203.T")
-    expect(screen.getByText("nisa.eligible.stocks_input_hint")).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.listed_input_hint")).toBeInTheDocument()
     expect(screen.queryByText("eligibility.nisa_picker_placeholder")).not.toBeInTheDocument()
   })
 
-  it("auto-appends .T on blur when user types a bare 4-digit jp code in stock mode", () => {
+  it("auto-appends .T on blur when user types a bare 4-digit jp code in listed mode", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     const queryClient = new QueryClient()
     render(
@@ -536,7 +541,7 @@ describe("AddTransactionSheet", () => {
     expect(tickerInput.value).toBe("7203.T")
   })
 
-  it("shows eligibility disclaimer and suppresses generic growth hint in stock mode", () => {
+  it("shows eligibility disclaimer and suppresses generic growth hint in listed mode", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     const queryClient = new QueryClient()
     render(
@@ -547,8 +552,91 @@ describe("AddTransactionSheet", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
 
-    expect(screen.getByText("nisa.eligible.stocks_eligibility_disclaimer")).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.listed_eligibility_disclaimer")).toBeInTheDocument()
     expect(screen.queryByText("eligibility.nisa_picker_hint_growth")).not.toBeInTheDocument()
+  })
+
+  it("falls back to ticker input when growth nisa listed filter is selected (reit)", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.reit" }))
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+    fireEvent.change(tickerInput, { target: { value: "8951" } })
+    fireEvent.blur(tickerInput)
+
+    expect(tickerInput.value).toBe("8951.T")
+    expect(screen.getByText("nisa.eligible.listed_input_hint")).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.listed_eligibility_disclaimer")).toBeInTheDocument()
+    expect(screen.queryByText("eligibility.nisa_picker_hint_growth")).not.toBeInTheDocument()
+  })
+
+  it("shows picker for reit when curated reit data exists", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2556.T", fund_name: "One ETF 東証REIT指数", asset_type: "reit" },
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+    ]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.reit" }))
+
+    // The picker combobox should be visible (not the free-text fallback)
+    expect(screen.queryByLabelText("transactions.form.ticker")).not.toBeInTheDocument()
+    expect(screen.queryByText("nisa.eligible.listed_input_hint")).not.toBeInTheDocument()
+  })
+
+  it("falls back to free-text for reit when no curated reit data exists", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    // Only ETF data — no REIT entries
+    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.reit" }))
+
+    // Query is fetched and returns 0 REIT items → free-text fallback
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+    expect(tickerInput).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.listed_input_hint")).toBeInTheDocument()
+    expect(screen.getByText("nisa.eligible.listed_eligibility_disclaimer")).toBeInTheDocument()
+  })
+
+  it("nfkc-normalizes full-width jp digits to ascii on change", () => {
+    accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AddTransactionSheet open onClose={vi.fn()} defaultAccountId={7} />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.asset_type.stock" }))
+    const tickerInput = screen.getByLabelText("transactions.form.ticker") as HTMLInputElement
+
+    // Simulate IME full-width digit input
+    fireEvent.change(tickerInput, { target: { value: "８９５１" } })
+
+    // NFKC + toUpperCase should produce ASCII
+    expect(tickerInput.value).toBe("8951")
+
+    fireEvent.blur(tickerInput)
+    expect(tickerInput.value).toBe("8951.T")
   })
 
   it("shows selected growth asset type badge in picker trigger", () => {

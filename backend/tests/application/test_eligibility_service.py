@@ -53,6 +53,30 @@ def test_non_stock_non_jp_ticker_not_in_approved_list_is_rejected(
     assert "eligibility.not_in_growth_approved_list" in result.reasons
 
 
+def test_full_width_4digit_reit_code_normalizes_to_dot_t(db_session: Session) -> None:
+    """Full-width JP digit input (e.g. '８９５１') should normalize to '8951.T'."""
+    _seed_asset(db_session, wrapper="nisa_growth", ticker="8951.T", asset_type="reit")
+
+    result = check_asset_eligibility(
+        db_session, ticker="８９５１", wrapper="nisa_growth"
+    )
+
+    assert result.eligible is True
+    assert result.asset_type == "reit"
+
+
+def test_full_width_dot_t_ticker_normalizes(db_session: Session) -> None:
+    """Full-width digits + full-width period (e.g. '８９５１．Ｔ') should normalize to '8951.T'."""
+    _seed_asset(db_session, wrapper="nisa_growth", ticker="8951.T", asset_type="reit")
+
+    result = check_asset_eligibility(
+        db_session, ticker="８９５１．Ｔ", wrapper="nisa_growth"
+    )
+
+    assert result.eligible is True
+    assert result.asset_type == "reit"
+
+
 def test_dot_t_ticker_in_approved_list_uses_ingested_asset_type(
     db_session: Session,
 ) -> None:
