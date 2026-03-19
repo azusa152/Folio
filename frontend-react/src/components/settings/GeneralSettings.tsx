@@ -15,7 +15,7 @@ import { useDefaultCurrency } from "@/hooks/useDefaultCurrency"
 import { usePreferences, useSavePreferences, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { useProfile } from "@/api/hooks/useDashboard"
 import { getErrorMessage } from "@/lib/utils"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { DEFAULT_HOME_CURRENCY, DISPLAY_CURRENCIES } from "@/lib/constants"
 
 interface SettingRowProps {
   label: string
@@ -208,7 +208,7 @@ export function GeneralSettings() {
             hint={t("settings.home_currency_hint")}
           >
             <Select
-              value={profile?.home_currency ?? "TWD"}
+              value={profile?.home_currency ?? DEFAULT_HOME_CURRENCY}
               onValueChange={handleHomeCurrencyChange}
               disabled={updateProfileMutation.isPending || !profile}
             >

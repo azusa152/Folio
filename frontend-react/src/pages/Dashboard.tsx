@@ -69,7 +69,6 @@ export default function Dashboard() {
     return () => window.clearInterval(timer)
   }, [])
 
-
   const handleDigest = () => {
     digestMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),

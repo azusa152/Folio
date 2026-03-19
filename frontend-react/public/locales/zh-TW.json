@@ -2417,6 +2417,7 @@
   },
   "settings": {
     "page_title": "設定",
+    "page_subtitle": "在這裡可一次管理應用程式、投資組合與通知偏好。",
     "tab_general": "一般",
     "tab_portfolio": "投資組合",
     "tab_notifications": "通知",

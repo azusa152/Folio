@@ -80,6 +80,7 @@ export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
 export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
 
 export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
+export const DEFAULT_HOME_CURRENCY = "TWD"
 
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30

@@ -2417,6 +2417,7 @@
   },
   "settings": {
     "page_title": "Settings",
+    "page_subtitle": "Manage your app, portfolio, and alert preferences in one place.",
     "tab_general": "General",
     "tab_portfolio": "Portfolio",
     "tab_notifications": "Notifications",

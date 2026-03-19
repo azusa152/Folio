@@ -16,11 +16,9 @@ import { create } from "zustand"
 interface DefaultCurrencyState {
   defaultDisplayCurrency: string
   setDefaultDisplayCurrency: (currency: string) => void
-  initialize: (defaultDisplayCurrency: string) => void
 }
 
 export const useDefaultCurrency = create<DefaultCurrencyState>((set) => ({
   defaultDisplayCurrency: "USD",
   setDefaultDisplayCurrency: (currency) => set({ defaultDisplayCurrency: currency }),
-  initialize: (defaultDisplayCurrency) => set({ defaultDisplayCurrency }),
 }))

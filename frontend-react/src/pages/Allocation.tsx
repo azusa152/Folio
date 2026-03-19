@@ -77,7 +77,6 @@ export default function Allocation() {
     return () => window.clearInterval(timer)
   }, [])
 
-
   const openTransactionSheet = useCallback((options?: {
     ticker?: string
     accountId?: number

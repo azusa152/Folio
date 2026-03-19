@@ -46,7 +46,6 @@ export function AppSidebar() {
   const { canInstall, promptInstall } = usePwaInstall()
   const { isPrivate, toggle, initialize } = usePrivacyMode()
   const { theme, toggle: toggleTheme } = useTheme()
-  const { initialize: initializeCurrency } = useDefaultCurrency()
   const { data: prefs } = usePreferences()
   const savePreferences = useSavePreferences()
 
@@ -69,9 +68,9 @@ export function AppSidebar() {
   // Hydrate default currency store from server preferences
   useEffect(() => {
     if (prefs?.default_display_currency) {
-      initializeCurrency(prefs.default_display_currency)
+      useDefaultCurrency.getState().setDefaultDisplayCurrency(prefs.default_display_currency)
     }
-  }, [prefs?.default_display_currency, initializeCurrency])
+  }, [prefs?.default_display_currency])
 
   function togglePrivacy() {
     toggle()

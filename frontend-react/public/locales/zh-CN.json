@@ -2417,6 +2417,7 @@
   },
   "settings": {
     "page_title": "设置",
+    "page_subtitle": "在这里统一管理应用、投资组合与通知偏好。",
     "tab_general": "常规",
     "tab_portfolio": "投资组合",
     "tab_notifications": "通知",
