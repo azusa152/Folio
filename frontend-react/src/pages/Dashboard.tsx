@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { ChevronDown, ChevronUp, SendHorizonal } from "lucide-react"
-import { isMarketOpen } from "@/lib/format"
+import { getNextMarketOpenInfo, isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
@@ -19,6 +19,7 @@ import {
   useSnapshots,
   useTwr,
   useGreatMinds,
+  useInsights,
 } from "@/api/hooks/useDashboard"
 import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
@@ -47,6 +48,7 @@ import { StockHeatmap } from "@/components/dashboard/StockHeatmap"
 import { AccountsOverview } from "@/components/dashboard/AccountsOverview"
 import { SectorAllocationCard } from "@/components/dashboard/SectorAllocationCard"
 import { HoldingBreakdown } from "@/components/dashboard/HoldingBreakdown"
+import { InsightCard } from "@/components/common/InsightCard"
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
@@ -93,6 +95,7 @@ export default function Dashboard() {
     isFetching: rebalanceFetching,
     isError: rebalanceError,
   } = useRebalance(displayCurrency)
+  const { data: insights, isLoading: insightsLoading } = useInsights(displayCurrency, !stocksLoading)
 
   // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
   // requests above can claim FastAPI threadpool workers first.
@@ -140,21 +143,33 @@ export default function Dashboard() {
     return (
       <div className="p-3 sm:p-6 space-y-4">
         <h1 className="text-xl sm:text-2xl font-bold">{t("dashboard.title")}</h1>
-        <EmptyState
-          icon="🚀"
-          message={t("dashboard.welcome")}
-          title={t("dashboard.onboarding_title")}
-          description={t("dashboard.onboarding_description")}
-          action={{
-            label: t("dashboard.onboarding_goto_radar"),
-            onClick: () => navigate("/radar"),
-          }}
-          secondaryAction={{
-            label: t("dashboard.onboarding_goto_allocation"),
-            onClick: () => navigate("/allocation"),
-            variant: "outline",
-          }}
-        />
+        <Card>
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            <EmptyState
+              icon="🚀"
+              message={t("dashboard.welcome")}
+              title={t("dashboard.onboarding_title")}
+              description={t("dashboard.onboarding_description")}
+              className="py-2"
+            />
+            <div className="rounded-md border border-border bg-muted/20 p-3">
+              <p className="text-sm font-medium">{t("dashboard.onboarding_steps_title")}</p>
+              <ol className="mt-2 space-y-1 text-sm text-muted-foreground list-decimal pl-4">
+                <li>{t("dashboard.onboarding_step_1")}</li>
+                <li>{t("dashboard.onboarding_step_2")}</li>
+                <li>{t("dashboard.onboarding_step_3")}</li>
+              </ol>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate("/radar")}>
+                {t("dashboard.onboarding_goto_radar")}
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/allocation")}>
+                {t("dashboard.onboarding_goto_allocation")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -170,7 +185,8 @@ export default function Dashboard() {
     ? Math.max(0, nowEpochSeconds - lastScan.epoch)
     : null
   const usMarketOpen = isMarketOpen("US")
-  const staleScanThresholdSeconds = usMarketOpen ? 30 * 60 : 18 * 60 * 60
+  const nextUsOpenInfo = !usMarketOpen ? getNextMarketOpenInfo("US") : null
+  const staleScanThresholdSeconds = usMarketOpen ? 30 * 60 : 2 * 60 * 60
   const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > staleScanThresholdSeconds
   const scanStaleSuffix = isScanStale && scanAgeSeconds !== null
     ? t("dashboard.scan_stale_suffix", {
@@ -230,6 +246,25 @@ export default function Dashboard() {
                 <span className="text-muted-foreground font-normal">
                   {" "}
                   {t("dashboard.market_closed")}
+                  {nextUsOpenInfo
+                    ? ` ${
+                        nextUsOpenInfo.dayOffset === 0
+                          ? t("dashboard.next_market_open_today", {
+                              time: nextUsOpenInfo.time,
+                              tz: nextUsOpenInfo.shortTz,
+                            })
+                          : nextUsOpenInfo.dayOffset === 1
+                            ? t("dashboard.next_market_open_tomorrow", {
+                                time: nextUsOpenInfo.time,
+                                tz: nextUsOpenInfo.shortTz,
+                              })
+                            : t("dashboard.next_market_open", {
+                                days: nextUsOpenInfo.dayOffset,
+                                time: nextUsOpenInfo.time,
+                                tz: nextUsOpenInfo.shortTz,
+                              })
+                      }`
+                    : ""}
                 </span>
               )}
               {scanStaleSuffix && ` ${scanStaleSuffix}`}
@@ -259,6 +294,10 @@ export default function Dashboard() {
         isLoading={heroLoading}
         isRefreshing={heroRefreshing}
       />
+
+      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
+        <InsightCard insights={insights ?? []} maxVisible={3} isLoading={stocksLoading || insightsLoading} />
+      </LazySection>
 
       <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
         <HoldingBreakdown rebalance={rebalance} isLoading={heroLoading} />

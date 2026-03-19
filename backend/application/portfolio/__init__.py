@@ -32,6 +32,11 @@ from application.portfolio.drift_alert_service import (  # noqa: F401
     acknowledge_drift_alert,
     send_drift_alerts,
 )
+from application.portfolio.eligibility_service import (  # noqa: F401
+    check_asset_eligibility,
+    get_eligible_assets,
+    refresh_eligible_assets,
+)
 from application.portfolio.fx_watch_service import (  # noqa: F401
     check_fx_watches,
     create_watch,
@@ -59,6 +64,10 @@ from application.portfolio.rebalance_service import (  # noqa: F401
     send_fx_alerts,
     send_xray_warnings,
 )
+from application.portfolio.routing_service import (  # noqa: F401
+    get_detax_suggestions,
+    suggest_transaction_routing,
+)
 from application.portfolio.snapshot_service import (  # noqa: F401
     get_snapshot_range,
     get_snapshots,
@@ -82,4 +91,11 @@ from application.portfolio.transaction_service import (  # noqa: F401
     list_transactions,
     list_transactions_by_account,
     remove_transaction,
+)
+from application.portfolio.wrapper_service import (  # noqa: F401
+    get_all_wrapper_quotas,
+    get_contribution_entries,
+    get_restoration_forecast,
+    record_contribution,
+    record_restoration,
 )

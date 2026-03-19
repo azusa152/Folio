@@ -13,6 +13,7 @@ interface Props {
 }
 
 function HealthPill({ metric, value }: { metric: string; value?: number | null }) {
+  const { t } = useTranslation()
   if (value == null) return null
   const color = getHealthColor(metric, value)
   const klass =
@@ -21,21 +22,30 @@ function HealthPill({ metric, value }: { metric: string; value?: number | null }
       : color === "red"
         ? FINANCE_CHIP.loss
         : FINANCE_CHIP.warning
+  const icon = color === "green" ? "▲" : color === "red" ? "▼" : "⚠"
+  const labelKey =
+    color === "green"
+      ? "radar.stock_card.fundamentals.health_good"
+      : color === "red"
+        ? "radar.stock_card.fundamentals.health_risk"
+        : "radar.stock_card.fundamentals.health_watch"
   return (
     <span className={`rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${klass}`}>
-      {color}
+      {icon} {t(labelKey)}
     </span>
   )
 }
 
 function MetricItem({
   label,
+  hint,
   value,
   explanation,
   metricKey,
   metricValue,
 }: {
   label: string
+  hint?: string
   value: string
   explanation: string
   metricKey?: string
@@ -49,6 +59,7 @@ function MetricItem({
         <p className="text-xs font-medium">{label}</p>
         {metricKey && numeric != null && <HealthPill metric={metricKey} value={numeric} />}
       </div>
+      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
       <p className="text-sm font-semibold">{value}</p>
       <p className="text-xs text-muted-foreground">{explanation}</p>
     </div>
@@ -70,6 +81,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.trailing_pe")}
+            hint={t("radar.stock_card.fundamentals.label_hint.trailing_pe")}
             value={formatRatio(fundamentals.trailing_pe)}
             explanation={t("radar.stock_card.fundamentals.trailing_pe_tip")}
             metricKey="trailing_pe"
@@ -77,6 +89,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.price_to_book")}
+            hint={t("radar.stock_card.fundamentals.label_hint.price_to_book")}
             value={formatRatio(fundamentals.price_to_book)}
             explanation={t("radar.stock_card.fundamentals.price_to_book_tip")}
             metricKey="price_to_book"
@@ -84,6 +97,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.price_to_sales")}
+            hint={t("radar.stock_card.fundamentals.label_hint.price_to_sales")}
             value={formatRatio(fundamentals.price_to_sales)}
             explanation={t("radar.stock_card.fundamentals.price_to_sales_tip")}
           />
@@ -95,6 +109,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.return_on_equity")}
+            hint={t("radar.stock_card.fundamentals.label_hint.return_on_equity")}
             value={formatPercent(fundamentals.return_on_equity)}
             explanation={t("radar.stock_card.fundamentals.return_on_equity_tip")}
             metricKey="return_on_equity"
@@ -102,6 +117,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.profit_margins")}
+            hint={t("radar.stock_card.fundamentals.label_hint.profit_margins")}
             value={formatPercent(fundamentals.profit_margins)}
             explanation={t("radar.stock_card.fundamentals.profit_margins_tip")}
             metricKey="profit_margins"
@@ -109,6 +125,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.operating_margins")}
+            hint={t("radar.stock_card.fundamentals.label_hint.operating_margins")}
             value={formatPercent(fundamentals.operating_margins)}
             explanation={t("radar.stock_card.fundamentals.operating_margins_tip")}
             metricKey="operating_margins"
@@ -122,6 +139,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.revenue_growth")}
+            hint={t("radar.stock_card.fundamentals.label_hint.revenue_growth")}
             value={formatPercent(fundamentals.revenue_growth)}
             explanation={t("radar.stock_card.fundamentals.revenue_growth_tip")}
             metricKey="revenue_growth"
@@ -129,6 +147,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.earnings_growth")}
+            hint={t("radar.stock_card.fundamentals.label_hint.earnings_growth")}
             value={formatPercent(fundamentals.earnings_growth)}
             explanation={t("radar.stock_card.fundamentals.earnings_growth_tip")}
             metricKey="earnings_growth"
@@ -136,11 +155,13 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.trailing_eps")}
+            hint={t("radar.stock_card.fundamentals.label_hint.trailing_eps")}
             value={formatRatio(fundamentals.trailing_eps)}
             explanation={t("radar.stock_card.fundamentals.trailing_eps_tip")}
           />
           <MetricItem
             label={t("radar.stock_card.fundamentals.forward_eps")}
+            hint={t("radar.stock_card.fundamentals.label_hint.forward_eps")}
             value={formatRatio(fundamentals.forward_eps)}
             explanation={t("radar.stock_card.fundamentals.forward_eps_tip")}
           />
@@ -152,6 +173,7 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
         <div className="grid grid-cols-1 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.market_cap")}
+            hint={t("radar.stock_card.fundamentals.label_hint.market_cap")}
             value={formatMarketCap(fundamentals.market_cap)}
             explanation={t("radar.stock_card.fundamentals.market_cap_tip")}
           />

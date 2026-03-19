@@ -19,9 +19,12 @@ vi.mock("@/hooks/usePrivacyMode", () => ({
   maskMoney: (value: number, currency: string) => `${currency} ${value.toFixed(2)}`,
 }))
 
+const termMock = vi.fn((_: string, fallback: string) => fallback)
+
 vi.mock("@/hooks/useTerminology", () => ({
   useTerminology: () => ({
-    term: (_key: string, fallback: string) => fallback,
+    term: termMock,
+    isSimplified: false,
   }),
 }))
 
@@ -47,7 +50,46 @@ function buildHolding(
 }
 
 describe("HoldingsTable", () => {
+  it("uses simplified terminology label for unrealized P/L when available", () => {
+    termMock.mockImplementation((key: string, fallback: string) =>
+      key === "unrealized_pl" ? "Paper Gain/Loss" : fallback,
+    )
+
+    render(
+      <HoldingsTable
+        holdings={[
+          buildHolding({
+            ticker: "AAPL",
+            market_value: 900,
+            weight_pct: 60,
+            cost_total: 750,
+            change_value: 25,
+            change_pct: 2.86,
+            total_gain_value: 150,
+            total_gain_pct: 20,
+          }),
+          buildHolding({
+            ticker: "MSFT",
+            market_value: 300,
+            weight_pct: 40,
+            cost_total: 350,
+            change_value: -15,
+            change_pct: -4.76,
+            total_gain_value: -50,
+            total_gain_pct: -14.29,
+          }),
+        ]}
+        privacyMode={false}
+        displayCurrency="USD"
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "Paper Gain/Loss" })).toBeInTheDocument()
+    expect(screen.getByText("Paper Gain/Loss: +9.09%")).toBeInTheDocument()
+  })
+
   it("renders translated category key for holdings rows", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -64,6 +106,7 @@ describe("HoldingsTable", () => {
   })
 
   it("shows cash as neutral with fx rate info and no Home/FX breakdown", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -96,6 +139,7 @@ describe("HoldingsTable", () => {
   })
 
   it("renders today and total return dual-line values with footer totals", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -139,6 +183,7 @@ describe("HoldingsTable", () => {
   })
 
   it("sorts rows when ticker header is clicked", async () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     const user = userEvent.setup()
     render(
       <HoldingsTable
@@ -171,6 +216,7 @@ describe("HoldingsTable", () => {
   })
 
   it("uses portfolio daily totals in footer when provided", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -199,6 +245,7 @@ describe("HoldingsTable", () => {
   })
 
   it("merges non-cash holdings with same ticker across accounts", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -242,6 +289,7 @@ describe("HoldingsTable", () => {
   })
 
   it("keeps cash holdings split by account even with same ticker", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -285,6 +333,7 @@ describe("HoldingsTable", () => {
   })
 
   it("does not merge non-cash rows when ticker metadata differs", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -310,6 +359,7 @@ describe("HoldingsTable", () => {
   })
 
   it("hides merged cost/total return when cost coverage is partial", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[
@@ -345,6 +395,7 @@ describe("HoldingsTable", () => {
   })
 
   it("shows deterministic truncated account list for many merged accounts", () => {
+    termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
       <HoldingsTable
         holdings={[

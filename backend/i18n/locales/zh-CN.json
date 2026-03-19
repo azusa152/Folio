@@ -50,6 +50,7 @@
     "accounts_summary": "已配置 {count} 个账户",
     "analytics_summary": "投资组合风险指标已计算",
     "insights_summary": "已生成 {count} 条投资组合洞察",
+    "quota_summary": "已获取 {count} 个账户的 NISA 额度状态",
     "missing_required_params": "缺少必要参数",
     "interpretation": {
       "signal_ready": "信号摘要已准备完成。",
@@ -76,7 +77,8 @@
       "transaction_recorded": "交易已记录。",
       "accounts_ready": "账户摘要已准备完成。",
       "analytics_ready": "夏普比率：{sharpe}，最大回撤：{max_dd}。",
-      "insights_ready": "投资组合洞察已准备完成。"
+      "insights_ready": "投资组合洞察已准备完成。",
+      "quota_ready": "NISA 额度状态已准备完成。"
     }
   },
   "stock": {
@@ -415,5 +417,68 @@
   "analytics": {
     "date_range_both_required": "start 与 end 必须同时提供",
     "date_range_invalid_order": "start 不得晚于 end"
+  },
+  "wrapper": {
+    "tokutei": "特定账户（应税）",
+    "nisa_tsumitate": "NISA 定投额度",
+    "nisa_growth": "NISA 成长额度",
+    "ideco": "iDeCo（个人型确定缴费年金）",
+    "ippan": "一般账户",
+    "tax_free": "免税",
+    "taxable": "应税",
+    "tax_deferred": "递延纳税",
+    "no_wrapper": "无税制账户",
+    "select_wrapper": "选择税制账户类型（可选）",
+    "quota_exceeded": "此笔买入将超过您的 NISA 额度上限。",
+    "quota_exceeded_annual": "已超过年度投资额度。",
+    "quota_exceeded_lifetime": "已超过终身免税额度。"
+  },
+  "eligibility": {
+    "not_eligible": "该资产不符合所选税务账户的可投规则。",
+    "not_in_tsumitate_approved_list": "不在 NISA 定投额度的核准基金名单中。",
+    "not_in_growth_approved_list": "不在 NISA 成长额度的核准资产名单中。",
+    "excluded_flag": "该资产属于 NISA 成长额度排除范围（杠杆、每月分配、反向或监管观察）。",
+    "trust_period_too_short": "信托期限不足 20 年。",
+    "not_in_ideco_lineup": "不在您券商的 iDeCo 产品清单中。",
+    "invalid_asset_type": "该资产类型不符合 NISA 成长额度规则。",
+    "try_instead": "请改用 {{wrapper}}。",
+    "refresh_unsupported_wrapper": "官方名单刷新仅支持 NISA 账户。",
+    "contributions_unsupported_wrapper": "缴款台账仅支持 NISA 账户。",
+    "upload_unsupported_wrapper": "合规资产名单上传仅支持 NISA 账户。",
+    "refresh_failed": "来源数据无法安全解析，刷新失败。",
+    "upload_invalid_format": "仅支持上传 .csv 和 .xlsx 文件。",
+    "upload_file_too_large": "文件过大（最大 10 MB）。",
+    "upload_failed": "来源数据无法安全解析，上传失败。"
+  },
+  "nav_sync": {
+    "failed": "净值数据更新失败。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "优先在 NISA 成长度买入（收益免税）",
+    "nisa_tsumitate_tax_free": "优先在 NISA 定投额度买入（收益免税）",
+    "ideco_tax_deferred": "在 iDeCo 买入（缴费可税前扣除）",
+    "tokutei_overflow": "剩余金额在特定账户买入（常规纳税）",
+    "suggest_title": "最优买入路由建议",
+    "why_toggle": "为什么这样建议？"
+  },
+  "detax": {
+    "harvest_loss": "先卖后买实现亏损，用于抵扣税负",
+    "title": "税损收割机会",
+    "estimated_saving": "预计节税：{{amount}}",
+    "disclaimer": "DeTAX 是递延纳税，不是免税。请咨询专业税务顾问。"
+  },
+  "location": {
+    "title": "资产配置位置优化",
+    "efficiency_score": "税务效率评分",
+    "score_optimal": "最优 — 高成长资产已优先放入免税账户",
+    "score_good": "良好 — 仍有小幅优化空间",
+    "score_needs_work": "需关注 — 仍有显著节税空间",
+    "move_suggestion": "将 {{amount}} 的 {{category}} 从 {{from}} 调整到 {{to}}",
+    "tax_savings": "预计年度节税",
+    "projected_10yr": "10 年节税预测",
+    "projected_20yr": "20 年节税预测",
+    "tsumitate_migration": "可设置每月定投迁移",
+    "tsumitate_reason": "每月将 {{amount}} 从 {{source}} 转入定投额度，以降低费率",
+    "setup_monthly_migration": "设置每月迁移"
   }
 }

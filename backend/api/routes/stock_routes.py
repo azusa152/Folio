@@ -11,6 +11,7 @@ from api.rate_limit import limiter
 from api.schemas import (
     CategoryUpdateRequest,
     DeactivateRequest,
+    EnrichedStockResponse,
     FundamentalsResponse,
     ImportResponse,
     MessageResponse,
@@ -25,6 +26,7 @@ from api.schemas import (
     WebhookResponse,
 )
 from application.guru.resonance_service import invalidate_resonance_cache
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.services import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
@@ -64,6 +66,7 @@ from domain.constants import (
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
+from domain.enums import StockCategory
 from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
@@ -102,6 +105,9 @@ def create_ticker_route(
             detail={"error_code": ERROR_STOCK_ALREADY_EXISTS, "detail": str(e)},
         ) from e
 
+    if stock.category == StockCategory.MUTUAL_FUND:
+        sync_single_fund_nav(session, stock.ticker)
+
     _invalidate_radar_caches()
     return StockResponse(
         ticker=stock.ticker,
@@ -126,17 +132,18 @@ def list_stocks_route(
 
 @router.get(
     "/stocks/enriched",
+    response_model=list[EnrichedStockResponse],
     summary="Get all active stocks with signals, earnings, and dividends",
 )
 def list_enriched_stocks_route(
     response: Response,
     session: Session = Depends(get_session),
-) -> list[dict]:
+) -> list[EnrichedStockResponse]:
     """批次取得所有啟用中股票，附帶技術訊號、財報日期、股息資訊。"""
     response.headers["Cache-Control"] = (
         "private, max-age=60, stale-while-revalidate=300"
     )
-    return get_enriched_stocks(session)
+    return [EnrichedStockResponse(**item) for item in get_enriched_stocks(session)]
 
 
 @router.put(
@@ -153,10 +160,13 @@ def reorder_stocks_route(
 
 
 @router.get("/ticker/{ticker}/signals", summary="Get technical signals for a stock")
-def get_signals_route(ticker: str) -> dict:
-    """取得指定股票的技術訊號（yfinance，含快取）。"""
+def get_signals_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict:
+    """取得指定股票的技術訊號（含快取）。"""
     ticker_upper = ticker.upper()
-    signals = stock_service.get_signals_for_ticker(ticker_upper) or {}
+    signals = stock_service.get_signals_for_ticker(session, ticker_upper) or {}
     if signals and "error" not in signals:
         bias = signals.get("bias")
         volume_ratio = signals.get("volume_ratio")
@@ -172,9 +182,12 @@ def get_signals_route(ticker: str) -> dict:
 @router.get(
     "/ticker/{ticker}/price-history", summary="Get 1-year price history for a stock"
 )
-def get_price_history_route(ticker: str) -> list[dict]:
+def get_price_history_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> list[dict]:
     """取得指定股票的收盤價歷史（1 年），用於價格趨勢圖。"""
-    return stock_service.get_price_history(ticker.upper()) or []
+    return stock_service.get_price_history_for_ticker(session, ticker)
 
 
 @router.get("/stocks/export", summary="Export watchlist as JSON")
@@ -299,15 +312,21 @@ def reactivate_ticker_route(
 
 
 @router.get("/ticker/{ticker}/earnings", summary="Get next earnings date for a stock")
-def get_earnings_route(ticker: str) -> dict | None:
+def get_earnings_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict | None:
     """取得指定股票的下次財報日期。"""
-    return stock_service.get_earnings_for_ticker(ticker.upper())
+    return stock_service.get_earnings_for_ticker(session, ticker.upper())
 
 
 @router.get("/ticker/{ticker}/dividend", summary="Get dividend info for a stock")
-def get_dividend_route(ticker: str) -> dict | None:
+def get_dividend_route(
+    ticker: str,
+    session: Session = Depends(get_session),
+) -> dict | None:
     """取得指定股票的股息資訊。"""
-    return stock_service.get_dividend_for_ticker(ticker.upper())
+    return stock_service.get_dividend_for_ticker(session, ticker.upper())
 
 
 @router.get(
@@ -315,13 +334,17 @@ def get_dividend_route(ticker: str) -> dict | None:
     response_model=FundamentalsResponse,
     summary="Get fundamental metrics for a stock",
 )
-def get_fundamentals_route(ticker: str, response: Response) -> FundamentalsResponse:
+def get_fundamentals_route(
+    ticker: str,
+    response: Response,
+    session: Session = Depends(get_session),
+) -> FundamentalsResponse:
     """取得指定股票的基本面指標。"""
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=600"
     )
     return FundamentalsResponse(
-        **stock_service.get_fundamentals_for_ticker(ticker.upper())
+        **stock_service.get_fundamentals_for_ticker(session, ticker.upper())
     )
 
 

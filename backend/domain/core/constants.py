@@ -3,6 +3,8 @@ Domain — 集中管理所有常數與閾值。
 避免散落在各模組中的 magic numbers / magic strings。
 """
 
+import os
+
 # ---------------------------------------------------------------------------
 # Technical Indicator Parameters
 # ---------------------------------------------------------------------------
@@ -38,6 +40,7 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Trend_Setter": 0,  # beta ~1.0
     "Moat": 1,  # beta ~1.2
     "Growth": 2,  # beta ~1.5
+    "Mutual_Fund": 0,  # mutual funds do not run RSI scan; keep compatible default
     "Bond": -3,  # beta ~0.3
     "MUTUAL_FUND": -1,  # typically lower-vol than single-stock equity
     "ETF": 0,  # broad-market ETF baseline
@@ -78,12 +81,12 @@ PREWARM_REFRESH_INTERVAL = 240  # 4 minutes
 # ---------------------------------------------------------------------------
 # Persistent Data Directory — root for all app-written state files
 # ---------------------------------------------------------------------------
-DATA_DIR = "/app/data"
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 
 # ---------------------------------------------------------------------------
 # Disk Cache (L2) — 持久化快取，容器重啟後仍可使用
 # ---------------------------------------------------------------------------
-DISK_CACHE_DIR = "/app/data/yf_cache"
+DISK_CACHE_DIR = os.getenv("DISK_CACHE_DIR", f"{DATA_DIR}/yf_cache")
 DISK_CACHE_SIZE_LIMIT = 100 * 1024 * 1024  # 100 MB
 
 # Disk Cache TTLs（比 L1 更長，作為冷啟動 fallback）
@@ -126,6 +129,7 @@ SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
 ENRICHED_PER_TICKER_TIMEOUT = 30  # 每檔股票豐富資料超時（秒）— 配合 0.4 req/sec 放寬
 SCAN_STALE_SECONDS = 900  # 15 minutes — scanner skips if last scan is fresher
+SCAN_STALE_SECONDS_OFF_HOURS = 3600  # 60 minutes — relaxed scanner cadence off-hours
 SCAN_L1_WARM_THRESHOLD = 0.8  # skip batch_download if ≥80% of scan tickers are in L1
 MOAT_PERSISTENT_FAILURE_THRESHOLD = (
     3  # consecutive failures before writing sentinel to L2
@@ -154,13 +158,20 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 # ---------------------------------------------------------------------------
 # Shared Messages
 # ---------------------------------------------------------------------------
-SKIP_RSI_CATEGORIES = ["Cash", "Crypto"]  # 非 RSI 類資產不進行技術訊號掃描
-SKIP_PRICE_FETCH_CATEGORIES = ["Cash"]  # 不需要抓取價格的資產（如現金）
+SKIP_RSI_CATEGORIES = [
+    "Cash",
+    "Crypto",
+    "Mutual_Fund",
+]  # 非 RSI 類資產不進行技術訊號掃描
+SKIP_PRICE_FETCH_CATEGORIES = [
+    "Cash",
+    "Mutual_Fund",
+]  # 不走 yfinance 取價的資產（MF 走 NAV 日次同步，enrichment 分支在 SKIP 判斷前處理）
 SKIP_MOAT_CATEGORIES = [
     "Bond",
     "Cash",
     "Crypto",
-    "MUTUAL_FUND",
+    "Mutual_Fund",
     "ETF",
 ]  # 非個股類不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
@@ -177,30 +188,41 @@ DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 # ---------------------------------------------------------------------------
 # Category Lists & Icons
 # ---------------------------------------------------------------------------
-# All stock categories supported by API / forms (also the notification render order).
-STOCK_CATEGORIES = [
+CATEGORY_DISPLAY_ORDER = [
     "Trend_Setter",
     "Moat",
     "Growth",
+    "Mutual_Fund",
     "Bond",
     "Crypto",
     "Cash",
     "ETF",
-    "MUTUAL_FUND",
+]
+
+# All stock categories supported by API / forms (must be a literal list for check_constant_sync.py).
+STOCK_CATEGORIES = [
+    "Trend_Setter",
+    "Moat",
+    "Growth",
+    "Mutual_Fund",
+    "Bond",
+    "Crypto",
+    "Cash",
+    "ETF",
 ]
 
 # Categories shown on Radar tab filters.
-RADAR_CATEGORIES = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto"]
+RADAR_CATEGORIES = ["Trend_Setter", "Moat", "Growth", "Mutual_Fund", "Bond", "Crypto"]
 
 CATEGORY_ICON: dict[str, str] = {
     "Trend_Setter": "🌊",
     "Moat": "🏰",
     "Growth": "🚀",
+    "Mutual_Fund": "🧺",
     "Bond": "🛡️",
     "Crypto": "₿",
     "Cash": "💵",
     "ETF": "📈",
-    "MUTUAL_FUND": "📚",
 }
 
 # ---------------------------------------------------------------------------
@@ -218,6 +240,51 @@ ACCOUNT_TYPE_OPTIONS = [
     "insurance",
     "loan",
     "other",
+]
+
+# ---------------------------------------------------------------------------
+# Tax Wrapper — NISA Limits (New NISA, effective 2024-01-01)
+# ---------------------------------------------------------------------------
+NISA_RESTORATION_POLICY = "next_year"  # Change to "same_day" when 2026 reform activates
+
+NISA_LIMITS = {
+    "nisa_tsumitate": {
+        "annual": 1_200_000,
+    },
+    "nisa_growth": {
+        "annual": 2_400_000,
+        "lifetime_sub_limit": 12_000_000,
+    },
+    "combined_annual": 3_600_000,
+    "combined_lifetime": 18_000_000,
+}
+
+# ---------------------------------------------------------------------------
+# Tax Wrapper — iDeCo Limits (as of Dec 2024 reform)
+# ---------------------------------------------------------------------------
+IDECO_LIMITS = {
+    "self_employed": {"monthly": 68_000, "annual": 816_000},
+    "employee_no_pension": {"monthly": 23_000, "annual": 276_000},
+    "employee_dc_only": {"monthly": 20_000, "annual": 240_000},
+    "employee_with_db": {"monthly": 20_000, "annual": 240_000},
+    "public_servant": {"monthly": 20_000, "annual": 240_000},
+    "homemaker": {"monthly": 23_000, "annual": 276_000},
+}
+
+# ---------------------------------------------------------------------------
+# Tax Wrapper — Tax Rates
+# ---------------------------------------------------------------------------
+TOKUTEI_TAX_RATE = 0.20315  # 所得税 15.315% + 住民税 5%
+
+# ---------------------------------------------------------------------------
+# Tax Wrapper — Wrapper Type Options (for frontend selector)
+# ---------------------------------------------------------------------------
+TAX_WRAPPER_OPTIONS = [
+    "tokutei",
+    "nisa_tsumitate",
+    "nisa_growth",
+    "ideco",
+    "ippan",
 ]
 
 # ---------------------------------------------------------------------------
@@ -247,8 +314,8 @@ LANGUAGE_LABELS = {
 CATEGORY_LIQUIDITY_ORDER = [
     "Cash",
     "Crypto",
+    "Mutual_Fund",
     "Bond",
-    "MUTUAL_FUND",
     "ETF",
     "Growth",
     "Moat",
@@ -493,7 +560,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": True,
         "params": {
             "ticker": "str (required)",
-            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Crypto|Cash|MUTUAL_FUND|ETF)",
+            "category": "StockCategory (Trend_Setter|Moat|Growth|Mutual_Fund|Bond|Crypto|Cash|ETF)",
             "thesis": "str (investment thesis)",
             "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
         },
@@ -592,6 +659,14 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": False,
         "params": {
             "display_currency": "str (optional — default USD)",
+        },
+    },
+    "quota": {
+        "description": "NISA/iDeCo 額度狀態查詢",
+        "requires_ticker": False,
+        "description_en": "NISA/iDeCo quota status (annual/lifetime remaining, restoration forecast)",
+        "params": {
+            "year": "int (optional — fiscal year, default current year)",
         },
     },
 }
@@ -733,7 +808,7 @@ CATEGORY_FALLBACK_BETA: dict[str, float] = {
     "Trend_Setter": 1.0,
     "Moat": 1.2,
     "Growth": 1.5,
-    "MUTUAL_FUND": 0.8,
+    "Mutual_Fund": 0.0,
     "ETF": 1.0,
     "Bond": 0.3,
     "Cash": 0.0,
@@ -908,6 +983,10 @@ DISK_GURU_FILING_TTL = 604800  # 7 days
 DISK_KEY_GURU_FILING = "guru_filing"
 DISK_SECTOR_TTL = 2592000  # 30 days (sectors change very rarely)
 DISK_KEY_SECTOR = "sector"
+DISK_NAME_TTL = 2592000  # 30 days (company names change very rarely)
+DISK_KEY_NAME = "name"
+DISK_EXCHANGE_TTL = 2592000  # 30 days (exchange metadata is mostly static)
+DISK_KEY_EXCHANGE = "exchange"
 DISK_KEY_PRICE_PAIR = "price_pair"
 DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 

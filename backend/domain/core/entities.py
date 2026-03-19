@@ -8,7 +8,7 @@ import logging
 from datetime import UTC, date, datetime
 
 from pydantic import field_validator
-from sqlalchemy import Index, UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint, text
 from sqlalchemy.types import TypeDecorator
 from sqlmodel import Column, Field, SQLModel, String
 
@@ -202,7 +202,15 @@ class Account(SQLModel, table=True):
         default="brokerage",
         description="帳戶類型（brokerage / retirement / savings / crypto）",
     )
+    tax_wrapper: str | None = Field(
+        default=None,
+        description="税制ラッパー種別（tokutei / nisa_tsumitate / nisa_growth / ideco / ippan）",
+    )
     currency: str = Field(default="USD", description="帳戶基準幣別")
+    market: str | None = Field(
+        default=None,
+        description="帳戶主要市場代碼（例如 US / JP / TW / HK）",
+    )
     institution: str = Field(default="", description="金融機構全名（選填）")
     note: str = Field(default="", description="備註")
     is_active: bool = Field(default=True, description="是否啟用")
@@ -370,6 +378,135 @@ class DriftAcknowledgment(SQLModel, table=True):
         description="確認時間",
     )
     expires_at: datetime = Field(description="抑制到期時間")
+
+
+class ContributionLedgerEntry(SQLModel, table=True):
+    """NISA / iDeCo 拠出金台帳エントリ（追記のみ・不変）。"""
+
+    __table_args__ = (
+        Index(
+            "ix_contrib_user_wrapper_year",
+            "user_id",
+            "tax_wrapper",
+            "fiscal_year",
+        ),
+        Index("ix_contrib_transaction", "transaction_id"),
+        Index(
+            "uq_contrib_transaction_entry_type",
+            "transaction_id",
+            "entry_type",
+            unique=True,
+            sqlite_where=text("transaction_id IS NOT NULL"),
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(default=DEFAULT_USER_ID, description="使用者 ID")
+    tax_wrapper: str = Field(description="税制ラッパー種別")
+    entry_type: str = Field(
+        description="エントリ種別（CONTRIBUTION / RESTORATION / ADJUSTMENT）"
+    )
+    fiscal_year: int = Field(description="対象年度（暦年）")
+    amount: float = Field(
+        description="簿価金額（JPY）。拠出=正、復活=負、調整=正負いずれか"
+    )
+    transaction_id: int | None = Field(
+        default=None,
+        foreign_key="transaction.id",
+        description="元取引ID（冪等性キー）",
+    )
+    effective_date: date = Field(
+        description="発効日（復活の場合、ポリシーにより翌年1/1 or 売却当日）"
+    )
+    note: str = Field(default="", description="備考")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="作成日時",
+    )
+
+
+class EligibleAsset(SQLModel, table=True):
+    """NISA / iDeCo 対象資産マスター。"""
+
+    __table_args__ = (
+        Index(
+            "uq_eligible_wrapper_ticker_broker",
+            "tax_wrapper",
+            "ticker",
+            "broker",
+            unique=True,
+        ),
+        Index(
+            "uq_eligible_wrapper_ticker_null_broker",
+            "tax_wrapper",
+            "ticker",
+            unique=True,
+            sqlite_where=text("broker IS NULL"),
+        ),
+        Index("ix_eligible_wrapper_ticker", "tax_wrapper", "ticker"),
+        Index("ix_eligible_wrapper_broker", "tax_wrapper", "broker"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    tax_wrapper: str = Field(description="対象ラッパー種別")
+    ticker: str = Field(description="資産コード（ファンドコード or ティッカー）")
+    fund_name: str = Field(default="", description="ファンド名称")
+    asset_type: str = Field(
+        default="mutual_fund",
+        description="資産種別（mutual_fund / etf / stock / reit）",
+    )
+    broker: str | None = Field(
+        default=None,
+        description="証券会社（iDeCo用。NULLなら全社共通）",
+    )
+    trust_fee_pct: float | None = Field(
+        default=None,
+        description="信託報酬率（%）",
+    )
+    isin_code: str | None = Field(
+        default=None,
+        description="ISINコード（投信基準価額取得用）",
+    )
+    is_active: bool = Field(default=True, description="有効フラグ")
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
+
+
+class MutualFundNav(SQLModel, table=True):
+    """投資信託の日次基準価額（NAV）キャッシュ。"""
+
+    __table_args__ = (
+        Index("uq_mfnav_fund_code_date", "fund_code", "nav_date", unique=True),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    fund_code: str = Field(index=True, description="投信協会ファンドコード（= ticker）")
+    isin_code: str = Field(description="ISINコード")
+    nav: float = Field(description="基準価額")
+    nav_previous: float | None = Field(default=None, description="前日基準価額")
+    nav_date: date = Field(description="基準価額日付")
+    net_assets: float | None = Field(default=None, description="純資産総額（百万円）")
+    fetched_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="取得日時",
+    )
+
+
+class EligibleAssetSyncState(SQLModel, table=True):
+    """NISA対象資産マスターの同期状態（ラッパー単位）。"""
+
+    tax_wrapper: str = Field(primary_key=True, description="対象ラッパー種別")
+    source: str = Field(default="unknown", description="更新ソース")
+    last_refreshed_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="最終更新日時",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
 
 
 class UserTelegramSettings(SQLModel, table=True):

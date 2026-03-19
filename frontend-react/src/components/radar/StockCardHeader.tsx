@@ -21,12 +21,17 @@ interface Props {
   ticker: string
   category: StockCategory
   signal: string
+  name?: string | null
+  marketLabel?: string
   price?: number | null
   changePct?: number | null
   changeAbs: number | null
   currency: { symbol: string; code: string }
   marketOpen: boolean
   isCrypto: boolean
+  isMutualFund?: boolean
+  navDate?: string
+  fundName?: string | null
   expanded: boolean
   priceHistory?: PricePoint[]
   onToggle: () => void
@@ -36,12 +41,17 @@ export const StockCardHeader = memo(function StockCardHeader({
   ticker,
   category,
   signal,
+  name,
+  marketLabel,
   price,
   changePct,
   changeAbs,
   currency,
   marketOpen,
   isCrypto,
+  isMutualFund = false,
+  navDate,
+  fundName,
   expanded,
   priceHistory,
   onToggle,
@@ -60,6 +70,7 @@ export const StockCardHeader = memo(function StockCardHeader({
 
   const isUp = changePct != null ? changePct >= 0 : null
   const changeColor = isUp === null ? "" : isUp ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
+  const displayName = (isMutualFund ? fundName : name) ?? null
 
   return (
     <button
@@ -68,11 +79,48 @@ export const StockCardHeader = memo(function StockCardHeader({
       aria-expanded={expanded}
     >
       <span className="flex items-center justify-between gap-2">
-        {/* Left: ticker + category icon + signal badge */}
-        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
-          <span className="truncate">{signalIcon} {ticker}</span>
+        {/* Left: ticker/name + category icon + signal badge */}
+        <span className="flex-1 min-w-0 flex items-start gap-1.5 text-sm">
+          {displayName ? (
+            <span className="min-w-0 flex flex-col leading-tight gap-0.5">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate font-medium">{displayName}</span>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6} className="max-w-72 text-xs">
+                    {displayName}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <span className="min-w-0 flex items-center gap-1.5 text-[10px] text-muted-foreground font-normal">
+                <span className="truncate">
+                  {signalIcon} {ticker}
+                  {marketLabel ? ` · ${marketLabel}` : ""}
+                </span>
+                {signalLabel && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={signalBadgeClass}
+                          aria-label={signalDescription}
+                          role="status"
+                        >
+                          {signalLabel}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={6}>{signalDescription}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </span>
+            </span>
+          ) : (
+            <span className="truncate">{signalIcon} {ticker}</span>
+          )}
           <span className="shrink-0 text-muted-foreground">{catIcon}</span>
-          {signalLabel && (
+          {!displayName && signalLabel && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -94,14 +142,26 @@ export const StockCardHeader = memo(function StockCardHeader({
         <span className="flex items-center gap-2 shrink-0">
           {price != null && (
             <span className="flex flex-col items-end leading-tight">
-              <span className="text-sm font-semibold tabular-nums">
-                {currency.symbol}{formatPrice(price, currency.code)}
+              <span className="flex items-center gap-1">
+                <span className="text-sm font-semibold tabular-nums">
+                  {currency.symbol}{formatPrice(price, currency.code)}
+                </span>
+                {isMutualFund && (
+                  <span className="text-[9px] rounded px-1 py-0.5 bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-medium">
+                    {t("radar.nav_badge")}
+                  </span>
+                )}
               </span>
               {changePct != null && (
                 <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
                   {isUp ? "▲" : "▼"}{" "}
                   {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
                   ({Math.abs(changePct).toFixed(2)}%{isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
+                </span>
+              )}
+              {isMutualFund && navDate && (
+                <span className="text-[10px] text-muted-foreground">
+                  {t("radar.nav_as_of", { date: navDate })}
                 </span>
               )}
             </span>
@@ -111,8 +171,12 @@ export const StockCardHeader = memo(function StockCardHeader({
               ? <SparklineHeader data={priceHistory} />
               : <Skeleton className="h-8 w-20 shrink-0" />
           )}
-          <span className={`text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}>
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}
+            aria-label={marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}
+          >
             {marketOpen ? "●" : "○"}
+            <span>{marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}</span>
           </span>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
         </span>

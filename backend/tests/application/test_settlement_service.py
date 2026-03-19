@@ -6,13 +6,22 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from application.portfolio.account_service import remove_account
 from application.portfolio.settlement_service import verify_positions
 from application.portfolio.transaction_service import (
     create_transaction,
     remove_transaction,
 )
+from application.portfolio.wrapper_service import get_all_wrapper_quotas
 from domain.constants import DEFAULT_USER_ID, ERROR_INSUFFICIENT_BALANCE
-from domain.entities import Account, Holding, Stock, Transaction
+from domain.entities import (
+    Account,
+    ContributionLedgerEntry,
+    EligibleAsset,
+    Holding,
+    Stock,
+    Transaction,
+)
 from domain.enums import StockCategory
 
 
@@ -28,6 +37,37 @@ def _create_account(session: Session) -> Account:
     session.commit()
     session.refresh(account)
     return account
+
+
+def _create_nisa_account(session: Session, wrapper: str) -> Account:
+    account = _create_account(session)
+    account.tax_wrapper = wrapper
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+
+def _create_eligible_asset(
+    session: Session,
+    *,
+    wrapper: str,
+    ticker: str,
+    broker: str | None = None,
+    asset_type: str = "stock",
+) -> EligibleAsset:
+    item = EligibleAsset(
+        tax_wrapper=wrapper,
+        ticker=ticker,
+        fund_name=ticker,
+        asset_type=asset_type,
+        broker=broker,
+        is_active=True,
+    )
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
 
 
 def _create_cash_holding(session: Session, account_id: int, amount: float) -> Holding:
@@ -876,3 +916,525 @@ def test_verify_positions_should_detect_discrepancy(db_session: Session):
     assert discrepancies[0]["account_id"] == account.id
     assert discrepancies[0]["ticker"] == "USD"
     assert discrepancies[0]["is_cash"] is True
+
+
+def test_nisa_buy_should_reject_when_quota_exceeded(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="AAPL",
+        asset_type="mutual_fund",
+    )
+
+    # Preload near annual limit.
+    db_session.add(
+        ContributionLedgerEntry(
+            user_id=DEFAULT_USER_ID,
+            tax_wrapper="nisa_tsumitate",
+            entry_type="CONTRIBUTION",
+            fiscal_year=2026,
+            amount=1_150_000.0,
+            effective_date=date(2026, 1, 10),
+        )
+    )
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 100_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "QUOTA_EXCEEDED"
+
+
+def test_nisa_buy_should_reject_when_asset_not_eligible(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="0331418A",
+        asset_type="mutual_fund",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 1_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "ASSET_NOT_ELIGIBLE"
+    assert "eligibility.not_in_tsumitate_approved_list" in exc.value.detail["reasons"]
+    assert exc.value.detail["suggested_wrapper"] == "nisa_growth"
+
+
+def test_nisa_growth_buy_should_reject_when_not_in_growth_approved_list(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="7203.T",
+        asset_type="stock",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        create_transaction(
+            db_session,
+            {
+                "account_id": account.id,
+                "ticker": "AAPL",
+                "transaction_type": "BUY",
+                "quantity": 1,
+                "price": 100.0,
+                "total_amount": 1_000.0,
+                "currency": "USD",
+                "fee": 0.0,
+                "transaction_date": date(2026, 3, 10),
+            },
+            "en",
+        )
+
+    assert exc.value.status_code == 422
+    assert exc.value.detail["error_code"] == "ASSET_NOT_ELIGIBLE"
+    assert "eligibility.not_in_growth_approved_list" in exc.value.detail["reasons"]
+    assert exc.value.detail["suggested_wrapper"] == "tokutei"
+
+
+def test_nisa_growth_buy_should_allow_stock_ticker_not_in_approved_list(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="2558.T",
+        asset_type="etf",
+    )
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "6758.T",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "6758.T",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert created["account_id"] == account.id
+    assert holding.category == StockCategory.GROWTH
+
+
+def test_nisa_growth_buy_should_normalize_bare_4digit_ticker(
+    db_session: Session,
+):
+    """Bare 4-digit JP code (e.g. '6758') is accepted by eligibility logic.
+
+    Note: the eligibility service normalises the ticker to '6758.T' internally,
+    but create_transaction stores whatever ticker string was passed in.  The
+    holding query therefore accepts both forms.
+    """
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="2558.T",
+        asset_type="etf",
+    )
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "6758",
+            "transaction_type": "BUY",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.is_cash == False,  # noqa: E712
+            Holding.ticker.in_(["6758", "6758.T"]),  # type: ignore[union-attr]
+        )
+    ).first()
+    assert created["account_id"] == account.id
+    assert holding is not None
+
+
+def test_nisa_tsumitate_buy_should_force_mutual_fund_category(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_tsumitate")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_tsumitate",
+        ticker="0331418A",
+        asset_type="mutual_fund",
+    )
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "0331418A",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "category": "Growth",
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    stock_holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "0331418A",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert stock_holding.category == StockCategory.MUTUAL_FUND
+
+
+def test_nisa_growth_buy_should_force_mutual_fund_category_for_mutual_fund_asset(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 2_000_000.0)
+    _create_eligible_asset(
+        db_session,
+        wrapper="nisa_growth",
+        ticker="01312179",
+        asset_type="mutual_fund",
+    )
+
+    create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "01312179",
+            "transaction_type": "BUY",
+            "quantity": 10,
+            "price": 100.0,
+            "total_amount": 1_000.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "category": "Growth",
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+
+    stock_holding = db_session.exec(
+        select(Holding).where(
+            Holding.account_id == account.id,
+            Holding.ticker == "01312179",
+            Holding.is_cash == False,  # noqa: E712
+        )
+    ).one()
+    assert stock_holding.category == StockCategory.MUTUAL_FUND
+
+
+def test_nisa_buy_and_sell_should_record_contribution_and_restoration(
+    db_session: Session,
+):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 10_000.0)
+
+    created_buy = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+    created_sell = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "SELL",
+            "quantity": 1,
+            "price": 100.0,
+            "total_amount": 100.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 11),
+        },
+        "en",
+    )
+
+    entries = db_session.exec(
+        select(ContributionLedgerEntry).order_by(ContributionLedgerEntry.id)
+    ).all()
+    assert len(entries) == 2
+    assert entries[0].entry_type == "CONTRIBUTION"
+    assert entries[0].transaction_id == created_buy["id"]
+    assert entries[0].amount == 200.0
+    assert entries[1].entry_type == "RESTORATION"
+    assert entries[1].transaction_id == created_sell["id"]
+    assert entries[1].amount == -100.0
+
+
+def test_remove_account_should_delete_nisa_ledger_entries(db_session: Session):
+    account = _create_nisa_account(db_session, "nisa_growth")
+    _create_cash_holding(db_session, account.id, 10_000.0)
+
+    created = create_transaction(
+        db_session,
+        {
+            "account_id": account.id,
+            "ticker": "AAPL",
+            "transaction_type": "BUY",
+            "quantity": 2,
+            "price": 100.0,
+            "total_amount": 200.0,
+            "currency": "USD",
+            "fee": 0.0,
+            "transaction_date": date(2026, 3, 10),
+        },
+        "en",
+    )
+    assert created["id"] is not None
+
+    entries_before = db_session.exec(select(ContributionLedgerEntry)).all()
+    assert len(entries_before) == 1
+    quotas_before = get_all_wrapper_quotas(
+        db_session,
+        user_id=DEFAULT_USER_ID,
+        year=2026,
+        as_of=date(2026, 3, 10),
+    )
+    assert quotas_before["nisa_growth"]["wrapper_annual_used"] > 0
+
+    remove_account(db_session, account.id, "en")
+
+    entries_after = db_session.exec(select(ContributionLedgerEntry)).all()
+    transactions_after = db_session.exec(
+        select(Transaction).where(Transaction.account_id == account.id)
+    ).all()
+    holdings_after = db_session.exec(
+        select(Holding).where(Holding.account_id == account.id)
+    ).all()
+    assert entries_after == []
+    assert transactions_after == []
+    assert holdings_after == []
+    quotas_after = get_all_wrapper_quotas(
+        db_session,
+        user_id=DEFAULT_USER_ID,
+        year=2026,
+        as_of=date(2026, 3, 10),
+    )
+    assert quotas_after["nisa_growth"]["wrapper_annual_used"] == 0
+
+
+# ---------------------------------------------------------------------------
+# reclassify_mutual_fund_holdings
+# ---------------------------------------------------------------------------
+
+
+class TestReclassifyMutualFundHoldings:
+    def test_reclassifies_growth_holdings_matching_eligible_fund(
+        self, db_session: Session
+    ):
+        from application.portfolio.settlement_service import (
+            reclassify_mutual_fund_holdings,
+        )
+
+        account = _create_account(db_session)
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                quantity=100,
+                account_id=account.id,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                quantity=10,
+                account_id=account.id,
+                currency="USD",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_holdings(db_session)
+
+        assert updated == 1
+        holdings = db_session.exec(
+            select(Holding).where(Holding.ticker == "0131217A")
+        ).all()
+        assert all(h.category == StockCategory.MUTUAL_FUND for h in holdings)
+        aapl = db_session.exec(select(Holding).where(Holding.ticker == "AAPL")).first()
+        assert aapl is not None
+        assert aapl.category == StockCategory.GROWTH
+
+    def test_skips_holdings_already_mutual_fund(self, db_session: Session):
+        from application.portfolio.settlement_service import (
+            reclassify_mutual_fund_holdings,
+        )
+
+        account = _create_account(db_session)
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=account.id,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_holdings(db_session)
+
+        assert updated == 0
+
+
+# ---------------------------------------------------------------------------
+# _infer_category eligible fund fallback
+# ---------------------------------------------------------------------------
+
+
+class TestInferCategoryEligibleFund:
+    def test_infers_mutual_fund_from_eligible_master(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="01313139",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        result = _infer_category(db_session, {"ticker": "01313139"})
+
+        assert result == StockCategory.MUTUAL_FUND
+
+    def test_prefers_radar_stock_over_eligible_master(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        db_session.add(
+            Stock(
+                ticker="01313139",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            )
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="01313139",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        result = _infer_category(db_session, {"ticker": "01313139"})
+
+        assert result == StockCategory.GROWTH
+
+    def test_falls_back_to_payload_when_no_match(self, db_session: Session):
+        from application.portfolio.settlement_service import _infer_category
+
+        result = _infer_category(db_session, {"ticker": "UNKNOWN", "category": "Bond"})
+
+        assert result == StockCategory.BOND

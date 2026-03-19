@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CATEGORY_ICON_SHORT, RADAR_CATEGORIES } from "@/lib/constants"
+import { inferMarket } from "@/lib/market"
 import { StockCard } from "./StockCard"
 import { ReorderSection } from "./ReorderSection"
 import { ArchiveTab } from "./ArchiveTab"
@@ -17,13 +18,6 @@ interface Props {
   heldTickers: Set<string>
   activeCategory?: StockCategory | "archive"
   onCategoryChange?: (category: StockCategory | "archive") => void
-}
-
-function inferMarket(ticker: string): string {
-  if (ticker.endsWith(".T")) return "JP"
-  if (ticker.endsWith(".TW")) return "TW"
-  if (ticker.endsWith(".HK")) return "HK"
-  return "US"
 }
 
 export function CategoryTabs({
@@ -45,7 +39,7 @@ export function CategoryTabs({
 
   // Derive available markets from active stocks
   const markets = useMemo(() => {
-    const set = new Set(allActiveStocks.map((s) => inferMarket(s.ticker)))
+    const set = new Set(allActiveStocks.map((s) => inferMarket(s.ticker, s.category)))
     return ["ALL", ...Array.from(set).sort()]
   }, [allActiveStocks])
 
@@ -54,7 +48,7 @@ export function CategoryTabs({
     () =>
       selectedMarket === "ALL"
         ? activeStocks
-        : activeStocks.filter((s) => inferMarket(s.ticker) === selectedMarket),
+        : activeStocks.filter((s) => inferMarket(s.ticker, s.category) === selectedMarket),
     [activeStocks, selectedMarket],
   )
 
@@ -62,7 +56,7 @@ export function CategoryTabs({
     () =>
       selectedMarket === "ALL"
         ? allActiveStocks
-        : allActiveStocks.filter((s) => inferMarket(s.ticker) === selectedMarket),
+        : allActiveStocks.filter((s) => inferMarket(s.ticker, s.category) === selectedMarket),
     [allActiveStocks, selectedMarket],
   )
 
@@ -77,6 +71,7 @@ export function CategoryTabs({
     Trend_Setter: "radar.tab.trend_setter",
     Moat: "radar.tab.moat",
     Growth: "radar.tab.growth",
+    Mutual_Fund: "radar.tab.mutual_fund",
     Bond: "radar.tab.bond",
     Crypto: "radar.tab.crypto",
   }

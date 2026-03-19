@@ -1,17 +1,28 @@
-import { useMemo, useState } from "react"
-import { Building2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { useAccountCashBalances, useAccounts } from "@/api/hooks/useAccounts"
+import client from "@/api/client"
+import { useAccountCashBalances, useAccountSellablePositions, useAccounts } from "@/api/hooks/useAccounts"
+import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
+import { EligibilityBadge } from "@/components/common/EligibilityBadge"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
-import { CATEGORY_ICON_SHORT, DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
-import { getErrorMessage } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { useCommandListScrollFix } from "@/hooks/useCommandListScrollFix"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { DISPLAY_CURRENCIES, STOCK_CATEGORIES } from "@/lib/constants"
+import { cn, getErrorMessage } from "@/lib/utils"
 
 interface Props {
   open: boolean
@@ -27,6 +38,7 @@ interface Props {
 
 export type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
 type StockCategory = (typeof STOCK_CATEGORIES)[number]
+const ELIGIBILITY_CHECK_WRAPPERS = new Set(["nisa_tsumitate", "nisa_growth", "ideco"])
 
 interface FieldErrors {
   account?: string
@@ -37,6 +49,24 @@ interface FieldErrors {
   transactionDate?: string
   fxRate?: string
   fee?: string
+}
+
+type NisaEligibleAssetItem = {
+  ticker: string
+  fund_name?: string | null
+  asset_type?: string | null
+  trust_fee_pct?: number | null
+}
+
+type SellablePositionItem = {
+  ticker: string
+  fund_name: string
+  quantity: number
+  cost_basis?: number | null
+  current_price?: number | null
+  market_value?: number | null
+  currency: string
+  value_source?: "live_price" | "cost_basis" | "unavailable"
 }
 
 function todayISO(): string {
@@ -59,6 +89,7 @@ export function AddTransactionSheet({
   onOpenAccounts,
 }: Props) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const addTransactionMutation = useAddTransaction()
   const { data: holdings } = useHoldings()
   const { data: radarStocks, isLoading: isRadarStocksLoading } = useRadarStocks()
@@ -91,12 +122,28 @@ export function AddTransactionSheet({
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [insufficientBalance, setInsufficientBalance] = useState<{ available: number; required: number } | null>(null)
+  const [splitSubmitting, setSplitSubmitting] = useState(false)
+  const [nisaPickerOpen, setNisaPickerOpen] = useState(false)
+  const [nisaPickerSearch, setNisaPickerSearch] = useState("")
+  const [nisaAssetTypeFilter, setNisaAssetTypeFilter] = useState<"all" | "mutual_fund" | "etf" | "stock" | "reit">("all")
+  const [cachedSelectedNisaAsset, setCachedSelectedNisaAsset] = useState<NisaEligibleAssetItem | null>(null)
+  const [sellPickerOpen, setSellPickerOpen] = useState(false)
+  const [sellPickerSearch, setSellPickerSearch] = useState("")
+  const [cachedSelectedSellablePosition, setCachedSelectedSellablePosition] = useState<SellablePositionItem | null>(null)
+  const isMobile = useIsMobile()
+  const commandListScrollFix = useCommandListScrollFix()
+  const debouncedTicker = useDebouncedValue(ticker, 400)
+  const debouncedNisaPickerSearch = useDebouncedValue(nisaPickerSearch, 300)
 
   const selectedAccountId = accountId ? Number(accountId) : null
   const { data: cashBalances } = useAccountCashBalances(selectedAccountId, open)
   const selectedCurrencyCashBalance =
     (cashBalances ?? []).find((balance) => balance.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
+  const selectedWrapper =
+    typeof selectedAccount?.tax_wrapper === "string"
+      ? selectedAccount.tax_wrapper.trim().toLowerCase()
+      : ""
   const hasNoAccounts = (accounts ?? []).length === 0
   const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
   const isNewToRadar = useMemo(() => {
@@ -107,6 +154,208 @@ export function AddTransactionSheet({
     return !(radarStocks ?? []).some((stock) => stock.ticker.toUpperCase() === normalizedTicker)
   }, [isCashMovement, isRadarStocksLoading, radarStocks, ticker])
   const requiresAccount = true
+  const shouldCheckEligibility =
+    open &&
+    transactionType === "BUY" &&
+    !isCashMovement &&
+    ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) &&
+    !!debouncedTicker.trim()
+  const shouldSuggestRouting =
+    open &&
+    transactionType === "BUY" &&
+    !isCashMovement &&
+    !!debouncedTicker.trim() &&
+    !!totalAmount &&
+    Number(totalAmount) > 0
+  const shouldShowNisaPicker =
+    open &&
+    transactionType === "BUY" &&
+    !isCashMovement &&
+    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+  const shouldShowSellPicker =
+    open &&
+    (transactionType === "SELL" || transactionType === "DIVIDEND") &&
+    !isCashMovement &&
+    selectedAccountId != null
+  // Stocks are never in the curated eligible list → always free-text.
+  const nisaStockFreeInput =
+    shouldShowNisaPicker && selectedWrapper === "nisa_growth" && nisaAssetTypeFilter === "stock"
+  const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
+    search: debouncedNisaPickerSearch || undefined,
+    assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
+    limit: 50,
+    // Stock mode never queries (no curated list); REIT queries so we can
+    // detect whether curated REIT data exists and show picker vs free-text.
+    enabled: shouldShowNisaPicker && !nisaStockFreeInput,
+  })
+  // REIT: hybrid — show picker when curated data exists, free-text fallback
+  // only after the query resolves empty (avoids premature free-text flash).
+  const nisaReitFreeInput =
+    shouldShowNisaPicker &&
+    selectedWrapper === "nisa_growth" &&
+    nisaAssetTypeFilter === "reit" &&
+    nisaEligibleAssetsQuery.isFetched &&
+    (nisaEligibleAssetsQuery.data?.items?.length ?? 0) === 0
+  const nisaFreeTickerInput = nisaStockFreeInput || nisaReitFreeInput
+  const sellablePositionsQuery = useAccountSellablePositions(selectedAccountId, shouldShowSellPicker)
+  const filteredSellablePositions = useMemo(() => {
+    const keyword = sellPickerSearch.trim().toLowerCase()
+    const rows = (sellablePositionsQuery.data ?? []) as SellablePositionItem[]
+    if (!keyword) return rows
+    return rows.filter((item) => {
+      const ticker = item.ticker.toLowerCase()
+      const fundName = (item.fund_name || "").toLowerCase()
+      return ticker.includes(keyword) || fundName.includes(keyword)
+    })
+  }, [sellPickerSearch, sellablePositionsQuery.data])
+  const selectedSellablePosition = useMemo(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) return null
+    return ((sellablePositionsQuery.data ?? []) as SellablePositionItem[]).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    ) ?? null
+  }, [ticker, sellablePositionsQuery.data])
+  const selectedSellablePositionForDisplay = selectedSellablePosition ?? cachedSelectedSellablePosition
+  const getSellValueSourceLabel = (
+    valueSource?: SellablePositionItem["value_source"],
+  ): string | null => {
+    if (!valueSource || valueSource === "live_price") return null
+    if (valueSource === "cost_basis") return t("transactions.sell_picker.value_source_cost_basis")
+    return t("transactions.sell_picker.value_source_unavailable")
+  }
+  const selectedNisaAsset = useMemo(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) return null
+    return (nisaEligibleAssetsQuery.data?.items ?? []).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    ) ?? null
+  }, [ticker, nisaEligibleAssetsQuery.data?.items])
+  const selectedNisaAssetForDisplay = selectedNisaAsset ?? cachedSelectedNisaAsset
+  const routingSuggestionQuery = useSuggestRouting(
+    debouncedTicker,
+    Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : null,
+    shouldSuggestRouting,
+  )
+  const eligibilityQuery = useWrapperEligibility(
+    selectedWrapper || undefined,
+    debouncedTicker,
+    selectedAccount?.broker || undefined,
+    shouldCheckEligibility,
+  )
+  const eligibility = eligibilityQuery.data
+  const shouldShowQuotaSummary =
+    open &&
+    transactionType === "BUY" &&
+    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+  const wrapperQuotaQuery = useWrapperQuota(shouldShowQuotaSummary)
+  const selectedQuota = shouldShowQuotaSummary ? wrapperQuotaQuery.data?.quotas?.[selectedWrapper] : undefined
+  const forcedCategory = useMemo<StockCategory | null>(() => {
+    if (selectedWrapper === "nisa_tsumitate") return "Mutual_Fund"
+    if (eligibility?.asset_type === "mutual_fund") return "Mutual_Fund"
+    return null
+  }, [eligibility?.asset_type, selectedWrapper])
+  const suggestedAccount = useMemo(() => {
+    const suggestedWrapper = eligibility?.suggested_wrapper
+    if (!suggestedWrapper) return null
+    return (accounts ?? []).find((account) => {
+      if (account.id == null || account.id === selectedAccountId) return false
+      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      return wrapper === suggestedWrapper
+    })
+  }, [accounts, eligibility?.suggested_wrapper, selectedAccountId])
+  const routingSuggestedAccounts = useMemo(() => {
+    const byWrapper = new Map<string, { id: number; currency: string }>()
+    for (const account of accounts ?? []) {
+      if (account.id == null) continue
+      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      if (!wrapper || byWrapper.has(wrapper)) continue
+      byWrapper.set(wrapper, {
+        id: account.id,
+        currency: (account.currency || "USD").toUpperCase(),
+      })
+    }
+    return byWrapper
+  }, [accounts])
+  const splitRoutingPlan = useMemo(() => {
+    const suggestions = routingSuggestionQuery.data?.suggestions ?? []
+    return suggestions
+      .map((item) => ({
+        wrapper: item.wrapper,
+        amount: Number(item.amount),
+        account: routingSuggestedAccounts.get(item.wrapper) ?? null,
+      }))
+      .filter((item) => item.amount > 0)
+  }, [routingSuggestionQuery.data?.suggestions, routingSuggestedAccounts])
+  const canSplitPurchase =
+    transactionType === "BUY" &&
+    splitRoutingPlan.length >= 2 &&
+    splitRoutingPlan.every((item) => item.account != null)
+  const previousNisaFreeTickerInput = useRef(nisaFreeTickerInput)
+
+  useEffect(() => {
+    if (!open || isCashMovement || !isNewToRadar || !forcedCategory) return
+    setCategory((prev) => (prev === forcedCategory ? prev : forcedCategory))
+  }, [forcedCategory, isCashMovement, isNewToRadar, open])
+  useEffect(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) {
+      setCachedSelectedNisaAsset(null)
+      return
+    }
+
+    const matched = (nisaEligibleAssetsQuery.data?.items ?? []).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    )
+    if (!matched) return
+
+    setCachedSelectedNisaAsset((prev) => {
+      if (
+        prev?.ticker.toUpperCase() === matched.ticker.toUpperCase() &&
+        prev?.fund_name === matched.fund_name &&
+        prev?.trust_fee_pct === matched.trust_fee_pct
+      ) {
+        return prev
+      }
+      return matched
+    })
+  }, [ticker, nisaEligibleAssetsQuery.data?.items])
+  useEffect(() => {
+    if (selectedWrapper !== "nisa_growth") {
+      setNisaAssetTypeFilter("all")
+    }
+  }, [selectedWrapper])
+  useEffect(() => {
+    if (previousNisaFreeTickerInput.current === nisaFreeTickerInput) return
+    previousNisaFreeTickerInput.current = nisaFreeTickerInput
+    setTicker("")
+    setCachedSelectedNisaAsset(null)
+    setNisaPickerSearch("")
+    setNisaPickerOpen(false)
+    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+    setInsufficientBalance(null)
+  }, [nisaFreeTickerInput])
+  useEffect(() => {
+    const normalizedTicker = ticker.trim().toUpperCase()
+    if (!normalizedTicker) {
+      setCachedSelectedSellablePosition(null)
+      return
+    }
+    const matched = ((sellablePositionsQuery.data ?? []) as SellablePositionItem[]).find(
+      (item) => item.ticker.toUpperCase() === normalizedTicker,
+    )
+    if (!matched) return
+    setCachedSelectedSellablePosition((prev) => {
+      if (
+        prev?.ticker.toUpperCase() === matched.ticker.toUpperCase() &&
+        prev?.fund_name === matched.fund_name &&
+        prev?.quantity === matched.quantity &&
+        prev?.market_value === matched.market_value
+      ) {
+        return prev
+      }
+      return matched
+    })
+  }, [ticker, sellablePositionsQuery.data])
 
   const holdingOptions = useMemo(
     () =>
@@ -144,6 +393,13 @@ export function AddTransactionSheet({
     setMoreOptionsOpen(false)
     setFieldErrors({})
     setInsufficientBalance(null)
+    setNisaPickerOpen(false)
+    setNisaPickerSearch("")
+    setNisaAssetTypeFilter("all")
+    setCachedSelectedNisaAsset(null)
+    setSellPickerOpen(false)
+    setSellPickerSearch("")
+    setCachedSelectedSellablePosition(null)
   }
 
   const applyCashMovementDefaults = (nextCurrency: string) => {
@@ -176,6 +432,12 @@ export function AddTransactionSheet({
     if (!isCashMovement && !ticker.trim()) nextErrors.ticker = t("transactions.form.error_ticker")
     if (!isCashMovement && (!quantity || Number.isNaN(quantityNum) || quantityNum <= 0)) {
       nextErrors.quantity = t("transactions.form.error_quantity")
+    }
+    if (!isCashMovement && shouldShowSellPicker && selectedSellablePosition && quantityNum > selectedSellablePosition.quantity) {
+      nextErrors.quantity = t("transaction.insufficient_shares", {
+        available: selectedSellablePosition.quantity,
+        required: quantityNum,
+      })
     }
     if (!isCashMovement && price && (Number.isNaN(priceNum) || priceNum < 0)) {
       nextErrors.price = t("transactions.form.error_price")
@@ -215,6 +477,147 @@ export function AddTransactionSheet({
     return { available, required }
   }
 
+  const parseEligibilityError = (err: unknown): { reasons: string[]; suggestedWrapper?: string } | null => {
+    const detail =
+      err && typeof err === "object" && "detail" in err
+        ? (err as { detail?: unknown }).detail
+        : null
+    if (!detail || typeof detail !== "object") return null
+    const errorCode = "error_code" in detail ? (detail as { error_code?: unknown }).error_code : null
+    if (errorCode !== "ASSET_NOT_ELIGIBLE") return null
+
+    const reasons =
+      "reasons" in detail && Array.isArray((detail as { reasons?: unknown }).reasons)
+        ? ((detail as { reasons: unknown[] }).reasons.filter((r) => typeof r === "string") as string[])
+        : []
+    const suggestedWrapper =
+      "suggested_wrapper" in detail && typeof (detail as { suggested_wrapper?: unknown }).suggested_wrapper === "string"
+        ? (detail as { suggested_wrapper: string }).suggested_wrapper
+        : undefined
+    return { reasons, suggestedWrapper }
+  }
+
+  const invalidateTransactionQueries = () => {
+    const keys = [
+      ["transactions"],
+      ["holdings"],
+      ["rebalance"],
+      ["drawdown"],
+      ["risk-metrics"],
+      ["currency-exposure"],
+      ["stress-test"],
+      ["snapshots"],
+      ["account-cash-balances"],
+      ["accounts"],
+      ["account-summary"],
+      ["account-positions"],
+      ["account-transactions"],
+      ["account-sellable-positions"],
+      ["stocks"],
+      ["wrapper-quota"],
+      ["wrapper-restoration"],
+    ]
+    keys.forEach((queryKey) => {
+      queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+    })
+  }
+
+  const createSplitTransactions = async () => {
+    if (!canSplitPurchase) return
+    if (!validate()) return
+    if (shouldCheckEligibility && eligibility && !eligibility.eligible) {
+      toast.error(t("eligibility.not_eligible"))
+      return
+    }
+
+    const totalAmountNumber = Number(totalAmount)
+    const quantityNumber = Number(quantity)
+    const feeNumber = Number(fee || "0")
+    if (!Number.isFinite(totalAmountNumber) || totalAmountNumber <= 0) return
+    if (!Number.isFinite(quantityNumber) || quantityNumber <= 0) return
+
+    const normalizedTicker = ticker.trim().toUpperCase()
+    let remainingAmount = totalAmountNumber
+    let remainingQuantity = quantityNumber
+    let remainingFee = feeNumber
+
+    const payloads = splitRoutingPlan.map((item, index) => {
+      const isLast = index === splitRoutingPlan.length - 1
+      const ratio = totalAmountNumber > 0 ? item.amount / totalAmountNumber : 0
+      const splitAmount = isLast ? remainingAmount : Number(item.amount.toFixed(2))
+      const splitQuantity = isLast
+        ? Number(remainingQuantity.toFixed(6))
+        : Number((quantityNumber * ratio).toFixed(6))
+      const splitFee = isLast ? remainingFee : Number((feeNumber * ratio).toFixed(2))
+      remainingAmount = Number((remainingAmount - splitAmount).toFixed(2))
+      remainingQuantity = Number((remainingQuantity - splitQuantity).toFixed(6))
+      remainingFee = Number((remainingFee - splitFee).toFixed(2))
+      const account = item.account
+      return {
+        account_id: account ? account.id : Number(accountId),
+        holding_id: holdingId ? Number(holdingId) : undefined,
+        ticker: normalizedTicker,
+        transaction_type: "BUY" as const,
+        quantity: splitQuantity,
+        price: price ? Number(price) : undefined,
+        total_amount: splitAmount,
+        currency: account ? account.currency : currency,
+        fx_rate: fxRate ? Number(fxRate) : undefined,
+        fee: splitFee,
+        note: note.trim(),
+        thesis: thesis.trim() || undefined,
+        category: isNewToRadar ? category : undefined,
+        transaction_date: transactionDate,
+      }
+    })
+
+    setSplitSubmitting(true)
+    const createdTransactionIds: number[] = []
+    try {
+      for (const payload of payloads) {
+        const created = await addTransactionMutation.mutateAsync(payload)
+        if (created.id != null) {
+          createdTransactionIds.push(Number(created.id))
+        }
+      }
+      invalidateTransactionQueries()
+      toast.success(t("smart_actions.split_success", { count: payloads.length }))
+      resetForm({ keepDefaultTicker: true, keepDefaultHoldingId: true })
+      onClose()
+    } catch (err) {
+      if (createdTransactionIds.length > 0) {
+        for (const txnId of [...createdTransactionIds].reverse()) {
+          const { error } = await client.DELETE("/transactions/{txn_id}", {
+            params: { path: { txn_id: txnId } },
+          })
+          if (error) {
+            toast.error(t("smart_actions.split_rollback_failed"))
+            break
+          }
+        }
+        invalidateTransactionQueries()
+      }
+      const insufficient = parseInsufficientBalance(err)
+      if (insufficient) {
+        setInsufficientBalance(insufficient)
+        return
+      }
+      const eligibilityError = parseEligibilityError(err)
+      if (eligibilityError) {
+        const reasonText = eligibilityError.reasons.length
+          ? t(eligibilityError.reasons[0], {
+              defaultValue: eligibilityError.reasons[0],
+            })
+          : t("eligibility.not_eligible")
+        toast.error(reasonText)
+        return
+      }
+      toast.error(getErrorMessage(err) || t("common.error"))
+    } finally {
+      setSplitSubmitting(false)
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <SheetContent side="right" className="w-80 sm:w-96 overflow-y-auto">
@@ -246,6 +649,7 @@ export function AddTransactionSheet({
               value={accountId}
               onChange={(event) => {
                 setAccountId(event.target.value)
+                setCachedSelectedSellablePosition(null)
                 const nextAccountId = Number(event.target.value)
                 const account = (accounts ?? []).find((item) => item.id === nextAccountId)
                 if (account?.currency) {
@@ -273,6 +677,24 @@ export function AddTransactionSheet({
                     maximumFractionDigits: 2,
                   }),
                 })}
+              </p>
+            ) : null}
+            {shouldShowQuotaSummary ? (
+              <p className="text-[11px] text-muted-foreground">
+                {wrapperQuotaQuery.isLoading
+                  ? t("common.loading")
+                  : selectedQuota
+                    ? t("transactions.form.nisa_quota_summary", {
+                        wrapper: t(`wrapper.${selectedWrapper}`),
+                        remaining: selectedQuota.wrapper_annual_remaining.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        }),
+                        annual: (selectedQuota.wrapper_annual_used + selectedQuota.wrapper_annual_remaining).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 0 },
+                        ),
+                      })
+                    : t("transactions.form.nisa_quota_unavailable")}
               </p>
             ) : null}
             {transactionType === "BUY" && hasNoAccounts ? (
@@ -353,6 +775,8 @@ export function AddTransactionSheet({
                   type="button"
                   onClick={() => {
                     setTransactionType(type)
+                    setSellPickerOpen(false)
+                    setSellPickerSearch("")
                     setInsufficientBalance(null)
                     setFieldErrors({})
                     if (type === "DEPOSIT" || type === "WITHDRAWAL") {
@@ -374,16 +798,456 @@ export function AddTransactionSheet({
           {!isCashMovement ? (
             <div className="space-y-1">
               <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
-              <Input
-                value={ticker}
-                aria-label={t("transactions.form.ticker")}
-                onChange={(event) => {
-                  setTicker(event.target.value.toUpperCase())
-                  setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
-                }}
-                placeholder="e.g. AAPL"
-                className="text-xs"
-              />
+              {shouldShowNisaPicker && selectedWrapper === "nisa_growth" ? (
+                <div className="flex flex-wrap gap-1 pb-1">
+                  {(["all", "mutual_fund", "etf", "stock", "reit"] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setNisaAssetTypeFilter(type)}
+                      className={cn(
+                        "rounded-full border px-2 py-1 text-[11px] leading-none",
+                        nisaAssetTypeFilter === type
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted/40",
+                      )}
+                    >
+                      {type === "all" ? t("nisa.eligible.filter_all") : t(`nisa.eligible.asset_type.${type}`)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {nisaFreeTickerInput ? (
+                <>
+                  <Input
+                    value={ticker}
+                    aria-label={t("transactions.form.ticker")}
+                    onChange={(event) => {
+                      // NFKC converts full-width JP digits to ASCII (e.g. ８９５１ → 8951)
+                      setTicker(event.target.value.normalize("NFKC").toUpperCase())
+                      setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                      setInsufficientBalance(null)
+                    }}
+                    onBlur={() => {
+                      // Bare 4-digit JP code → canonical XXXX.T (mirrors backend _normalize_tse_ticker)
+                      if (/^\d{4}$/.test(ticker)) {
+                        setTicker(`${ticker}.T`)
+                      }
+                    }}
+                    placeholder="e.g. 7203.T"
+                    className="text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">{t("nisa.eligible.listed_input_hint")}</p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                    {t("nisa.eligible.listed_eligibility_disclaimer")}
+                  </p>
+                </>
+              ) : shouldShowNisaPicker ? (
+                <Popover
+                  open={nisaPickerOpen}
+                  onOpenChange={(nextOpen) => {
+                    setNisaPickerOpen(nextOpen)
+                    if (nextOpen) {
+                      setNisaPickerSearch("")
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={nisaPickerOpen}
+                      className="h-auto min-h-9 w-full justify-between py-1.5 text-xs"
+                    >
+                      <span className="min-w-0 text-left">
+                        {selectedNisaAssetForDisplay ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex flex-col leading-tight">
+                                  <span className="truncate font-medium text-xs">
+                                    {selectedNisaAssetForDisplay.fund_name || selectedNisaAssetForDisplay.ticker}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <span>
+                                      {selectedNisaAssetForDisplay.ticker}
+                                      {selectedNisaAssetForDisplay.trust_fee_pct != null
+                                        ? ` · ${t("eligibility.nisa_trust_fee_label")}: ${selectedNisaAssetForDisplay.trust_fee_pct.toFixed(3)}%`
+                                        : ""}
+                                    </span>
+                                    {selectedWrapper === "nisa_growth" && selectedNisaAssetForDisplay.asset_type ? (
+                                      <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                                        {t(`nisa.eligible.asset_type.${selectedNisaAssetForDisplay.asset_type}`)}
+                                      </Badge>
+                                    ) : null}
+                                  </span>
+                                </span>
+                              </TooltipTrigger>
+                              {selectedNisaAssetForDisplay.fund_name ? (
+                                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                                  {selectedNisaAssetForDisplay.fund_name}
+                                </TooltipContent>
+                              ) : null}
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : ticker.trim() ? (
+                          <span className="truncate">{ticker.trim().toUpperCase()}</span>
+                        ) : (
+                          t("eligibility.nisa_picker_placeholder")
+                        )}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[360px] max-w-[calc(100vw-2rem)] p-0"
+                    align="start"
+                    onOpenAutoFocus={(event) => {
+                      if (isMobile) event.preventDefault()
+                    }}
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        value={nisaPickerSearch}
+                        onValueChange={setNisaPickerSearch}
+                        placeholder={t("eligibility.nisa_picker_search")}
+                      />
+                      <CommandList {...commandListScrollFix}>
+                        {nisaEligibleAssetsQuery.isLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            {t("eligibility.nisa_picker_loading")}
+                          </div>
+                        ) : (
+                          <>
+                            <CommandEmpty>{t("eligibility.nisa_picker_empty")}</CommandEmpty>
+                            <CommandGroup>
+                              {(nisaEligibleAssetsQuery.data?.items ?? []).map((item) => (
+                                <CommandItem
+                                  key={`${item.ticker}-${item.fund_name}`}
+                                  value={`${item.ticker} ${item.fund_name}`}
+                                  onSelect={() => {
+                                    setTicker(item.ticker.toUpperCase())
+                                    setCachedSelectedNisaAsset(item)
+                                    setNisaPickerSearch("")
+                                    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                                    setInsufficientBalance(null)
+                                    setNisaPickerOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4",
+                                      ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-xs font-medium">
+                                            {item.fund_name || item.ticker}
+                                          </p>
+                                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <span>
+                                              {item.ticker}
+                                              {item.trust_fee_pct != null
+                                                ? ` · ${t("eligibility.nisa_trust_fee_label")}: ${item.trust_fee_pct.toFixed(3)}%`
+                                                : ""}
+                                            </span>
+                                            {selectedWrapper === "nisa_growth" && item.asset_type ? (
+                                              <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                                                {t(`nisa.eligible.asset_type.${item.asset_type}`)}
+                                              </Badge>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      </TooltipTrigger>
+                                      {item.fund_name ? (
+                                        <TooltipContent side="right" className="max-w-xs text-xs">
+                                          {item.fund_name}
+                                        </TooltipContent>
+                                      ) : null}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                      {!nisaEligibleAssetsQuery.isLoading && (nisaEligibleAssetsQuery.data?.items?.length ?? 0) > 0 ? (
+                        <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+                          {t("eligibility.nisa_picker_limit_hint")}
+                        </p>
+                      ) : null}
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              ) : shouldShowSellPicker ? (
+                <Popover
+                  open={sellPickerOpen}
+                  onOpenChange={(nextOpen) => {
+                    setSellPickerOpen(nextOpen)
+                    if (nextOpen) {
+                      setSellPickerSearch("")
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={sellPickerOpen}
+                      className="h-auto min-h-9 w-full justify-between py-1.5 text-xs"
+                    >
+                      <span className="min-w-0 text-left">
+                        {selectedSellablePositionForDisplay ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex flex-col leading-tight">
+                                  <span className="truncate font-medium text-xs">
+                                    {selectedSellablePositionForDisplay.fund_name || selectedSellablePositionForDisplay.ticker}
+                                  </span>
+                                  <span className="truncate text-[11px] text-muted-foreground">
+                                    {selectedSellablePositionForDisplay.ticker} · {selectedSellablePositionForDisplay.quantity.toLocaleString()}
+                                  </span>
+                                  {getSellValueSourceLabel(selectedSellablePositionForDisplay.value_source) ? (
+                                    <span
+                                      className={cn(
+                                        "truncate text-[10px] mt-0.5",
+                                        selectedSellablePositionForDisplay.value_source === "cost_basis"
+                                          ? "text-amber-500"
+                                          : "text-muted-foreground",
+                                      )}
+                                    >
+                                      {getSellValueSourceLabel(selectedSellablePositionForDisplay.value_source)}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </TooltipTrigger>
+                              {selectedSellablePositionForDisplay.fund_name ? (
+                                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                                  {selectedSellablePositionForDisplay.fund_name}
+                                </TooltipContent>
+                              ) : null}
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : ticker.trim() ? (
+                          <span className="truncate">{ticker.trim().toUpperCase()}</span>
+                        ) : transactionType === "DIVIDEND" ? (
+                          t("transactions.sell_picker.placeholder_dividend")
+                        ) : (
+                          t("transactions.sell_picker.placeholder")
+                        )}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[360px] max-w-[calc(100vw-2rem)] p-0"
+                    align="start"
+                    onOpenAutoFocus={(event) => {
+                      if (isMobile) event.preventDefault()
+                    }}
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        value={sellPickerSearch}
+                        onValueChange={setSellPickerSearch}
+                        placeholder={t("transactions.sell_picker.search")}
+                      />
+                      <CommandList {...commandListScrollFix}>
+                        {sellablePositionsQuery.isLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            {t("transactions.sell_picker.loading")}
+                          </div>
+                        ) : sellablePositionsQuery.isError ? (
+                          <div className="px-3 py-4 text-xs text-destructive">
+                            {t("transactions.sell_picker.load_error")}
+                          </div>
+                        ) : (
+                          <>
+                            <CommandEmpty>{t("transactions.sell_picker.empty")}</CommandEmpty>
+                            <CommandGroup>
+                              {filteredSellablePositions.map((item) => (
+                                <CommandItem
+                                  key={item.ticker}
+                                  value={`${item.ticker} ${item.fund_name}`}
+                                  onSelect={() => {
+                                    setTicker(item.ticker.toUpperCase())
+                                    setCachedSelectedSellablePosition(item)
+                                    setSellPickerSearch("")
+                                    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                                    setInsufficientBalance(null)
+                                    setSellPickerOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4",
+                                      ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-xs font-medium">
+                                            {item.fund_name || item.ticker}
+                                          </p>
+                                          <p className="truncate text-[11px] text-muted-foreground">
+                                            {item.ticker} · {item.quantity.toLocaleString()} ·{" "}
+                                            {item.market_value != null
+                                              ? `${item.currency} ${item.market_value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                                              : t("transactions.sell_picker.price_unavailable")}
+                                          </p>
+                                          {getSellValueSourceLabel(item.value_source) ? (
+                                            <p
+                                              className={cn(
+                                                "text-[10px] mt-0.5",
+                                                item.value_source === "cost_basis"
+                                                  ? "text-amber-500"
+                                                  : "text-muted-foreground",
+                                              )}
+                                            >
+                                              {getSellValueSourceLabel(item.value_source)}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      </TooltipTrigger>
+                                      {item.fund_name ? (
+                                        <TooltipContent side="right" className="max-w-xs text-xs">
+                                          {item.fund_name}
+                                        </TooltipContent>
+                                      ) : null}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Input
+                  value={ticker}
+                  aria-label={t("transactions.form.ticker")}
+                  onChange={(event) => {
+                    setTicker(event.target.value.toUpperCase())
+                    setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
+                    setInsufficientBalance(null)
+                  }}
+                  placeholder="e.g. AAPL"
+                  className="text-xs"
+                />
+              )}
+              {shouldShowNisaPicker && !nisaFreeTickerInput ? (
+                <p className="text-[11px] text-muted-foreground">
+                  {selectedWrapper === "nisa_growth"
+                    ? t("eligibility.nisa_picker_hint_growth")
+                    : t("eligibility.nisa_picker_hint_tsumitate")}
+                </p>
+              ) : null}
+              {transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) ? (
+                <div className="pt-1 space-y-1">
+                  <EligibilityBadge result={eligibility} loading={eligibilityQuery.isLoading} />
+                  {eligibility && !eligibility.eligible ? (
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-destructive">{t("eligibility.not_eligible")}</p>
+                      {eligibility.suggested_wrapper ? (
+                        suggestedAccount ? (
+                          <button
+                            type="button"
+                            className="text-[11px] text-primary hover:underline"
+                            onClick={() => {
+                              if (suggestedAccount.id == null) return
+                              setAccountId(String(suggestedAccount.id))
+                              const nextCurrency = (suggestedAccount.currency || currency).toUpperCase()
+                              setCurrency(nextCurrency)
+                              setInsufficientBalance(null)
+                            }}
+                          >
+                            {t("eligibility.switch_to_suggested_account", {
+                              wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
+                            })}
+                          </button>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">
+                            {t("eligibility.no_suggested_account", {
+                              wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
+                            })}
+                          </p>
+                        )
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {transactionType === "BUY" && routingSuggestionQuery.data?.suggestions?.length ? (
+                <div className="pt-1 space-y-1">
+                  <p className="text-[11px] font-medium">{t("routing.suggest_title")}</p>
+                  <div className="space-y-1">
+                    {routingSuggestionQuery.data.suggestions.map((item, idx) => {
+                      const suggested = routingSuggestedAccounts.get(item.wrapper)
+                      return (
+                        <div
+                          key={`${item.wrapper}-${idx}`}
+                          className="rounded-md border border-border bg-muted/20 px-2 py-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span>{t(`wrapper.${item.wrapper}`, { defaultValue: item.wrapper })}</span>
+                            <span>{Math.round(item.amount).toLocaleString()}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(item.reason, { defaultValue: item.reason })}
+                          </p>
+                          {suggested ? (
+                            <button
+                              type="button"
+                              className="text-[11px] text-primary hover:underline"
+                              onClick={() => {
+                                setAccountId(String(suggested.id))
+                                setCurrency(suggested.currency)
+                                setInsufficientBalance(null)
+                              }}
+                            >
+                              {t("smart_actions.apply_suggestion")}
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {canSplitPurchase ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      disabled={splitSubmitting || addTransactionMutation.isPending}
+                      onClick={() => {
+                        createSplitTransactions().catch(() => {
+                          // createSplitTransactions handles all user feedback paths.
+                        })
+                      }}
+                    >
+                      {t("smart_actions.split_purchase")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
             </div>
           ) : null}
@@ -399,25 +1263,53 @@ export function AddTransactionSheet({
                 className="text-xs"
               />
               <p className="text-xs font-medium pt-2">{t("transactions.form.category")}</p>
-              <Select value={category} onValueChange={(value) => setCategory(value as StockCategory)}>
+              <Select
+                value={forcedCategory ?? category}
+                onValueChange={(value) => setCategory(value as StockCategory)}
+                disabled={forcedCategory != null}
+              >
                 <SelectTrigger aria-label={t("transactions.form.category")} className="text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {STOCK_CATEGORIES.map((item) => (
                     <SelectItem key={item} value={item} className="text-xs">
-                      {CATEGORY_ICON_SHORT[item] ?? ""} {t(`config.category.${item.toLowerCase()}`)}
+                      {t(`config.category.${item.toLowerCase()}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {!forcedCategory ? (
+                <p className="text-[11px] text-muted-foreground">
+                  {t(`config.category_desc.${category.toLowerCase()}`)}
+                </p>
+              ) : null}
+              {forcedCategory ? (
+                <p className="text-[11px] text-muted-foreground">{t("transactions.form.mutual_fund_category_hint")}</p>
+              ) : null}
             </div>
           ) : null}
 
           {!isCashMovement ? (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">{t("transactions.form.quantity")}</p>
+                  {shouldShowSellPicker && selectedSellablePositionForDisplay ? (
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary hover:underline"
+                      onClick={() => {
+                        const maxQuantity = String(selectedSellablePositionForDisplay.quantity)
+                        setQuantity(maxQuantity)
+                        if (!manualTotal) setTotalAmount(computeTotalAmount(maxQuantity, price))
+                        setFieldErrors((prev) => ({ ...prev, quantity: undefined }))
+                      }}
+                    >
+                      {t("transactions.sell_picker.max")}
+                    </button>
+                  ) : null}
+                </div>
                 <Input
                   type="number"
                   step="any"
@@ -431,6 +1323,18 @@ export function AddTransactionSheet({
                   }}
                   className="text-xs"
                 />
+                {shouldShowSellPicker && selectedSellablePositionForDisplay ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("transactions.sell_picker.available", {
+                      quantity: selectedSellablePositionForDisplay.quantity.toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      }),
+                      unit: (forcedCategory ?? category) === "Mutual_Fund"
+                        ? t("transactions.sell_picker.unit_units")
+                        : t("transactions.sell_picker.unit_shares"),
+                    })}
+                  </p>
+                ) : null}
                 {fieldErrors.quantity ? <p className="text-xs text-destructive">{fieldErrors.quantity}</p> : null}
               </div>
               <div className="space-y-1">
@@ -631,9 +1535,14 @@ export function AddTransactionSheet({
           <Button
             className="w-full"
             size="sm"
-            disabled={addTransactionMutation.isPending || (requiresAccount && selectedAccountId == null)}
+            disabled={splitSubmitting || addTransactionMutation.isPending || (requiresAccount && selectedAccountId == null)}
             onClick={() => {
               if (!validate()) return
+
+              if (shouldCheckEligibility && eligibility && !eligibility.eligible) {
+                toast.error(t("eligibility.not_eligible"))
+                return
+              }
 
               const requiredAmount = Number(totalAmount) + Number(fee || "0")
               const availableAmount = selectedCurrencyCashBalance ?? 0
@@ -690,7 +1599,21 @@ export function AddTransactionSheet({
                   },
                   onError: (err: unknown) => {
                     const insufficient = parseInsufficientBalance(err)
-                    if (insufficient) setInsufficientBalance(insufficient)
+                    if (insufficient) {
+                      setInsufficientBalance(insufficient)
+                      return
+                    }
+                    const eligibilityError = parseEligibilityError(err)
+                    if (eligibilityError) {
+                      setInsufficientBalance(null)
+                      const reasonText = eligibilityError.reasons.length
+                        ? t(eligibilityError.reasons[0], {
+                            defaultValue: eligibilityError.reasons[0],
+                          })
+                        : t("eligibility.not_eligible")
+                      toast.error(reasonText)
+                      return
+                    }
                     toast.error(getErrorMessage(err) || t("common.error"))
                   },
                 },

@@ -5,9 +5,11 @@ Infrastructure — Repository Pattern。
 集中管理所有資料庫查詢，讓 Service 層不直接接觸 ORM 語法。
 """
 
+import unicodedata
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import update
+from sqlalchemy import or_, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
@@ -19,13 +21,17 @@ from domain.constants import (
 )
 from domain.entities import (
     Account,
+    ContributionLedgerEntry,
     DividendEvent,
     DriftAcknowledgment,
+    EligibleAsset,
+    EligibleAssetSyncState,
     FXWatchConfig,
     Guru,
     GuruFiling,
     GuruHolding,
     Holding,
+    MutualFundNav,
     NotificationLog,
     PriceAlert,
     RemovalLog,
@@ -40,6 +46,9 @@ from domain.entities import (
     UserTelegramSettings,
 )
 from domain.enums import StockCategory
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ===========================================================================
 # Stock Repository
@@ -1597,6 +1606,13 @@ def find_stock_holding_by_account_and_ticker(
     return session.exec(nocase_stmt).first()
 
 
+def find_holding_by_ticker(session: Session, ticker: str) -> Holding | None:
+    """Return the first Holding matching the ticker (any account), or None."""
+    return session.exec(
+        select(Holding).where(Holding.ticker == ticker.upper().strip()).limit(1)
+    ).first()
+
+
 def save_holding(session: Session, holding: Holding) -> Holding:
     """新增或更新持倉（含 refresh）。"""
     session.add(holding)
@@ -1768,6 +1784,583 @@ def delete_transactions_by_account(session: Session, account_id: int) -> int:
 def find_transaction_by_id(session: Session, txn_id: int) -> Transaction | None:
     """根據 ID 查詢單一交易紀錄。"""
     return session.get(Transaction, txn_id)
+
+
+def find_ledger_entry_by_transaction_and_type(
+    session: Session,
+    transaction_id: int,
+    entry_type: str,
+) -> ContributionLedgerEntry | None:
+    """Find one ledger entry by transaction id and entry type."""
+    stmt = (
+        select(ContributionLedgerEntry)
+        .where(ContributionLedgerEntry.transaction_id == transaction_id)
+        .where(ContributionLedgerEntry.entry_type == entry_type)
+        .order_by(ContributionLedgerEntry.id.desc())
+    )
+    return session.exec(stmt).first()
+
+
+def find_ledger_entries(
+    session: Session,
+    user_id: str,
+) -> list[ContributionLedgerEntry]:
+    """All ledger entries for one user ordered by creation time."""
+    stmt = (
+        select(ContributionLedgerEntry)
+        .where(ContributionLedgerEntry.user_id == user_id)
+        .order_by(ContributionLedgerEntry.created_at, ContributionLedgerEntry.id)
+    )
+    return list(session.exec(stmt).all())
+
+
+def find_ledger_entries_by_wrapper(
+    session: Session,
+    user_id: str,
+    wrapper: str,
+    year: int | None = None,
+) -> list[ContributionLedgerEntry]:
+    """Ledger entries filtered by wrapper and optional fiscal year."""
+    stmt = (
+        select(ContributionLedgerEntry)
+        .where(ContributionLedgerEntry.user_id == user_id)
+        .where(ContributionLedgerEntry.tax_wrapper == wrapper)
+    )
+    if year is not None:
+        stmt = stmt.where(ContributionLedgerEntry.fiscal_year == year)
+    stmt = stmt.order_by(ContributionLedgerEntry.created_at, ContributionLedgerEntry.id)
+    return list(session.exec(stmt).all())
+
+
+def create_ledger_entry(
+    session: Session,
+    entry: ContributionLedgerEntry,
+    *,
+    autocommit: bool = True,
+) -> ContributionLedgerEntry:
+    """Create one contribution ledger entry."""
+    session.add(entry)
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
+    session.refresh(entry)
+    return entry
+
+
+def delete_ledger_entries_by_transaction(
+    session: Session,
+    transaction_id: int,
+) -> int:
+    """Delete all ledger entries for one transaction. Returns deleted count."""
+    entries = session.exec(
+        select(ContributionLedgerEntry).where(
+            ContributionLedgerEntry.transaction_id == transaction_id
+        )
+    ).all()
+    count = len(entries)
+    for entry in entries:
+        session.delete(entry)
+    return count
+
+
+def find_eligible_tickers(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+) -> set[str]:
+    """Return active eligible tickers for one wrapper (broker-aware)."""
+    stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    return {str(ticker).upper() for ticker in session.exec(stmt).all()}
+
+
+def find_fund_names_by_tickers(
+    session: Session,
+    tickers: list[str] | set[str],
+) -> dict[str, str]:
+    """Return active eligible-asset fund names keyed by normalized ticker."""
+    normalized_tickers = {
+        str(ticker).strip().upper() for ticker in tickers if str(ticker).strip()
+    }
+    if not normalized_tickers:
+        return {}
+
+    stmt = (
+        select(EligibleAsset.ticker, EligibleAsset.fund_name)
+        .where(
+            EligibleAsset.ticker.in_(normalized_tickers),
+            EligibleAsset.is_active == True,  # noqa: E712
+        )
+        .order_by(EligibleAsset.ticker, EligibleAsset.updated_at.desc())
+    )
+
+    names_by_ticker: dict[str, str] = {}
+    for ticker, fund_name in session.exec(stmt).all():
+        normalized_ticker = str(ticker).strip().upper()
+        normalized_name = str(fund_name or "").strip()
+        if not normalized_ticker or not normalized_name:
+            continue
+        if normalized_ticker not in names_by_ticker:
+            names_by_ticker[normalized_ticker] = normalized_name
+    return names_by_ticker
+
+
+def is_active_eligible_mutual_fund(session: Session, ticker: str) -> bool:
+    """Return whether ticker has any active eligible mutual_fund record."""
+    normalized_ticker = ticker.upper().strip()
+    if not normalized_ticker:
+        return False
+    stmt = select(func.count()).where(
+        EligibleAsset.ticker == normalized_ticker,
+        EligibleAsset.is_active == True,  # noqa: E712
+        EligibleAsset.asset_type == "mutual_fund",
+    )
+    return bool(session.exec(stmt).one() > 0)
+
+
+def find_eligible_asset_by_ticker(
+    session: Session,
+    wrapper: str,
+    ticker: str,
+    broker: str | None = None,
+) -> EligibleAsset | None:
+    """Return one active eligible asset for an exact ticker match."""
+    normalized_ticker = ticker.upper().strip()
+    if not normalized_ticker:
+        return None
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.ticker == normalized_ticker,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    return session.exec(stmt.order_by(EligibleAsset.broker.is_not(None).desc())).first()
+
+
+def find_eligible_assets(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    asset_type: str | None = None,
+    limit: int = 50,
+) -> list[EligibleAsset]:
+    """Search active eligible assets with optional broker/text filters."""
+    stmt = _build_eligible_assets_stmt(
+        wrapper=wrapper,
+        broker=broker,
+        search=search,
+        asset_type=asset_type,
+    )
+    stmt = stmt.order_by(EligibleAsset.ticker).limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def count_eligible_assets(
+    session: Session,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    asset_type: str | None = None,
+) -> int:
+    """Count active eligible assets with optional broker/text filters."""
+    stmt = _build_eligible_assets_stmt(
+        wrapper=wrapper,
+        broker=broker,
+        search=search,
+        asset_type=asset_type,
+    )
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    count_result = session.exec(count_stmt).one()
+    return int(count_result or 0)
+
+
+def _build_eligible_assets_stmt(
+    *,
+    wrapper: str,
+    broker: str | None = None,
+    search: str | None = None,
+    asset_type: str | None = None,
+):
+    """Build base eligible-assets query with optional filters."""
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.tax_wrapper == wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    if broker:
+        stmt = stmt.where(
+            or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
+        )
+    normalized_asset_type = asset_type.strip().lower() if asset_type else ""
+    if normalized_asset_type:
+        stmt = stmt.where(EligibleAsset.asset_type == normalized_asset_type)
+    normalized_search_raw = search.strip() if search else ""
+    if normalized_search_raw:
+        normalized_search = unicodedata.normalize("NFKC", normalized_search_raw).lower()
+        pattern = f"%{normalized_search}%"
+        stmt = stmt.where(
+            or_(
+                EligibleAsset.ticker.ilike(pattern),
+                EligibleAsset.fund_name.ilike(pattern),
+            )
+        )
+    return stmt
+
+
+def upsert_eligible_assets(
+    session: Session,
+    wrapper: str,
+    rows: list[dict],
+    *,
+    broker: str | None = None,
+    source: str = "unknown",
+    autocommit: bool = True,
+) -> dict[str, int]:
+    """Idempotent bulk upsert and deactivate-missing for eligible assets."""
+    _CANONICAL_ASSET_TYPES = {"mutual_fund", "etf", "stock", "reit"}
+
+    def _canonical_asset_type(raw: Any) -> str:
+        normalized = str(raw or "mutual_fund").strip().lower() or "mutual_fund"
+        if normalized not in _CANONICAL_ASSET_TYPES:
+            logger.warning(
+                "upsert_eligible_assets: unknown asset_type %r — defaulting to 'mutual_fund'",
+                raw,
+            )
+            return "mutual_fund"
+        return normalized
+
+    # Deduplicate by ticker before processing; last occurrence wins.
+    deduped: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        ticker = str(row.get("ticker", "")).strip().upper()
+        if not ticker:
+            continue
+        deduped[ticker] = {
+            "ticker": ticker,
+            "fund_name": unicodedata.normalize(
+                "NFKC", str(row.get("fund_name", "")).strip()
+            ),
+            "asset_type": _canonical_asset_type(row.get("asset_type")),
+            "trust_fee_pct": row.get("trust_fee_pct"),
+            "isin_code": row.get("isin_code"),
+        }
+    normalized_rows = list(deduped.values())
+
+    active_tickers = {row["ticker"] for row in normalized_rows}
+    existing = session.exec(
+        select(EligibleAsset).where(
+            EligibleAsset.tax_wrapper == wrapper,
+            EligibleAsset.broker == broker,
+        )
+    ).all()
+    existing_by_ticker = {asset.ticker: asset for asset in existing}
+
+    added = 0
+    updated = 0
+    deactivated = 0
+
+    for row in normalized_rows:
+        found = existing_by_ticker.get(row["ticker"])
+        if found is None:
+            session.add(
+                EligibleAsset(
+                    tax_wrapper=wrapper,
+                    ticker=row["ticker"],
+                    fund_name=row["fund_name"],
+                    asset_type=row["asset_type"],
+                    broker=broker,
+                    trust_fee_pct=row["trust_fee_pct"],
+                    isin_code=row.get("isin_code"),
+                    is_active=True,
+                    updated_at=datetime.now(UTC),
+                )
+            )
+            added += 1
+            continue
+
+        new_isin = row.get("isin_code")
+        changed = (
+            found.fund_name != row["fund_name"]
+            or found.asset_type != row["asset_type"]
+            or found.trust_fee_pct != row["trust_fee_pct"]
+            or (new_isin is not None and found.isin_code != new_isin)
+            or not found.is_active
+        )
+        if changed:
+            found.fund_name = row["fund_name"]
+            found.asset_type = row["asset_type"]
+            found.trust_fee_pct = row["trust_fee_pct"]
+            if new_isin is not None:
+                found.isin_code = new_isin
+            found.is_active = True
+            found.updated_at = datetime.now(UTC)
+            session.add(found)
+            updated += 1
+
+    for asset in existing:
+        if asset.ticker not in active_tickers and asset.is_active:
+            asset.is_active = False
+            asset.updated_at = datetime.now(UTC)
+            session.add(asset)
+            deactivated += 1
+
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
+
+    if not broker:
+        sync_state = session.get(EligibleAssetSyncState, wrapper)
+        now = datetime.now(UTC)
+        if sync_state is None:
+            session.add(
+                EligibleAssetSyncState(
+                    tax_wrapper=wrapper,
+                    source=source,
+                    last_refreshed_at=now,
+                    updated_at=now,
+                )
+            )
+        else:
+            sync_state.source = source
+            sync_state.last_refreshed_at = now
+            sync_state.updated_at = now
+            session.add(sync_state)
+        if autocommit:
+            session.commit()
+        else:
+            session.flush()
+
+    return {
+        "added": added,
+        "updated": updated,
+        "deactivated": deactivated,
+    }
+
+
+def get_eligible_assets_metadata(
+    session: Session,
+    wrapper: str,
+) -> dict[str, object]:
+    """Get active count and sync metadata for one wrapper."""
+    normalized_wrapper = wrapper.strip().lower()
+    count_stmt = select(func.count()).where(
+        EligibleAsset.tax_wrapper == normalized_wrapper,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    active_count = int(session.exec(count_stmt).first() or 0)
+    sync_state = session.get(EligibleAssetSyncState, normalized_wrapper)
+    last_refreshed_at = sync_state.last_refreshed_at if sync_state else None
+    source = sync_state.source if sync_state else "unknown"
+    return {
+        "wrapper": normalized_wrapper,
+        "count": active_count,
+        "last_refreshed_at": last_refreshed_at,
+        "source": source,
+    }
+
+
+# ===========================================================================
+# MutualFundNav Repository
+# ===========================================================================
+
+
+def find_isin_for_ticker(session: Session, ticker: str) -> str | None:
+    """Look up ISIN code from EligibleAsset for a given ticker."""
+    normalized = ticker.upper().strip()
+    strict_stmt = (
+        select(EligibleAsset.isin_code)
+        .where(
+            EligibleAsset.ticker == normalized,
+            EligibleAsset.is_active == True,  # noqa: E712
+            EligibleAsset.isin_code != None,  # noqa: E711
+        )
+        .limit(1)
+    )
+    isin = session.exec(strict_stmt).first()
+    if isin:
+        return isin
+
+    # Fallback: allow inactive rows so historical/temporarily deactivated
+    # eligible assets can still provide ISIN for NAV sync.
+    fallback_stmt = (
+        select(EligibleAsset.isin_code)
+        .where(
+            EligibleAsset.ticker == normalized,
+            EligibleAsset.isin_code != None,  # noqa: E711
+        )
+        .limit(1)
+    )
+    return session.exec(fallback_stmt).first()
+
+
+def find_fund_code_by_isin(session: Session, isin: str) -> str | None:
+    """Find a likely 8-char fund-code ticker for a given ISIN."""
+    normalized = isin.strip()
+    if not normalized:
+        return None
+
+    # Prefer active rows first, then fallback to inactive.
+    active_stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.isin_code == normalized,
+        EligibleAsset.is_active == True,  # noqa: E712
+    )
+    active_tickers = [str(t).strip().upper() for t in session.exec(active_stmt).all()]
+    for ticker in active_tickers:
+        if len(ticker) == 8 and ticker.isalnum():
+            return ticker
+
+    fallback_stmt = select(EligibleAsset.ticker).where(
+        EligibleAsset.isin_code == normalized
+    )
+    tickers = [str(t).strip().upper() for t in session.exec(fallback_stmt).all()]
+    for ticker in tickers:
+        if len(ticker) == 8 and ticker.isalnum():
+            return ticker
+    return None
+
+
+def backfill_isin_for_ticker(
+    session: Session, ticker: str, isin: str, *, autocommit: bool = True
+) -> bool:
+    """Set ``isin_code`` on matching EligibleAsset rows that lack one."""
+    normalized = ticker.upper().strip()
+    stmt = select(EligibleAsset).where(
+        EligibleAsset.ticker == normalized,
+        or_(EligibleAsset.isin_code == None, EligibleAsset.isin_code == ""),  # noqa: E711
+    )
+    rows = list(session.exec(stmt).all())
+    if not rows:
+        return False
+    for row in rows:
+        row.isin_code = isin
+    if autocommit:
+        session.commit()
+    return True
+
+
+def get_latest_nav(session: Session, fund_code: str) -> "MutualFundNav | None":
+    """Get the most recent NAV row for a fund."""
+    stmt = (
+        select(MutualFundNav)
+        .where(MutualFundNav.fund_code == fund_code.upper().strip())
+        .order_by(MutualFundNav.nav_date.desc())
+        .limit(1)
+    )
+    return session.exec(stmt).first()
+
+
+def get_nav_history(
+    session: Session, fund_code: str, *, limit: int = 365
+) -> list["MutualFundNav"]:
+    """Get NAV history for charting (newest first, up to `limit` rows)."""
+    stmt = (
+        select(MutualFundNav)
+        .where(MutualFundNav.fund_code == fund_code.upper().strip())
+        .order_by(MutualFundNav.nav_date.desc())
+        .limit(limit)
+    )
+    return list(session.exec(stmt).all())
+
+
+def upsert_nav(
+    session: Session,
+    fund_code: str,
+    isin_code: str,
+    nav: float,
+    nav_date: "date",
+    *,
+    nav_previous: float | None = None,
+    net_assets: float | None = None,
+    autocommit: bool = True,
+) -> "MutualFundNav":
+    """Insert or update a single NAV record (unique by fund_code + nav_date)."""
+    normalized = fund_code.upper().strip()
+    stmt = select(MutualFundNav).where(
+        MutualFundNav.fund_code == normalized,
+        MutualFundNav.nav_date == nav_date,
+    )
+    existing = session.exec(stmt).first()
+    now = datetime.now(UTC)
+    if existing:
+        existing.nav = nav
+        existing.nav_previous = nav_previous
+        existing.net_assets = net_assets
+        existing.isin_code = isin_code
+        existing.fetched_at = now
+        session.add(existing)
+        result = existing
+    else:
+        result = MutualFundNav(
+            fund_code=normalized,
+            isin_code=isin_code,
+            nav=nav,
+            nav_previous=nav_previous,
+            nav_date=nav_date,
+            net_assets=net_assets,
+            fetched_at=now,
+        )
+        session.add(result)
+    if autocommit:
+        session.commit()
+        session.refresh(result)
+    else:
+        session.flush()
+    return result
+
+
+def bulk_upsert_nav(
+    session: Session,
+    fund_code: str,
+    isin_code: str,
+    rows: list[dict],
+    *,
+    autocommit: bool = True,
+) -> int:
+    """Bulk upsert NAV rows. Returns count of rows written."""
+    normalized = fund_code.upper().strip()
+    existing_stmt = select(MutualFundNav).where(MutualFundNav.fund_code == normalized)
+    existing_by_date = {r.nav_date: r for r in session.exec(existing_stmt).all()}
+    now = datetime.now(UTC)
+    count = 0
+    for row in rows:
+        nav_date = row["date"]
+        found = existing_by_date.get(nav_date)
+        if found:
+            found.nav = row["nav"]
+            found.nav_previous = row.get("nav_previous")
+            found.net_assets = row.get("net_assets")
+            found.isin_code = isin_code
+            found.fetched_at = now
+            session.add(found)
+        else:
+            session.add(
+                MutualFundNav(
+                    fund_code=normalized,
+                    isin_code=isin_code,
+                    nav=row["nav"],
+                    nav_previous=row.get("nav_previous"),
+                    nav_date=nav_date,
+                    net_assets=row.get("net_assets"),
+                    fetched_at=now,
+                )
+            )
+        count += 1
+    if autocommit:
+        session.commit()
+    else:
+        session.flush()
+    return count
 
 
 def save_transaction(session: Session, txn: Transaction) -> Transaction:

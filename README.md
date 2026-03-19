@@ -73,6 +73,14 @@
 - **聰明提款機** — War Room Step 5 提供互動式提款表單，輸入金額與幣別即可取得賣出建議；Liquidity Waterfall 三層優先演算法（再平衡超配 → 節稅 → 流動性），避免隨便賣掉表現最好的股票
 - **交易紀錄** — 記錄買入/賣出/股息/存入/提領/期初餘額/調整/轉入/轉出，作為持倉唯一來源
 - **帳戶管理** — 依券商帳戶分組持倉，提供聚合視圖
+- **日本稅制帳戶（NISA / iDeCo）** — 特定口座・NISA 定期定額・NISA 成長・iDeCo 統一管理：
+  - **NISA Center 專頁** — 集中顯示「適格資產清單／額度與恢復狀態／拠出台帳／資料更新管理」
+  - **額度儀表板** — 年度投資額度・終身非課稅額度的簿價即時追蹤（支援 2026 年額度即日恢復規則）
+  - **智慧購買路由** — NISA 優先自動分配，超額部分溢入特定口座
+  - **適格資產驗證** — 定期定額僅允許核准基金，並以投信協會來源的 `投信協會ファンドコード` / `銘柄コード` 作為可追蹤識別碼；成長枠自動排除槓桿/月配息型商品
+  - **資產配置最佳化** — 高成長資產優先配置於免稅帳戶，含稅務效率分數與節稅估算
+  - **DeTAX（自動損益對沖）** — 利用特定口座含損部位進行節稅建議（WealthNavi 模式，年化 0.4–0.6% 稅負減輕）
+  - **節稅模擬器** — NISA vs 特定口座 10/20/30 年複利比較圖表
 - **開戶到下單引導流程** — 新建帳戶後可一鍵存入資金，入金後可直接銜接 BUY 紀錄；系統會顯示可用現金、即時檢查餘額不足，並提供補足差額的快捷入金操作
 - **地理配置** — 依地區（US/TW/JP/HK）拆解市值分佈
 - **資產類別** — 標準 Equity/Fixed Income/Alternatives/Cash 分類
@@ -105,7 +113,7 @@
 
 ### 介面與操作
 
-- **六頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、訊號回測、個人資產配置（War Room）、外匯監控、大師足跡
+- **七頁面架構** — 投資組合總覽（儀表板）、投資雷達（追蹤掃描）、訊號回測、個人資產配置（War Room）、NISA Center、外匯監控、大師足跡
 - **雷達市場篩選器** — 當追蹤清單涵蓋多個市場（美股 + 台股 + 日股 + 港股）時，雷達頁面自動顯示市場篩選藥丸，一鍵只看指定市場的股票
 - **雷達多指標篩選** — 雷達頁面提供多指標篩選面板，可組合訊號、RSI/Bias/成交量區間、市值分桶、P/E、殖利率、產業、標籤與僅持有條件，即時顯示篩選結果
 - **多語言支援 (i18n)** — 支援繁體中文、English、日本語、简体中文，可在側邊欄切換語言，設定自動儲存
@@ -127,6 +135,7 @@
 | **風向球 (Trend Setter)** | 大盤 ETF、巨頭，觀察資金流向與 Capex（ETF 不參與情緒計算） | 是 |
 | **護城河 (Moat)** | 供應鏈中不可替代的賣鏟子公司 | 否 |
 | **成長夢想 (Growth)** | 高波動、具想像空間的成長股 | 否 |
+| **投資信託 (Mutual_Fund)** | NISA/iDeCo 基金代碼（基準価額由 toushin-lib 日次同步，非 yfinance） | 否 |
 | **債券 (Bond)** | 國債、投資等級債券 ETF | 否 |
 | **現金 (Cash)** | 閒置現金（手動輸入，不進行訊號掃描） | 否 |
 
@@ -230,6 +239,13 @@ TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 TELEGRAM_CHAT_ID=your-telegram-chat-id-here
 ```
 
+可選：調整 scanner 在開市/休市的資料新鮮度門檻（秒）：
+
+```env
+SCAN_STALE_SECONDS_MARKET_HOURS=900
+SCAN_STALE_SECONDS_OFF_HOURS=3600
+```
+
 > 若不需要 Telegram 通知，保留預設值即可，系統會自動跳過發送。
 >
 > **雙模式通知**：除了 `.env` 環境變數（系統預設 Bot），你也可以在「💼 個人資產配置 → 📡 Telegram 設定」分頁中設定自訂 Bot Token 與 Chat ID。啟用後，所有掃描通知、價格警報、每週摘要都會透過自訂 Bot 發送。
@@ -300,7 +316,7 @@ docker compose up --build
 
 - **Backend API** — http://localhost:8000（Swagger 文件：http://localhost:8000/docs）
 - **Frontend Dashboard** — http://localhost:3000
-- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），僅在上次掃描超過 30 分鐘時觸發 `POST /scan`；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
+- **Scanner** — Alpine cron 容器，啟動時立即檢查資料新鮮度（`GET /scan/last`），開市時預設每 15 分鐘、休市/週末預設每 60 分鐘觸發 `POST /scan`（可由 `SCAN_STALE_SECONDS_MARKET_HOURS` / `SCAN_STALE_SECONDS_OFF_HOURS` 覆蓋）；每週日 18:00 UTC 發送週報（`POST /digest`）；每 6 小時觸發外匯警報；**申報季（Feb/May/Aug/Nov）每日同步 13F**，非申報季每週同步一次（`POST /gurus/sync`）
 
 > **啟動快取預熱**：Backend 啟動後會自動在背景預熱 L1/L2 快取（技術訊號、護城河、恐懼貪婪指數、ETF 成分股、Beta 值），不影響 API 回應速度。前端首次載入即可命中暖快取，無需等待 yfinance 即時查詢。
 
@@ -356,7 +372,7 @@ python scripts/import_stocks.py path/to/custom_list.json
 ```
 
 - `ticker` — 股票代號（美股）
-- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Bond`、`Cash` 之一
+- `category` — 分類，必須是 `Trend_Setter`、`Moat`、`Growth`、`Mutual_Fund`、`Bond`、`Cash` 之一
 - `thesis` — 初始觀點
 - `tags` — 領域標籤（選填，預設為空陣列）
 
@@ -411,6 +427,12 @@ make restore
 # 還原特定備份檔案
 make restore FILE=backups/radar-20260214_153022.db
 ```
+
+> 注意：`make refresh-eligible`、`make migrate-ledger`、`make purge-legacy` 等資料維運指令會在 Docker 容器內執行，寫入的是 Docker volume 的資料庫（`/app/data/radar.db`，`radar-data` volume），不是 host 的 `backend/data/radar.db`。`make refresh-eligible` 會用投信協會官方清單來源同步 NISA 適格清單，並以基金代碼（非基金名稱）作為識別。
+
+#### 投資信託 基準価額（NAV）同步
+
+投資信託（Mutual_Fund）の基準価額は投信協會（toushin-lib.fwg.ne.jp）からの日次 CSV ダウンロードで取得し、`MutualFundNav` テーブルに保存します。同期間隔は `NAV_SYNC_INTERVAL_HOURS`（デフォルト 24 時間）で設定可能です。NAV は 1 日 1 回のみ更新されるため、高頻度取得は不要です。レーダーカードには "NAV" バッジと "as of YYYY-MM-DD" タイムスタンプが表示されます。
 
 #### 清理遺留資料（Ledger Migration Cleanup）
 
@@ -741,6 +763,13 @@ docker compose up --build -d
 | `GET` | `/accounts/summary` | 帳戶摘要（含各帳戶持倉數量） |
 | `GET` | `/accounts/{id}/positions` | 取得指定帳戶持倉（position cache） |
 | `GET` | `/accounts/{id}/transactions` | 取得指定帳戶交易紀錄（分頁） |
+| `GET` | `/wrappers/quota` | NISA/iDeCo 額度狀態（年度/終身/成長子限額） |
+| `GET` | `/wrappers/restoration-forecast` | NISA 額度恢復預測（待生效的恢復項目） |
+| `GET` | `/wrappers/contributions` | NISA 拠出台帳（`wrapper` 僅支援 `nisa_tsumitate` / `nisa_growth`，可選 `year`、`limit`） |
+| `GET` | `/wrappers/{wrapper}/check-eligibility` | 資產適格性檢查（含替代口座建議） |
+| `GET` | `/wrappers/{wrapper}/eligible-assets` | 適格資產清單（支援搜尋/篩選） |
+| `POST` | `/wrappers/suggest-routing` | 智慧購買路由建議（NISA 優先分配） |
+| `GET` | `/wrappers/detax` | DeTAX 損益對沖機會（特定口座含損部位） |
 | `GET` | `/analytics/drawdown` | 回撤時間序列 |
 | `GET` | `/analytics/risk-metrics` | 風險指標（Sharpe、Sortino、最大回撤、年化波動率） |
 | `GET` | `/analytics/contribution-growth` | 累計貢獻 vs 市場增長 |
@@ -946,6 +975,7 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | `accounts` | 列出帳戶及持倉數量 | 否 |
 | `analytics` | 風險指標：Sharpe、Sortino、最大回撤 | 否 |
 | `insights` | 自然語言投資組合洞察 | 否 |
+| `quota` | NISA/iDeCo 額度狀態查詢 | 否 |
 
 Webhook 回應統一格式：`{"success": bool, "message": str, "interpretation": str, "data": dict}`。
 `format="concise"` 時多數 action 會省略 `data` 以降低 token 使用量；`help` 仍會回傳 `data` 供動態探索。
@@ -1043,6 +1073,11 @@ azusa-stock/
 │   │   │   ├── fx_analysis.py        #     外匯風險分析
 │   │   │   └── smart_money.py        #     Smart Money 共鳴計算
 │   │   ├── portfolio/                #   投資組合子套件
+│   │   │   ├── tax_wrapper.py        #     NISA/iDeCo 額度計算（簿價基準）
+│   │   │   ├── eligibility.py        #     資產適格性規則引擎
+│   │   │   ├── asset_location.py     #     稅務效率資產配置最佳化
+│   │   │   ├── routing.py            #     NISA 優先購買路由
+│   │   │   ├── detax.py              #     DeTAX 損益對沖邏輯
 │   │   │   ├── rebalance.py          #     純計算：再平衡 drift 分析（可獨立測試）
 │   │   │   ├── withdrawal.py         #     純計算：聰明提款 Liquidity Waterfall（可獨立測試）
 │   │   │   └── stress_test.py        #     純計算：壓力測試 CAPM 模擬（可獨立測試）
@@ -1051,7 +1086,10 @@ azusa-stock/
 │   ├── application/                  # 應用層：Use Case 編排
 │   │   ├── stock/                    #   股票與財報服務
 │   │   ├── scan/                     #   掃描與預熱服務
-│   │   ├── portfolio/                #   持倉、再平衡、壓力測試、FX 監控服務
+│   │   ├── portfolio/                #   持倉、再平衡、壓力測試、FX 監控與稅制口座服務
+│   │   │   ├── wrapper_service.py    #     NISA/iDeCo 額度管理
+│   │   │   ├── eligibility_service.py #    資產適格性檢查
+│   │   │   ├── routing_service.py    #     購買路由與 DeTAX
 │   │   ├── guru/                     #   大師足跡與共鳴服務
 │   │   ├── messaging/                #   通知、Webhook、Telegram 設定服務
 │   │   ├── settings/                 #   偏好設定、人格、快照服務
@@ -1099,6 +1137,7 @@ azusa-stock/
 │       │   ├── telegram_routes.py    #     Telegram 通知設定路由（雙模式）
 │       │   ├── preferences_routes.py #     使用者偏好設定路由（隱私模式等）
 │       │   ├── fx_watch_routes.py    #     外匯監控 CRUD 路由
+│       │   ├── wrapper_routes.py     #     NISA/iDeCo 額度、適格性、路由 API
 │       │   └── guru_routes.py        #     大師足跡路由（/gurus + /resonance，13F 同步 mutex）
 │       ├── dependencies.py           #   FastAPI 依賴注入
 │       └── rate_limit.py             #   速率限制中介軟體

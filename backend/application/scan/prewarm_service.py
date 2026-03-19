@@ -35,6 +35,8 @@ from infrastructure.market_data import (
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
+    prewarm_ticker_exchange_batch,
+    prewarm_ticker_name_batch,
     prime_signals_cache_batch,
 )
 from infrastructure.repositories import find_all_active_gurus
@@ -148,6 +150,9 @@ def prewarm_all_caches() -> None:
         parallel_phases.append(("beta", _run_beta_phase))
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
+        parallel_phases.append(
+            ("ticker_metadata", lambda: _prewarm_ticker_metadata(tickers["sector"]))
+        )
     if tickers["crypto"]:
         parallel_phases.append(
             ("crypto", lambda: prewarm_crypto_prices(tickers["crypto"]))
@@ -205,6 +210,17 @@ def _collect_tickers() -> dict[str, list[str]]:
 
     stock_map = {s.ticker: s for s in stocks}
     holding_tickers = {h.ticker for h in holdings}
+    holding_cat_map: dict[str, str] = {
+        h.ticker: (
+            h.category.value if hasattr(h.category, "value") else str(h.category)
+        )
+        for h in holdings
+    }
+
+    def _resolve_cat(ticker: str) -> str:
+        if ticker in stock_map:
+            return stock_map[ticker].category.value
+        return holding_cat_map.get(ticker, "")
 
     # Union of watchlist + holdings (unique)
     all_tickers = set(stock_map.keys()) | holding_tickers
@@ -212,30 +228,21 @@ def _collect_tickers() -> dict[str, list[str]]:
     # ETF tickers from watchlist（用於排除 moat 分析，含持倉中的 ETF 標的）
     known_etf_tickers = {t for t, s in stock_map.items() if s.is_etf}
 
-    # Signals: 排除不需要價格抓取的類別（目前為 Cash）
+    # Signals: 排除不走 yfinance 的類別（Cash, Mutual_Fund — MF 由 NAV 日次同步提供價格）
+    # _resolve_cat 統一從 stock_map 或 holding_cat_map 取得類別，避免持倉專屬標的跳過過濾
     signals_tickers = [
-        t
-        for t in all_tickers
-        if t not in stock_map
-        or stock_map[t].category.value not in SKIP_PRICE_FETCH_CATEGORIES
+        t for t in all_tickers if _resolve_cat(t) not in SKIP_PRICE_FETCH_CATEGORIES
     ]
     signals_held_tickers = [t for t in signals_tickers if t in holding_tickers]
 
-    # Moat: 排除 Bond/Cash 及 ETF（ETF 無損益表，moat 分析必定失敗）。
-    # known_etf_tickers 包含 watchlist 中 is_etf=True 的標的，即使它們同時出現在持倉中也予以排除。
-    # 注意：持倉中不在 watchlist 的 ETF 標的（如 0050.TW）若未正確設定 is_etf=True，
-    # 仍可能進入 moat 分析並以 NOT_AVAILABLE 優雅降級。根本修復請確認 DB 中 is_etf 欄位。
+    # Moat: 排除 Bond/Cash/Crypto/Mutual_Fund 及 ETF（ETF 無損益表，moat 分析必定失敗）
+    # 持倉中不在 watchlist 的 ETF 標的若 is_etf 未設定，仍可能進入並以 NOT_AVAILABLE 降級
     moat_tickers = [
         t
         for t in all_tickers
         if t not in known_etf_tickers
-        and (
-            t not in stock_map
-            or (
-                stock_map[t].category.value not in SKIP_MOAT_CATEGORIES
-                and not stock_map[t].is_etf
-            )
-        )
+        and _resolve_cat(t) not in SKIP_MOAT_CATEGORIES
+        and (t not in stock_map or not stock_map[t].is_etf)
     ]
 
     # ETF: 只有追蹤清單中 is_etf=True 的標的（與 known_etf_tickers 相同）
@@ -253,12 +260,10 @@ def _collect_tickers() -> dict[str, list[str]]:
         if t not in stock_map or stock_map[t].category.value in EQUITY_CATEGORIES
     ]
 
-    # Sector: 熱力圖需排除 Cash/Crypto；Bond 仍需要板塊資訊
-    # SKIP_RSI_CATEGORIES（Cash/Crypto）排除的標的，其餘均需板塊資訊
+    # Sector: 熱力圖需排除 Cash/Crypto/Mutual_Fund；Bond 仍需要板塊資訊
+    # 使用 _resolve_cat 統一處理 watchlist 與 holdings-only 標的
     sector_tickers = [
-        t
-        for t in all_tickers
-        if t not in stock_map or stock_map[t].category.value not in SKIP_RSI_CATEGORIES
+        t for t in all_tickers if _resolve_cat(t) not in SKIP_RSI_CATEGORIES
     ]
 
     return {
@@ -417,6 +422,12 @@ def _prewarm_sectors(tickers: list[str]) -> None:
             except Exception as exc:
                 logger.warning("快取預熱 [sector] %s 失敗：%s", ticker, exc)
     logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok_count, total)
+
+
+def _prewarm_ticker_metadata(tickers: list[str]) -> None:
+    """預熱 ticker metadata（company name / exchange）磁碟快取。"""
+    prewarm_ticker_name_batch(tickers)
+    prewarm_ticker_exchange_batch(tickers)
 
 
 def _prewarm_etf_sector_weights(tickers: list[str]) -> None:

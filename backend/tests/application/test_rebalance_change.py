@@ -819,7 +819,9 @@ class TestRebalanceCacheRefresh:
         assert refreshed["total_value"] == pytest.approx(1300.0, rel=0.01)
 
 
-class TestRebalanceNewCategories:
+class TestMutualFundHoldingValuation:
+    """Mutual_Fund holdings must use cost_basis, never call get_technical_signals."""
+
     @patch("application.portfolio.rebalance_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
@@ -833,7 +835,7 @@ class TestRebalanceNewCategories:
         "application.portfolio.rebalance_service.get_etf_sector_weights",
         return_value=None,
     )
-    def test_calculate_rebalance_should_support_etf_and_mutual_fund_categories(
+    def test_mutual_fund_holding_should_use_cost_basis_not_signals(
         self,
         _mock_etf_weights,
         _mock_etf,
@@ -846,47 +848,29 @@ class TestRebalanceNewCategories:
     ):
         profile = UserInvestmentProfile(
             user_id="default",
-            config=json.dumps({"ETF": 50, "MUTUAL_FUND": 50}),
+            config=json.dumps({"Mutual_Fund": 100}),
             is_active=True,
         )
         db_session.add(profile)
-        account = _seed_active_account(db_session, "ETF + Mutual Fund Account")
-        db_session.add_all(
-            [
-                Holding(
-                    user_id="default",
-                    ticker="SPY",
-                    category=StockCategory.ETF,
-                    quantity=2.0,
-                    cost_basis=500.0,
-                    currency="USD",
-                    is_cash=False,
-                    account_id=account.id,
-                ),
-                Holding(
-                    user_id="default",
-                    ticker="VTSAX",
-                    category=StockCategory.MUTUAL_FUND,
-                    quantity=3.0,
-                    cost_basis=100.0,
-                    currency="USD",
-                    is_cash=False,
-                    account_id=account.id,
-                ),
-            ]
+        account = _seed_active_account(db_session, "NISA Fund Account")
+        db_session.add(
+            Holding(
+                user_id="default",
+                ticker="01311143",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100.0,
+                cost_basis=15000.0,
+                currency="JPY",
+                is_cash=False,
+                account_id=account.id,
+            )
         )
         db_session.commit()
 
-        mock_fx.return_value = {"USD": 1.0}
-        mock_signals.return_value = {
-            "price": 100.0,
-            "previous_close": 95.0,
-            "change_pct": 5.26,
-        }
+        mock_fx.return_value = {"USD": 1.0, "JPY": 0.0067}
+        mock_signals.return_value = None
 
         result = calculate_rebalance(db_session, "USD")
 
-        categories = result.get("categories", {})
-        assert "ETF" in categories
-        assert "MUTUAL_FUND" in categories
-        assert result["asset_class_allocation"].get("Equity", 0.0) > 0
+        assert result["total_value"] > 0
+        mock_signals.assert_not_called()

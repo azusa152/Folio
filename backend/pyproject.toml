@@ -25,6 +25,10 @@ dependencies = [
     "cryptography>=46.0.5",  # CVE-2026-26007: Minimum safe version
     # HTTP client — used in production by sec_edgar.py
     "httpx>=0.28.1,<1.0",
+    # FastAPI multipart form uploads
+    "python-multipart>=0.0.20,<1.0",
+    # Excel parser for official NISA eligibility lists
+    "openpyxl>=3.1.5,<4.0",
 ]
 
 [dependency-groups]

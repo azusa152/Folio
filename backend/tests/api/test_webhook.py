@@ -491,6 +491,40 @@ class TestWebhookDiscoverability:
         )
 
 
+class TestWebhookQuota:
+    """Tests for the 'quota' webhook action."""
+
+    def test_quota_should_return_quota_payload(self, client):
+        # Act
+        resp = client.post("/webhook", json={"action": "quota"})
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert "data" in body
+        data = body["data"]
+        assert "year" in data
+        assert "as_of" in data
+        assert "restoration_policy" in data
+        assert "quotas" in data
+        assert "nisa_tsumitate" in data["quotas"]
+        assert "nisa_growth" in data["quotas"]
+        assert "restoration_forecast" in data
+
+    def test_quota_should_fail_for_invalid_year(self, client):
+        # Act
+        resp = client.post(
+            "/webhook", json={"action": "quota", "params": {"year": "x"}}
+        )
+
+        # Assert
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        assert body.get("error_code") == "INVALID_INPUT"
+
+
 class TestWebhookUnknownAction:
     """Tests for unsupported actions."""
 

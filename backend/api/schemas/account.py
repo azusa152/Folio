@@ -2,12 +2,16 @@
 
 from pydantic import BaseModel, Field
 
+from domain.enums import TaxWrapperType
+
 
 class AccountRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     broker: str = Field(..., min_length=1, max_length=100)
     account_type: str = Field(default="brokerage", max_length=50)
+    tax_wrapper: TaxWrapperType | None = None
     currency: str = Field(default="USD", max_length=10)
+    market: str | None = Field(default=None, max_length=10)
     institution: str = Field(default="", max_length=200)
     note: str = Field(default="", max_length=500)
 
@@ -16,7 +20,9 @@ class AccountUpdateRequest(BaseModel):
     name: str | None = None
     broker: str | None = None
     account_type: str | None = None
+    tax_wrapper: TaxWrapperType | None = None
     currency: str | None = None
+    market: str | None = Field(default=None, max_length=10)
     institution: str | None = None
     note: str | None = None
 
@@ -27,7 +33,9 @@ class AccountResponse(BaseModel):
     name: str
     broker: str
     account_type: str
+    tax_wrapper: TaxWrapperType | None = None
     currency: str
+    market: str | None = None
     institution: str
     note: str
     is_active: bool

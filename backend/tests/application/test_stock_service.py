@@ -11,7 +11,12 @@ STOCK_MODULE = "application.stock.stock_service"
 
 
 class TestGetSignalsForTicker:
-    def test_returns_signals_with_bias_distribution(self) -> None:
+    def test_returns_signals_with_bias_distribution(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         mock_signals = {"rsi": 55.0, "bias": 10.0}
         mock_dist = {"historical_biases": [1.0, 2.0], "count": 2}
         with (
@@ -20,91 +25,207 @@ class TestGetSignalsForTicker:
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
-            result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker(db_session, "AAPL")
 
         assert result is not None
         assert result["rsi"] == 55.0
         assert result["bias_distribution"] == mock_dist
 
-    def test_returns_signals_unchanged_when_signals_none(self) -> None:
+    def test_returns_signals_unchanged_when_signals_none(self, db_session) -> None:
         with (
             patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
             patch(f"{STOCK_MODULE}.get_bias_distribution") as mock_dist,
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
-            result = get_signals_for_ticker("AAPL")
+            result = get_signals_for_ticker(db_session, "AAPL")
 
         assert result is None
         mock_dist.assert_not_called()
 
+    def test_returns_nav_for_mutual_fund(self, db_session) -> None:
+        from datetime import date
 
-class TestGetPriceHistory:
-    def test_delegates_to_infrastructure(self) -> None:
+        from domain.entities import MutualFundNav, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131310B", category=StockCategory.MUTUAL_FUND),
+        )
+        db_session.add(
+            MutualFundNav(
+                fund_code="0131310B",
+                isin_code="JP90C000HR46",
+                nav_date=date(2026, 3, 14),
+                nav=15432.0,
+                nav_previous=15380.0,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+            from application.stock.stock_service import get_signals_for_ticker
+
+            result = get_signals_for_ticker(db_session, "0131310B")
+
+        mock_yf.assert_not_called()
+        assert result is not None
+        assert result["price"] == 15432.0
+
+    def test_returns_empty_for_skip_category(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="CASH_JPY", category="Cash"))
+
+        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+            from application.stock.stock_service import get_signals_for_ticker
+
+            result = get_signals_for_ticker(db_session, "CASH_JPY")
+
+        mock_yf.assert_not_called()
+        assert result == {}
+
+
+class TestGetPriceHistoryForTicker:
+    def test_delegates_to_yfinance_for_regular_stock(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
         mock_history = [{"date": "2024-01-01", "close": 100.0}]
         with patch(f"{STOCK_MODULE}._get_price_history", return_value=mock_history):
-            from application.stock.stock_service import get_price_history
+            from application.stock.stock_service import get_price_history_for_ticker
 
-            result = get_price_history("AAPL")
+            result = get_price_history_for_ticker(db_session, "AAPL")
 
         assert result == mock_history
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_empty_for_unknown_ticker(self, db_session) -> None:
         with patch(f"{STOCK_MODULE}._get_price_history", return_value=None):
-            from application.stock.stock_service import get_price_history
+            from application.stock.stock_service import get_price_history_for_ticker
 
-            result = get_price_history("UNKNOWN")
+            result = get_price_history_for_ticker(db_session, "UNKNOWN")
 
-        assert result is None
+        assert result == []
 
 
 class TestGetEarningsForTicker:
-    def test_returns_earnings_date(self) -> None:
+    def test_returns_earnings_date(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         mock_earnings = {"next_earnings_date": "2025-04-30"}
         with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings):
             from application.stock.stock_service import get_earnings_for_ticker
 
-            result = get_earnings_for_ticker("AAPL")
+            result = get_earnings_for_ticker(db_session, "AAPL")
 
         assert result == mock_earnings
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_none_when_not_available(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None):
             from application.stock.stock_service import get_earnings_for_ticker
 
-            result = get_earnings_for_ticker("AAPL")
+            result = get_earnings_for_ticker(db_session, "AAPL")
 
         assert result is None
 
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_earnings_date") as mock_yf:
+            from application.stock.stock_service import get_earnings_for_ticker
+
+            result = get_earnings_for_ticker(db_session, "01313139")
+
+        assert result is None
+        mock_yf.assert_not_called()
+
 
 class TestGetDividendForTicker:
-    def test_returns_dividend_info(self) -> None:
+    def test_returns_dividend_info(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
+
         mock_div = {"yield": 0.5, "amount": 0.25}
         with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_div):
             from application.stock.stock_service import get_dividend_for_ticker
 
-            result = get_dividend_for_ticker("AAPL")
+            result = get_dividend_for_ticker(db_session, "AAPL")
 
         assert result == mock_div
 
-    def test_returns_none_when_not_available(self) -> None:
+    def test_returns_none_when_not_available(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
+
         with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None):
             from application.stock.stock_service import get_dividend_for_ticker
 
-            result = get_dividend_for_ticker("AAPL")
+            result = get_dividend_for_ticker(db_session, "AAPL")
 
         assert result is None
 
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_dividend_info") as mock_yf:
+            from application.stock.stock_service import get_dividend_for_ticker
+
+            result = get_dividend_for_ticker(db_session, "01313139")
+
+        assert result is None
+        mock_yf.assert_not_called()
+
 
 class TestGetFundamentalsForTicker:
-    def test_returns_fundamentals(self) -> None:
+    def test_returns_fundamentals(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+
         payload = {"ticker": "AAPL", "trailing_pe": 22.3}
         with patch(f"{STOCK_MODULE}.get_fundamentals", return_value=payload):
             from application.stock.stock_service import get_fundamentals_for_ticker
 
-            result = get_fundamentals_for_ticker("AAPL")
+            result = get_fundamentals_for_ticker(db_session, "AAPL")
 
         assert result == payload
+
+    def test_skips_yfinance_for_mutual_fund(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
+
+        with patch(f"{STOCK_MODULE}.get_fundamentals") as mock_yf:
+            from application.stock.stock_service import get_fundamentals_for_ticker
+
+            result = get_fundamentals_for_ticker(db_session, "01313139")
+
+        assert result == {"ticker": "01313139"}
+        mock_yf.assert_not_called()
 
 
 # ===========================================================================
@@ -251,6 +372,108 @@ class TestImportStocks:
 
 
 class TestEnsureStockOnRadar:
+    def test_active_existing_stock_should_autocorrect_to_mutual_fund_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy",
+                current_tags="",
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf") as mock_detect:
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is False
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+        mock_detect.assert_not_called()
+
+    def test_reactivate_inactive_stock_should_autocorrect_to_mutual_fund_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure import repositories as repo
+
+        repo.save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                current_thesis="Legacy",
+                current_tags="legacy",
+                is_active=False,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf") as mock_detect:
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is True
+        assert stock.is_active is True
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+        mock_detect.assert_not_called()
+
+    def test_detects_eligible_mutual_fund_and_assigns_category(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import ensure_stock_on_radar
+        from domain.entities import EligibleAsset
+        from domain.enums import StockCategory
+
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with patch(f"{STOCK_MODULE}.detect_is_etf", return_value=False):
+            stock, created = ensure_stock_on_radar(db_session, "0131217A")
+
+        assert created is True
+        assert stock.category == StockCategory.MUTUAL_FUND
+        assert stock.is_etf is False
+
     def test_creates_new_stock_with_thesis_and_etf_category(self, db_session) -> None:
         from application.stock.stock_service import ensure_stock_on_radar
         from domain.enums import StockCategory
@@ -589,8 +812,8 @@ class TestGetEnrichedStocks:
         assert refreshed[0]["price"] == 110.0
         assert mock_signals.call_count == 2
 
-    def test_sector_field_included_in_enriched_response(self, db_session) -> None:
-        """sector field from yfinance cache should be present in each enriched stock dict."""
+    def test_metadata_fields_included_in_enriched_response(self, db_session) -> None:
+        """name/exchange/sector metadata from cache should be present in enriched stock."""
         from domain.entities import Stock
         from domain.enums import StockCategory
         from infrastructure.repositories import save_stock
@@ -604,6 +827,8 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
             patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_name_cached", return_value="Apple Inc."),
+            patch(f"{STOCK_MODULE}.get_ticker_exchange_cached", return_value="NMS"),
             patch(
                 f"{STOCK_MODULE}.get_ticker_sector_cached", return_value="Technology"
             ),
@@ -614,6 +839,8 @@ class TestGetEnrichedStocks:
 
         assert len(result) == 1
         item = result[0]
+        assert item["name"] == "Apple Inc."
+        assert item["exchange"] == "NMS"
         assert item["sector"] == "Technology"
         assert item["price"] == 195.0
         assert item["change_pct"] == 1.2
@@ -691,3 +918,276 @@ class TestGetEnrichedStocks:
         assert len(result) == 1
         mock_signals.assert_not_called()
         assert result[0]["signals"] is None
+
+    def test_signals_skipped_for_mutual_fund_category(self, db_session) -> None:
+        """Mutual_Fund category stocks should not have yfinance signals fetched.
+
+        When no NAV data exists in the DB, signals remain None.
+        """
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131217A", category=StockCategory.MUTUAL_FUND),
+        )
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert len(result) == 1
+        mock_signals.assert_not_called()
+        assert result[0]["signals"] is None
+
+    def test_mutual_fund_enriched_response_should_include_fund_name(
+        self, db_session
+    ) -> None:
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        save_stock(
+            db_session,
+            Stock(ticker="0131217A", category=StockCategory.MUTUAL_FUND),
+        )
+        save_stock(
+            db_session,
+            Stock(ticker="AAPL", category=StockCategory.MOAT),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_growth",
+                ticker="0131217A",
+                fund_name="eMAXIS Slim S&P500",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        by_ticker = {item["ticker"]: item for item in result}
+        assert by_ticker["0131217A"]["fund_name"] == "eMAXIS Slim S&P500"
+        assert by_ticker["AAPL"]["fund_name"] is None
+
+    def test_mutual_fund_fund_name_resolved_regardless_of_ticker_case(
+        self, db_session
+    ) -> None:
+        """fund_name lookup must succeed even when Stock.ticker is lowercase/mixed-case
+        but EligibleAsset stores the normalized UPPERCASE ticker."""
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        # Stock ticker stored in mixed-case (as may happen via import)
+        save_stock(
+            db_session,
+            Stock(ticker="0131217a", category=StockCategory.MUTUAL_FUND),
+        )
+        # EligibleAsset normalized to uppercase by upsert logic
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="eMAXIS Slim 全世界株式",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            from application.stock.stock_service import get_enriched_stocks
+
+            result = get_enriched_stocks(db_session)
+
+        assert len(result) == 1
+        assert result[0]["fund_name"] == "eMAXIS Slim 全世界株式"
+
+    def test_nav_fallback_sync_called_when_no_nav_data(self, db_session) -> None:
+        """When a Mutual_Fund stock has no NAV data, the enrichment pipeline
+        should call sync_single_fund_nav as a self-healing fallback."""
+        from domain.entities import Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+        from tests.conftest import test_engine
+
+        save_stock(
+            db_session,
+            Stock(ticker="01312179", category=StockCategory.MUTUAL_FUND),
+        )
+
+        with (
+            patch(f"{STOCK_MODULE}.engine", test_engine),
+            patch(f"{STOCK_MODULE}.sync_single_fund_nav") as mock_sync,
+            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+        ):
+            mock_sync.return_value = False
+            from application.stock.stock_service import get_enriched_stocks
+
+            get_enriched_stocks(db_session)
+
+        mock_sync.assert_called_once()
+        assert mock_sync.call_args[0][1] == "01312179"
+        mock_signals.assert_not_called()
+
+
+class TestReclassifyMutualFundStocks:
+    def test_reclassifies_active_growth_stocks_matching_eligible_fund_codes(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import reclassify_mutual_fund_stocks
+        from domain.entities import EligibleAsset, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        save_stock(
+            db_session,
+            Stock(
+                ticker="AAPL",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            EligibleAsset(
+                tax_wrapper="nisa_tsumitate",
+                ticker="0131217A",
+                fund_name="テスト投信",
+                asset_type="mutual_fund",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+
+        updated = reclassify_mutual_fund_stocks(db_session)
+
+        assert updated == 1
+        reclassified = db_session.get(Stock, "0131217A")
+        assert reclassified is not None
+        assert reclassified.category == StockCategory.MUTUAL_FUND
+        unchanged = db_session.get(Stock, "AAPL")
+        assert unchanged is not None
+        assert unchanged.category == StockCategory.GROWTH
+
+
+# ===========================================================================
+# _resolve_stock_category — Holding table fallback
+# ===========================================================================
+
+
+class TestResolveStockCategoryFallback:
+    """Verify _resolve_stock_category checks Holding table when Stock is absent."""
+
+    def test_returns_category_from_holding_when_stock_not_found(
+        self, db_session
+    ) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+        from domain.constants import DEFAULT_USER_ID
+        from domain.entities import Holding
+        from domain.enums import StockCategory
+
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=1,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        result = _resolve_stock_category(db_session, "0131217A")
+
+        assert result == "Mutual_Fund"
+
+    def test_prefers_stock_table_over_holding(self, db_session) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+        from domain.constants import DEFAULT_USER_ID
+        from domain.entities import Holding, Stock
+        from domain.enums import StockCategory
+        from infrastructure.repositories import save_stock
+
+        save_stock(
+            db_session,
+            Stock(
+                ticker="0131217A",
+                category=StockCategory.GROWTH,
+                is_active=True,
+                is_etf=False,
+            ),
+        )
+        db_session.add(
+            Holding(
+                user_id=DEFAULT_USER_ID,
+                ticker="0131217A",
+                category=StockCategory.MUTUAL_FUND,
+                quantity=100,
+                account_id=1,
+                currency="JPY",
+                is_cash=False,
+            )
+        )
+        db_session.commit()
+
+        result = _resolve_stock_category(db_session, "0131217A")
+
+        assert result == "Growth"
+
+    def test_returns_none_when_ticker_not_found_anywhere(self, db_session) -> None:
+        from application.stock.stock_service import _resolve_stock_category
+
+        result = _resolve_stock_category(db_session, "UNKNOWN_TICKER")
+
+        assert result is None

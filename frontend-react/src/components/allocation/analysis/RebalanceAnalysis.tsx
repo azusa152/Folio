@@ -49,7 +49,11 @@ function filterHoldingsByDrill(
   }
 }
 
-export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
+export function RebalanceAnalysis({
+  displayCurrency,
+  privacyMode,
+  enabled,
+}: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
   const { data, isLoading, isFetching } = useAllocRebalance(displayCurrency, enabled)

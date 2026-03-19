@@ -24,6 +24,7 @@ export type FearGreedResponse = components["schemas"]["FearGreedResponse"]
 // Snapshot (mapped from SnapshotResponse)
 export type Snapshot = components["schemas"]["SnapshotResponse"]
 export type TwrResponse = components["schemas"]["TwrResponse"]
+export type InsightResponse = components["schemas"]["InsightResponse"]
 
 // GreatMindsResponse: gurus field is list[dict] in backend → properly typed via hand-written types
 export type { GreatMindsResponse, GreatMindsEntryResponse, GreatMindsGuruDetail } from "./smartMoney"

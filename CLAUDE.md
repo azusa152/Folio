@@ -10,7 +10,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 make setup               # First-time setup: uv sync + npm ci + codegen + pre-commit hooks
 docker compose up -d
-make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs
+make ci                  # Full CI check — mirrors ALL GitHub CI pipeline jobs (parallelized)
+make ci-quick            # Quick CI — lint + tests (no coverage/security/typecheck)
 make test                # Run all tests (backend + frontend)
 make backend-test-quick  # Fast backend tests — no coverage, for local iteration
 make lint                # Lint all (backend + frontend)
@@ -95,6 +96,8 @@ Folio exposes an agent-friendly webhook entrypoint at `POST /webhook`.
 - Use `docs/agents/folio/SKILL.md` for compact action usage
 - Use `docs/agents/folio/reference.md` for detailed fields and thresholds
 - Branch on `error_code` (machine-readable), not localized `detail`
+- For NISA/iDeCo quota status, use `{"action":"quota"}`
+- New wrapper endpoints: `GET /wrappers/quota`, `POST /wrappers/suggest-routing`, `GET /wrappers/detax`
 - When webhook actions change, update agent docs under `docs/agents/`
 
 ## Architecture Boundaries (enforced by `backend/tests/test_architecture.py`)
@@ -103,9 +106,12 @@ Layer dependency direction: `domain/` (core, analysis, portfolio) → `applicati
 
 New services: `transaction_service`, `settlement_service` (extended for stock settlement), `account_service`, `analytics_service`, `insight_service` in `application/portfolio/`.
 New domain modules: `domain/portfolio/allocation.py`, `domain/portfolio/insights.py`, `domain/analysis/drawdown.py`, `domain/analysis/risk_metrics.py`.
+Additional domain modules for tax wrappers: `domain/portfolio/tax_wrapper.py`, `domain/portfolio/eligibility.py`, `domain/portfolio/asset_location.py`, `domain/portfolio/routing.py`, `domain/portfolio/detax.py`.
+Additional services for tax wrappers: `wrapper_service`, `eligibility_service`, `routing_service` in `application/portfolio/`.
+New routes: `api/routes/wrapper_routes.py`.
 New scripts: `backend/scripts/migrate_ledger.py` for ledger data migration.
 New transaction types: `OPENING_BALANCE`, `ADJUSTMENT`, `TRANSFER_IN`, `TRANSFER_OUT`.
-New webhook actions: `transactions`, `add_transaction`, `accounts`, `analytics`, `insights` (`add_transaction` supports the new transaction types above).
+New webhook actions: `transactions`, `add_transaction`, `accounts`, `analytics`, `insights`, `quota` (`add_transaction` supports the new transaction types above).
 
 - **`api/routes/`** MUST delegate to `application/<domain>/` services. Only `infrastructure.database` (`get_session`, `engine`) is allowed in `api/`.
 - **`domain/`** must not import from any outer layer.

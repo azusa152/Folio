@@ -10,8 +10,16 @@ from sqlalchemy import case
 from sqlmodel import func, select
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from sqlmodel import Session
 
+from application.portfolio.eligibility_service import check_asset_eligibility
+from application.portfolio.wrapper_service import (
+    get_ledger_entries,
+    record_contribution,
+    record_restoration,
+)
 from domain.constants import (
     DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
@@ -21,6 +29,7 @@ from domain.constants import (
 from domain.core.entities import _normalize_stock_category
 from domain.entities import Holding, Transaction
 from domain.enums import StockCategory, TransactionType
+from domain.portfolio.tax_wrapper import validate_nisa_purchase
 from i18n import t
 from infrastructure import repositories as repo
 
@@ -53,6 +62,8 @@ SKIP_CASH_FOR_STOCK_TYPES = {
     TransactionType.ADJUSTMENT,
     TransactionType.STOCK_SPLIT,
 }
+
+ELIGIBILITY_CHECK_WRAPPERS = {"nisa_tsumitate", "nisa_growth", "ideco"}
 
 
 def settle_transaction(
@@ -88,8 +99,69 @@ def settle_transaction(
     txn_data["ticker"] = ticker
     currency = str(txn_data.get("currency", "USD")).upper().strip() or "USD"
     txn_data["currency"] = currency
+    txn_date: date = txn_data["transaction_date"]
     is_cash_ticker = _is_cash_ticker(ticker, currency)
     skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not is_cash_ticker
+    wrapper = (account.tax_wrapper or "").strip().lower()
+    user_id = account.user_id or DEFAULT_USER_ID
+
+    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
+        amount = abs(float(txn_data.get("total_amount", 0) or 0))
+        entries = get_ledger_entries(session, user_id)
+        violations = validate_nisa_purchase(
+            entries=entries,
+            wrapper=wrapper,
+            amount=amount,
+            year=txn_date.year,
+            as_of=txn_date,
+        )
+        if violations:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "QUOTA_EXCEEDED",
+                    "detail": t("wrapper.quota_exceeded", lang=lang),
+                    "violations": violations,
+                },
+            )
+
+    eligibility = None
+    if (
+        wrapper in ELIGIBILITY_CHECK_WRAPPERS
+        and txn_type == TransactionType.BUY
+        and not is_cash_ticker
+    ):
+        eligibility = check_asset_eligibility(
+            session=session,
+            ticker=ticker,
+            wrapper=wrapper,
+            broker=account.broker,
+        )
+        if not eligibility.eligible:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "ASSET_NOT_ELIGIBLE",
+                    "detail": t("eligibility.not_eligible", lang=lang),
+                    "reasons": eligibility.reasons,
+                    "suggested_wrapper": eligibility.suggested_wrapper,
+                },
+            )
+
+    if (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_tsumitate"
+        and not is_cash_ticker
+    ) or (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_growth"
+        and not is_cash_ticker
+        and eligibility is not None
+        and eligibility.asset_type == "mutual_fund"
+    ):
+        txn_data["category"] = StockCategory.MUTUAL_FUND.value
+
+    restoration_amount = 0.0
 
     if not skip_cash:
         cash_holding = repo.find_cash_holding_by_account_and_currency(
@@ -169,6 +241,7 @@ def settle_transaction(
             _update_cost_basis(stock_holding, quantity, txn_data)
             stock_holding.quantity += quantity
         elif txn_type == TransactionType.SELL:
+            restoration_amount = quantity * float(stock_holding.cost_basis or 0.0)
             _raise_if_insufficient_shares(
                 lang=lang,
                 available=stock_holding.quantity,
@@ -197,11 +270,39 @@ def settle_transaction(
 
     txn = Transaction(**txn_data)
     session.add(txn)
+    session.flush()
+    session.refresh(txn)
+
+    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
+        record_contribution(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=abs(float(txn.total_amount)),
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            effective_date=txn_date,
+            autocommit=False,
+        )
+    elif (
+        wrapper in {"nisa_tsumitate", "nisa_growth"}
+        and txn_type == TransactionType.SELL
+        and restoration_amount > 0
+    ):
+        record_restoration(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=restoration_amount,
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            sell_date=txn_date,
+            autocommit=False,
+        )
+
     if autocommit:
         session.commit()
-    else:
-        session.flush()
-    session.refresh(txn)
+        session.refresh(txn)
     return txn
 
 
@@ -355,12 +456,21 @@ def _is_cash_ticker(ticker: str, currency: str) -> bool:
 
 
 def _infer_category(session: Session, txn_data: dict) -> StockCategory:
-    """Infer category by radar stock first, then payload fallback."""
+    """Infer category by radar stock first, eligible fund master, then payload fallback."""
     ticker = str(txn_data.get("ticker", "")).upper().strip()
+    requested = str(txn_data.get("category", "")).strip()
+    if (
+        ticker
+        and requested == StockCategory.MUTUAL_FUND.value
+        and repo.is_active_eligible_mutual_fund(session, ticker)
+    ):
+        return StockCategory.MUTUAL_FUND
     if ticker:
         stock = repo.find_stock_by_ticker(session, ticker)
         if stock:
             return stock.category
+        if repo.is_active_eligible_mutual_fund(session, ticker):
+            return StockCategory.MUTUAL_FUND
 
     raw = str(txn_data.get("category", StockCategory.GROWTH.value))
     return _normalize_stock_category(raw)
@@ -562,3 +672,41 @@ def verify_positions(session: Session) -> list[dict]:
             )
 
     return discrepancies
+
+
+# ---------------------------------------------------------------------------
+# Mutual-Fund Holding reclassification (data healing)
+# ---------------------------------------------------------------------------
+
+
+def reclassify_mutual_fund_holdings(
+    session: Session, *, autocommit: bool = True
+) -> int:
+    """Fix Holdings whose ticker is an eligible mutual fund but category is wrong.
+
+    Mirrors ``stock_service.reclassify_mutual_fund_stocks`` for the Holding table.
+    Should be called at startup and after each NISA eligible-list sync.
+    """
+    from logging_config import get_logger
+
+    _logger = get_logger(__name__)
+
+    holdings = list(
+        session.exec(
+            select(Holding).where(
+                Holding.is_cash == False,  # noqa: E712
+                Holding.category != StockCategory.MUTUAL_FUND,
+            )
+        ).all()
+    )
+    updated = 0
+    for h in holdings:
+        if repo.is_active_eligible_mutual_fund(session, h.ticker):
+            h.category = StockCategory.MUTUAL_FUND
+            session.add(h)
+            updated += 1
+    if updated:
+        if autocommit:
+            session.commit()
+        _logger.info("Reclassified %d holdings to Mutual_Fund.", updated)
+    return updated

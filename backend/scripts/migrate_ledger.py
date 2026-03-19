@@ -1,8 +1,19 @@
 """
 Ledger migration: backfill OPENING_BALANCE transactions for existing holdings.
 
-Usage:
-    cd backend && python -m scripts.migrate_ledger [--dry-run]
+Must run inside the Docker container (uses the container's database volume).
+Use the Make targets instead of invoking directly:
+
+    make migrate-ledger-dry   # preview without commit
+    make migrate-ledger       # apply migration
+
+To exec into the container manually:
+
+    docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger [--dry-run]
+
+For local-only execution (e.g. debugging against a local DB), set:
+
+    FOLIO_ALLOW_LOCAL_DB=1 uv run python -m scripts.migrate_ledger
 
 Idempotent: skips holdings that already have an OPENING_BALANCE transaction.
 """
@@ -10,22 +21,24 @@ Idempotent: skips holdings that already have an OPENING_BALANCE transaction.
 from __future__ import annotations
 
 import argparse
+import logging
 from datetime import date
 from typing import Any
 
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
-from domain.constants import DEFAULT_ACCOUNT_NAME, DEFAULT_USER_ID
-from domain.entities import Account, Holding, Transaction
-from domain.enums import StockCategory, TransactionType
-from infrastructure.database import create_db_and_tables, engine
-from logging_config import get_logger
+from scripts import assert_docker_runtime
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+engine = None
 
 
-def _create_default_account(session: Session) -> Account:
+def _create_default_account(session: Session):
+    from domain.constants import DEFAULT_ACCOUNT_NAME, DEFAULT_USER_ID
+    from domain.entities import Account, Holding
+    from domain.enums import StockCategory
+
     account = Account(
         user_id=DEFAULT_USER_ID,
         name=DEFAULT_ACCOUNT_NAME,
@@ -58,7 +71,10 @@ def _create_default_account(session: Session) -> Account:
     return account
 
 
-def _get_or_prepare_default_account(session: Session) -> Account:
+def _get_or_prepare_default_account(session: Session):
+    from domain.constants import DEFAULT_ACCOUNT_NAME
+    from domain.entities import Account
+
     existing = session.exec(
         select(Account).where(
             Account.name == DEFAULT_ACCOUNT_NAME,
@@ -72,6 +88,16 @@ def _get_or_prepare_default_account(session: Session) -> Account:
 
 
 def migrate(dry_run: bool = False) -> dict[str, int]:
+    from domain.entities import Holding, Transaction
+    from domain.enums import TransactionType
+    from infrastructure.database import create_db_and_tables
+
+    global engine
+    if engine is None:
+        from infrastructure.database import engine as db_engine
+
+        engine = db_engine
+
     create_db_and_tables()
     stats: dict[str, int] = {
         "orphan_holdings": 0,
@@ -153,6 +179,12 @@ def migrate(dry_run: bool = False) -> dict[str, int]:
 
 
 def main(args: list[str] | None = None) -> int:
+    assert_docker_runtime()
+    global logger
+    from logging_config import get_logger
+
+    logger = get_logger(__name__)
+
     parser = argparse.ArgumentParser(
         description="Backfill OPENING_BALANCE transactions for legacy holdings.",
     )

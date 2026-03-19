@@ -6,7 +6,8 @@
 #
 #  Fullstack (composite):
 #    make dev              Start backend + frontend dev servers
-#    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs
+#    make ci               Full CI check — mirrors ALL GitHub CI pipeline jobs (parallelized)
+#    make ci-quick         Quick CI — lint + tests (no coverage/security/typecheck)
 #    make lint             Lint backend + frontend
 #    make test             Test backend + frontend (pytest + Vitest)
 #    make format           Format backend code
@@ -76,6 +77,9 @@ FRONTEND_DIR := frontend-react
 
 PYTHON ?= $(BACKEND_DIR)/.venv/bin/python
 RUFF   ?= $(BACKEND_DIR)/.venv/bin/ruff
+
+# Auto-detect available CPU cores; overridable: make NPROC=4 ci
+NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 # Lazy-evaluated: only runs `docker volume ls` when backup/restore targets execute
 VOLUME_NAME = $(shell docker volume ls --format '{{.Name}}' | grep radar-data | head -1)
@@ -187,7 +191,8 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: dev lint test format ci clean frontend-test frontend-typecheck
+.PHONY: dev lint test format ci ci-quick clean frontend-test frontend-typecheck
+.PHONY: _ci-fast _ci-heavy _ci-network
 
 dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
 	@echo "Starting backend on :8000 and frontend on :3000 ..."
@@ -206,7 +211,29 @@ test: backend-test frontend-test ## Test entire project (backend + frontend)
 
 format: backend-format ## Format entire project (backend code)
 
-ci: lint test check-constants check-api-spec check-i18n check-agent-doc-tokens frontend-build frontend-security backend-security backend-typecheck ## Full CI check — mirrors all GitHub CI pipeline jobs
+# Phase group targets for parallel CI execution.
+# Parsed by scripts/check_ci_completeness.py to verify all CI jobs are covered.
+_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-api-spec
+_ci-heavy: backend-test frontend-test frontend-build backend-typecheck
+_ci-network: frontend-security backend-security
+
+ci: .venv-check .node-check ## Full CI check — mirrors all GitHub CI pipeline jobs (parallelized)
+	@echo "== Phase 1: fast checks =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-fast
+	@echo ""
+	@echo "== Phase 2: tests + build + typecheck =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-heavy
+	@echo ""
+	@echo "== Phase 3: security audits =="
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-network
+	@echo ""
+	@echo "== CI passed =="
+
+ci-quick: .venv-check .node-check ## Quick CI — lint + tests (no coverage/security/typecheck)
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) _ci-fast
+	+@$(MAKE) --no-print-directory -k -j $(NPROC) backend-test-quick frontend-test
+	@echo ""
+	@echo "== CI quick passed =="
 
 clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.cache)
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
@@ -247,7 +274,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry
+.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -267,22 +294,25 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "Restored from $$file"
 
-migrate-ledger: .venv-check ## Run ledger migration (backfill opening balances)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger
+migrate-ledger: ## Run ledger migration (backfill opening balances; runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger
 
-migrate-ledger-dry: .venv-check ## Dry-run ledger migration
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.migrate_ledger --dry-run
+migrate-ledger-dry: ## Dry-run ledger migration (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger --dry-run
 
-purge-legacy: .venv-check ## Purge orphaned/zero-qty legacy holding data (run after ledger migration)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings
+purge-legacy: ## Purge orphaned/zero-qty legacy holding data (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.purge_legacy_holdings
 
-purge-legacy-dry: .venv-check ## Dry-run purge (preview without commit)
-	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_logs uv run python -m scripts.purge_legacy_holdings --dry-run
+purge-legacy-dry: ## Dry-run purge (preview without commit; runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.purge_legacy_holdings --dry-run
+
+refresh-eligible: ## Refresh NISA eligible assets from official sources (runs inside Docker)
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.refresh_eligible_assets --wrapper all
 
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-makefile-db-targets backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
@@ -292,6 +322,9 @@ check-i18n: .venv-check ## Check locale key parity (backend + frontend locale fi
 
 check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no venv needed)
 	python3 scripts/check_agent_doc_tokens.py
+
+check-makefile-db-targets: ## Ensure DB maintenance make targets execute in Docker
+	python3 scripts/check_makefile_db_targets.py
 
 check-api-spec: .venv-check .python-version-check ## Check OpenAPI spec is up to date (mirrors CI api-spec job)
 	@set -e; \
@@ -319,7 +352,7 @@ backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors 
 			rm -f "$$log_file"; \
 			exit 0; \
 		fi; \
-		if rg -q "SSLError|MaxRetryError|UNEXPECTED_EOF_WHILE_READING|Connection.*timed out|Temporary failure in name resolution" "$$log_file"; then \
+		if grep -qE "SSLError|MaxRetryError|UNEXPECTED_EOF_WHILE_READING|Connection.*timed out|Temporary failure in name resolution" "$$log_file"; then \
 			cat "$$log_file"; \
 			rm -f "$$log_file"; \
 			if [ $$attempt -lt $$max_attempts ]; then \
@@ -337,7 +370,7 @@ backend-security: .venv-check ## pip-audit — backend vulnerabilities (mirrors 
 		exit 1; \
 	done
 
-check-ci: .venv-check ## Verify make ci covers all GitHub CI pipeline jobs
+check-ci: .venv-check check-makefile-db-targets ## Verify make ci covers all GitHub CI pipeline jobs
 	cd $(BACKEND_DIR) && uv run python ../scripts/check_ci_completeness.py
 
 generate-key: .venv-check ## Generate a secure API key (add to .env as FOLIO_API_KEY)

@@ -2,19 +2,19 @@ export const CATEGORY_ICON_SHORT: Record<string, string> = {
   Trend_Setter: "🌊",
   Moat: "🏰",
   Growth: "🚀",
+  Mutual_Fund: "🧺",
   Bond: "🛡️",
   Crypto: "₿",
   Cash: "💵",
   ETF: "📈",
-  MUTUAL_FUND: "📚",
 }
 
 export const CATEGORY_COLOR_MAP: Record<string, string> = {
   Trend_Setter: "#3B82F6",
   Moat: "#10B981",
   Growth: "#F59E0B",
+  Mutual_Fund: "#06B6D4",
   ETF: "#0EA5E9",
-  MUTUAL_FUND: "#14B8A6",
   Bond: "#8B5CF6",
   Cash: "#9CA3AF",
   Crypto: "#F7931A",
@@ -34,6 +34,9 @@ export const SCAN_SIGNAL_ICONS: Record<string, string> = {
   NORMAL: "➖",
 }
 
+export const SKIP_PRICE_CATEGORIES = new Set(["Cash"])
+export const SKIP_MOAT_CATEGORIES = new Set(["Bond", "Cash", "Crypto", "Mutual_Fund"])
+
 export const BUY_OPPORTUNITY_SIGNALS = new Set([
   "DEEP_VALUE",
   "OVERSOLD",
@@ -51,17 +54,18 @@ export const STOCK_CATEGORIES = [
   "Trend_Setter",
   "Moat",
   "Growth",
+  "Mutual_Fund",
   "Bond",
   "Crypto",
   "Cash",
   "ETF",
-  "MUTUAL_FUND",
 ] as const
 
 export const RADAR_CATEGORIES = [
   "Trend_Setter",
   "Moat",
   "Growth",
+  "Mutual_Fund",
   "Bond",
   "Crypto",
 ] as const
@@ -92,6 +96,36 @@ export const ACCOUNT_TYPES = [
   "loan",
   "other",
 ] as const
+
+export const TAX_WRAPPER_TYPES = [
+  "tokutei",
+  "nisa_tsumitate",
+  "nisa_growth",
+  "ideco",
+  "ippan",
+] as const
+
+export type TaxWrapperType = (typeof TAX_WRAPPER_TYPES)[number]
+
+export function isTaxWrapperType(value: string | null | undefined): value is TaxWrapperType {
+  return !!value && TAX_WRAPPER_TYPES.includes(value as TaxWrapperType)
+}
+
+export const TAX_WRAPPER_ICONS: Record<string, string> = {
+  tokutei: "📋",
+  nisa_tsumitate: "🌱",
+  nisa_growth: "📈",
+  ideco: "🏦",
+  ippan: "📄",
+}
+
+export const TAX_WRAPPER_COLOR_MAP: Record<string, string> = {
+  tokutei: "#9CA3AF",
+  nisa_tsumitate: "#10B981",
+  nisa_growth: "#3B82F6",
+  ideco: "#8B5CF6",
+  ippan: "#D1D5DB",
+}
 export const HOLDING_QUANTITY_EPSILON = 1e-8
 
 export const CURRENCY_TO_REGION: Record<string, string> = {

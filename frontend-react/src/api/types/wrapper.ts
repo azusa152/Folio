@@ -1,0 +1,22 @@
+import type { components } from "./generated"
+
+export type QuotaStatusResponse = components["schemas"]["QuotaStatusResponse"]
+export type AllQuotasResponse = components["schemas"]["AllQuotasResponse"]
+export type RestorationForecastItem = components["schemas"]["RestorationForecastItem"]
+export type RestorationForecastResponse = components["schemas"]["RestorationForecastResponse"]
+export type EligibilityCheckResponse = components["schemas"]["EligibilityCheckResponse"]
+export type EligibleAssetItem = components["schemas"]["EligibleAssetItem"]
+export type EligibleAssetsResponse = components["schemas"]["EligibleAssetsResponse"]
+export type EligibleAssetsMetadataResponse =
+  components["schemas"]["EligibleAssetsMetadataResponse"]
+export type EligibleAssetsRefreshStats = components["schemas"]["EligibleAssetsRefreshStats"]
+export type EligibleAssetsRefreshResponse =
+  components["schemas"]["EligibleAssetsRefreshResponse"]
+export type EligibleAssetsUploadResponse = components["schemas"]["EligibleAssetsUploadResponse"]
+export type ContributionEntryItem = components["schemas"]["ContributionEntryItem"]
+export type ContributionsResponse = components["schemas"]["ContributionsResponse"]
+export type RoutingSuggestionItem = components["schemas"]["RoutingSuggestionItem"]
+export type RoutingSuggestRequest = components["schemas"]["RoutingSuggestRequest"]
+export type RoutingSuggestResponse = components["schemas"]["RoutingSuggestResponse"]
+export type DeTaxOpportunityItem = components["schemas"]["DeTaxOpportunityItem"]
+export type DeTaxResponse = components["schemas"]["DeTaxResponse"]

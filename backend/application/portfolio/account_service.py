@@ -10,11 +10,17 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
+from application.portfolio.transaction_service import cleanup_account_transactions
 from domain.constants import (
+    CURRENCY_REGION_MAP,
     DEFAULT_ACCOUNT_NAME,
+    DEFAULT_MARKET,
     DEFAULT_USER_ID,
     ERROR_ACCOUNT_NOT_FOUND,
+    ERROR_INVALID_INPUT,
+    TAX_WRAPPER_OPTIONS,
 )
 from domain.entities import Account, Holding
 from domain.enums import StockCategory
@@ -37,7 +43,9 @@ def _acct_to_dict(acct: Account) -> dict:
         "name": acct.name,
         "broker": acct.broker,
         "account_type": acct.account_type,
+        "tax_wrapper": acct.tax_wrapper,
         "currency": acct.currency,
+        "market": acct.market,
         "institution": acct.institution,
         "note": acct.note,
         "is_active": acct.is_active,
@@ -59,6 +67,36 @@ def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Accou
     return account
 
 
+def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
+    """Normalize and validate tax wrapper values for internal callers."""
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if not normalized:
+        return None
+    if normalized not in TAX_WRAPPER_OPTIONS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("common.validation_error", lang=lang),
+            },
+        )
+    return normalized
+
+
+def _normalize_market(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def _infer_market_from_currency(currency: str | None) -> str:
+    normalized_currency = (currency or "USD").strip().upper() or "USD"
+    return CURRENCY_REGION_MAP.get(normalized_currency, DEFAULT_MARKET)
+
+
 # ---------------------------------------------------------------------------
 # Service functions
 # ---------------------------------------------------------------------------
@@ -74,12 +112,17 @@ def list_accounts(session: Session, include_inactive: bool = False) -> list[dict
 
 def create_account(session: Session, data: dict, lang: str) -> dict:
     """Create a new account. Returns the created account dict."""
-    account = Account(**data)
+    payload = dict(data)
+    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"), lang)
+    account = Account(**payload)
     session.add(account)
     session.flush()
 
     normalized_currency = (account.currency or "USD").upper().strip() or "USD"
     account.currency = normalized_currency
+    account.market = _normalize_market(account.market) or _infer_market_from_currency(
+        normalized_currency
+    )
     cash_holding = Holding(
         user_id=account.user_id or DEFAULT_USER_ID,
         ticker=normalized_currency,
@@ -129,7 +172,23 @@ def ensure_default_account(session: Session) -> Account:
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:
     """Partially update an existing account. Only provided fields are overwritten."""
     account = _get_account_or_raise(session, account_id, lang)
-    for key, value in data.items():
+    normalized_data = dict(data)
+    if "tax_wrapper" in normalized_data:
+        normalized_data["tax_wrapper"] = _normalize_tax_wrapper(
+            normalized_data.get("tax_wrapper"), lang
+        )
+    explicit_market = "market" in normalized_data
+    if explicit_market:
+        normalized_data["market"] = _normalize_market(normalized_data.get("market"))
+    if "currency" in normalized_data and normalized_data["currency"] is not None:
+        normalized_data["currency"] = (
+            str(normalized_data["currency"]).strip().upper() or "USD"
+        )
+        if not explicit_market:
+            normalized_data["market"] = _infer_market_from_currency(
+                normalized_data["currency"]
+            )
+    for key, value in normalized_data.items():
         if hasattr(account, key) and key not in ("id", "user_id", "created_at"):
             setattr(account, key, value)
     account.updated_at = datetime.now(UTC)
@@ -138,10 +197,13 @@ def update_account(session: Session, account_id: int, data: dict, lang: str) -> 
 
 
 def remove_account(session: Session, account_id: int, lang: str) -> None:
-    """Soft-delete an account (set is_active = False)."""
+    """Cascade-clean account transactions/holdings, then soft-delete the account."""
     account = _get_account_or_raise(session, account_id, lang)
+    cleanup_account_transactions(session, account_id, lang)
+    repo.delete_holdings_by_account(session, account_id)
     repo.deactivate_account(session, account)
     invalidate_rebalance_cache()
+    invalidate_insight_cache()
     logger.info("停用帳戶：%s (id=%d)", account.name, account_id)
 
 

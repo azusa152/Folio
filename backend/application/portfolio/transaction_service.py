@@ -6,6 +6,7 @@ from typing import Literal
 from fastapi import HTTPException
 from sqlmodel import Session
 
+from application.portfolio.nav_sync_service import sync_single_fund_nav
 from application.portfolio.settlement_service import (
     reverse_settlement,
     settle_transaction,
@@ -114,9 +115,11 @@ def create_transaction(
     auto_radar = False
     try:
         if ticker and not is_cash_ticker:
-            _, auto_radar = ensure_stock_on_radar(
+            stock_on_radar, auto_radar = ensure_stock_on_radar(
                 session, ticker, thesis=thesis, category=category
             )
+            if auto_radar and stock_on_radar.category == StockCategory.MUTUAL_FUND:
+                sync_single_fund_nav(session, stock_on_radar.ticker)
         saved = settle_transaction(session, data, lang, autocommit=autocommit)
     except Exception:
         # import_transactions continues on per-item failures; clear pending state
@@ -145,6 +148,8 @@ def remove_transaction(session: Session, txn_id: int, lang: str) -> None:
         )
     if txn.account_id is not None:
         reverse_settlement(session, txn, lang)
+        if txn.id is not None:
+            repo.delete_ledger_entries_by_transaction(session, txn.id)
         session.delete(txn)
         session.commit()
     else:
@@ -314,7 +319,8 @@ def _to_dict(
     }
 
 
-def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
+def cleanup_account_transactions(session: Session, account_id: int, lang: str) -> int:
+    """Reverse and delete all transactions (and wrapper ledgers) for one account."""
     existing_transactions = repo.find_all_transactions(
         session,
         account_id=account_id,
@@ -328,7 +334,13 @@ def _replace_account_transactions(session: Session, account_id: int, lang: str) 
     )
     for txn in existing_transactions_sorted:
         reverse_settlement(session, txn, lang)
+        if txn.id is not None:
+            repo.delete_ledger_entries_by_transaction(session, txn.id)
     return repo.delete_transactions_by_account(session, account_id)
+
+
+def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
+    return cleanup_account_transactions(session, account_id, lang)
 
 
 def _replace_account_and_import(

@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   { path: "/radar", labelKey: "nav.radar", icon: "📡" },
   { path: "/backtest", labelKey: "nav.backtest", icon: "🧪" },
   { path: "/allocation", labelKey: "nav.allocation", icon: "💼" },
+  { path: "/nisa", labelKey: "nav.nisa", icon: "🌱" },
   { path: "/fx-watch", labelKey: "nav.fx_watch", icon: "💱" },
   { path: "/smart-money", labelKey: "nav.smart_money", icon: "🏦" },
 ] as const

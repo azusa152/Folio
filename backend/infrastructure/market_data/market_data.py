@@ -67,6 +67,7 @@ from domain.constants import (
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
     DISK_ETF_SECTOR_WEIGHTS_TTL,
+    DISK_EXCHANGE_TTL,
     DISK_FEAR_GREED_TTL,
     DISK_FOREX_HISTORY_LONG_TTL,
     DISK_FOREX_HISTORY_TTL,
@@ -78,12 +79,14 @@ from domain.constants import (
     DISK_KEY_EARNINGS,
     DISK_KEY_ETF_HOLDINGS,
     DISK_KEY_ETF_SECTOR_WEIGHTS,
+    DISK_KEY_EXCHANGE,
     DISK_KEY_FEAR_GREED,
     DISK_KEY_FOREX,
     DISK_KEY_FOREX_HISTORY,
     DISK_KEY_FOREX_HISTORY_LONG,
     DISK_KEY_FUNDAMENTALS,
     DISK_KEY_MOAT,
+    DISK_KEY_NAME,
     DISK_KEY_PRICE_HISTORY,
     DISK_KEY_PRICE_PAIR,
     DISK_KEY_ROGUE_WAVE,
@@ -94,6 +97,7 @@ from domain.constants import (
     DISK_MOAT_FAILURE_TTL,
     DISK_MOAT_PERSISTENT_TTL,
     DISK_MOAT_TTL,
+    DISK_NAME_TTL,
     DISK_PRICE_HISTORY_TTL,
     DISK_PRICE_PAIR_TTL,
     DISK_ROGUE_WAVE_TTL,
@@ -2921,6 +2925,8 @@ def get_bias_distribution(ticker: str) -> dict:
 # ===========================================================================
 
 _SECTOR_NOT_FOUND: str = "__none__"  # 哨兵值：無法取得 sector 時的快取標記
+_NAME_NOT_FOUND: str = "__none__"  # 哨兵值：無法取得 company name 時的快取標記
+_EXCHANGE_NOT_FOUND: str = "__none__"  # 哨兵值：無法取得 exchange 時的快取標記
 
 
 def _fetch_sector_from_yf(ticker: str) -> str:
@@ -3001,6 +3007,134 @@ def prewarm_ticker_sector_batch(
             future.result()
         except Exception as exc:
             logger.warning("預熱 %s sector 失敗：%s", ticker, exc)
+
+
+def _fetch_name_from_yf(ticker: str) -> str:
+    """從 yfinance info 取得公司名稱（shortName 優先，fallback longName）。"""
+    try:
+        _rate_limiter.wait()
+        info = _yf_info(ticker)
+        short_name = info.get("shortName")
+        long_name = info.get("longName")
+        name = short_name or long_name
+        if name:
+            logger.info("%s 公司名稱 = %s", ticker, name)
+            return str(name)
+        logger.debug("%s yfinance 未提供 company name，使用哨兵值。", ticker)
+        return _NAME_NOT_FOUND
+    except Exception as e:
+        logger.debug("無法取得 %s company name：%s，使用哨兵值。", ticker, e)
+        return _NAME_NOT_FOUND
+
+
+def get_ticker_name(ticker: str) -> str | None:
+    """
+    取得股票公司名稱（shortName 優先，fallback longName）。
+    公司名稱變動極少，透過 L2 磁碟快取（30 天 TTL）。
+    """
+    if not ticker:
+        return None
+
+    disk_key = f"{DISK_KEY_NAME}:{ticker}"
+    cached = _disk_get(disk_key)
+    if cached is not None:
+        return None if cached == _NAME_NOT_FOUND else cached
+
+    result = _fetch_name_from_yf(ticker)
+    _disk_set(disk_key, result, DISK_NAME_TTL)
+    return None if result == _NAME_NOT_FOUND else result
+
+
+def get_ticker_name_cached(ticker: str) -> str | None:
+    """從磁碟快取讀取股票公司名稱（非阻塞，不發起 yfinance 請求）。"""
+    if not ticker:
+        return None
+    cached = _disk_get(f"{DISK_KEY_NAME}:{ticker}")
+    if cached is not None:
+        return None if cached == _NAME_NOT_FOUND else cached
+    return None
+
+
+def _fetch_exchange_from_yf(ticker: str) -> str:
+    """從 yfinance info 取得交易所代碼（如 NMS, NYQ, TSE）。"""
+    try:
+        _rate_limiter.wait()
+        info = _yf_info(ticker)
+        exchange = info.get("exchange")
+        if exchange:
+            logger.info("%s 交易所 = %s", ticker, exchange)
+            return str(exchange)
+        logger.debug("%s yfinance 未提供 exchange，使用哨兵值。", ticker)
+        return _EXCHANGE_NOT_FOUND
+    except Exception as e:
+        logger.debug("無法取得 %s exchange：%s，使用哨兵值。", ticker, e)
+        return _EXCHANGE_NOT_FOUND
+
+
+def get_ticker_exchange(ticker: str) -> str | None:
+    """
+    取得股票交易所代碼（如 NMS, NYQ, TSE）。
+    交易所資訊變動極少，透過 L2 磁碟快取（30 天 TTL）。
+    """
+    if not ticker:
+        return None
+
+    disk_key = f"{DISK_KEY_EXCHANGE}:{ticker}"
+    cached = _disk_get(disk_key)
+    if cached is not None:
+        return None if cached == _EXCHANGE_NOT_FOUND else cached
+
+    result = _fetch_exchange_from_yf(ticker)
+    _disk_set(disk_key, result, DISK_EXCHANGE_TTL)
+    return None if result == _EXCHANGE_NOT_FOUND else result
+
+
+def get_ticker_exchange_cached(ticker: str) -> str | None:
+    """從磁碟快取讀取股票交易所代碼（非阻塞，不發起 yfinance 請求）。"""
+    if not ticker:
+        return None
+    cached = _disk_get(f"{DISK_KEY_EXCHANGE}:{ticker}")
+    if cached is not None:
+        return None if cached == _EXCHANGE_NOT_FOUND else cached
+    return None
+
+
+def prewarm_ticker_name_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> None:
+    """並行預熱多檔股票的公司名稱快取。"""
+    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_NAME}:{t}") is None]
+    if not uncached:
+        return
+
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_ticker_name, t): t for t in uncached}
+        completed, _ = _run_batch_with_timeout(futures, executor, label="name 預熱")
+    for future in completed:
+        ticker = completed[future]
+        try:
+            future.result()
+        except Exception as exc:
+            logger.warning("預熱 %s name 失敗：%s", ticker, exc)
+
+
+def prewarm_ticker_exchange_batch(
+    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
+) -> None:
+    """並行預熱多檔股票的交易所代碼快取。"""
+    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_EXCHANGE}:{t}") is None]
+    if not uncached:
+        return
+
+    with _FastShutdownExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(get_ticker_exchange, t): t for t in uncached}
+        completed, _ = _run_batch_with_timeout(futures, executor, label="exchange 預熱")
+    for future in completed:
+        ticker = completed[future]
+        try:
+            future.result()
+        except Exception as exc:
+            logger.warning("預熱 %s exchange 失敗：%s", ticker, exc)
 
 
 # ---------------------------------------------------------------------------

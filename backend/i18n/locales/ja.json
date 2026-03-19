@@ -50,6 +50,7 @@
     "accounts_summary": "{count} 件のアカウントが設定されています",
     "analytics_summary": "ポートフォリオのリスク指標を算出しました",
     "insights_summary": "{count} 件のポートフォリオインサイトを生成しました",
+    "quota_summary": "{count} 件の口座について NISA 枠の状況を取得しました",
     "missing_required_params": "必須パラメータが不足しています",
     "interpretation": {
       "signal_ready": "シグナル概要の準備ができました。",
@@ -76,7 +77,8 @@
       "transaction_recorded": "取引を記録しました。",
       "accounts_ready": "アカウント概要の準備ができました。",
       "analytics_ready": "シャープレシオ: {sharpe}、最大ドローダウン: {max_dd}。",
-      "insights_ready": "ポートフォリオインサイトの準備ができました。"
+      "insights_ready": "ポートフォリオインサイトの準備ができました。",
+      "quota_ready": "NISA 枠の状況を取得しました。"
     }
   },
   "stock": {
@@ -415,5 +417,68 @@
   "analytics": {
     "date_range_both_required": "start と end は両方指定してください",
     "date_range_invalid_order": "start は end より前の日付にしてください"
+  },
+  "wrapper": {
+    "tokutei": "特定口座",
+    "nisa_tsumitate": "つみたて投資枠",
+    "nisa_growth": "成長投資枠",
+    "ideco": "iDeCo（個人型確定拠出年金）",
+    "ippan": "一般口座",
+    "tax_free": "非課税",
+    "taxable": "課税",
+    "tax_deferred": "所得控除",
+    "no_wrapper": "税制口座指定なし",
+    "select_wrapper": "税制口座を選択（任意）",
+    "quota_exceeded": "この買付はNISA枠の上限を超えます。",
+    "quota_exceeded_annual": "年間投資枠を超えています。",
+    "quota_exceeded_lifetime": "生涯非課税枠を超えています。"
+  },
+  "eligibility": {
+    "not_eligible": "この資産は選択した税制口座では買付できません。",
+    "not_in_tsumitate_approved_list": "つみたてNISAの対象ファンド一覧に含まれていません。",
+    "not_in_growth_approved_list": "NISA成長投資枠の対象資産一覧に含まれていません。",
+    "excluded_flag": "この資産はNISA成長投資枠の除外対象です（レバレッジ・毎月分配・インバース・監理銘柄）。",
+    "trust_period_too_short": "信託期間が20年未満です。",
+    "not_in_ideco_lineup": "この銘柄はご利用証券会社のiDeCo商品ラインナップにありません。",
+    "invalid_asset_type": "この資産タイプはNISA成長投資枠の対象外です。",
+    "try_instead": "{{wrapper}} をご利用ください。",
+    "refresh_unsupported_wrapper": "公式リスト更新はNISA口座のみ対応しています。",
+    "contributions_unsupported_wrapper": "拠出履歴はNISA口座のみ対応しています。",
+    "upload_unsupported_wrapper": "対象資産リストのアップロードはNISA口座のみ対応しています。",
+    "refresh_failed": "ソースデータを安全に解析できず、更新に失敗しました。",
+    "upload_invalid_format": "アップロード可能な形式は .csv と .xlsx のみです。",
+    "upload_file_too_large": "ファイルサイズが大きすぎます（最大10MB）。",
+    "upload_failed": "ソースデータを安全に解析できず、アップロード処理に失敗しました。"
+  },
+  "nav_sync": {
+    "failed": "基準価額データの更新に失敗しました。"
+  },
+  "routing": {
+    "nisa_growth_tax_free": "NISA成長投資枠で買付（運用益非課税）",
+    "nisa_tsumitate_tax_free": "つみたて投資枠で買付（運用益非課税）",
+    "ideco_tax_deferred": "iDeCoで買付（掛金所得控除）",
+    "tokutei_overflow": "残額は特定口座で買付（通常課税）",
+    "suggest_title": "最適な買付ルーティング",
+    "why_toggle": "この提案の理由"
+  },
+  "detax": {
+    "harvest_loss": "売却・再購入で損失を実現し、損益通算に活用",
+    "title": "損益通算（DeTAX）候補",
+    "estimated_saving": "推定節税額: {{amount}}",
+    "disclaimer": "DeTAXは課税の繰り延べであり、非課税化ではありません。税務は専門家にご相談ください。"
+  },
+  "location": {
+    "title": "アセットロケーション最適化",
+    "efficiency_score": "税効率スコア",
+    "score_optimal": "最適 — 高成長資産が非課税枠に配置されています",
+    "score_good": "良好 — 軽微な最適化余地があります",
+    "score_needs_work": "要改善 — 大きな節税余地があります",
+    "move_suggestion": "{{category}}を{{from}}から{{to}}へ{{amount}}移動",
+    "tax_savings": "推定年間節税額",
+    "projected_10yr": "10年後の節税見込み",
+    "projected_20yr": "20年後の節税見込み",
+    "tsumitate_migration": "毎月のつみたて移行が可能です",
+    "tsumitate_reason": "{{source}}から毎月{{amount}}をつみたてへ移し、信託報酬を抑える",
+    "setup_monthly_migration": "毎月移行を設定"
   }
 }

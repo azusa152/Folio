@@ -10,6 +10,7 @@ import { FundamentalsTab } from "@/components/radar/FundamentalsTab"
 import { cn } from "@/lib/utils"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { formatPrice, formatMarketCap } from "@/lib/format"
+import { getSignalDescription } from "@/lib/signal-label"
 import { FINANCE_CHIP, FINANCE_TEXT } from "@/lib/colors"
 import { useThesisHistory } from "@/api/hooks/useRadar"
 import type { PricePoint, MoatAnalysis } from "@/api/hooks/useRadar"
@@ -95,9 +96,11 @@ function SectionHeading({ children }: { children: ReactNode }) {
 interface Props {
   stock: RadarStock
   enrichment?: RadarEnrichedStock
+  signal: string
   resonance?: ResonanceMap[string]
   isHeld: boolean
   isCrypto: boolean
+  isMutualFund: boolean
   currency: { symbol: string; code: string }
   marketLabel: string
   marketCap?: number | null
@@ -111,9 +114,11 @@ interface Props {
 export const StockCardInsights = memo(function StockCardInsights({
   stock,
   enrichment,
+  signal,
   resonance,
   isHeld,
   isCrypto,
+  isMutualFund,
   currency,
   marketLabel,
   marketCap,
@@ -124,11 +129,12 @@ export const StockCardInsights = memo(function StockCardInsights({
   showMoatChart,
 }: Props) {
   const { t } = useTranslation()
+  const signalDescription = signal !== "NORMAL" ? getSignalDescription(t, signal) : ""
 
   const sig = enrichment?.signals
   const rsi = sig?.rsi ?? enrichment?.rsi
-  const bias = sig?.bias ?? enrichment?.bias
-  const volumeRatio = sig?.volume_ratio ?? enrichment?.volume_ratio
+  const bias = sig?.bias
+  const volumeRatio = sig?.volume_ratio
   const changePct = sig?.change_pct ?? enrichment?.change_pct
 
   return (
@@ -137,7 +143,7 @@ export const StockCardInsights = memo(function StockCardInsights({
       <div className="space-y-2">
         <SectionHeading>{t("radar.stock_card.section_signals")}</SectionHeading>
 
-        {!isCrypto && (
+        {!isCrypto && !isMutualFund && (
           <div className="flex flex-wrap gap-1.5 text-xs">
             <MetricChip
               label={<GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>}
@@ -174,17 +180,23 @@ export const StockCardInsights = memo(function StockCardInsights({
           </div>
         )}
 
+        {signalDescription && (
+          <p className="text-xs italic text-muted-foreground">
+            {signalDescription}
+          </p>
+        )}
+
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {sig?.price != null && (
             <span>{t("utils.signals.price")}: {currency.symbol}{formatPrice(sig.price as number, currency.code)}</span>
           )}
-          {!isCrypto && sig?.ma200 != null && (
+          {!isCrypto && !isMutualFund && sig?.ma200 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma200}>{t("utils.signals.ma200")}</GlossaryTerm>:{" "}
               {currency.symbol}{formatPrice(sig.ma200 as number, currency.code)}
             </span>
           )}
-          {!isCrypto && sig?.ma60 != null && (
+          {!isCrypto && !isMutualFund && sig?.ma60 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma60}>{t("utils.signals.ma60")}</GlossaryTerm>:{" "}
               {currency.symbol}{formatPrice(sig.ma60 as number, currency.code)}
@@ -215,11 +227,13 @@ export const StockCardInsights = memo(function StockCardInsights({
         ) : null}
       </div>
 
-      {/* Section 2: Fundamentals */}
-      <div className="space-y-2">
-        <SectionHeading>{t("radar.stock_card.section_fundamentals")}</SectionHeading>
-        <FundamentalsTab ticker={stock.ticker} fundamentals={enrichment?.fundamentals} />
-      </div>
+      {/* Section 2: Fundamentals (not applicable to mutual funds) */}
+      {!isMutualFund && (
+        <div className="space-y-2">
+          <SectionHeading>{t("radar.stock_card.section_fundamentals")}</SectionHeading>
+          <FundamentalsTab ticker={stock.ticker} fundamentals={enrichment?.fundamentals} />
+        </div>
+      )}
 
       {/* Section 3: Thesis */}
       <div className="space-y-2">
