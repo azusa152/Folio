@@ -6,6 +6,26 @@
  */
 
 const JP_MUTUAL_FUND_PATTERN = /^[0-9A-Z]{8}$/i
+const EXCHANGE_LABEL_MAP: Record<string, string> = {
+  NMS: "NASDAQ",
+  NAS: "NASDAQ",
+  NASDAQ: "NASDAQ",
+  NGM: "NASDAQ Global Market",
+  NCM: "NASDAQ Capital Market",
+  BATS: "Cboe BZX",
+  PCX: "NYSE Arca",
+  NYQ: "NYSE",
+  NYSE: "NYSE",
+  ASE: "NYSE American",
+  JPX: "TSE",
+  TSE: "TSE",
+  OSA: "OSE",
+  TWO: "TPEx",
+  TAI: "TWSE",
+  TPE: "TPEx",
+  HKG: "HKEX",
+  HKE: "HKEX",
+}
 
 function isJpMutualFund(ticker: string, category?: string): boolean {
   return category === "Mutual_Fund" && JP_MUTUAL_FUND_PATTERN.test(ticker)
@@ -14,13 +34,26 @@ function isJpMutualFund(ticker: string, category?: string): boolean {
 export function inferMarket(ticker: string, category?: string): string {
   if (ticker.endsWith(".T")) return "JP"
   if (ticker.endsWith(".TW")) return "TW"
+  if (ticker.endsWith(".TWO")) return "TW"
   if (ticker.endsWith(".HK")) return "HK"
   if (isJpMutualFund(ticker, category)) return "JP"
   return "US"
 }
 
-export function inferMarketLabel(ticker: string, category?: string): string {
+export function inferMarketLabel(
+  ticker: string,
+  category?: string,
+  exchange?: string | null,
+): string {
   const m = inferMarket(ticker, category)
+  const exchangeCode = exchange?.trim().toUpperCase()
+  const exchangeLabel = exchangeCode ? EXCHANGE_LABEL_MAP[exchangeCode] : undefined
+  if (exchangeLabel) {
+    if (m === "JP") return `🇯🇵 ${exchangeLabel}`
+    if (m === "TW") return `🇹🇼 ${exchangeLabel}`
+    if (m === "HK") return `🇭🇰 ${exchangeLabel}`
+    return `🇺🇸 ${exchangeLabel}`
+  }
   if (m === "JP") return "🇯🇵 JP"
   if (m === "TW") return "🇹🇼 TW"
   if (m === "HK") return "🇭🇰 HK"

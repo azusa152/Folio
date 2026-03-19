@@ -21,6 +21,8 @@ interface Props {
   ticker: string
   category: StockCategory
   signal: string
+  name?: string | null
+  marketLabel?: string
   price?: number | null
   changePct?: number | null
   changeAbs: number | null
@@ -39,6 +41,8 @@ export const StockCardHeader = memo(function StockCardHeader({
   ticker,
   category,
   signal,
+  name,
+  marketLabel,
   price,
   changePct,
   changeAbs,
@@ -66,6 +70,7 @@ export const StockCardHeader = memo(function StockCardHeader({
 
   const isUp = changePct != null ? changePct >= 0 : null
   const changeColor = isUp === null ? "" : isUp ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
+  const displayName = (isMutualFund ? fundName : name) ?? null
 
   return (
     <button
@@ -75,28 +80,47 @@ export const StockCardHeader = memo(function StockCardHeader({
     >
       <span className="flex items-center justify-between gap-2">
         {/* Left: ticker/name + category icon + signal badge */}
-        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm">
-          {isMutualFund && fundName ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="min-w-0 flex flex-col leading-tight">
-                    <span className="truncate font-medium">{fundName}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal shrink-0">
-                      {signalIcon} {ticker}
-                    </span>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={6} className="max-w-72 text-xs">
-                  {fundName}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        <span className="flex-1 min-w-0 flex items-start gap-1.5 text-sm">
+          {displayName ? (
+            <span className="min-w-0 flex flex-col leading-tight gap-0.5">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate font-medium">{displayName}</span>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6} className="max-w-72 text-xs">
+                    {displayName}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <span className="min-w-0 flex items-center gap-1.5 text-[10px] text-muted-foreground font-normal">
+                <span className="truncate">
+                  {signalIcon} {ticker}
+                  {marketLabel ? ` · ${marketLabel}` : ""}
+                </span>
+                {signalLabel && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={signalBadgeClass}
+                          aria-label={signalDescription}
+                          role="status"
+                        >
+                          {signalLabel}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={6}>{signalDescription}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </span>
+            </span>
           ) : (
             <span className="truncate">{signalIcon} {ticker}</span>
           )}
           <span className="shrink-0 text-muted-foreground">{catIcon}</span>
-          {signalLabel && (
+          {!displayName && signalLabel && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

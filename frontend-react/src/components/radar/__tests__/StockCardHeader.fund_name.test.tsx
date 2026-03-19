@@ -66,10 +66,12 @@ const REGULAR_STOCK: RadarStock = {
 const REGULAR_ENRICHMENT: RadarEnrichedStock = {
   ticker: "AAPL",
   computed_signal: "NORMAL",
+  name: "Apple Inc.",
+  exchange: "NMS",
   fund_name: undefined,
 } as unknown as RadarEnrichedStock
 
-describe("StockCardHeader — mutual fund name display", () => {
+describe("StockCardHeader — company/fund name display", () => {
   it("shows fund name as primary label when fund_name is available", () => {
     render(<StockCard stock={MF_STOCK} enrichment={MF_ENRICHMENT_WITH_NAME} index={0} />)
     expect(screen.getByText("eMAXIS Slim S&P500")).toBeInTheDocument()
@@ -90,15 +92,22 @@ describe("StockCardHeader — mutual fund name display", () => {
     expect(screen.getByText(/01311143/)).toBeInTheDocument()
   })
 
-  it("shows ticker-only for non-mutual-fund stock regardless of fund_name field", () => {
+  it("shows company name and ticker/market for non-mutual-fund stock", () => {
+    render(<StockCard stock={REGULAR_STOCK} enrichment={REGULAR_ENRICHMENT} index={0} />)
+    expect(screen.getByText("Apple Inc.")).toBeInTheDocument()
+    expect(screen.getByText(/AAPL · 🇺🇸 NASDAQ/)).toBeInTheDocument()
+  })
+
+  it("does not use fund_name for non-mutual-fund stock", () => {
     render(
       <StockCard
         stock={REGULAR_STOCK}
-        enrichment={{ ...REGULAR_ENRICHMENT, fund_name: "some fund" } as RadarEnrichedStock}
+        enrichment={
+          { ...REGULAR_ENRICHMENT, fund_name: "some fund", name: undefined } as RadarEnrichedStock
+        }
         index={0}
       />,
     )
-    // The fund_name should NOT be shown for a non-mutual-fund
     expect(screen.queryByText("some fund")).not.toBeInTheDocument()
     expect(screen.getByText(/AAPL/)).toBeInTheDocument()
   })

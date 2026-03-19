@@ -992,7 +992,7 @@ def test_nisa_growth_buy_should_normalize_bare_4digit_ticker(
         select(Holding).where(
             Holding.account_id == account.id,
             Holding.is_cash == False,  # noqa: E712
-            Holding.ticker.in_(["6758", "6758.T"]),
+            Holding.ticker.in_(["6758", "6758.T"]),  # type: ignore[union-attr]
         )
     ).first()
     assert created["account_id"] == account.id

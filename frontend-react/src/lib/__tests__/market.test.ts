@@ -15,6 +15,10 @@ describe("inferMarket", () => {
     expect(inferMarket("2330.TW")).toBe("TW");
   });
 
+  it("returns TW for .TWO suffix", () => {
+    expect(inferMarket("6488.TWO")).toBe("TW");
+  });
+
   it("returns HK for .HK suffix", () => {
     expect(inferMarket("0700.HK")).toBe("HK");
   });
@@ -51,6 +55,22 @@ describe("inferMarketLabel", () => {
 
   it("returns JP label for Japanese mutual fund", () => {
     expect(inferMarketLabel("01312179", "Mutual_Fund")).toBe("🇯🇵 JP");
+  });
+
+  it("prefers exchange label when exchange code is provided", () => {
+    expect(inferMarketLabel("AAPL", "Growth", "NMS")).toBe("🇺🇸 NASDAQ");
+    expect(inferMarketLabel("7203.T", "Growth", "JPX")).toBe("🇯🇵 TSE");
+    expect(inferMarketLabel("2330.TW", "Growth", "TAI")).toBe("🇹🇼 TWSE");
+  });
+
+  it("maps additional exchange aliases for clearer labels", () => {
+    expect(inferMarketLabel("MSFT", "Growth", "NGM")).toBe("🇺🇸 NASDAQ Global Market");
+    expect(inferMarketLabel("SMALL", "Growth", "NCM")).toBe(
+      "🇺🇸 NASDAQ Capital Market",
+    );
+    expect(inferMarketLabel("ARCA", "Growth", "PCX")).toBe("🇺🇸 NYSE Arca");
+    expect(inferMarketLabel("2282.T", "Growth", "OSA")).toBe("🇯🇵 OSE");
+    expect(inferMarketLabel("6488.TWO", "Growth", "TPE")).toBe("🇹🇼 TPEx");
   });
 });
 

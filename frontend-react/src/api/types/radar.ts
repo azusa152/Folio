@@ -27,10 +27,11 @@ export type AddThesisRequest = components["schemas"]["ThesisCreateRequest"]
 export type StockImportItem = components["schemas"]["StockImportItem"]
 
 // ---------------------------------------------------------------------------
-// Hand-written types: backend endpoints return untyped dict for these
+// Hand-written types: backend endpoints that still return untyped dicts
 // ---------------------------------------------------------------------------
 
-// GET /stocks/enriched returns list[dict] — no Pydantic response_model
+// GET /stocks/enriched — nested signal/fundamentals sub-shapes (more specific
+// than the generated Record<string, unknown>; override via intersection below)
 export interface RadarSignals {
   price?: number
   previous_close?: number
@@ -60,21 +61,22 @@ export interface RadarFundamentals {
   earnings_growth?: number | null
 }
 
-export interface RadarEnrichedStock {
+// Generated type provides the flat-field contract (name, exchange, etc.).
+// All generated fields are made Partial (they may not be present during loading),
+// except ticker which is always required. Nested dict fields are refined here
+// with domain-specific shapes.
+type _EnrichedBase = Partial<
+  Omit<
+    components["schemas"]["EnrichedStockResponse"],
+    "ticker" | "signals" | "earnings" | "dividend" | "fundamentals" | "last_scan_signal" | "computed_signal" | "category"
+  >
+>
+
+export type RadarEnrichedStock = _EnrichedBase & {
   ticker: string
   category?: StockCategory
   last_scan_signal?: ScanSignal
   computed_signal?: ScanSignal
-  sector?: string
-  price?: number
-  change_pct?: number
-  rsi?: number
-  bias?: number
-  volume_ratio?: number
-  market_cap?: number
-  trailing_pe?: number
-  nav_date?: string
-  fund_name?: string | null
   signals?: RadarSignals
   fundamentals?: RadarFundamentals
   dividend?: {

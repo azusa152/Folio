@@ -47,11 +47,13 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   const changePct = sig?.change_pct ?? enrichment?.change_pct
   const changeAbs = price != null && prevClose != null ? price - prevClose : null
   const marketCap = enrichment?.market_cap ?? enrichment?.fundamentals?.market_cap
-  const navDate = enrichment?.nav_date
+  const navDate = enrichment?.nav_date ?? undefined
   const fundName = enrichment?.fund_name
+  const companyName = enrichment?.name
+  const exchange = enrichment?.exchange
 
   const currency = useMemo(() => inferCurrency(stock.ticker, stock.category), [stock.ticker, stock.category])
-  const marketLabel = inferMarketLabel(stock.ticker, stock.category)
+  const marketLabel = inferMarketLabel(stock.ticker, stock.category, exchange)
   const handleToggle = useCallback(() => setExpanded((v) => !v), [])
   const marketKey = inferMarket(stock.ticker, stock.category)
   const marketOpen = isMarketOpen(marketKey)
@@ -62,6 +64,8 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
         ticker={stock.ticker}
         category={stock.category}
         signal={signal}
+        name={companyName}
+        marketLabel={marketLabel}
         price={price}
         changePct={changePct}
         changeAbs={changeAbs}

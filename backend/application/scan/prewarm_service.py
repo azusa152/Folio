@@ -35,6 +35,8 @@ from infrastructure.market_data import (
     prewarm_etf_holdings_batch,
     prewarm_moat_batch,
     prewarm_signals_batch,
+    prewarm_ticker_exchange_batch,
+    prewarm_ticker_name_batch,
     prime_signals_cache_batch,
 )
 from infrastructure.repositories import find_all_active_gurus
@@ -148,6 +150,9 @@ def prewarm_all_caches() -> None:
         parallel_phases.append(("beta", _run_beta_phase))
     if tickers["sector"]:
         parallel_phases.append(("sector", lambda: _prewarm_sectors(tickers["sector"])))
+        parallel_phases.append(
+            ("ticker_metadata", lambda: _prewarm_ticker_metadata(tickers["sector"]))
+        )
     if tickers["crypto"]:
         parallel_phases.append(
             ("crypto", lambda: prewarm_crypto_prices(tickers["crypto"]))
@@ -417,6 +422,12 @@ def _prewarm_sectors(tickers: list[str]) -> None:
             except Exception as exc:
                 logger.warning("快取預熱 [sector] %s 失敗：%s", ticker, exc)
     logger.info("快取預熱 [sector] 完成 %d/%d 筆。", ok_count, total)
+
+
+def _prewarm_ticker_metadata(tickers: list[str]) -> None:
+    """預熱 ticker metadata（company name / exchange）磁碟快取。"""
+    prewarm_ticker_name_batch(tickers)
+    prewarm_ticker_exchange_batch(tickers)
 
 
 def _prewarm_etf_sector_weights(tickers: list[str]) -> None:

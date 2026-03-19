@@ -11,6 +11,7 @@ from api.rate_limit import limiter
 from api.schemas import (
     CategoryUpdateRequest,
     DeactivateRequest,
+    EnrichedStockResponse,
     FundamentalsResponse,
     ImportResponse,
     MessageResponse,
@@ -131,17 +132,18 @@ def list_stocks_route(
 
 @router.get(
     "/stocks/enriched",
+    response_model=list[EnrichedStockResponse],
     summary="Get all active stocks with signals, earnings, and dividends",
 )
 def list_enriched_stocks_route(
     response: Response,
     session: Session = Depends(get_session),
-) -> list[dict]:
+) -> list[EnrichedStockResponse]:
     """批次取得所有啟用中股票，附帶技術訊號、財報日期、股息資訊。"""
     response.headers["Cache-Control"] = (
         "private, max-age=60, stale-while-revalidate=300"
     )
-    return get_enriched_stocks(session)
+    return [EnrichedStockResponse(**item) for item in get_enriched_stocks(session)]
 
 
 @router.put(

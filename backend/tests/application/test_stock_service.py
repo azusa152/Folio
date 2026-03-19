@@ -812,8 +812,8 @@ class TestGetEnrichedStocks:
         assert refreshed[0]["price"] == 110.0
         assert mock_signals.call_count == 2
 
-    def test_sector_field_included_in_enriched_response(self, db_session) -> None:
-        """sector field from yfinance cache should be present in each enriched stock dict."""
+    def test_metadata_fields_included_in_enriched_response(self, db_session) -> None:
+        """name/exchange/sector metadata from cache should be present in enriched stock."""
         from domain.entities import Stock
         from domain.enums import StockCategory
         from infrastructure.repositories import save_stock
@@ -827,6 +827,8 @@ class TestGetEnrichedStocks:
             patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
             patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
             patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_ticker_name_cached", return_value="Apple Inc."),
+            patch(f"{STOCK_MODULE}.get_ticker_exchange_cached", return_value="NMS"),
             patch(
                 f"{STOCK_MODULE}.get_ticker_sector_cached", return_value="Technology"
             ),
@@ -837,6 +839,8 @@ class TestGetEnrichedStocks:
 
         assert len(result) == 1
         item = result[0]
+        assert item["name"] == "Apple Inc."
+        assert item["exchange"] == "NMS"
         assert item["sector"] == "Technology"
         assert item["price"] == 195.0
         assert item["change_pct"] == 1.2

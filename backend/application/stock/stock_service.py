@@ -36,6 +36,8 @@ from infrastructure.market_data import (
     get_fundamentals,
     get_jp_volatility_index,
     get_technical_signals,
+    get_ticker_exchange_cached,
+    get_ticker_name_cached,
     get_ticker_sector_cached,
     get_tw_volatility_index,
 )
@@ -894,6 +896,8 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             "last_scan_signal": stock.last_scan_signal,
             "is_active": stock.is_active,
             "is_etf": stock.is_etf,
+            "name": get_ticker_name_cached(stock.ticker),
+            "exchange": get_ticker_exchange_cached(stock.ticker),
             "sector": get_ticker_sector_cached(stock.ticker),
             "signals": None,
             "earnings": None,

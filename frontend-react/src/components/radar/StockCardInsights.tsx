@@ -133,8 +133,8 @@ export const StockCardInsights = memo(function StockCardInsights({
 
   const sig = enrichment?.signals
   const rsi = sig?.rsi ?? enrichment?.rsi
-  const bias = sig?.bias ?? enrichment?.bias
-  const volumeRatio = sig?.volume_ratio ?? enrichment?.volume_ratio
+  const bias = sig?.bias
+  const volumeRatio = sig?.volume_ratio
   const changePct = sig?.change_pct ?? enrichment?.change_pct
 
   return (
