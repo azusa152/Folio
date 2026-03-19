@@ -51,7 +51,7 @@ from domain.constants import (
     GENERIC_VALIDATION_ERROR,
     WEBHOOK_ACTION_REGISTRY,
 )
-from domain.enums import StockCategory
+from domain.core.entities import _normalize_stock_category
 from i18n import get_user_language, t
 from infrastructure.market_data import (
     analyze_moat_trend,
@@ -394,7 +394,7 @@ def handle_webhook(
         tags = params.get("tags", [])
         try:
             stock = create_stock(
-                session, str(t_ticker), StockCategory(cat_str), thesis, tags
+                session, str(t_ticker), _normalize_stock_category(cat_str), thesis, tags
             )
             return _wrap_response(
                 success=True,

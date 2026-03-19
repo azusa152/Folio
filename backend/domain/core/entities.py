@@ -24,21 +24,33 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_stock_category(value: object) -> StockCategory:
-    """Normalize persisted category values and guard against unknown legacy strings."""
+    """Normalize persisted category values and guard against unknown legacy strings.
+
+    Accepts both enum values (e.g. ``"Growth"``, ``"Trend_Setter"``) and uppercase
+    enum member names stored by older DB rows (e.g. ``"GROWTH"``, ``"TREND_SETTER"``).
+    """
     if isinstance(value, StockCategory):
         return value
     raw = str(value or "").strip()
     if not raw:
         return StockCategory.GROWTH
+    # 1. Match by enum value (e.g., "Growth", "Trend_Setter", "MUTUAL_FUND").
     try:
         return StockCategory(raw)
     except ValueError:
-        logger.warning(
-            "Unknown stock category '%s' encountered; fallback to '%s'",
-            raw,
-            StockCategory.GROWTH.value,
-        )
-        return StockCategory.GROWTH
+        pass
+    # 2. Match by enum member name (e.g., "GROWTH", "TREND_SETTER") for legacy DB rows.
+    try:
+        return StockCategory[raw]
+    except KeyError:
+        pass
+    # 3. Truly unknown value — log and fallback gracefully.
+    logger.warning(
+        "Unknown stock category '%s' encountered; fallback to '%s'",
+        raw,
+        StockCategory.GROWTH.value,
+    )
+    return StockCategory.GROWTH
 
 
 class _StockCategoryType(TypeDecorator):

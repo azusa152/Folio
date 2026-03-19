@@ -18,6 +18,7 @@ from domain.constants import (
     ERROR_INSUFFICIENT_BALANCE,
     ERROR_INVALID_INPUT,
 )
+from domain.core.entities import _normalize_stock_category
 from domain.entities import Holding, Transaction
 from domain.enums import StockCategory, TransactionType
 from i18n import t
@@ -362,10 +363,7 @@ def _infer_category(session: Session, txn_data: dict) -> StockCategory:
             return stock.category
 
     raw = str(txn_data.get("category", StockCategory.GROWTH.value))
-    try:
-        return StockCategory(raw)
-    except ValueError:
-        return StockCategory.GROWTH
+    return _normalize_stock_category(raw)
 
 
 def _update_cost_basis(holding: Holding, buy_qty: float, txn_data: dict) -> None:
