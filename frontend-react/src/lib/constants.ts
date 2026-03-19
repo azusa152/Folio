@@ -248,6 +248,8 @@ export const FUNDAMENTAL_THRESHOLDS: Record<string, ThresholdRule> = {
   earnings_growth: { green: [0.1, Infinity], yellow: [0, 0.1], red: [-Infinity, 0] },
 }
 
+export const ELIGIBILITY_CHECK_WRAPPERS = new Set(["nisa_tsumitate", "nisa_growth", "ideco"])
+
 export type HealthColor = "green" | "yellow" | "red"
 
 export function getHealthColor(metric: string, value: number): HealthColor {

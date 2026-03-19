@@ -17,6 +17,7 @@ from domain.constants import (
     ERROR_INVALID_INPUT,
     ERROR_TRANSACTION_NOT_FOUND,
     GENERIC_VALIDATION_ERROR,
+    MAX_IMPORT_ROWS,
 )
 from domain.core.entities import Transaction
 from domain.enums import StockCategory, TransactionType
@@ -178,7 +179,7 @@ def import_transactions(
     account_id: int | None = None,
     mode: Literal["append", "replace_account"] = "append",
 ) -> dict:
-    if len(data) > 1000:
+    if len(data) > MAX_IMPORT_ROWS:
         raise HTTPException(
             status_code=400,
             detail={

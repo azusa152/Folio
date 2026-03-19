@@ -42,7 +42,6 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Growth": 2,  # beta ~1.5
     "Mutual_Fund": 0,  # mutual funds do not run RSI scan; keep compatible default
     "Bond": -3,  # beta ~0.3
-    "MUTUAL_FUND": -1,  # typically lower-vol than single-stock equity
     "ETF": 0,  # broad-market ETF baseline
     "Cash": 0,
     "Crypto": 0,  # crypto 不參與 RSI 掃描，保留 0 作為相容值
@@ -179,9 +178,6 @@ REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 # ---------------------------------------------------------------------------
 # Default Parameter Values
 # ---------------------------------------------------------------------------
-DEFAULT_ALERT_METRIC = "rsi"
-DEFAULT_ALERT_OPERATOR = "lt"
-DEFAULT_ALERT_THRESHOLD = 30.0
 DEFAULT_IMPORT_CATEGORY = "Growth"
 DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 
@@ -405,7 +401,6 @@ VIX_HISTORY_PERIOD = "5d"
 # VIX 閾值（對應恐懼與貪婪等級）
 VIX_EXTREME_FEAR = 30  # VIX > 30 → 極度恐懼
 VIX_FEAR = 20  # VIX 20–30 → 恐懼
-VIX_NEUTRAL_HIGH = 20  # VIX 15–20 → 中性
 VIX_NEUTRAL_LOW = 15
 VIX_GREED = 10  # VIX 10–15 → 貪婪
 # VIX < 10 → 極度貪婪
@@ -723,9 +718,6 @@ DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
     NOTIFICATION_TYPES, True
 )
 
-# Rate limit defaults — 0 means unlimited (no cap)
-NOTIFICATION_RATE_LIMIT_MAX_COUNT_DEFAULT = 1  # 0 = unlimited
-NOTIFICATION_RATE_LIMIT_WINDOW_HOURS_DEFAULT = 24
 # Empty dict means no rate limit is applied by default for any notification type.
 # When a user configures a limit, an entry like {"fx_alerts": {"max_count": 2, "window_hours": 24}}
 # is added. Only notification types present in this dict are throttled.
@@ -999,7 +991,7 @@ DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
 EQUITY_CATEGORIES: frozenset[str] = frozenset(
-    {"Trend_Setter", "Moat", "Growth", "MUTUAL_FUND", "ETF"}
+    {"Trend_Setter", "Moat", "Growth", "Mutual_Fund", "ETF"}
 )
 
 # ---------------------------------------------------------------------------
@@ -1072,3 +1064,10 @@ CURRENCY_REGION_MAP: dict[str, str] = {
     "SGD": "SG",
     "THB": "TH",
 }
+
+# ---------------------------------------------------------------------------
+# Import / upload limits
+# ---------------------------------------------------------------------------
+
+MAX_IMPORT_ROWS = 1000  # max rows per bulk import (stocks, transactions)
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB max for eligible-asset CSV uploads

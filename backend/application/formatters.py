@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from domain.withdrawal import WithdrawalPlan
 
-from domain.formatters import build_moat_details, build_signal_status  # noqa: F401
 from i18n import t
 
 # ---------------------------------------------------------------------------

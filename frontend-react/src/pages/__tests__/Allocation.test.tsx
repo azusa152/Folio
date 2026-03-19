@@ -54,18 +54,6 @@ vi.mock("@/components/allocation/holdings/HoldingsManager", () => ({
   HoldingsManager: () => <div>holdings-manager</div>,
 }))
 
-vi.mock("@/components/allocation/settings/TelegramSettings", () => ({
-  TelegramSettings: () => <div>telegram-settings</div>,
-}))
-
-vi.mock("@/components/allocation/settings/NotificationPreferences", () => ({
-  NotificationPreferences: () => <div>notification-prefs</div>,
-}))
-
-vi.mock("@/components/allocation/settings/TerminologySettings", () => ({
-  TerminologySettings: () => <div>terminology-settings</div>,
-}))
-
 vi.mock("@/components/allocation/accounts/AccountsTab", () => ({
   AccountsTab: () => <div>accounts-tab</div>,
 }))

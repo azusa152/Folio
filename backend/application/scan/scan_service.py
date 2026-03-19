@@ -63,6 +63,17 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
+_SIGNAL_ALERT_KEYS: dict[ScanSignal, str] = {
+    ScanSignal.THESIS_BROKEN: "scan.thesis_broken_alert",
+    ScanSignal.DEEP_VALUE: "scan.deep_value_alert",
+    ScanSignal.OVERSOLD: "scan.oversold_alert",
+    ScanSignal.CONTRARIAN_BUY: "scan.contrarian_buy_alert",
+    ScanSignal.APPROACHING_BUY: "scan.approaching_buy_alert",
+    ScanSignal.OVERHEATED: "scan.overheated_alert",
+    ScanSignal.CAUTION_HIGH: "scan.caution_high_alert",
+    ScanSignal.WEAKENING: "scan.weakening_alert",
+}
+
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 # Matches metric values in alert strings regardless of surrounding language labels.
 # Both RSI and Bias values are always formatted as plain numbers in all locales.
@@ -260,84 +271,17 @@ def run_scan(session: Session) -> dict:
                     )
                 )
 
-        if signal == ScanSignal.THESIS_BROKEN:
+        alert_key = _SIGNAL_ALERT_KEYS.get(signal)
+        if alert_key:
             alerts.append(
                 t(
-                    "scan.thesis_broken_alert",
+                    alert_key,
                     lang=lang,
                     ticker=ticker,
                     details=moat_details,
-                )
-            )
-        elif signal == ScanSignal.DEEP_VALUE:
-            alerts.append(
-                t(
-                    "scan.deep_value_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1),
-                )
-            )
-        elif signal == ScanSignal.OVERSOLD:
-            alerts.append(
-                t(
-                    "scan.oversold_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.CONTRARIAN_BUY:
-            alerts.append(
-                t(
-                    "scan.contrarian_buy_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    rsi=round(rsi, 1),
                     bias=round(bias, 1) if bias is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.APPROACHING_BUY:
-            alerts.append(
-                t(
-                    "scan.approaching_buy_alert",
-                    lang=lang,
-                    ticker=ticker,
                     rsi=round(rsi, 1) if rsi is not None else "N/A",
-                    bias=round(bias, 1) if bias is not None else "N/A",
                     bias_200=round(bias_200, 1) if bias_200 is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.OVERHEATED:
-            alerts.append(
-                t(
-                    "scan.overheated_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.CAUTION_HIGH:
-            alerts.append(
-                t(
-                    "scan.caution_high_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1) if bias is not None else "N/A",
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.WEAKENING:
-            alerts.append(
-                t(
-                    "scan.weakening_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1),
                 )
             )
 

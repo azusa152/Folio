@@ -170,8 +170,11 @@ from domain.constants import (
     YFINANCE_RETRY_WAIT_MIN,
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
-from domain.formatters import build_moat_details, build_signal_status
 from i18n import t
+from infrastructure.market_data.formatters import (
+    build_moat_details,
+    build_signal_status,
+)
 from logging_config import get_logger
 
 T = TypeVar("T")

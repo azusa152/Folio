@@ -1,7 +1,10 @@
-"""Tests for domain/core/formatters.py — build_signal_status and build_moat_details."""
+"""Tests for build_signal_status and build_moat_details (infrastructure/market_data/formatters.py)."""
 
-from domain.core.formatters import build_moat_details, build_signal_status
 from domain.enums import MoatStatus
+from infrastructure.market_data.formatters import (
+    build_moat_details,
+    build_signal_status,
+)
 
 # ---------------------------------------------------------------------------
 # build_signal_status — RSI branches

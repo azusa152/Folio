@@ -5,7 +5,9 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 import json as _json
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Protocol
 
 from sqlmodel import Session, select
 
@@ -122,6 +124,124 @@ def invalidate_rebalance_cache() -> None:
 # ===========================================================================
 
 
+class _HoldingLike(Protocol):
+    """Structural type covering the Holding attributes used by price-resolution helpers."""
+
+    ticker: str
+    coingecko_id: str | None
+    category: StockCategory
+    quantity: float
+    cost_basis: float | None
+    currency: str
+
+
+def _resolve_cash_price_and_prev(
+    h: _HoldingLike, fx: float, cash_currency_values: dict[str, float]
+) -> tuple[float | None, float | None, float, float, bool]:
+    """現金持倉：price=1, prev=same, has_prev_close=True。"""
+    market_value = h.quantity * fx
+    cash_currency_values[h.currency] = (
+        cash_currency_values.get(h.currency, 0.0) + market_value
+    )
+    return 1.0, None, market_value, market_value, True
+
+
+def _resolve_crypto_price_and_prev(
+    h: _HoldingLike, fx: float
+) -> tuple[float | None, float | None, float, float, bool]:
+    """加密貨幣持倉：從 CoinGecko 取得現價與 24h 漲跌推算前日收盤。"""
+    crypto_data = get_crypto_price(h.coingecko_id, h.ticker)
+    price = crypto_data.get("price_usd") if crypto_data else None
+    change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
+
+    previous_close: float | None = None
+    if (
+        price is not None
+        and isinstance(price, (int, float))
+        and change_24h_pct is not None
+        and isinstance(change_24h_pct, (int, float))
+        and (1 + change_24h_pct / 100) != 0
+    ):
+        previous_close = price / (1 + change_24h_pct / 100)
+
+    if price is not None and isinstance(price, (int, float)):
+        market_value = h.quantity * price * fx
+    elif h.cost_basis is not None:
+        market_value = h.quantity * h.cost_basis * fx
+    else:
+        market_value = 0.0
+
+    if previous_close is not None and isinstance(previous_close, (int, float)):
+        return (
+            price,
+            previous_close,
+            market_value,
+            h.quantity * previous_close * fx,
+            True,
+        )
+    return price, previous_close, market_value, market_value, False
+
+
+def _resolve_mutual_fund_price_and_prev(
+    h: _HoldingLike, fx: float, nav_cache: dict[str, dict]
+) -> tuple[float | None, float | None, float, float, bool]:
+    """投信基金持倉：從 NAV 快取取得當日與前日淨值。"""
+    nav_data = nav_cache.get(h.ticker)
+    price = nav_data.get("nav") if nav_data else None
+    previous_close = nav_data.get("nav_previous") if nav_data else None
+
+    if price is not None and isinstance(price, (int, float)):
+        market_value = h.quantity * price * fx
+    elif h.cost_basis is not None:
+        market_value = h.quantity * h.cost_basis * fx
+    else:
+        market_value = 0.0
+
+    if previous_close is not None and isinstance(previous_close, (int, float)):
+        return (
+            price,
+            previous_close,
+            market_value,
+            h.quantity * previous_close * fx,
+            True,
+        )
+    return price, previous_close, market_value, market_value, False
+
+
+def _resolve_skip_category_price_and_prev(
+    h: _HoldingLike, fx: float
+) -> tuple[float | None, float | None, float, float, bool]:
+    """Skip-price 分類（Bond/ETF 等）：直接用成本基礎，前後市值相同。"""
+    market_value = h.quantity * h.cost_basis * fx if h.cost_basis is not None else 0.0
+    return None, None, market_value, market_value, True
+
+
+def _resolve_equity_price_and_prev(
+    h: _HoldingLike, fx: float
+) -> tuple[float | None, float | None, float, float, bool]:
+    """一般股票持倉：從技術訊號取得現價與前日收盤。"""
+    signals = get_technical_signals(h.ticker)
+    price = signals.get("price") if signals else None
+    previous_close = signals.get("previous_close") if signals else None
+
+    if price is not None and isinstance(price, (int, float)):
+        market_value = h.quantity * price * fx
+    elif h.cost_basis is not None:
+        market_value = h.quantity * h.cost_basis * fx
+    else:
+        market_value = 0.0
+
+    if previous_close is not None and isinstance(previous_close, (int, float)):
+        return (
+            price,
+            previous_close,
+            market_value,
+            h.quantity * previous_close * fx,
+            True,
+        )
+    return price, previous_close, market_value, market_value, False
+
+
 def _compute_holding_market_values(
     holdings: list,
     fx_rates: dict[str, float],
@@ -144,105 +264,44 @@ def _compute_holding_market_values(
     ticker_agg: dict[str, dict] = {}
     account_ticker_agg: dict[tuple, dict] = {}
 
-    for h in holdings:
-        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
-        fx = fx_rates.get(h.currency, 1.0)
-        price: float | None = None
-        previous_close: float | None = None
+    for holding in holdings:
+        category = (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
+        )
+        fx = fx_rates.get(holding.currency, 1.0)
 
-        has_prev_close = False
-
-        if h.is_cash:
-            # 現金部位無日內價格變動
-            market_value = h.quantity * fx
-            previous_market_value = market_value  # 現金前後市值相同
-            has_prev_close = True  # 現金視為「有前日資料」（變動固定為 0）
-            price = 1.0
-            cash_currency_values[h.currency] = (
-                cash_currency_values.get(h.currency, 0.0) + market_value
+        if holding.is_cash:
+            price, _, market_value, previous_market_value, has_prev_close = (
+                _resolve_cash_price_and_prev(holding, fx, cash_currency_values)
             )
-        elif h.category == StockCategory.CRYPTO:
-            crypto_data = get_crypto_price(
-                getattr(h, "coingecko_id", None),
-                h.ticker,
+        elif holding.category == StockCategory.CRYPTO:
+            price, _, market_value, previous_market_value, has_prev_close = (
+                _resolve_crypto_price_and_prev(holding, fx)
             )
-            price = crypto_data.get("price_usd") if crypto_data else None
-            change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
-            if (
-                price is not None
-                and isinstance(price, (int, float))
-                and change_24h_pct is not None
-                and isinstance(change_24h_pct, (int, float))
-                and (1 + change_24h_pct / 100) != 0
-            ):
-                previous_close = price / (1 + change_24h_pct / 100)
-            else:
-                previous_close = None
-
-            if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price * fx
-            elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
-
-            if previous_close is not None and isinstance(previous_close, (int, float)):
-                previous_market_value = h.quantity * previous_close * fx
-                has_prev_close = True
-            else:
-                previous_market_value = market_value
-        elif cat == StockCategory.MUTUAL_FUND.value:
-            nav_data = _nav.get(h.ticker)
-            price = nav_data.get("nav") if nav_data else None
-            previous_close = nav_data.get("nav_previous") if nav_data else None
-
-            if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price * fx
-            elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
-
-            if previous_close is not None and isinstance(previous_close, (int, float)):
-                previous_market_value = h.quantity * previous_close * fx
-                has_prev_close = True
-            else:
-                previous_market_value = market_value
-        elif cat in SKIP_PRICE_FETCH_CATEGORIES:
-            if h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
-            previous_market_value = market_value
-            has_prev_close = True
+        elif category == StockCategory.MUTUAL_FUND.value:
+            price, _, market_value, previous_market_value, has_prev_close = (
+                _resolve_mutual_fund_price_and_prev(holding, fx, _nav)
+            )
+        elif category in SKIP_PRICE_FETCH_CATEGORIES:
+            price, _, market_value, previous_market_value, has_prev_close = (
+                _resolve_skip_category_price_and_prev(holding, fx)
+            )
         else:
-            # 一般持倉：取得當前與前一交易日價格
-            signals = get_technical_signals(h.ticker)
-            price = signals.get("price") if signals else None
-            previous_close = signals.get("previous_close") if signals else None
+            price, _, market_value, previous_market_value, has_prev_close = (
+                _resolve_equity_price_and_prev(holding, fx)
+            )
 
-            if price is not None and isinstance(price, (int, float)):
-                market_value = h.quantity * price * fx
-            elif h.cost_basis is not None:
-                market_value = h.quantity * h.cost_basis * fx
-            else:
-                market_value = 0.0
-
-            if previous_close is not None and isinstance(previous_close, (int, float)):
-                previous_market_value = h.quantity * previous_close * fx
-                has_prev_close = True
-            else:
-                previous_market_value = market_value
-
-        currency_values[h.currency] = (
-            currency_values.get(h.currency, 0.0) + market_value
+        currency_values[holding.currency] = (
+            currency_values.get(holding.currency, 0.0) + market_value
         )
 
-        key = h.ticker
-        if key not in ticker_agg:
-            ticker_agg[key] = {
-                "category": cat,
-                "currency": h.currency,
+        ticker_key = holding.ticker
+        if ticker_key not in ticker_agg:
+            ticker_agg[ticker_key] = {
+                "category": category,
+                "currency": holding.currency,
                 "qty": 0.0,
                 "mv": 0.0,
                 "prev_mv": 0.0,
@@ -251,28 +310,32 @@ def _compute_holding_market_values(
                 "price": price,
                 "fx": fx,
                 "has_prev_close": False,
-                "purchase_fx_rate": getattr(h, "purchase_fx_rate", None),
+                "purchase_fx_rate": getattr(holding, "purchase_fx_rate", None),
             }
-        ticker_agg[key]["qty"] += h.quantity
-        ticker_agg[key]["mv"] += market_value
-        ticker_agg[key]["prev_mv"] += previous_market_value
+        ticker_agg[ticker_key]["qty"] += holding.quantity
+        ticker_agg[ticker_key]["mv"] += market_value
+        ticker_agg[ticker_key]["prev_mv"] += previous_market_value
         if has_prev_close:
-            ticker_agg[key]["has_prev_close"] = True
-        if h.cost_basis is not None:
-            ticker_agg[key]["cost_sum"] += h.cost_basis * h.quantity
-            ticker_agg[key]["cost_qty"] += h.quantity
-        account_key = (h.account_id, h.ticker)
+            ticker_agg[ticker_key]["has_prev_close"] = True
+        if holding.cost_basis is not None:
+            ticker_agg[ticker_key]["cost_sum"] += holding.cost_basis * holding.quantity
+            ticker_agg[ticker_key]["cost_qty"] += holding.quantity
+
+        account_key = (holding.account_id, holding.ticker)
         if account_key not in account_ticker_agg:
             account_ticker_agg[account_key] = {
-                "account_id": h.account_id,
+                "account_id": holding.account_id,
                 "account_name": (
-                    account_name_by_id.get(h.account_id)
-                    if (account_name_by_id is not None and h.account_id is not None)
+                    account_name_by_id.get(holding.account_id)
+                    if (
+                        account_name_by_id is not None
+                        and holding.account_id is not None
+                    )
                     else None
                 ),
-                "ticker": h.ticker,
-                "category": cat,
-                "currency": h.currency,
+                "ticker": holding.ticker,
+                "category": category,
+                "currency": holding.currency,
                 "qty": 0.0,
                 "mv": 0.0,
                 "prev_mv": 0.0,
@@ -281,16 +344,18 @@ def _compute_holding_market_values(
                 "price": price,
                 "fx": fx,
                 "has_prev_close": False,
-                "purchase_fx_rate": getattr(h, "purchase_fx_rate", None),
+                "purchase_fx_rate": getattr(holding, "purchase_fx_rate", None),
             }
-        account_ticker_agg[account_key]["qty"] += h.quantity
+        account_ticker_agg[account_key]["qty"] += holding.quantity
         account_ticker_agg[account_key]["mv"] += market_value
         account_ticker_agg[account_key]["prev_mv"] += previous_market_value
         if has_prev_close:
             account_ticker_agg[account_key]["has_prev_close"] = True
-        if h.cost_basis is not None:
-            account_ticker_agg[account_key]["cost_sum"] += h.cost_basis * h.quantity
-            account_ticker_agg[account_key]["cost_qty"] += h.quantity
+        if holding.cost_basis is not None:
+            account_ticker_agg[account_key]["cost_sum"] += (
+                holding.cost_basis * holding.quantity
+            )
+            account_ticker_agg[account_key]["cost_qty"] += holding.quantity
 
     return currency_values, cash_currency_values, ticker_agg, account_ticker_agg
 
@@ -428,45 +493,32 @@ def calculate_rebalance(
                 _rebalance_inflight_events.pop(_cache_key, None)
 
 
-def _do_calculate_rebalance(
+def _load_rebalance_inputs(
     session: Session,
     display_currency: str,
     lang: str,
-    _cache_key: tuple,
-) -> dict:
-    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+) -> tuple[dict, list, dict[str, float], dict[int, str], list]:
+    """讀取並預熱再平衡所需的所有輸入資料。
 
-    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
-    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
-    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
-    (3) SQLite 無伺服器端連線逾時；
-    (4) 等待時間受限於主計算耗時（數秒）。
-    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    回傳 (target_config, holdings, fx_rates, account_name_by_id, accounts)。
+    若無活躍設定檔或無持倉，立即拋出 StockNotFoundError。
     """
-
-    # 1) 取得目標配置
     profile = session.exec(
         select(UserInvestmentProfile)
         .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
         .where(UserInvestmentProfile.is_active == True)  # noqa: E712
     ).first()
-
     if not profile:
         raise StockNotFoundError(t("rebalance.no_profile", lang=lang))
 
     target_config: dict[str, float] = _json.loads(profile.config)
 
-    # 2) 取得持倉（僅啟用帳戶）
     holdings = find_holdings_for_active_accounts(
-        session,
-        include_unlinked=False,
-        user_id=DEFAULT_USER_ID,
+        session, include_unlinked=False, user_id=DEFAULT_USER_ID
     )
-
     if not holdings:
         raise StockNotFoundError(t("rebalance.no_holdings", lang=lang))
 
-    # 3) 取得匯率：收集所有持倉幣別，批次取得相對 display_currency 的匯率
     holding_currencies = list({h.currency for h in holdings})
     fx_rates = get_exchange_rates(display_currency, holding_currencies)
     logger.info(
@@ -475,7 +527,6 @@ def _do_calculate_rebalance(
         {k: round(v, 4) for k, v in fx_rates.items()},
     )
 
-    # 3.5) 並行預熱：股票技術訊號 + 加密貨幣價格（MF 走 NAV 日次同步，不經 yfinance）
     stock_tickers = list(
         {
             h.ticker
@@ -512,52 +563,14 @@ def _do_calculate_rebalance(
     account_name_by_id = {
         account.id: account.name for account in accounts if account.id is not None
     }
+    return target_config, holdings, fx_rates, account_name_by_id, accounts
 
-    # 4) 使用共用邏輯計算各持倉市值
-    _nav_cache = _build_nav_cache(session, holdings)
-    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
-        _compute_holding_market_values(
-            holdings,
-            fx_rates,
-            account_name_by_id,
-            nav_cache=_nav_cache,
-        )
-    )
 
-    # 4.5) 取得每個分類的市值合計
-    category_values: dict[str, float] = {}
-    for agg in ticker_agg.values():
-        cat = agg["category"]
-        category_values[cat] = category_values.get(cat, 0.0) + agg["mv"]
-
-    # 5) 委託 domain 純函式計算
-    result = _pure_rebalance(category_values, target_config)
-
-    # 5.5) 將 domain 回傳的結構化建議翻譯為用戶語言字串
-    result["advice"] = [
-        t(item["key"], lang=lang, **item["params"]) for item in result["advice"]
-    ]
-
-    # 6) 計算投資組合日漲跌
-    total_value = result["total_value"]
-    previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
-    total_value_change = round(total_value - previous_total_value, 2)
-    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
-
-    logger.debug(
-        "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
-        previous_total_value,
-        total_value,
-        total_value_change,
-        total_value_change_pct if total_value_change_pct is not None else 0.0,
-    )
-
-    # 加入結果
-    result["previous_total_value"] = round(previous_total_value, 2)
-    result["total_value_change"] = round(total_value_change, 2)
-    result["total_value_change_pct"] = total_value_change_pct
-
-    # 7) 建立個股明細（account+ticker，含佔比）
+def _build_holdings_detail_list(
+    account_ticker_agg: dict[tuple, dict],
+    total_value: float,
+) -> list[dict]:
+    """個股明細（account+ticker，含佔比、損益、日漲跌）列表，依權重降序排列。"""
     holdings_detail = []
     for agg in account_ticker_agg.values():
         avg_cost = (
@@ -568,7 +581,6 @@ def _do_calculate_rebalance(
         )
         cur_price = agg["price"]
 
-        # 計算個股日漲跌百分比（無前日資料時回傳 None → 前端顯示 N/A）
         if agg["has_prev_close"]:
             holding_change_pct = compute_daily_change_pct(agg["mv"], agg["prev_mv"])
             holding_change_value = round(agg["mv"] - agg["prev_mv"], 2)
@@ -598,7 +610,8 @@ def _do_calculate_rebalance(
                 "category": agg["category"],
                 "currency": agg["currency"],
                 "quantity": round(
-                    agg["qty"], 8 if agg["category"] == StockCategory.CRYPTO else 4
+                    agg["qty"],
+                    8 if agg["category"] == StockCategory.CRYPTO else 4,
                 ),
                 "market_value": round(agg["mv"], 2),
                 "weight_pct": weight_pct,
@@ -618,10 +631,339 @@ def _do_calculate_rebalance(
                 "current_fx_rate": round(agg["fx"], 6),
             }
         )
-
-    # 依權重降序排列（最大持倉在前）
     holdings_detail.sort(key=lambda x: x["weight_pct"], reverse=True)
-    result["holdings_detail"] = holdings_detail
+    return holdings_detail
+
+
+def _resolve_etf_holdings(
+    ticker: str,
+    known_etf_tickers: set[str],
+    stock_is_etf_map: dict[str, bool],
+    session: Session,
+) -> tuple[list[dict] | None, dict[str, float] | None]:
+    """Return (constituents, etf_sector_weights) for a ticker.
+
+    If the ticker is a newly-detected ETF, persists the flag to the DB and
+    updates the in-memory caches so subsequent tickers in the same loop see
+    the updated state.
+    """
+    if ticker in known_etf_tickers:
+        return (
+            get_etf_top_holdings(ticker, is_known_etf=True),
+            get_etf_sector_weights(ticker, is_known_etf=True),
+        )
+
+    if ticker in stock_is_etf_map and detect_is_etf(ticker):
+        known_etf_tickers.add(ticker)
+        stock_is_etf_map[ticker] = True
+        stock_row = session.exec(select(Stock).where(Stock.ticker == ticker)).first()
+        if stock_row and not bool(stock_row.is_etf):
+            stock_row.is_etf = True
+            session.add(stock_row)
+            session.commit()
+        return (
+            get_etf_top_holdings(ticker, is_known_etf=True),
+            get_etf_sector_weights(ticker, is_known_etf=True),
+        )
+
+    return None, None
+
+
+def _compute_xray_analysis(
+    ticker_agg: dict[str, dict],
+    session: Session,
+    known_etf_tickers: set[str],
+    stock_is_etf_map: dict[str, bool],
+) -> tuple[list[dict], float, list[dict]]:
+    """X-Ray 穿透式持倉分析：解析 ETF 成分股，計算真實曝險。
+
+    回傳 (xray_entries, xray_coverage_pct, xray_skipped_etfs)。
+    known_etf_tickers 與 stock_is_etf_map 可能被更新（自我修復）。
+    """
+    all_xray_tickers = [
+        ticker
+        for ticker, agg in ticker_agg.items()
+        if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
+    ]
+    xray_tickers = [
+        ticker for ticker in all_xray_tickers if ticker in known_etf_tickers
+    ]
+    if xray_tickers:
+        logger.info(
+            "X-Ray 預熱：%d/%d 檔符合條件標的為已知 ETF，開始預熱成分股與板塊權重。",
+            len(xray_tickers),
+            len(all_xray_tickers),
+        )
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(prewarm_etf_holdings_batch, xray_tickers),
+                pool.submit(prewarm_etf_sector_weights_batch, xray_tickers),
+            ]
+            for future in futures:
+                future.result()
+
+    xray_map: dict[str, dict] = {}
+    xray_analyzed_value = 0.0
+    xray_skipped_etfs: list[dict[str, object]] = []
+    xray_denominator = sum(
+        aggregate["mv"]
+        for aggregate in ticker_agg.values()
+        if aggregate["category"] not in XRAY_SKIP_CATEGORIES and aggregate["mv"] > 0
+    )
+    xray_pct = (
+        (lambda val: round((val / xray_denominator) * 100, 2))
+        if xray_denominator > 0
+        else (lambda _val: 0.0)
+    )
+
+    for ticker, aggregate in ticker_agg.items():
+        category = aggregate["category"]
+        market_value = aggregate["mv"]
+        if category in XRAY_SKIP_CATEGORIES or market_value <= 0:
+            continue
+
+        constituents, etf_sector_weights = _resolve_etf_holdings(
+            ticker, known_etf_tickers, stock_is_etf_map, session
+        )
+
+        if constituents:
+            constituent_weight_sum = sum(c["weight"] for c in constituents)
+            coverage_weight_sum = (
+                sum(etf_sector_weights.values())
+                if etf_sector_weights
+                else constituent_weight_sum
+            )
+            xray_analyzed_value += market_value * min(coverage_weight_sum, 1.0)
+            for c in constituents:
+                sym = c["symbol"]
+                weight = c["weight"]
+                indirect_mv = market_value * weight
+                if sym not in xray_map:
+                    xray_map[sym] = {
+                        "name": c.get("name", ""),
+                        "direct": 0.0,
+                        "indirect": 0.0,
+                        "sources": [],
+                    }
+                xray_map[sym]["indirect"] += indirect_mv
+                src_pct = round(weight * 100, 2)
+                xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
+        elif ticker in known_etf_tickers and not etf_sector_weights:
+            skipped_weight_pct = xray_pct(market_value)
+            xray_skipped_etfs.append(
+                {"ticker": ticker, "weight_pct": skipped_weight_pct}
+            )
+            logger.warning(
+                "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
+                ticker,
+            )
+        elif ticker in known_etf_tickers and etf_sector_weights:
+            coverage_weight_sum = sum(etf_sector_weights.values())
+            xray_analyzed_value += market_value * min(coverage_weight_sum, 1.0)
+        else:
+            xray_analyzed_value += market_value
+            if ticker not in xray_map:
+                xray_map[ticker] = {
+                    "name": "",
+                    "direct": 0.0,
+                    "indirect": 0.0,
+                    "sources": [],
+                }
+            xray_map[ticker]["direct"] += market_value
+
+    xray_entries = []
+    for symbol, data in xray_map.items():
+        total_val = data["direct"] + data["indirect"]
+        if total_val <= 0:
+            continue
+        direct_pct = xray_pct(data["direct"])
+        indirect_pct = xray_pct(data["indirect"])
+        total_pct = xray_pct(total_val)
+        xray_entries.append(
+            {
+                "symbol": symbol,
+                "name": data["name"],
+                "direct_value": round(data["direct"], 2),
+                "direct_weight_pct": direct_pct,
+                "indirect_value": round(data["indirect"], 2),
+                "indirect_weight_pct": indirect_pct,
+                "total_value": round(total_val, 2),
+                "total_weight_pct": total_pct,
+                "indirect_sources": data["sources"],
+            }
+        )
+    xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
+
+    return (
+        xray_entries,
+        xray_pct(xray_analyzed_value),
+        sorted(xray_skipped_etfs, key=lambda x: float(x["weight_pct"]), reverse=True),
+    )
+
+
+def _compute_sector_exposure(
+    ticker_agg: dict[str, dict],
+    known_etf_tickers: set[str],
+    etf_constituents_cache: dict[str, list[dict]],
+    total_value: float,
+) -> list[dict]:
+    """行業板塊曝險（僅股票持倉）。
+
+    ETF 穿透：Approach B（板塊權重）優先，A（成分股查詢）後備，兜底歸 ETF。
+    """
+    sector_values: dict[str, float] = {}
+    for ticker, aggregate in ticker_agg.items():
+        if aggregate["category"] not in EQUITY_CATEGORIES or aggregate["mv"] <= 0:
+            continue
+        market_value = aggregate["mv"]
+
+        constituents = etf_constituents_cache.get(ticker)
+        etf_sector_weights = (
+            get_etf_sector_weights(ticker, is_known_etf=True)
+            if ticker in known_etf_tickers
+            else None
+        )
+        if etf_sector_weights:
+            for sector_name, weight in etf_sector_weights.items():
+                sector_values[sector_name] = (
+                    sector_values.get(sector_name, 0.0) + market_value * weight
+                )
+            logger.debug(
+                "%s 使用 ETF 板塊權重分佈（%d 板塊）", ticker, len(etf_sector_weights)
+            )
+            continue
+
+        if constituents:
+            constituent_sector_map: dict[str, float] = {}
+            covered_weight = 0.0
+            for c in constituents:
+                c_sector = get_ticker_sector(c["symbol"]) or "Unknown"
+                c_mv = market_value * c["weight"]
+                constituent_sector_map[c_sector] = (
+                    constituent_sector_map.get(c_sector, 0.0) + c_mv
+                )
+                covered_weight += c["weight"]
+            for sector_name, s_mv in constituent_sector_map.items():
+                sector_values[sector_name] = sector_values.get(sector_name, 0.0) + s_mv
+
+            uncovered_weight = max(0.0, 1.0 - covered_weight)
+            if uncovered_weight > 0 and constituent_sector_map:
+                known_sectors_excl_unknown = {
+                    s: v for s, v in constituent_sector_map.items() if s != "Unknown"
+                }
+                distribute_base = known_sectors_excl_unknown or constituent_sector_map
+                base_total = sum(distribute_base.values())
+                residual_mv = market_value * uncovered_weight
+                if base_total > 0:
+                    for sector_name, s_mv in distribute_base.items():
+                        allocated = residual_mv * (s_mv / base_total)
+                        sector_values[sector_name] = (
+                            sector_values.get(sector_name, 0.0) + allocated
+                        )
+                else:
+                    sector_values["Unknown"] = (
+                        sector_values.get("Unknown", 0.0) + residual_mv
+                    )
+            logger.debug(
+                "%s 使用成分股板塊查詢（%d 檔，覆蓋率 %.1f%%）",
+                ticker,
+                len(constituents),
+                covered_weight * 100,
+            )
+            continue
+
+        if ticker in known_etf_tickers or detect_is_etf(ticker):
+            sector_values["ETF"] = sector_values.get("ETF", 0.0) + market_value
+            logger.warning(
+                "行業板塊：%s 為 ETF 但板塊權重與成分股皆無法取得，歸類為 ETF。", ticker
+            )
+            continue
+
+        sector = get_ticker_sector(ticker) or "Unknown"
+        sector_values[sector] = sector_values.get(sector, 0.0) + market_value
+
+    equity_total = sum(sector_values.values())
+    return [
+        {
+            "sector": s,
+            "value": round(v, 2),
+            "weight_pct": round(v / total_value * 100, 2) if total_value > 0 else 0.0,
+            "equity_pct": round(v / equity_total * 100, 2) if equity_total > 0 else 0.0,
+        }
+        for s, v in sorted(sector_values.items(), key=lambda x: x[1], reverse=True)
+        if v > 0
+    ]
+
+
+def _do_calculate_rebalance(
+    session: Session,
+    display_currency: str,
+    lang: str,
+    _cache_key: tuple,
+) -> dict:
+    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+
+    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
+    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
+    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
+    (3) SQLite 無伺服器端連線逾時；
+    (4) 等待時間受限於主計算耗時（數秒）。
+    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    """
+
+    # 1-3.5) 讀取設定檔、持倉、匯率、並行預熱
+    target_config, holdings, fx_rates, account_name_by_id, accounts = (
+        _load_rebalance_inputs(session, display_currency, lang)
+    )
+
+    # 4) 使用共用邏輯計算各持倉市值
+    _nav_cache = _build_nav_cache(session, holdings)
+    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+            account_name_by_id,
+            nav_cache=_nav_cache,
+        )
+    )
+
+    # 4.5) 取得每個分類的市值合計
+    category_values: dict[str, float] = {}
+    for aggregate in ticker_agg.values():
+        category = aggregate["category"]
+        category_values[category] = category_values.get(category, 0.0) + aggregate["mv"]
+
+    # 5) 委託 domain 純函式計算
+    result = _pure_rebalance(category_values, target_config)
+
+    # 5.5) 將 domain 回傳的結構化建議翻譯為用戶語言字串
+    result["advice"] = [
+        t(item["key"], lang=lang, **item["params"]) for item in result["advice"]
+    ]
+
+    # 6) 計算投資組合日漲跌
+    total_value = result["total_value"]
+    previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
+    total_value_change = round(total_value - previous_total_value, 2)
+    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
+
+    logger.debug(
+        "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
+        previous_total_value,
+        total_value,
+        total_value_change,
+        total_value_change_pct if total_value_change_pct is not None else 0.0,
+    )
+
+    # 加入結果
+    result["previous_total_value"] = round(previous_total_value, 2)
+    result["total_value_change"] = round(total_value_change, 2)
+    result["total_value_change_pct"] = total_value_change_pct
+
+    # 7) 建立個股明細（account+ticker，含佔比）
+    result["holdings_detail"] = _build_holdings_detail_list(
+        account_ticker_agg, total_value
+    )
     result["display_currency"] = display_currency
 
     # 8) Tax-aware asset location optimization (Phase 5)
@@ -748,9 +1090,8 @@ def _do_calculate_rebalance(
             else None
         )
 
-    # 9) X-Ray: 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
-    # 從 DB 取得已知 ETF 集合，用於識別成分股暫時無法取得的 ETF 持倉。
-    # 這樣當 yfinance 暫時故障時，不會將 ETF 誤標記為直接持倉。
+    # 9) X-Ray 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
+    # 從 DB 取得已知 ETF 集合；known_etf_tickers/stock_is_etf_map 可能在分析中自我修復更新。
     stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()
     stock_is_etf_map: dict[str, bool] = {
         ticker.upper(): bool(is_etf) for ticker, is_etf in stock_rows
@@ -758,176 +1099,27 @@ def _do_calculate_rebalance(
     known_etf_tickers: set[str] = {
         ticker for ticker, is_etf in stock_is_etf_map.items() if is_etf
     }
-    # 先計算所有符合 X-Ray 條件的股票，再過濾為已知 ETF 進行預熱。
-    all_xray_tickers = [
-        t
-        for t, agg in ticker_agg.items()
-        if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
-    ]
-    xray_tickers = [t for t in all_xray_tickers if t in known_etf_tickers]
-    if xray_tickers:
-        logger.info(
-            "X-Ray 預熱：%d/%d 檔符合條件標的為已知 ETF，開始預熱成分股與板塊權重。",
-            len(xray_tickers),
-            len(all_xray_tickers),
-        )
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [
-                pool.submit(prewarm_etf_holdings_batch, xray_tickers),
-                pool.submit(prewarm_etf_sector_weights_batch, xray_tickers),
-            ]
-            for future in futures:
-                future.result()
-
-    xray_map: dict[str, dict] = {}  # symbol -> {direct, indirect, sources, name}
-    xray_analyzed_value = 0.0
-    xray_skipped_etfs: list[dict[str, object]] = []
-    xray_denominator = sum(
-        agg["mv"]
-        for agg in ticker_agg.values()
-        if agg["category"] not in XRAY_SKIP_CATEGORIES and agg["mv"] > 0
+    xray_entries, xray_coverage_pct, xray_skipped_etfs = _compute_xray_analysis(
+        ticker_agg, session, known_etf_tickers, stock_is_etf_map
     )
-    xray_pct = (
-        (lambda val: round((val / xray_denominator) * 100, 2))
-        if xray_denominator > 0
-        else (lambda _val: 0.0)
-    )
-
-    for ticker, agg in ticker_agg.items():
-        cat = agg["category"]
-        mv = agg["mv"]
-        if cat in XRAY_SKIP_CATEGORIES or mv <= 0:
-            continue
-
-        if ticker in known_etf_tickers:
-            # 僅已知 ETF 需要查詢成分股與板塊權重。
-            constituents = get_etf_top_holdings(ticker, is_known_etf=True)
-            etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
-        elif ticker in stock_is_etf_map and detect_is_etf(ticker):
-            # 自我修復：DB 中舊資料可能把 ETF 標成非 ETF（如早期匯入或暫時性偵測失敗）。
-            # 此處做 runtime 偵測，立即啟用 X-Ray 穿透，並回寫本次 session。
-            known_etf_tickers.add(ticker)
-            stock_is_etf_map[ticker] = True
-            stock_row = session.exec(
-                select(Stock).where(Stock.ticker == ticker)
-            ).first()
-            if stock_row and not bool(stock_row.is_etf):
-                stock_row.is_etf = True
-                session.add(stock_row)
-                session.commit()
-            constituents = get_etf_top_holdings(ticker, is_known_etf=True)
-            etf_sector_weights = get_etf_sector_weights(ticker, is_known_etf=True)
-        else:
-            constituents = None
-            etf_sector_weights = None
-
-        if constituents:
-            constituent_weight_sum = sum(c["weight"] for c in constituents)
-            if etf_sector_weights:
-                coverage_weight_sum = sum(etf_sector_weights.values())
-            else:
-                coverage_weight_sum = constituent_weight_sum
-            xray_analyzed_value += mv * min(coverage_weight_sum, 1.0)
-            for c in constituents:
-                sym = c["symbol"]
-                weight = c["weight"]
-                indirect_mv = mv * weight
-                if sym not in xray_map:
-                    xray_map[sym] = {
-                        "name": c.get("name", ""),
-                        "direct": 0.0,
-                        "indirect": 0.0,
-                        "sources": [],
-                    }
-                xray_map[sym]["indirect"] += indirect_mv
-                src_pct = round(weight * 100, 2)
-                xray_map[sym]["sources"].append(f"{ticker} ({src_pct}%)")
-        elif ticker in known_etf_tickers and not etf_sector_weights:
-            # 已知 ETF 但成分股暫時無法取得（yfinance 故障或快取失效）。
-            # 排除此 ETF，避免將其誤標記為直接持倉，導致 X-Ray 失真。
-            skipped_weight_pct = xray_pct(mv)
-            xray_skipped_etfs.append(
-                {"ticker": ticker, "weight_pct": skipped_weight_pct}
-            )
-            logger.warning(
-                "X-Ray：%s 為已知 ETF 但成分股無法取得，略過此持倉（不計入直接曝險）。",
-                ticker,
-            )
-        elif ticker in known_etf_tickers and etf_sector_weights:
-            # 已知 ETF 雖無成分股明細，但有板塊權重可分析曝險覆蓋率。
-            coverage_weight_sum = sum(etf_sector_weights.values())
-            xray_analyzed_value += mv * min(coverage_weight_sum, 1.0)
-        else:
-            xray_analyzed_value += mv
-            # 非 ETF 或未納入 Stock 表的 ETF 一律視為直接持倉。
-            # 若要啟用 ETF 穿透分析，需先將該標的加入 watchlist 並設定 is_etf=True。
-            if ticker not in xray_map:
-                xray_map[ticker] = {
-                    "name": "",
-                    "direct": 0.0,
-                    "indirect": 0.0,
-                    "sources": [],
-                }
-            xray_map[ticker]["direct"] += mv
-
-    # 組合 X-Ray 結果
-    xray_entries = []
-    for symbol, data in xray_map.items():
-        total_val = data["direct"] + data["indirect"]
-        if total_val <= 0:
-            continue
-        direct_pct = xray_pct(data["direct"])
-        indirect_pct = xray_pct(data["indirect"])
-        total_pct = xray_pct(total_val)
-        xray_entries.append(
-            {
-                "symbol": symbol,
-                "name": data["name"],
-                "direct_value": round(data["direct"], 2),
-                "direct_weight_pct": direct_pct,
-                "indirect_value": round(data["indirect"], 2),
-                "indirect_weight_pct": indirect_pct,
-                "total_value": round(total_val, 2),
-                "total_weight_pct": total_pct,
-                "indirect_sources": data["sources"],
-            }
-        )
-
-    xray_entries.sort(key=lambda x: x["total_weight_pct"], reverse=True)
     result["xray"] = xray_entries
-    result["xray_coverage_pct"] = xray_pct(xray_analyzed_value)
-    result["xray_skipped_etfs"] = sorted(
-        xray_skipped_etfs,
-        key=lambda x: float(x["weight_pct"]),
-        reverse=True,
-    )
+    result["xray_coverage_pct"] = xray_coverage_pct
+    result["xray_skipped_etfs"] = xray_skipped_etfs
 
-    # 9) 投資組合健康分數
     health_score, health_level = compute_portfolio_health_score(
-        result["categories"],
-        xray_entries,
+        result["categories"], xray_entries
     )
     result["health_score"] = health_score
     result["health_level"] = health_level
     logger.info("投資組合健康分數：%d (%s)", health_score, health_level)
 
     # 10) 行業板塊曝險（僅股票持倉，Bond/Cash 排除）
-    # ETF 穿透策略：
-    #   Approach B（主要）：使用 yfinance funds_data.sector_weightings，涵蓋 ETF 全部資產。
-    #   Approach A（後備）：若 B 無資料，分解 top-N 成分股並查詢各自板塊，
-    #                       未覆蓋的剩餘比例按已辨識板塊比例分配（避免膨脹 Unknown）。
-    #   ETF 兜底：若為已知 ETF 且 A/B 都無資料，歸類到 ETF（資料不足）而非 Unknown。
-    #   直接持股：使用 get_ticker_sector() 磁碟快取（30 天 TTL）。
-
-    # 並行預熱所有 equity 持倉及已知 ETF 成分股的 sector 快取，
-    # 讓後續逐一查詢（Approach A 及直接持股）直接命中磁碟快取。
-    # 同時快取 get_etf_top_holdings 結果，避免下方主迴圈重複呼叫。
+    # 並行預熱 equity 持倉的 sector 快取，並收集 ETF 成分股供 Approach A 使用。
     equity_tickers_for_sector = [
         ticker
         for ticker, agg in ticker_agg.items()
         if agg["category"] in EQUITY_CATEGORIES and agg["mv"] > 0
     ]
-    # Collect constituent results once — reused in sector loop below
     etf_constituents_cache: dict[str, list[dict]] = {}
     constituent_symbols_for_sector: list[str] = []
     for ticker in equity_tickers_for_sector:
@@ -944,98 +1136,9 @@ def _do_calculate_rebalance(
         logger.info("並行預熱 %d 個 ticker 的 sector 快取...", len(all_sector_tickers))
         prewarm_ticker_sector_batch(all_sector_tickers)
 
-    sector_values: dict[str, float] = {}
-    for ticker, agg in ticker_agg.items():
-        if agg["category"] not in EQUITY_CATEGORIES or agg["mv"] <= 0:
-            continue
-        mv = agg["mv"]
-
-        # 從預熱時收集的快取讀取成分股，避免重複呼叫 get_etf_top_holdings
-        constituents = etf_constituents_cache.get(ticker)
-        # Approach B：先嘗試 ETF 官方板塊權重分佈（與成分股資料來源獨立）
-        etf_sector_weights = (
-            get_etf_sector_weights(ticker, is_known_etf=True)
-            if ticker in known_etf_tickers
-            else None
-        )
-        if etf_sector_weights:
-            for sector_name, weight in etf_sector_weights.items():
-                sector_values[sector_name] = (
-                    sector_values.get(sector_name, 0.0) + mv * weight
-                )
-            logger.debug(
-                "%s 使用 ETF 板塊權重分佈（%d 板塊）",
-                ticker,
-                len(etf_sector_weights),
-            )
-            continue
-
-        if constituents:
-            # Approach A：分解成分股，逐一查詢板塊
-            constituent_sector_map: dict[str, float] = {}
-            covered_weight = 0.0
-            for c in constituents:
-                c_sector = get_ticker_sector(c["symbol"]) or "Unknown"
-                c_mv = mv * c["weight"]
-                constituent_sector_map[c_sector] = (
-                    constituent_sector_map.get(c_sector, 0.0) + c_mv
-                )
-                covered_weight += c["weight"]
-
-            # 將已辨識板塊的 MV 加入總計
-            for sector_name, s_mv in constituent_sector_map.items():
-                sector_values[sector_name] = sector_values.get(sector_name, 0.0) + s_mv
-
-            # 未覆蓋的剩餘比例（top-N 不足 100%）按已辨識板塊比例分配
-            uncovered_weight = max(0.0, 1.0 - covered_weight)
-            if uncovered_weight > 0 and constituent_sector_map:
-                known_sectors_excl_unknown = {
-                    s: v for s, v in constituent_sector_map.items() if s != "Unknown"
-                }
-                distribute_base = known_sectors_excl_unknown or constituent_sector_map
-                base_total = sum(distribute_base.values())
-                residual_mv = mv * uncovered_weight
-                if base_total > 0:
-                    for sector_name, s_mv in distribute_base.items():
-                        allocated = residual_mv * (s_mv / base_total)
-                        sector_values[sector_name] = (
-                            sector_values.get(sector_name, 0.0) + allocated
-                        )
-                else:
-                    sector_values["Unknown"] = (
-                        sector_values.get("Unknown", 0.0) + residual_mv
-                    )
-            logger.debug(
-                "%s 使用成分股板塊查詢（%d 檔，覆蓋率 %.1f%%）",
-                ticker,
-                len(constituents),
-                covered_weight * 100,
-            )
-            continue
-
-        if ticker in known_etf_tickers or detect_is_etf(ticker):
-            sector_values["ETF"] = sector_values.get("ETF", 0.0) + mv
-            logger.warning(
-                "行業板塊：%s 為 ETF 但板塊權重與成分股皆無法取得，歸類為 ETF。",
-                ticker,
-            )
-            continue
-
-        # 直接持股：查詢該股票的板塊
-        sector = get_ticker_sector(ticker) or "Unknown"
-        sector_values[sector] = sector_values.get(sector, 0.0) + mv
-
-    equity_total = sum(sector_values.values())
-    result["sector_exposure"] = [
-        {
-            "sector": s,
-            "value": round(v, 2),
-            "weight_pct": round(v / total_value * 100, 2) if total_value > 0 else 0.0,
-            "equity_pct": round(v / equity_total * 100, 2) if equity_total > 0 else 0.0,
-        }
-        for s, v in sorted(sector_values.items(), key=lambda x: x[1], reverse=True)
-        if v > 0
-    ]
+    result["sector_exposure"] = _compute_sector_exposure(
+        ticker_agg, known_etf_tickers, etf_constituents_cache, total_value
+    )
 
     # 11) 地理區域配置（股票按 ticker 後綴，現金按幣別）
     holding_market_data: list[dict] = []
@@ -1403,16 +1506,15 @@ def calculate_currency_exposure(
     # 9) 建議（包含現金部位資訊）
     lang = get_user_language(session)
     advice = _generate_fx_advice(
-        home_currency,
-        breakdown,
-        non_home_pct,
-        risk_level,
-        fx_movements,
-        fx_rate_alerts=all_fx_alerts,
-        cash_breakdown=cash_breakdown,
-        cash_non_home_pct=cash_non_home_pct,
-        total_cash_home=total_cash_home,
-        lang=lang,
+        FXAdviceContext(
+            home_currency=home_currency,
+            non_home_pct=non_home_pct,
+            risk_level=risk_level,
+            fx_rate_alerts=all_fx_alerts,
+            cash_breakdown=cash_breakdown,
+            cash_non_home_pct=cash_non_home_pct,
+            lang=lang,
+        )
     )
 
     return {
@@ -1440,66 +1542,71 @@ def calculate_currency_exposure(
     }
 
 
-def _generate_fx_advice(
-    home_currency: str,
-    breakdown: list[dict],
-    non_home_pct: float,
-    risk_level: str,
-    fx_movements: list[dict],
-    *,
-    fx_rate_alerts: list[FXRateAlert] | None = None,
-    cash_breakdown: list[dict] | None = None,
-    cash_non_home_pct: float = 0.0,
-    total_cash_home: float = 0.0,
-    lang: str = "zh-TW",
-) -> list[str]:
+@dataclass
+class FXAdviceContext:
+    """Parameters for the FX advice generator — replaces a 10-argument call signature."""
+
+    home_currency: str
+    non_home_pct: float
+    risk_level: str
+    fx_rate_alerts: list[FXRateAlert] = field(default_factory=list)
+    cash_breakdown: list[dict] = field(default_factory=list)
+    cash_non_home_pct: float = 0.0
+    lang: str = "zh-TW"
+
+
+def _generate_fx_advice(ctx: FXAdviceContext) -> list[str]:
     """根據匯率變動警報產出建議文字。"""
     advice: list[str] = []
-    fx_rate_alerts = fx_rate_alerts or []
 
     # 匯率變動風險摘要
-    if risk_level == "high":
-        advice.append(t("rebalance.fx_risk_high", lang=lang))
-    elif risk_level == "medium":
-        advice.append(t("rebalance.fx_risk_medium", lang=lang))
+    if ctx.risk_level == "high":
+        advice.append(t("rebalance.fx_risk_high", lang=ctx.lang))
+    elif ctx.risk_level == "medium":
+        advice.append(t("rebalance.fx_risk_medium", lang=ctx.lang))
     else:
-        advice.append(t("rebalance.fx_risk_low", lang=lang))
+        advice.append(t("rebalance.fx_risk_low", lang=ctx.lang))
 
     # 非本幣佔比資訊（保留但不作為警報觸發）
-    if non_home_pct > 0:
+    if ctx.non_home_pct > 0:
         advice.append(
-            t("rebalance.non_home_pct", lang=lang, home=home_currency, pct=non_home_pct)
+            t(
+                "rebalance.non_home_pct",
+                lang=ctx.lang,
+                home=ctx.home_currency,
+                pct=ctx.non_home_pct,
+            )
         )
 
     # 現金部位專屬建議
-    if cash_breakdown:
-        foreign_cash = [b for b in cash_breakdown if not b["is_home"]]
-        if foreign_cash and cash_non_home_pct > 0:
+    if ctx.cash_breakdown:
+        foreign_cash = [b for b in ctx.cash_breakdown if not b["is_home"]]
+        if foreign_cash and ctx.cash_non_home_pct > 0:
             top_cash_cur = foreign_cash[0]["currency"]
             top_cash_val = foreign_cash[0]["value"]
             advice.append(
                 t(
                     "rebalance.foreign_cash_warning",
-                    lang=lang,
-                    pct=cash_non_home_pct,
+                    lang=ctx.lang,
+                    pct=ctx.cash_non_home_pct,
                     currency=top_cash_cur,
                     value=top_cash_val,
-                    home=home_currency,
+                    home=ctx.home_currency,
                 )
             )
 
     # 個別警報詳情
-    cash_by_cur = {b["currency"]: b["value"] for b in (cash_breakdown or [])}
-    for alert in fx_rate_alerts:
+    cash_by_cur = {b["currency"]: b["value"] for b in ctx.cash_breakdown}
+    for alert in ctx.fx_rate_alerts:
         base_cur = alert.pair.split("/")[0]
         cash_amt = cash_by_cur.get(base_cur, 0.0)
         cash_note = (
             t(
                 "rebalance.cash_impact",
-                lang=lang,
+                lang=ctx.lang,
                 currency=base_cur,
                 amount=cash_amt,
-                home=home_currency,
+                home=ctx.home_currency,
             )
             if cash_amt > 0
             else ""
@@ -1507,34 +1614,25 @@ def _generate_fx_advice(
         type_label_key = FX_ALERT_LABEL.get(
             alert.alert_type.value, alert.alert_type.value
         )
-        type_label = t(type_label_key, lang=lang)
-        period = t(alert.period_label, lang=lang)
-        if alert.direction == "up":
-            advice.append(
-                t(
-                    "rebalance.fx_alert_up",
-                    lang=lang,
-                    pair=alert.pair,
-                    type_label=type_label,
-                    period=period,
-                    change_pct=alert.change_pct,
-                    rate=alert.current_rate,
-                    cash_note=cash_note,
-                )
+        type_label = t(type_label_key, lang=ctx.lang)
+        period = t(alert.period_label, lang=ctx.lang)
+        alert_key = (
+            "rebalance.fx_alert_up"
+            if alert.direction == "up"
+            else "rebalance.fx_alert_down"
+        )
+        advice.append(
+            t(
+                alert_key,
+                lang=ctx.lang,
+                pair=alert.pair,
+                type_label=type_label,
+                period=period,
+                change_pct=alert.change_pct,
+                rate=alert.current_rate,
+                cash_note=cash_note,
             )
-        else:
-            advice.append(
-                t(
-                    "rebalance.fx_alert_down",
-                    lang=lang,
-                    pair=alert.pair,
-                    type_label=type_label,
-                    period=period,
-                    change_pct=alert.change_pct,
-                    rate=alert.current_rate,
-                    cash_note=cash_note,
-                )
-            )
+        )
 
     return advice
 

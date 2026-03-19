@@ -64,6 +64,7 @@ from domain.constants import (
     GENERIC_VALIDATION_ERROR,
     GENERIC_WEBHOOK_ERROR,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
+    MAX_IMPORT_ROWS,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
 from domain.enums import StockCategory
@@ -461,7 +462,7 @@ def import_stocks_route(
     - ticker 長度限制 20 字元
     - thesis 長度限制 5000 字元
     """
-    if len(payload) > 1000:
+    if len(payload) > MAX_IMPORT_ROWS:
         raise HTTPException(
             status_code=400,
             detail={

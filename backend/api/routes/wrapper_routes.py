@@ -49,6 +49,7 @@ from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_USER_ID,
     ERROR_INVALID_INPUT,
+    MAX_UPLOAD_BYTES,
     NISA_RESTORATION_POLICY,
 )
 from i18n import t
@@ -256,7 +257,7 @@ def refresh_eligible_assets_endpoint(
     session: Session = Depends(get_session),
 ):
     normalized_wrapper = wrapper.strip().lower()
-    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+    if normalized_wrapper not in _CONTRIBUTION_WRAPPERS:
         raise HTTPException(
             status_code=422,
             detail=_error_detail(
@@ -298,7 +299,7 @@ async def upload_eligible_assets(
     session: Session = Depends(get_session),
 ):
     normalized_wrapper = wrapper.strip().lower()
-    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+    if normalized_wrapper not in _CONTRIBUTION_WRAPPERS:
         raise HTTPException(
             status_code=422,
             detail=_error_detail(
@@ -314,7 +315,7 @@ async def upload_eligible_assets(
             ),
         )
     content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
+    if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
             detail=_error_detail(
