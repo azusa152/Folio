@@ -418,6 +418,10 @@
     "date_range_both_required": "start 與 end 必須同時提供",
     "date_range_invalid_order": "start 不得晚於 end"
   },
+  "snapshot": {
+    "date_range_required": "start 與 end 必須同時提供",
+    "date_range_start_after_end": "start 不得晚於 end"
+  },
   "wrapper": {
     "tokutei": "特定口座（課稅）",
     "nisa_tsumitate": "NISA 定期定額",

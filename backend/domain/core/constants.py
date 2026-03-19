@@ -288,6 +288,12 @@ TAX_WRAPPER_OPTIONS = [
 # ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "default"
 DRIFT_THRESHOLD_PCT = 5.0  # rebalancing drift threshold (percentage points)
+
+# ---------------------------------------------------------------------------
+# Benchmark Tickers
+# ---------------------------------------------------------------------------
+BENCHMARK_TICKERS = ("^GSPC", "VT", "^N225", "^TWII")
+SP500_TICKER = "^GSPC"
 DRIFT_ACK_EXPIRE_DAYS = 90  # acknowledged drift/xray suppression safety expiry
 XRAY_ACK_STEP_PCT = 5.0  # re-alert when concentration worsens by another 5pp
 

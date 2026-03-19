@@ -68,8 +68,8 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
             <Tooltip
               contentStyle={theme.tooltipStyle}
               formatter={(v) => {
-                const n = typeof v === "number" ? v : 0
-                return [`${n.toFixed(2)}%`, t("smart_money.grand_portfolio.combined_weight")]
+                const numericValue = typeof v === "number" ? v : 0
+                return [`${numericValue.toFixed(2)}%`, t("smart_money.grand_portfolio.combined_weight")]
               }}
               labelStyle={{ color: theme.tooltipText }}
               cursor={{ fill: "rgba(128,128,128,0.08)" }}
@@ -88,8 +88,8 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
                 dataKey="weight"
                 position="right"
                 formatter={(v) => {
-                  const n = typeof v === "number" ? v : 0
-                  return `${n.toFixed(1)}%`
+                  const numericValue = typeof v === "number" ? v : 0
+                  return `${numericValue.toFixed(1)}%`
                 }}
                 style={{ fontSize: 9, fill: theme.tickColor }}
               />

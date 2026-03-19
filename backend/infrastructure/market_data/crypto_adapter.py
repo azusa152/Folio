@@ -4,7 +4,6 @@ Infrastructure — Crypto market data adapter (CoinGecko with yfinance fallback)
 
 from __future__ import annotations
 
-import contextlib
 import os
 import threading
 import time
@@ -13,7 +12,6 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-import diskcache
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
 from tenacity import (
@@ -34,6 +32,8 @@ from domain.constants import (
     DISK_CRYPTO_TTL,
     DISK_KEY_CRYPTO,
 )
+from infrastructure.common.disk_cache import DiskCache
+from infrastructure.common.rate_limiter import RateLimiter
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -62,7 +62,8 @@ _TOP_COIN_TICKER_MAP: dict[str, str] = {
 }
 
 _crypto_cache: TTLCache = TTLCache(maxsize=CRYPTO_CACHE_MAXSIZE, ttl=CRYPTO_CACHE_TTL)
-_disk_cache = diskcache.Cache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
+_disk_cache = DiskCache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
+_rate_limiter = RateLimiter(calls_per_second=COINGECKO_RATE_LIMIT_CPS)
 
 _inflight_lock = threading.Lock()
 _inflight_events: dict[str, threading.Event] = {}
@@ -74,37 +75,8 @@ _CB_FAILURE_THRESHOLD = 3
 _CB_COOLDOWN_SECONDS = 1800
 
 
-class _RateLimiter:
-    def __init__(self, calls_per_second: float) -> None:
-        self._min_interval = 1.0 / calls_per_second
-        self._lock = threading.Lock()
-        self._last_call = 0.0
-
-    def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_call
-            if elapsed < self._min_interval:
-                time.sleep(self._min_interval - elapsed)
-            self._last_call = time.monotonic()
-
-
-_rate_limiter = _RateLimiter(calls_per_second=COINGECKO_RATE_LIMIT_CPS)
-
-
 def _get_session() -> cffi_requests.Session:
     return cffi_requests.Session(impersonate=CURL_CFFI_IMPERSONATE)
-
-
-def _disk_get(key: str):
-    with contextlib.suppress(Exception):
-        return _disk_cache.get(key)
-    return None
-
-
-def _disk_set(key: str, value: Any, ttl: int) -> None:
-    with contextlib.suppress(Exception):
-        _disk_cache.set(key, value, expire=ttl)
 
 
 def _is_cb_open() -> bool:
@@ -245,7 +217,7 @@ def get_crypto_prices_batch(coin_ids: list[str]) -> dict[str, dict[str, float]]:
     cached = _crypto_cache.get(cache_key)
     if cached is not None:
         return cached
-    disk_cached = _disk_get(cache_key)
+    disk_cached = _disk_cache.get(cache_key)
     disk_cached_batch = _as_price_batch(disk_cached)
     if disk_cached_batch is not None:
         _crypto_cache[cache_key] = disk_cached_batch
@@ -278,14 +250,14 @@ def get_crypto_prices_batch(coin_ids: list[str]) -> dict[str, dict[str, float]]:
                 "volume_24h": float(row.get("usd_24h_vol") or 0.0),
             }
         _crypto_cache[cache_key] = result
-        _disk_set(cache_key, result, DISK_CRYPTO_TTL)
+        _disk_cache.set(cache_key, result, DISK_CRYPTO_TTL)
         return result
 
     def _get_cached():
         cached_now = _crypto_cache.get(cache_key)
         if cached_now is not None:
             return cached_now
-        disk_now = _disk_get(cache_key)
+        disk_now = _disk_cache.get(cache_key)
         disk_now_batch = _as_price_batch(disk_now)
         if disk_now_batch is not None:
             _crypto_cache[cache_key] = disk_now_batch

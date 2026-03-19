@@ -169,16 +169,16 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    expect(screen.getByText("+USD 25.00")).toBeInTheDocument()
+    expect(screen.getByText("+$25.00")).toBeInTheDocument()
     expect(screen.getByText("+2.86%")).toBeInTheDocument()
-    expect(screen.getByText("+USD 150.00")).toBeInTheDocument()
+    expect(screen.getByText("+$150.00")).toBeInTheDocument()
     expect(screen.getByText("+20.00%")).toBeInTheDocument()
 
     expect(screen.getByText("allocation.holdings.total_row")).toBeInTheDocument()
     expect(screen.getByText("USD 1200.00")).toBeInTheDocument()
-    expect(screen.getByText("+USD 10.00")).toBeInTheDocument()
+    expect(screen.getByText("+$10.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.today: +0.84%")).toBeInTheDocument()
-    expect(screen.getByText("+USD 100.00")).toBeInTheDocument()
+    expect(screen.getByText("+$100.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.total_return: +9.09%")).toBeInTheDocument()
   })
 
@@ -240,7 +240,7 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    expect(screen.getByText("+USD 5.00")).toBeInTheDocument()
+    expect(screen.getByText("+$5.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.today: +0.50%")).toBeInTheDocument()
   })
 

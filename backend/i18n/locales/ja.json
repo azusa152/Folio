@@ -418,6 +418,10 @@
     "date_range_both_required": "start と end は両方指定してください",
     "date_range_invalid_order": "start は end より前の日付にしてください"
   },
+  "snapshot": {
+    "date_range_required": "start と end は両方指定してください",
+    "date_range_start_after_end": "start は end より前の日付にしてください"
+  },
   "wrapper": {
     "tokutei": "特定口座",
     "nisa_tsumitate": "つみたて投資枠",

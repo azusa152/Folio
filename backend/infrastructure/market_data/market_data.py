@@ -17,7 +17,6 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 from typing import TypeVar
 
-import diskcache
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -171,6 +170,8 @@ from domain.constants import (
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
 from i18n import t
+from infrastructure.common.disk_cache import DiskCache
+from infrastructure.common.rate_limiter import RateLimiter
 from infrastructure.market_data.formatters import (
     build_moat_details,
     build_signal_status,
@@ -242,25 +243,6 @@ def _is_dividend_error(result) -> bool:
 # ---------------------------------------------------------------------------
 # Rate Limiter：限制 yfinance (Yahoo Finance) 呼叫頻率，避免被封鎖
 # ---------------------------------------------------------------------------
-
-
-class RateLimiter:
-    """Thread-safe rate limiter，確保呼叫間隔不低於 min_interval。"""
-
-    def __init__(self, calls_per_second: float = YFINANCE_RATE_LIMIT_CPS):
-        self._min_interval = 1.0 / calls_per_second
-        self._lock = threading.Lock()
-        self._last_call = 0.0
-
-    def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_call
-            if elapsed < self._min_interval:
-                time.sleep(self._min_interval - elapsed)
-            self._last_call = time.monotonic()
-
-
 _rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
 
 
@@ -399,21 +381,17 @@ _rogue_wave_cache: TTLCache = TTLCache(
 # ---------------------------------------------------------------------------
 # L2 快取（磁碟）：容器重啟後仍可使用，避免冷啟動時大量呼叫 yfinance
 # ---------------------------------------------------------------------------
-_disk_cache = diskcache.Cache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
+_disk_cache = DiskCache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
 
 
 def _disk_get(key: str):
     """從磁碟快取 (L2) 讀取。失敗時回傳 None（非致命）。"""
-    try:
-        return _disk_cache.get(key)
-    except Exception:
-        return None
+    return _disk_cache.get(key)
 
 
 def _disk_set(key: str, value, ttl: int) -> None:
     """寫入磁碟快取 (L2)。失敗時靜默跳過（非致命）。"""
-    with contextlib.suppress(Exception):
-        _disk_cache.set(key, value, expire=ttl)
+    _disk_cache.set(key, value, ttl)
 
 
 def clear_all_caches() -> dict:
@@ -472,7 +450,7 @@ def clear_forex_caches() -> dict:
                 if isinstance(key, str) and key.startswith(f"{disk_prefix}:")
             ]
             for key in to_delete:
-                del _disk_cache[key]
+                _disk_cache.delete(key)
             deleted_disk_entries += len(to_delete)
         except Exception:
             # 非致命：若某一類 key 清除失敗，仍繼續清除其他 key。
@@ -1400,8 +1378,7 @@ def prewarm_moat_batch(
             results[ticker] = result
             if result is not None and _is_moat_error(result):
                 fail_key = f"{DISK_KEY_MOAT}:fail:{ticker}"
-                with contextlib.suppress(Exception):
-                    _disk_cache.set(fail_key, result, expire=DISK_MOAT_FAILURE_TTL)
+                _disk_set(fail_key, result, DISK_MOAT_FAILURE_TTL)
         except Exception as exc:
             logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
             results[ticker] = None

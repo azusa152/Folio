@@ -136,21 +136,21 @@ class _HoldingLike(Protocol):
 
 
 def _resolve_cash_price_and_prev(
-    h: _HoldingLike, fx: float, cash_currency_values: dict[str, float]
+    holding: _HoldingLike, fx: float, cash_currency_values: dict[str, float]
 ) -> tuple[float | None, float | None, float, float, bool]:
     """現金持倉：price=1, prev=same, has_prev_close=True。"""
-    market_value = h.quantity * fx
-    cash_currency_values[h.currency] = (
-        cash_currency_values.get(h.currency, 0.0) + market_value
+    market_value = holding.quantity * fx
+    cash_currency_values[holding.currency] = (
+        cash_currency_values.get(holding.currency, 0.0) + market_value
     )
     return 1.0, None, market_value, market_value, True
 
 
 def _resolve_crypto_price_and_prev(
-    h: _HoldingLike, fx: float
+    holding: _HoldingLike, fx: float
 ) -> tuple[float | None, float | None, float, float, bool]:
     """加密貨幣持倉：從 CoinGecko 取得現價與 24h 漲跌推算前日收盤。"""
-    crypto_data = get_crypto_price(h.coingecko_id, h.ticker)
+    crypto_data = get_crypto_price(holding.coingecko_id, holding.ticker)
     price = crypto_data.get("price_usd") if crypto_data else None
     change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
 
@@ -165,9 +165,9 @@ def _resolve_crypto_price_and_prev(
         previous_close = price / (1 + change_24h_pct / 100)
 
     if price is not None and isinstance(price, (int, float)):
-        market_value = h.quantity * price * fx
-    elif h.cost_basis is not None:
-        market_value = h.quantity * h.cost_basis * fx
+        market_value = holding.quantity * price * fx
+    elif holding.cost_basis is not None:
+        market_value = holding.quantity * holding.cost_basis * fx
     else:
         market_value = 0.0
 
@@ -176,24 +176,24 @@ def _resolve_crypto_price_and_prev(
             price,
             previous_close,
             market_value,
-            h.quantity * previous_close * fx,
+            holding.quantity * previous_close * fx,
             True,
         )
     return price, previous_close, market_value, market_value, False
 
 
 def _resolve_mutual_fund_price_and_prev(
-    h: _HoldingLike, fx: float, nav_cache: dict[str, dict]
+    holding: _HoldingLike, fx: float, nav_cache: dict[str, dict]
 ) -> tuple[float | None, float | None, float, float, bool]:
     """投信基金持倉：從 NAV 快取取得當日與前日淨值。"""
-    nav_data = nav_cache.get(h.ticker)
+    nav_data = nav_cache.get(holding.ticker)
     price = nav_data.get("nav") if nav_data else None
     previous_close = nav_data.get("nav_previous") if nav_data else None
 
     if price is not None and isinstance(price, (int, float)):
-        market_value = h.quantity * price * fx
-    elif h.cost_basis is not None:
-        market_value = h.quantity * h.cost_basis * fx
+        market_value = holding.quantity * price * fx
+    elif holding.cost_basis is not None:
+        market_value = holding.quantity * holding.cost_basis * fx
     else:
         market_value = 0.0
 
@@ -202,32 +202,36 @@ def _resolve_mutual_fund_price_and_prev(
             price,
             previous_close,
             market_value,
-            h.quantity * previous_close * fx,
+            holding.quantity * previous_close * fx,
             True,
         )
     return price, previous_close, market_value, market_value, False
 
 
 def _resolve_skip_category_price_and_prev(
-    h: _HoldingLike, fx: float
+    holding: _HoldingLike, fx: float
 ) -> tuple[float | None, float | None, float, float, bool]:
     """Skip-price 分類（Bond/ETF 等）：直接用成本基礎，前後市值相同。"""
-    market_value = h.quantity * h.cost_basis * fx if h.cost_basis is not None else 0.0
+    market_value = (
+        holding.quantity * holding.cost_basis * fx
+        if holding.cost_basis is not None
+        else 0.0
+    )
     return None, None, market_value, market_value, True
 
 
 def _resolve_equity_price_and_prev(
-    h: _HoldingLike, fx: float
+    holding: _HoldingLike, fx: float
 ) -> tuple[float | None, float | None, float, float, bool]:
     """一般股票持倉：從技術訊號取得現價與前日收盤。"""
-    signals = get_technical_signals(h.ticker)
+    signals = get_technical_signals(holding.ticker)
     price = signals.get("price") if signals else None
     previous_close = signals.get("previous_close") if signals else None
 
     if price is not None and isinstance(price, (int, float)):
-        market_value = h.quantity * price * fx
-    elif h.cost_basis is not None:
-        market_value = h.quantity * h.cost_basis * fx
+        market_value = holding.quantity * price * fx
+    elif holding.cost_basis is not None:
+        market_value = holding.quantity * holding.cost_basis * fx
     else:
         market_value = 0.0
 
@@ -236,7 +240,7 @@ def _resolve_equity_price_and_prev(
             price,
             previous_close,
             market_value,
-            h.quantity * previous_close * fx,
+            holding.quantity * previous_close * fx,
             True,
         )
     return price, previous_close, market_value, market_value, False
@@ -519,7 +523,7 @@ def _load_rebalance_inputs(
     if not holdings:
         raise StockNotFoundError(t("rebalance.no_holdings", lang=lang))
 
-    holding_currencies = list({h.currency for h in holdings})
+    holding_currencies = list({holding.currency for holding in holdings})
     fx_rates = get_exchange_rates(display_currency, holding_currencies)
     logger.info(
         "匯率轉換（→ %s）：%s",
@@ -529,21 +533,21 @@ def _load_rebalance_inputs(
 
     stock_tickers = list(
         {
-            h.ticker
-            for h in holdings
-            if not h.is_cash
-            and h.category != StockCategory.CRYPTO
-            and h.category.value not in SKIP_PRICE_FETCH_CATEGORIES
+            holding.ticker
+            for holding in holdings
+            if not holding.is_cash
+            and holding.category != StockCategory.CRYPTO
+            and holding.category.value not in SKIP_PRICE_FETCH_CATEGORIES
         }
     )
     crypto_ids = list(
         {
-            h.coingecko_id
-            for h in holdings
+            holding.coingecko_id
+            for holding in holdings
             if (
-                not h.is_cash
-                and h.category == StockCategory.CRYPTO
-                and getattr(h, "coingecko_id", None)
+                not holding.is_cash
+                and holding.category == StockCategory.CRYPTO
+                and getattr(holding, "coingecko_id", None)
             )
         }
     )
@@ -727,20 +731,22 @@ def _compute_xray_analysis(
         )
 
         if constituents:
-            constituent_weight_sum = sum(c["weight"] for c in constituents)
+            constituent_weight_sum = sum(
+                constituent["weight"] for constituent in constituents
+            )
             coverage_weight_sum = (
                 sum(etf_sector_weights.values())
                 if etf_sector_weights
                 else constituent_weight_sum
             )
             xray_analyzed_value += market_value * min(coverage_weight_sum, 1.0)
-            for c in constituents:
-                sym = c["symbol"]
-                weight = c["weight"]
+            for constituent in constituents:
+                sym = constituent["symbol"]
+                weight = constituent["weight"]
                 indirect_mv = market_value * weight
                 if sym not in xray_map:
                     xray_map[sym] = {
-                        "name": c.get("name", ""),
+                        "name": constituent.get("name", ""),
                         "direct": 0.0,
                         "indirect": 0.0,
                         "sources": [],
@@ -836,27 +842,33 @@ def _compute_sector_exposure(
         if constituents:
             constituent_sector_map: dict[str, float] = {}
             covered_weight = 0.0
-            for c in constituents:
-                c_sector = get_ticker_sector(c["symbol"]) or "Unknown"
-                c_mv = market_value * c["weight"]
-                constituent_sector_map[c_sector] = (
-                    constituent_sector_map.get(c_sector, 0.0) + c_mv
+            for constituent in constituents:
+                constituent_sector = (
+                    get_ticker_sector(constituent["symbol"]) or "Unknown"
                 )
-                covered_weight += c["weight"]
-            for sector_name, s_mv in constituent_sector_map.items():
-                sector_values[sector_name] = sector_values.get(sector_name, 0.0) + s_mv
+                constituent_mv = market_value * constituent["weight"]
+                constituent_sector_map[constituent_sector] = (
+                    constituent_sector_map.get(constituent_sector, 0.0) + constituent_mv
+                )
+                covered_weight += constituent["weight"]
+            for sector_name, sector_mv in constituent_sector_map.items():
+                sector_values[sector_name] = (
+                    sector_values.get(sector_name, 0.0) + sector_mv
+                )
 
             uncovered_weight = max(0.0, 1.0 - covered_weight)
             if uncovered_weight > 0 and constituent_sector_map:
                 known_sectors_excl_unknown = {
-                    s: v for s, v in constituent_sector_map.items() if s != "Unknown"
+                    sector: mv
+                    for sector, mv in constituent_sector_map.items()
+                    if sector != "Unknown"
                 }
                 distribute_base = known_sectors_excl_unknown or constituent_sector_map
                 base_total = sum(distribute_base.values())
                 residual_mv = market_value * uncovered_weight
                 if base_total > 0:
-                    for sector_name, s_mv in distribute_base.items():
-                        allocated = residual_mv * (s_mv / base_total)
+                    for sector_name, sector_mv in distribute_base.items():
+                        allocated = residual_mv * (sector_mv / base_total)
                         sector_values[sector_name] = (
                             sector_values.get(sector_name, 0.0) + allocated
                         )
@@ -885,13 +897,19 @@ def _compute_sector_exposure(
     equity_total = sum(sector_values.values())
     return [
         {
-            "sector": s,
-            "value": round(v, 2),
-            "weight_pct": round(v / total_value * 100, 2) if total_value > 0 else 0.0,
-            "equity_pct": round(v / equity_total * 100, 2) if equity_total > 0 else 0.0,
+            "sector": sector,
+            "value": round(value, 2),
+            "weight_pct": round(value / total_value * 100, 2)
+            if total_value > 0
+            else 0.0,
+            "equity_pct": round(value / equity_total * 100, 2)
+            if equity_total > 0
+            else 0.0,
         }
-        for s, v in sorted(sector_values.items(), key=lambda x: x[1], reverse=True)
-        if v > 0
+        for sector, value in sorted(
+            sector_values.items(), key=lambda x: x[1], reverse=True
+        )
+        if value > 0
     ]
 
 
@@ -1193,10 +1211,10 @@ def send_xray_warnings(
     # Cleanup pass: clear stale acks whose concentration has since recovered.
     # Runs *before* the warning loop so recovered symbols can alert again.
     xray_pct_map = {
-        str(e.get("symbol", "")).upper().strip(): float(
-            e.get("total_weight_pct", 0.0) or 0.0
+        str(entry.get("symbol", "")).upper().strip(): float(
+            entry.get("total_weight_pct", 0.0) or 0.0
         )
-        for e in xray_entries
+        for entry in xray_entries
     }
     for ack in find_all_drift_acknowledgments(session, alert_type=ACK_TYPE_XRAY):
         current_pct = xray_pct_map.get(ack.alert_key, 0.0)
@@ -1350,7 +1368,7 @@ def calculate_currency_exposure(
         }
 
     # 3) 取得匯率（all currencies → home_currency）
-    holding_currencies = list({h.currency for h in holdings})
+    holding_currencies = list({holding.currency for holding in holdings})
     fx_rates = get_exchange_rates(home_currency, holding_currencies)
     logger.info(
         "匯率曝險分析 → %s：%s",
@@ -1361,21 +1379,21 @@ def calculate_currency_exposure(
     # 3.5) 並行預熱所有非現金持倉的技術訊號（MF 走 NAV 日次同步，不經 yfinance）
     stock_tickers = list(
         {
-            h.ticker
-            for h in holdings
-            if not h.is_cash
-            and h.category != StockCategory.CRYPTO
-            and h.category.value not in SKIP_PRICE_FETCH_CATEGORIES
+            holding.ticker
+            for holding in holdings
+            if not holding.is_cash
+            and holding.category != StockCategory.CRYPTO
+            and holding.category.value not in SKIP_PRICE_FETCH_CATEGORIES
         }
     )
     crypto_ids = list(
         {
-            h.coingecko_id
-            for h in holdings
+            holding.coingecko_id
+            for holding in holdings
             if (
-                not h.is_cash
-                and h.category == StockCategory.CRYPTO
-                and getattr(h, "coingecko_id", None)
+                not holding.is_cash
+                and holding.category == StockCategory.CRYPTO
+                and getattr(holding, "coingecko_id", None)
             )
         }
     )
@@ -1790,7 +1808,7 @@ def calculate_withdrawal(
         }
 
     # 3) 取得匯率
-    holding_currencies = list({h.currency for h in holdings})
+    holding_currencies = list({holding.currency for holding in holdings})
     fx_rates = get_exchange_rates(display_currency, holding_currencies)
 
     # 4) 計算各持倉市值，建立 HoldingData 列表
@@ -1803,35 +1821,39 @@ def calculate_withdrawal(
     }
     _nav_cache_wd = _build_nav_cache(session, holdings)
 
-    for h in holdings:
-        fx = fx_rates.get(h.currency, 1.0)
-        price = _resolve_holding_price(h, _nav_cache_wd)
+    for holding in holdings:
+        fx = fx_rates.get(holding.currency, 1.0)
+        price = _resolve_holding_price(holding, _nav_cache_wd)
 
-        if h.is_cash:
-            market_value = h.quantity * fx
+        if holding.is_cash:
+            market_value = holding.quantity * fx
         elif price is not None:
-            market_value = h.quantity * price * fx
-        elif h.cost_basis is not None:
-            market_value = h.quantity * h.cost_basis * fx
+            market_value = holding.quantity * price * fx
+        elif holding.cost_basis is not None:
+            market_value = holding.quantity * holding.cost_basis * fx
         else:
             market_value = 0.0
 
-        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
+        cat = (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
+        )
         category_values[cat] = category_values.get(cat, 0.0) + market_value
 
         holdings_data.append(
             HoldingData(
-                ticker=h.ticker,
+                ticker=holding.ticker,
                 category=cat,
-                quantity=h.quantity,
-                cost_basis=h.cost_basis,
+                quantity=holding.quantity,
+                cost_basis=holding.cost_basis,
                 current_price=price,
                 market_value=market_value,
-                currency=h.currency,
-                is_cash=h.is_cash,
+                currency=holding.currency,
+                is_cash=holding.is_cash,
                 fx_rate=fx,
-                tax_wrapper=account_wrapper_map.get(int(h.account_id))
-                if h.account_id is not None
+                tax_wrapper=account_wrapper_map.get(int(holding.account_id))
+                if holding.account_id is not None
                 else None,
             )
         )

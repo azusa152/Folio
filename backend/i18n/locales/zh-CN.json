@@ -418,6 +418,10 @@
     "date_range_both_required": "start 与 end 必须同时提供",
     "date_range_invalid_order": "start 不得晚于 end"
   },
+  "snapshot": {
+    "date_range_required": "start 与 end 必须同时提供",
+    "date_range_start_after_end": "start 不得晚于 end"
+  },
   "wrapper": {
     "tokutei": "特定账户（应税）",
     "nisa_tsumitate": "NISA 定投额度",

@@ -340,10 +340,6 @@ def cleanup_account_transactions(session: Session, account_id: int, lang: str) -
     return repo.delete_transactions_by_account(session, account_id)
 
 
-def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
-    return cleanup_account_transactions(session, account_id, lang)
-
-
 def _replace_account_and_import(
     *,
     session: Session,
@@ -351,7 +347,7 @@ def _replace_account_and_import(
     lang: str,
     account_id: int,
 ) -> dict:
-    deleted = _replace_account_transactions(session, account_id, lang)
+    deleted = cleanup_account_transactions(session, account_id, lang)
 
     imported = 0
     for item in data:

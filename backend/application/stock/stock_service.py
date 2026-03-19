@@ -42,6 +42,9 @@ from infrastructure.market_data import (
     get_tw_volatility_index,
 )
 from infrastructure.market_data import (
+    clear_all_caches as _clear_market_data_caches,
+)
+from infrastructure.market_data import (
     get_price_history as _get_price_history,
 )
 from logging_config import get_logger
@@ -49,6 +52,11 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 _SKIP_DIVIDEND_CATEGORIES = {"Trend_Setter", "Growth", "Cash", "Mutual_Fund"}
+
+
+def clear_market_data_caches() -> dict:
+    """Clear all market-data L1 and L2 caches."""
+    return _clear_market_data_caches()
 
 
 # ---------------------------------------------------------------------------

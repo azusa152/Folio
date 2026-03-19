@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { isTaxWrapperType, TAX_WRAPPER_ICONS } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency, formatQuantity, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
+import { formatCurrency, formatQuantity, formatSignedMoneyWithPrivacy, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
 import type { AccountSummaryItem } from "@/api/types/account"
 import type { HoldingDetail, RebalanceResponse } from "@/api/types/dashboard"
 
@@ -123,18 +123,6 @@ function categoryLabel(
   if (bucket.category === "bonds") return t("dashboard.accounts_overview.bonds_category")
   if (bucket.category === "commodities") return t("dashboard.accounts_overview.commodities_category")
   return t("dashboard.accounts_overview.other_category")
-}
-
-function formatSignedMoney(
-  value: number,
-  currency: string,
-  isPrivate: boolean,
-): string {
-  if (isPrivate) return "***"
-  const amount = maskMoney(Math.abs(value), currency)
-  if (value > 0) return `+${amount}`
-  if (value < 0) return `-${amount}`
-  return amount
 }
 
 // ---------------------------------------------------------------------------
@@ -554,7 +542,7 @@ function AccountRow({
                 <span
                   className={`tabular-nums ${row.dailyChange >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
                 >
-                  {formatSignedMoney(row.dailyChange, displayCurrency, isPrivate)}
+                  {formatSignedMoneyWithPrivacy(row.dailyChange, displayCurrency, isPrivate)}
                   {!isPrivate && row.dailyChangePct != null && ` (${formatSignedPct(row.dailyChangePct, 1)})`}
                 </span>
               </div>
@@ -583,7 +571,7 @@ function AccountRow({
                 <span
                   className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
                 >
-                  {formatSignedMoney(row.accountGainLoss, displayCurrency, isPrivate)}
+                  {formatSignedMoneyWithPrivacy(row.accountGainLoss, displayCurrency, isPrivate)}
                   {!isPrivate && ` (${formatSignedPct(accountReturnPct, 1)})`}
                 </span>
               </div>

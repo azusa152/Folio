@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, SendHorizonal } from "lucide-react"
+import { ChevronDown, ChevronUp, SendHorizontal } from "lucide-react"
 import { getNextMarketOpenInfo, isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
@@ -212,7 +212,7 @@ export default function Dashboard() {
           disabled={digestMutation.isPending}
           title={t("dashboard.digest_tooltip")}
         >
-          <SendHorizonal className="w-3.5 h-3.5" />
+          <SendHorizontal className="w-3.5 h-3.5" />
           {t("dashboard.digest_tooltip")}
         </Button>
         <Select value={displayCurrency} onValueChange={setCurrencyOverride}>

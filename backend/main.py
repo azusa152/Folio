@@ -177,9 +177,9 @@ def health_check() -> dict:
 @limiter.limit("10/minute")
 def clear_cache(request: Request) -> dict:
     """Admin endpoint - WITH auth and rate limiting."""
-    from infrastructure.market_data import clear_all_caches
+    from application.stock.stock_service import clear_market_data_caches
 
-    result = clear_all_caches()
+    result = clear_market_data_caches()
     return {"status": "ok", **result}
 
 

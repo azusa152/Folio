@@ -218,9 +218,9 @@ function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
-    const r = snapshots.filter((s) => s.snapshot_date >= cutoffStr)
-    const vals = r.map((s) => s.total_value)
-    return { recent: r, isUp: vals.length >= 2 && vals[vals.length - 1] >= vals[0] }
+    const recentSnapshots = snapshots.filter((snapshot) => snapshot.snapshot_date >= cutoffStr)
+    const vals = recentSnapshots.map((snapshot) => snapshot.total_value)
+    return { recent: recentSnapshots, isUp: vals.length >= 2 && vals[vals.length - 1] >= vals[0] }
   }, [snapshots])
 
   const onInit = useCallback(

@@ -164,7 +164,7 @@ export function formatSignedPct(value: number, decimals = 1): string {
 /**
  * Format a signed absolute money amount with an explicit "+" or "−" prefix.
  * Handles null/undefined (returns "—") but does NOT apply privacy masking;
- * callers that need privacy masking should wrap with maskMoney before calling.
+ * callers that need privacy masking should use formatSignedMoneyWithPrivacy.
  * e.g. formatSignedMoney(1234, "USD") → "+$1,234.00"
  *      formatSignedMoney(-50, "JPY") → "-¥50"
  *      formatSignedMoney(0, "USD")   → "$0.00"
@@ -178,6 +178,20 @@ export function formatSignedMoney(
   if (value > 0) return `+${formatted}`
   if (value < 0) return `-${formatted}`
   return formatted
+}
+
+/**
+ * Privacy-aware variant of formatSignedMoney.
+ * Returns "***" when isPrivate is true, "—" for null/undefined, otherwise
+ * a signed formatted amount.
+ */
+export function formatSignedMoneyWithPrivacy(
+  value: number | null | undefined,
+  currencyCode: string,
+  isPrivate: boolean,
+): string {
+  if (isPrivate) return "***"
+  return formatSignedMoney(value, currencyCode)
 }
 
 export function formatMarketCap(value: number | null | undefined): string {

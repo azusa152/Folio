@@ -26,11 +26,11 @@ def _load_snapshot_dicts(
 
     return [
         {
-            "snapshot_date": s.snapshot_date,
-            "total_value": s.total_value,
-            "cost_basis_total": s.cost_basis_total,
+            "snapshot_date": snapshot.snapshot_date,
+            "total_value": snapshot.total_value,
+            "cost_basis_total": snapshot.cost_basis_total,
         }
-        for s in snapshots
+        for snapshot in snapshots
     ]
 
 
@@ -45,12 +45,12 @@ def get_drawdown_series(
     series = compute_drawdown_series(snapshots)
     return [
         {
-            "date": p.snapshot_date.isoformat(),
-            "drawdown_pct": p.drawdown_pct,
-            "total_value": p.total_value,
-            "peak_value": p.peak_value,
+            "date": point.snapshot_date.isoformat(),
+            "drawdown_pct": point.drawdown_pct,
+            "total_value": point.total_value,
+            "peak_value": point.peak_value,
         }
-        for p in series
+        for point in series
     ]
 
 
@@ -85,12 +85,12 @@ def get_contribution_vs_growth(
     return [
         {
             "date": (
-                s["snapshot_date"].isoformat()
-                if isinstance(s["snapshot_date"], date)
-                else s["snapshot_date"]
+                snapshot["snapshot_date"].isoformat()
+                if isinstance(snapshot["snapshot_date"], date)
+                else snapshot["snapshot_date"]
             ),
-            "market_value": s["total_value"],
-            "cost_basis": s.get("cost_basis_total"),
+            "market_value": snapshot["total_value"],
+            "cost_basis": snapshot.get("cost_basis_total"),
         }
-        for s in snapshots
+        for snapshot in snapshots
     ]

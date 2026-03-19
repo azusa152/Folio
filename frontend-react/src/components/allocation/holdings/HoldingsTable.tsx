@@ -4,7 +4,7 @@ import { ArrowUpDown, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatQuantity, getQuantityUnitKey, formatSignedPct } from "@/lib/format"
+import { formatQuantity, formatSignedMoneyWithPrivacy, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import {
   Tooltip,
@@ -63,18 +63,6 @@ function getValueClass(v: number | null | undefined): string {
   return FINANCE_TEXT.neutral
 }
 
-function formatSignedMoney(
-  value: number | null | undefined,
-  currency: string,
-  privacyMode: boolean,
-): string {
-  if (value == null) return "—"
-  if (privacyMode) return "***"
-  const amount = maskMoney(Math.abs(value), currency)
-  if (value > 0) return `+${amount}`
-  if (value < 0) return `-${amount}`
-  return amount
-}
 
 function compareNullableNumber(a: number | null | undefined, b: number | null | undefined, direction: SortDirection): number {
   const aNull = a == null
@@ -453,7 +441,7 @@ export function HoldingsTable({
                     {!isCash && (h.change_value != null || h.change_pct != null) ? (
                       <>
                         <div className={`font-medium ${getValueClass(h.change_value ?? h.change_pct)}`}>
-                          {formatSignedMoney(h.change_value, displayCurrency ?? h.currency, privacyMode)}
+                          {formatSignedMoneyWithPrivacy(h.change_value, displayCurrency ?? h.currency, privacyMode)}
                         </div>
                         <div className={getValueClass(h.change_pct)}>
                           {h.change_pct != null
@@ -498,7 +486,7 @@ export function HoldingsTable({
                     {h.total_gain_value != null || h.total_gain_pct != null ? (
                       <>
                         <div className={`font-medium ${getValueClass(h.total_gain_value)}`}>
-                          {formatSignedMoney(h.total_gain_value, displayCurrency ?? h.currency, privacyMode)}
+                          {formatSignedMoneyWithPrivacy(h.total_gain_value, displayCurrency ?? h.currency, privacyMode)}
                         </div>
                         <div className={getValueClass(h.total_gain_pct)}>
                           {h.total_gain_pct != null ? fmtPct(h.total_gain_pct) : "—"}
@@ -527,7 +515,7 @@ export function HoldingsTable({
               </td>
               <td className="py-1 pr-2 text-right">
                 <div className={`font-medium ${getValueClass(portfolioTodayChangeValue ?? totals.todayChange)}`}>
-                  {formatSignedMoney(portfolioTodayChangeValue ?? totals.todayChange, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
+                  {formatSignedMoneyWithPrivacy(portfolioTodayChangeValue ?? totals.todayChange, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
                 </div>
                 <div className={getValueClass(portfolioTodayChangePct ?? totals.todayChangePct)}>
                   {portfolioTodayChangePct != null || totals.todayChangePct != null
@@ -537,7 +525,7 @@ export function HoldingsTable({
               </td>
               <td className="py-1 text-right">
                 <div className={`font-medium ${getValueClass(totals.totalGainValue)}`}>
-                  {formatSignedMoney(totals.totalGainValue, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
+                  {formatSignedMoneyWithPrivacy(totals.totalGainValue, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
                 </div>
                 <div className={getValueClass(totals.totalGainPct)}>
                   {totals.totalGainPct != null
