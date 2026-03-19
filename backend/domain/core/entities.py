@@ -4,9 +4,12 @@ Domain — 資料庫實體 (SQLModel Tables)。
 """
 
 import json as _json
+import logging
 from datetime import UTC, date, datetime
 
+from pydantic import field_validator
 from sqlalchemy import Index, UniqueConstraint
+from sqlalchemy.types import TypeDecorator
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
@@ -17,12 +20,51 @@ from domain.constants import (
 )
 from domain.enums import HoldingAction, ScanSignal, StockCategory, TransactionType
 
+logger = logging.getLogger(__name__)
+
+
+def _normalize_stock_category(value: object) -> StockCategory:
+    """Normalize persisted category values and guard against unknown legacy strings."""
+    if isinstance(value, StockCategory):
+        return value
+    raw = str(value or "").strip()
+    if not raw:
+        return StockCategory.GROWTH
+    try:
+        return StockCategory(raw)
+    except ValueError:
+        logger.warning(
+            "Unknown stock category '%s' encountered; fallback to '%s'",
+            raw,
+            StockCategory.GROWTH.value,
+        )
+        return StockCategory.GROWTH
+
+
+class _StockCategoryType(TypeDecorator):
+    """Resilient DB type for stock category values.
+
+    Stores category as plain text but always returns a valid ``StockCategory``
+    on read, preventing crashes from legacy/unknown raw DB values.
+    """
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value: object, dialect) -> str:
+        return _normalize_stock_category(value).value
+
+    def process_result_value(self, value: object, dialect) -> StockCategory:
+        return _normalize_stock_category(value)
+
 
 class Stock(SQLModel, table=True):
     """追蹤清單中的個股。"""
 
     ticker: str = Field(primary_key=True, description="股票代號")
-    category: StockCategory = Field(description="分類")
+    category: StockCategory = Field(
+        sa_column=Column(_StockCategoryType(), nullable=False), description="分類"
+    )
     coingecko_id: str | None = Field(
         default=None, description="CoinGecko 幣種 ID（加密貨幣用）"
     )
@@ -35,6 +77,11 @@ class Stock(SQLModel, table=True):
     signal_since: datetime | None = Field(default=None, description="目前訊號起始時間")
     is_active: bool = Field(default=True, description="是否追蹤中")
     is_etf: bool = Field(default=False, description="是否為 ETF（市場情緒排除用）")
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: object) -> StockCategory:
+        return _normalize_stock_category(value)
 
 
 class ThesisLog(SQLModel, table=True):
@@ -176,7 +223,9 @@ class Holding(SQLModel, table=True):
     coingecko_id: str | None = Field(
         default=None, description="CoinGecko 幣種 ID（加密貨幣用，可選）"
     )
-    category: StockCategory = Field(description="資產分類")
+    category: StockCategory = Field(
+        sa_column=Column(_StockCategoryType(), nullable=False), description="資產分類"
+    )
     quantity: float = Field(description="持有數量（股數或金額）")
     cost_basis: float | None = Field(default=None, description="成本基礎（每單位）")
     broker: str | None = Field(default=None, description="券商名稱")
@@ -195,6 +244,11 @@ class Holding(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         description="更新時間",
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: object) -> StockCategory:
+        return _normalize_stock_category(value)
 
 
 class Transaction(SQLModel, table=True):

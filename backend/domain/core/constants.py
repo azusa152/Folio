@@ -39,6 +39,8 @@ CATEGORY_RSI_OFFSET: dict[str, int] = {
     "Moat": 1,  # beta ~1.2
     "Growth": 2,  # beta ~1.5
     "Bond": -3,  # beta ~0.3
+    "MUTUAL_FUND": -1,  # typically lower-vol than single-stock equity
+    "ETF": 0,  # broad-market ETF baseline
     "Cash": 0,
     "Crypto": 0,  # crypto 不參與 RSI 掃描，保留 0 作為相容值
 }
@@ -154,7 +156,13 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 # ---------------------------------------------------------------------------
 SKIP_RSI_CATEGORIES = ["Cash", "Crypto"]  # 非 RSI 類資產不進行技術訊號掃描
 SKIP_PRICE_FETCH_CATEGORIES = ["Cash"]  # 不需要抓取價格的資產（如現金）
-SKIP_MOAT_CATEGORIES = ["Bond", "Cash", "Crypto"]  # 非股票類不適用護城河分析
+SKIP_MOAT_CATEGORIES = [
+    "Bond",
+    "Cash",
+    "Crypto",
+    "MUTUAL_FUND",
+    "ETF",
+]  # 非個股類不適用護城河分析
 REMOVAL_REASON_UNKNOWN = "constants.removal_reason_unknown"  # i18n key
 
 # ---------------------------------------------------------------------------
@@ -167,17 +175,32 @@ DEFAULT_IMPORT_CATEGORY = "Growth"
 DEFAULT_WEBHOOK_THESIS = "constants.default_webhook_thesis"  # i18n key
 
 # ---------------------------------------------------------------------------
-# Category Display Order & Icons
+# Category Lists & Icons
 # ---------------------------------------------------------------------------
-CATEGORY_DISPLAY_ORDER = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto", "Cash"]
+# All stock categories supported by API / forms (also the notification render order).
+STOCK_CATEGORIES = [
+    "Trend_Setter",
+    "Moat",
+    "Growth",
+    "Bond",
+    "Crypto",
+    "Cash",
+    "ETF",
+    "MUTUAL_FUND",
+]
+
+# Categories shown on Radar tab filters.
+RADAR_CATEGORIES = ["Trend_Setter", "Moat", "Growth", "Bond", "Crypto"]
 
 CATEGORY_ICON: dict[str, str] = {
     "Trend_Setter": "🌊",
     "Moat": "🏰",
     "Growth": "🚀",
     "Bond": "🛡️",
-    "Cash": "💵",
     "Crypto": "₿",
+    "Cash": "💵",
+    "ETF": "📈",
+    "MUTUAL_FUND": "📚",
 }
 
 # ---------------------------------------------------------------------------
@@ -221,7 +244,16 @@ LANGUAGE_LABELS = {
 # Smart Withdrawal (聰明提款機)
 # ---------------------------------------------------------------------------
 # 流動性優先順序：最容易變現的排最前面，複利核心資產排最後
-CATEGORY_LIQUIDITY_ORDER = ["Cash", "Crypto", "Bond", "Growth", "Moat", "Trend_Setter"]
+CATEGORY_LIQUIDITY_ORDER = [
+    "Cash",
+    "Crypto",
+    "Bond",
+    "MUTUAL_FUND",
+    "ETF",
+    "Growth",
+    "Moat",
+    "Trend_Setter",
+]
 WITHDRAWAL_MIN_SELL_VALUE = 10.0  # 最小賣出金額（避免灰塵交易）
 
 # ---------------------------------------------------------------------------
@@ -461,7 +493,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "requires_ticker": True,
         "params": {
             "ticker": "str (required)",
-            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Crypto|Cash)",
+            "category": "StockCategory (Trend_Setter|Moat|Growth|Bond|Crypto|Cash|MUTUAL_FUND|ETF)",
             "thesis": "str (investment thesis)",
             "tags": "list[str] (e.g. ['AI', 'Semiconductor'])",
         },
@@ -701,6 +733,8 @@ CATEGORY_FALLBACK_BETA: dict[str, float] = {
     "Trend_Setter": 1.0,
     "Moat": 1.2,
     "Growth": 1.5,
+    "MUTUAL_FUND": 0.8,
+    "ETF": 1.0,
     "Bond": 0.3,
     "Cash": 0.0,
     "Crypto": 0.0,
@@ -880,7 +914,9 @@ DISK_PRICE_PAIR_TTL = 0  # permanent — historical close prices are immutable
 # ---------------------------------------------------------------------------
 # Equity Categories (used by sector exposure, X-Ray, etc.)
 # ---------------------------------------------------------------------------
-EQUITY_CATEGORIES: frozenset[str] = frozenset({"Trend_Setter", "Moat", "Growth"})
+EQUITY_CATEGORIES: frozenset[str] = frozenset(
+    {"Trend_Setter", "Moat", "Growth", "MUTUAL_FUND", "ETF"}
+)
 
 # ---------------------------------------------------------------------------
 # Crypto Market Data Cache

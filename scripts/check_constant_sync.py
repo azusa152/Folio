@@ -3,8 +3,8 @@ Compare key constants between backend and frontend.
 Exit 1 if any drift is detected.
 
 Constant groups verified:
-  - Stock categories:  CATEGORY_DISPLAY_ORDER  ↔  STOCK_CATEGORIES
-  - Radar categories:  CATEGORY_DISPLAY_ORDER (no Cash)  ↔  RADAR_CATEGORIES
+  - Stock categories:  STOCK_CATEGORIES  ↔  STOCK_CATEGORIES
+  - Radar categories:  RADAR_CATEGORIES  ↔  RADAR_CATEGORIES
   - Category icons:    CATEGORY_ICON  ↔  CATEGORY_ICON_SHORT
   - Supported currencies and dropdowns:
       SUPPORTED_CURRENCIES ↔ FX_CURRENCY_OPTIONS/CASH_CURRENCY_OPTIONS/DISPLAY_CURRENCIES
@@ -119,29 +119,28 @@ def extract_ts_record(filepath: Path, var_name: str) -> dict[str, str]:
 
 
 def check_categories() -> list[str]:
-    """Verify CATEGORY_DISPLAY_ORDER matches STOCK_CATEGORIES."""
+    """Verify backend STOCK_CATEGORIES matches frontend STOCK_CATEGORIES."""
     errors = []
-    backend = extract_python_list(BACKEND_CONSTANTS, "CATEGORY_DISPLAY_ORDER")
+    backend = extract_python_list(BACKEND_CONSTANTS, "STOCK_CATEGORIES")
     frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "STOCK_CATEGORIES"))
     if backend != frontend:
         errors.append(
             f"STOCK_CATEGORIES mismatch:\n"
-            f"  backend  CATEGORY_DISPLAY_ORDER: {backend}\n"
+            f"  backend  STOCK_CATEGORIES:        {backend}\n"
             f"  frontend STOCK_CATEGORIES:        {frontend}"
         )
     return errors
 
 
 def check_radar_categories() -> list[str]:
-    """Verify RADAR_CATEGORIES equals CATEGORY_DISPLAY_ORDER minus Cash."""
+    """Verify backend RADAR_CATEGORIES matches frontend RADAR_CATEGORIES."""
     errors = []
-    backend_all = extract_python_list(BACKEND_CONSTANTS, "CATEGORY_DISPLAY_ORDER")
-    backend_radar = [c for c in backend_all if c != "Cash"]
+    backend_radar = extract_python_list(BACKEND_CONSTANTS, "RADAR_CATEGORIES")
     frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "RADAR_CATEGORIES"))
     if backend_radar != frontend:
         errors.append(
             f"RADAR_CATEGORIES mismatch:\n"
-            f"  backend  (CATEGORY_DISPLAY_ORDER - Cash): {backend_radar}\n"
+            f"  backend  RADAR_CATEGORIES:                {backend_radar}\n"
             f"  frontend RADAR_CATEGORIES:                {frontend}"
         )
     return errors

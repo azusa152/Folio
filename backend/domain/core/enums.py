@@ -21,6 +21,8 @@ class StockCategory(StrEnum):
     BOND = "Bond"
     CASH = "Cash"
     CRYPTO = "Crypto"
+    MUTUAL_FUND = "MUTUAL_FUND"
+    ETF = "ETF"
 
 
 class MoatStatus(StrEnum):
@@ -83,6 +85,8 @@ CATEGORY_LABEL: dict[str, str] = {
     "Bond": "債券",
     "Cash": "現金",
     "Crypto": "加密貨幣",
+    "MUTUAL_FUND": "共同基金",
+    "ETF": "ETF",
 }
 
 

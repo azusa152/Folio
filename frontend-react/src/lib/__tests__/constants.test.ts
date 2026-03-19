@@ -70,17 +70,19 @@ describe("STOCK_CATEGORIES", () => {
     expect(STOCK_CATEGORIES[0]).toBe("Trend_Setter");
   });
 
-  it("includes all 6 expected categories", () => {
+  it("includes all expected categories", () => {
     expect(STOCK_CATEGORIES).toContain("Trend_Setter");
     expect(STOCK_CATEGORIES).toContain("Moat");
     expect(STOCK_CATEGORIES).toContain("Growth");
     expect(STOCK_CATEGORIES).toContain("Bond");
     expect(STOCK_CATEGORIES).toContain("Crypto");
     expect(STOCK_CATEGORIES).toContain("Cash");
+    expect(STOCK_CATEGORIES).toContain("ETF");
+    expect(STOCK_CATEGORIES).toContain("MUTUAL_FUND");
   });
 
-  it("has 6 categories total", () => {
-    expect(STOCK_CATEGORIES).toHaveLength(6);
+  it("has 8 categories total", () => {
+    expect(STOCK_CATEGORIES).toHaveLength(8);
   });
 });
 

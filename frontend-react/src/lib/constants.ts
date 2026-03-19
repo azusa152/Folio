@@ -3,14 +3,18 @@ export const CATEGORY_ICON_SHORT: Record<string, string> = {
   Moat: "🏰",
   Growth: "🚀",
   Bond: "🛡️",
-  Cash: "💵",
   Crypto: "₿",
+  Cash: "💵",
+  ETF: "📈",
+  MUTUAL_FUND: "📚",
 }
 
 export const CATEGORY_COLOR_MAP: Record<string, string> = {
   Trend_Setter: "#3B82F6",
   Moat: "#10B981",
   Growth: "#F59E0B",
+  ETF: "#0EA5E9",
+  MUTUAL_FUND: "#14B8A6",
   Bond: "#8B5CF6",
   Cash: "#9CA3AF",
   Crypto: "#F7931A",
@@ -50,6 +54,8 @@ export const STOCK_CATEGORIES = [
   "Bond",
   "Crypto",
   "Cash",
+  "ETF",
+  "MUTUAL_FUND",
 ] as const
 
 export const RADAR_CATEGORIES = [
@@ -127,6 +133,8 @@ export const GEOGRAPHIC_LABELS: Record<string, string> = {
 }
 
 export const CATEGORY_TO_ASSET_CLASS: Record<string, string> = {
+  ETF: "Equity",
+  MUTUAL_FUND: "Equity",
   Bond: "Fixed Income",
   Cash: "Cash",
   Crypto: "Alternatives",
