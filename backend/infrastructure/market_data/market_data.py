@@ -2057,8 +2057,8 @@ def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
     非 ETF 標的會回傳 None。
     """
     try:
-        t = _yf_ticker_obj(ticker)
-        fd = t.funds_data
+        ticker_obj = _yf_ticker_obj(ticker)
+        fd = ticker_obj.funds_data
         if fd is None:
             return None
         top = fd.top_holdings
@@ -2997,12 +2997,16 @@ def prewarm_ticker_sector_batch(
     用於 Approach A 前的批次預熱，讓後續逐一查詢可命中快取。
     """
 
-    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{t}") is None]
+    uncached = [
+        ticker for ticker in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{ticker}") is None
+    ]
     if not uncached:
         return
 
     with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
+        futures = {
+            executor.submit(get_ticker_sector, ticker): ticker for ticker in uncached
+        }
         completed, _ = _run_batch_with_timeout(futures, executor, label="sector 預熱")
     for future in completed:
         ticker = completed[future]
@@ -3106,12 +3110,16 @@ def prewarm_ticker_name_batch(
     tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
 ) -> None:
     """並行預熱多檔股票的公司名稱快取。"""
-    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_NAME}:{t}") is None]
+    uncached = [
+        ticker for ticker in tickers if _disk_get(f"{DISK_KEY_NAME}:{ticker}") is None
+    ]
     if not uncached:
         return
 
     with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_ticker_name, t): t for t in uncached}
+        futures = {
+            executor.submit(get_ticker_name, ticker): ticker for ticker in uncached
+        }
         completed, _ = _run_batch_with_timeout(futures, executor, label="name 預熱")
     for future in completed:
         ticker = completed[future]

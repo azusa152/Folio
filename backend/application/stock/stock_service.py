@@ -509,7 +509,7 @@ def list_removed_stocks(session: Session) -> list[dict]:
     stocks = repo.find_inactive_stocks(session)
 
     # 一次性取得所有已移除股票的最新移除紀錄
-    tickers = [s.ticker for s in stocks]
+    tickers = [stock.ticker for stock in stocks]
     removal_map = repo.find_latest_removals_batch(session, tickers)
 
     results: list[dict] = []
@@ -845,6 +845,76 @@ def build_nav_signals(nav_row: object, *, include_nav_date: bool = False) -> dic
     return result
 
 
+def _get_category_value(stock: Stock) -> str:
+    """Return the string value of a stock's category regardless of its runtime type."""
+    return (
+        stock.category.value
+        if hasattr(stock.category, "value")
+        else str(stock.category)
+    )
+
+
+def _build_base_stock_dict(stock: Stock, fund_name_by_ticker: dict[str, str]) -> dict:
+    """Build the initial enriched dict for a single stock (no network I/O)."""
+    return {
+        "ticker": stock.ticker,
+        "category": _get_category_value(stock),
+        "current_thesis": stock.current_thesis,
+        "current_tags": _str_to_tags(stock.current_tags),
+        "display_order": stock.display_order,
+        "last_scan_signal": stock.last_scan_signal,
+        "is_active": stock.is_active,
+        "is_etf": stock.is_etf,
+        "name": get_ticker_name_cached(stock.ticker),
+        "exchange": get_ticker_exchange_cached(stock.ticker),
+        "sector": get_ticker_sector_cached(stock.ticker),
+        "signals": None,
+        "earnings": None,
+        "dividend": None,
+        "fundamentals": None,
+        "computed_signal": None,
+        "price": None,
+        "change_pct": None,
+        "rsi": None,
+        "market_cap": None,
+        "trailing_pe": None,
+        "nav_date": None,
+        "fund_name": fund_name_by_ticker.get(stock.ticker.strip().upper()),
+    }
+
+
+def _merge_enrichment(
+    entry: dict,
+    signals: dict | None,
+    earnings: dict | None,
+    dividend: dict | None,
+    fundamentals: dict | None,
+) -> None:
+    """Merge signals/earnings/dividends/fundamentals into a base stock dict in-place."""
+    entry["signals"] = signals
+    entry["earnings"] = earnings
+    entry["dividend"] = dividend
+    entry["fundamentals"] = fundamentals
+    entry["price"] = (signals or {}).get("price")
+    entry["change_pct"] = (signals or {}).get("change_pct")
+    entry["rsi"] = (signals or {}).get("rsi")
+    entry["nav_date"] = (signals or {}).get("nav_date")
+    entry["market_cap"] = (fundamentals or {}).get("market_cap")
+    entry["trailing_pe"] = (fundamentals or {}).get("trailing_pe")
+
+    persisted_signal = entry.get("last_scan_signal", "NORMAL")
+    if persisted_signal != "THESIS_BROKEN":
+        computed = determine_scan_signal(
+            moat="NOT_AVAILABLE",
+            rsi=(signals or {}).get("rsi"),
+            bias=(signals or {}).get("bias"),
+            volume_ratio=(signals or {}).get("volume_ratio"),
+        )
+        entry["computed_signal"] = computed.value
+    else:
+        entry["computed_signal"] = "THESIS_BROKEN"
+
+
 def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
     """Inner computation: fetch signals/earnings/dividends for all stocks in parallel."""
     logger.info("批次取得 %d 檔股票的豐富資料...", len(stocks))
@@ -853,10 +923,9 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
     nav_cache: dict[str, dict] = {}
     fund_name_by_ticker: dict[str, str] = {}
     mf_tickers = [
-        s.ticker
-        for s in stocks
-        if (s.category.value if hasattr(s.category, "value") else str(s.category))
-        == StockCategory.MUTUAL_FUND.value
+        stock.ticker
+        for stock in stocks
+        if _get_category_value(stock) == StockCategory.MUTUAL_FUND.value
     ]
     if mf_tickers:
         with Session(engine) as nav_session:
@@ -883,35 +952,10 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     logger.debug("Enrichment NAV fallback failed for %s", ticker)
 
     # 建立基礎資料；sector 從磁碟快取讀取（非阻塞，30 天 TTL）
-    enriched: dict[str, dict] = {}
-    for stock in stocks:
-        enriched[stock.ticker] = {
-            "ticker": stock.ticker,
-            "category": stock.category.value
-            if hasattr(stock.category, "value")
-            else str(stock.category),
-            "current_thesis": stock.current_thesis,
-            "current_tags": _str_to_tags(stock.current_tags),
-            "display_order": stock.display_order,
-            "last_scan_signal": stock.last_scan_signal,
-            "is_active": stock.is_active,
-            "is_etf": stock.is_etf,
-            "name": get_ticker_name_cached(stock.ticker),
-            "exchange": get_ticker_exchange_cached(stock.ticker),
-            "sector": get_ticker_sector_cached(stock.ticker),
-            "signals": None,
-            "earnings": None,
-            "dividend": None,
-            "fundamentals": None,
-            "computed_signal": None,
-            "price": None,
-            "change_pct": None,
-            "rsi": None,
-            "market_cap": None,
-            "trailing_pe": None,
-            "nav_date": None,
-            "fund_name": fund_name_by_ticker.get(stock.ticker.strip().upper()),
-        }
+    enriched: dict[str, dict] = {
+        stock.ticker: _build_base_stock_dict(stock, fund_name_by_ticker)
+        for stock in stocks
+    }
 
     def _fetch_enrichment(
         ticker: str, cat_value: str, coingecko_id: str | None
@@ -975,9 +1019,7 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
             executor.submit(
                 _fetch_enrichment,
                 stock.ticker,
-                stock.category.value
-                if hasattr(stock.category, "value")
-                else str(stock.category),
+                _get_category_value(stock),
                 stock.coingecko_id,
             ): stock.ticker
             for stock in stocks
@@ -989,39 +1031,9 @@ def _compute_enriched_stocks(stocks: list[Stock]) -> list[dict]:
                     timeout=ENRICHED_PER_TICKER_TIMEOUT
                 )
                 if ticker in enriched:
-                    enriched[ticker]["signals"] = signals
-                    enriched[ticker]["earnings"] = earnings
-                    enriched[ticker]["dividend"] = dividend
-                    enriched[ticker]["fundamentals"] = fundamentals
-                    # Surface key metrics at top level for heat map / dashboard use
-                    enriched[ticker]["price"] = (signals or {}).get("price")
-                    enriched[ticker]["change_pct"] = (signals or {}).get("change_pct")
-                    enriched[ticker]["rsi"] = (signals or {}).get("rsi")
-                    enriched[ticker]["nav_date"] = (signals or {}).get("nav_date")
-                    # Hybrid loading: quick-scan metrics also exposed at top-level.
-                    enriched[ticker]["market_cap"] = (fundamentals or {}).get(
-                        "market_cap"
+                    _merge_enrichment(
+                        enriched[ticker], signals, earnings, dividend, fundamentals
                     )
-                    enriched[ticker]["trailing_pe"] = (fundamentals or {}).get(
-                        "trailing_pe"
-                    )
-                    # Compute real-time signal from live RSI/bias (skip moat — too expensive here)
-                    persisted_signal = enriched[ticker].get(
-                        "last_scan_signal", "NORMAL"
-                    )
-                    if persisted_signal != "THESIS_BROKEN":
-                        rsi = (signals or {}).get("rsi")
-                        bias = (signals or {}).get("bias")
-                        volume_ratio = (signals or {}).get("volume_ratio")
-                        computed = determine_scan_signal(
-                            moat="NOT_AVAILABLE",
-                            rsi=rsi,
-                            bias=bias,
-                            volume_ratio=volume_ratio,
-                        )
-                        enriched[ticker]["computed_signal"] = computed.value
-                    else:
-                        enriched[ticker]["computed_signal"] = "THESIS_BROKEN"
             except TimeoutError:
                 logger.warning(
                     "批次取得 %s 豐富資料超時（%ds），跳過。",
@@ -1064,7 +1076,10 @@ def get_price_history_for_ticker(session: Session, ticker: str) -> list[dict]:
     cat = _resolve_stock_category(session, upper)
     if cat == StockCategory.MUTUAL_FUND.value:
         rows = repo.get_nav_history(session, upper)
-        return [{"date": str(r.nav_date), "close": r.nav} for r in reversed(rows)]
+        return [
+            {"date": str(nav_row.nav_date), "close": nav_row.nav}
+            for nav_row in reversed(rows)
+        ]
     if cat and cat in SKIP_PRICE_FETCH_CATEGORIES:
         return []
     return _get_price_history(upper) or []
@@ -1121,12 +1136,12 @@ def get_market_sentiment_multi(session: Session) -> dict:
     stocks = repo.find_active_stocks(session)
 
     # Check if user has JP stocks
-    has_jp = any(s.ticker.endswith(".T") for s in stocks)
+    has_jp = any(stock.ticker.endswith(".T") for stock in stocks)
     if has_jp:
         result["JP"] = get_jp_volatility_index()
 
     # Check if user has TW stocks
-    has_tw = any(s.ticker.endswith(".TW") for s in stocks)
+    has_tw = any(stock.ticker.endswith(".TW") for stock in stocks)
     if has_tw:
         result["TW"] = get_tw_volatility_index()
 

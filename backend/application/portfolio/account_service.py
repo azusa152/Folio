@@ -215,9 +215,9 @@ def get_account_summary(session: Session) -> list[dict]:
     account_map: dict[int | None, list] = {a.id: [] for a in accounts}
     account_map[None] = []
 
-    for h in holdings:
-        bucket = h.account_id if h.account_id in account_map else None
-        account_map[bucket].append(h)
+    for holding in holdings:
+        bucket = holding.account_id if holding.account_id in account_map else None
+        account_map[bucket].append(holding)
 
     result = []
     for acct in accounts:
@@ -237,7 +237,7 @@ def get_account_summary(session: Session) -> list[dict]:
             {
                 "account": _acct_to_dict(acct),
                 "holdings_count": len(non_cash_holdings),
-                "tickers": [h.ticker for h in non_cash_holdings],
+                "tickers": [holding.ticker for holding in non_cash_holdings],
                 "cash_balances": [
                     {"currency": currency, "balance": round(balance, 8)}
                     for currency, balance in sorted(cash_balances.items())
@@ -251,7 +251,7 @@ def get_account_summary(session: Session) -> list[dict]:
             {
                 "account": None,
                 "holdings_count": len(unlinked),
-                "tickers": [h.ticker for h in unlinked],
+                "tickers": [holding.ticker for holding in unlinked],
                 "cash_balances": [],
             }
         )
@@ -267,11 +267,11 @@ def get_account_cash_balances(
     holdings = repo.find_all_holdings(session)
 
     balances: dict[str, float] = {}
-    for h in holdings:
-        if h.account_id != account_id or not h.is_cash:
+    for holding in holdings:
+        if holding.account_id != account_id or not holding.is_cash:
             continue
-        currency = (h.currency or "USD").upper()
-        balances[currency] = balances.get(currency, 0.0) + float(h.quantity)
+        currency = (holding.currency or "USD").upper()
+        balances[currency] = balances.get(currency, 0.0) + float(holding.quantity)
 
     return [
         {"currency": currency, "balance": round(balance, 8)}

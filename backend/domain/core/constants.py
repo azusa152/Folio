@@ -1071,3 +1071,10 @@ CURRENCY_REGION_MAP: dict[str, str] = {
 
 MAX_IMPORT_ROWS = 1000  # max rows per bulk import (stocks, transactions)
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB max for eligible-asset CSV uploads
+
+# ---------------------------------------------------------------------------
+# Float comparison tolerances for quantity / balance checks
+# ---------------------------------------------------------------------------
+
+HOLDING_QUANTITY_EPSILON: float = 1e-9  # below this a quantity is effectively zero
+POSITION_VERIFY_EPSILON: float = 1e-6  # tolerance for settlement position verification

@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { isTaxWrapperType, TAX_WRAPPER_ICONS } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency, formatQuantity, getQuantityUnitKey } from "@/lib/format"
+import { formatCurrency, formatQuantity, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
 import type { AccountSummaryItem } from "@/api/types/account"
 import type { HoldingDetail, RebalanceResponse } from "@/api/types/dashboard"
 
@@ -24,7 +24,7 @@ interface Props {
   isError?: boolean
 }
 
-interface AccountRow {
+interface AccountRowData {
   id: number
   name: string
   broker: string
@@ -53,6 +53,12 @@ interface AccountRow {
 
 const ACCOUNT_COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DC2626", "#EA580C", "#4F46E5"]
 const DAILY_CHANGE_MIN_COVERAGE_PCT = 70
+const LEGEND_ROW_LIMIT = 4
+const TOP_HOLDINGS_LIMIT = 3
+
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
 
 function AccountTypeIcon({ accountType }: { accountType: string }) {
   if (accountType === "brokerage" || accountType === "retirement") {
@@ -109,7 +115,7 @@ function isCashHolding(holding: HoldingDetail): boolean {
 
 function categoryLabel(
   t: (key: string) => string,
-  bucket: AccountRow["categoryBreakdown"][number],
+  bucket: AccountRowData["categoryBreakdown"][number],
 ): string {
   if (bucket.category === "stocks") return t("dashboard.accounts_overview.stocks_category")
   if (bucket.category === "cash") return t("dashboard.accounts_overview.cash_category")
@@ -119,18 +125,27 @@ function categoryLabel(
   return t("dashboard.accounts_overview.other_category")
 }
 
-export function AccountsOverview({
-  accountSummary = [],
-  rebalance,
-  displayCurrency,
-  isLoading = false,
-  isError = false,
-}: Props) {
-  const { t } = useTranslation()
-  const isPrivate = useIsPrivate()
-  const [activeRowId, setActiveRowId] = useState<number | null>(null)
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<number>>(new Set())
+function formatSignedMoney(
+  value: number,
+  currency: string,
+  isPrivate: boolean,
+): string {
+  if (isPrivate) return "***"
+  const amount = maskMoney(Math.abs(value), currency)
+  if (value > 0) return `+${amount}`
+  if (value < 0) return `-${amount}`
+  return amount
+}
 
+// ---------------------------------------------------------------------------
+// Data hook
+// ---------------------------------------------------------------------------
+
+function useAccountsOverviewData(
+  accountSummary: AccountSummaryItem[],
+  rebalance: RebalanceResponse | null | undefined,
+  displayCurrency: string,
+): { rows: AccountRowData[]; total: number; legendRows: AccountRowData[]; hiddenLegendCount: number } {
   const fxRateByCurrency = useMemo(() => {
     const rates = new Map<string, number>()
     rates.set(displayCurrency, 1)
@@ -144,7 +159,7 @@ export function AccountsOverview({
     return rates
   }, [displayCurrency, rebalance?.holdings_detail])
 
-  const rows = useMemo<AccountRow[]>(() => {
+  const rows = useMemo<AccountRowData[]>(() => {
     const positionValueByAccount = new Map<number, number>()
     const holdingsByAccount = new Map<number, HoldingDetail[]>()
     for (const holding of rebalance?.holdings_detail ?? []) {
@@ -182,7 +197,7 @@ export function AccountsOverview({
         const accountHoldings = [...(holdingsByAccount.get(account.id) ?? [])].sort(
           (a, b) => (b.market_value ?? 0) - (a.market_value ?? 0),
         )
-        const topHoldings = accountHoldings.slice(0, 3)
+        const topHoldings = accountHoldings.slice(0, TOP_HOLDINGS_LIMIT)
         const remainingCount = Math.max(accountHoldings.length - topHoldings.length, 0)
         let accountGainLoss = 0
         let accountCostTotal = 0
@@ -191,7 +206,7 @@ export function AccountsOverview({
         let hasDailyData = false
         let dailyCoveredCurrentValue = 0
         let dailyCoveredPreviousValue = 0
-        const categoryByKey = new Map<string, { category: AccountRow["categoryBreakdown"][number]["category"]; value: number; customLabel?: string }>()
+        const categoryByKey = new Map<string, { category: AccountRowData["categoryBreakdown"][number]["category"]; value: number; customLabel?: string }>()
         for (const holding of accountHoldings) {
           const bucket = toCategoryBucket(holding.category)
           const bucketKey = bucket.category
@@ -286,8 +301,403 @@ export function AccountsOverview({
   }, [accountSummary, rebalance?.holdings_detail, fxRateByCurrency])
 
   const total = rows.reduce((sum, row) => sum + row.totalValue, 0)
-  const legendRows = rows.slice(0, 4)
+  const legendRows = rows.slice(0, LEGEND_ROW_LIMIT)
   const hiddenLegendCount = Math.max(rows.length - legendRows.length, 0)
+
+  return { rows, total, legendRows, hiddenLegendCount }
+}
+
+// ---------------------------------------------------------------------------
+// AccountDistributionBar — stacked bar chart + legend
+// ---------------------------------------------------------------------------
+
+interface AccountDistributionBarProps {
+  rows: AccountRowData[]
+  legendRows: AccountRowData[]
+  hiddenLegendCount: number
+  activeRowId: number | null
+  setActiveRowId: (id: number | null) => void
+  isPrivate: boolean
+  displayCurrency: string
+}
+
+function AccountDistributionBar({
+  rows,
+  legendRows,
+  hiddenLegendCount,
+  activeRowId,
+  setActiveRowId,
+  isPrivate,
+  displayCurrency,
+}: AccountDistributionBarProps) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <span>{t("dashboard.accounts_overview.distribution_label")}</span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+                aria-label={t("dashboard.accounts_overview.distribution_help_aria")}
+              >
+                <CircleHelp className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>
+              {t("dashboard.accounts_overview.distribution_help")}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <div
+        className="flex h-3.5 w-full overflow-hidden rounded-full bg-muted"
+        role="group"
+        aria-label={t("dashboard.accounts_overview.stacked_bar_aria")}
+      >
+        {rows.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            className="h-full transition-opacity focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            style={{
+              width: `${row.sharePct}%`,
+              backgroundColor: row.color,
+              opacity: activeRowId == null || activeRowId === row.id ? 1 : 0.35,
+            }}
+            aria-label={`${row.name} ${Math.round(row.sharePct)}%`}
+            aria-pressed={activeRowId === row.id}
+            title={isPrivate ? `${row.name}: ***` : `${row.name}: ${row.totalValue.toFixed(2)} ${displayCurrency}`}
+            onPointerEnter={() => setActiveRowId(row.id)}
+            onPointerLeave={() => setActiveRowId(null)}
+            onFocus={() => setActiveRowId(row.id)}
+            onBlur={() => setActiveRowId(null)}
+            onClick={() => setActiveRowId(activeRowId === row.id ? null : row.id)}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {legendRows.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-sm text-muted-foreground hover:text-foreground"
+            style={{ opacity: activeRowId == null || activeRowId === row.id ? 1 : 0.45 }}
+            aria-label={`${row.name} ${Math.round(row.sharePct)}%`}
+            aria-pressed={activeRowId === row.id}
+            onPointerEnter={() => setActiveRowId(row.id)}
+            onPointerLeave={() => setActiveRowId(null)}
+            onFocus={() => setActiveRowId(row.id)}
+            onBlur={() => setActiveRowId(null)}
+            onClick={() => setActiveRowId(activeRowId === row.id ? null : row.id)}
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
+            <span className="max-w-28 truncate">{row.name}</span>
+            <span className="tabular-nums">{Math.round(row.sharePct)}%</span>
+          </button>
+        ))}
+        {hiddenLegendCount > 0 && (
+          <span className="text-muted-foreground">
+            {t("dashboard.accounts_overview.legend_more", { count: hiddenLegendCount })}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// AccountRow — collapsible per-account row
+// ---------------------------------------------------------------------------
+
+interface AccountRowProps {
+  row: AccountRowData
+  isExpanded: boolean
+  onOpenChange: (isOpen: boolean) => void
+  isPrivate: boolean
+  displayCurrency: string
+  setActiveRowId: (id: number | null) => void
+}
+
+function AccountRow({
+  row,
+  isExpanded,
+  onOpenChange,
+  isPrivate,
+  displayCurrency,
+  setActiveRowId,
+}: AccountRowProps) {
+  const { t } = useTranslation()
+
+  const cashSummary = isPrivate
+    ? "***"
+    : formatCashBalances(row.cashBalances, t("dashboard.accounts_overview.no_cash"))
+  const rowMeta = `${t("dashboard.accounts_overview.positions_count", { count: row.holdingsCount })} · ${t("dashboard.accounts_overview.cash_label")}: ${cashSummary}`
+  const accountReturnPct = row.accountGainLoss != null && row.accountCostTotal > 0
+    ? (row.accountGainLoss / row.accountCostTotal) * 100
+    : null
+  const showStandaloneCash = row.topHoldings.length === 0 && row.remainingCount === 0
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={onOpenChange}>
+      <div
+        className="rounded-md border border-border/60"
+        onPointerEnter={() => setActiveRowId(row.id)}
+        onPointerLeave={() => setActiveRowId(null)}
+      >
+        <div className="flex items-center gap-1.5 p-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-sm px-1 py-1 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`${row.name} ${t("dashboard.accounts_overview.toggle_details")}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
+                  <AccountTypeIcon accountType={row.accountType} />
+                  <span className="truncate text-sm font-semibold">{row.name}</span>
+                  {isTaxWrapperType(row.taxWrapper) ? (
+                    <Badge variant="outline" className="hidden text-[11px] sm:inline-flex">
+                      {TAX_WRAPPER_ICONS[row.taxWrapper]} {t(`wrapper.${row.taxWrapper}`)}
+                    </Badge>
+                  ) : null}
+                  <span className="hidden truncate text-xs text-muted-foreground sm:inline">{rowMeta}</span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground sm:hidden">{rowMeta}</p>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="text-right">
+                  <p className="text-[11px] text-muted-foreground">{t("dashboard.accounts_overview.total_label")}</p>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {isPrivate ? "***" : maskMoney(row.totalValue, displayCurrency)}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+              <Link to={`/allocation?tab=accounts&accountId=${row.id}&action=deposit`}>
+                {t("dashboard.accounts_overview.deposit")}
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+              <Link to={`/allocation?tab=accounts&accountId=${row.id}&action=trade`}>
+                {t("dashboard.accounts_overview.trade")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <CollapsibleContent className="border-t border-border/50 px-2.5 py-2">
+          <p className="truncate text-xs text-muted-foreground">
+            {row.broker} · {t(`config.account_type.${row.accountType}`)}
+          </p>
+          {row.missingFxCurrencies.length > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t("dashboard.accounts_overview.cash_missing_fx_hint", {
+                currencies: row.missingFxCurrencies.join(", "),
+              })}
+            </p>
+          )}
+
+          <div className="mt-2 space-y-1.5 text-xs">
+            <div className="space-y-1.5 rounded-md border border-border/60 p-2">
+              <p className="font-medium text-foreground">
+                {t("dashboard.accounts_overview.value_breakdown_label")}
+              </p>
+              <ul className="space-y-1">
+                {row.categoryBreakdown.map((bucket) => (
+                  <li key={`${row.id}-${bucket.category}-${bucket.customLabel ?? "default"}`} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span
+                        className="truncate text-muted-foreground"
+                        title={bucket.category === "other" ? bucket.customLabel : undefined}
+                      >
+                        {categoryLabel(t, bucket)}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-foreground">
+                        {isPrivate ? "***" : maskMoney(bucket.value, displayCurrency)}{" "}
+                        <span className="text-muted-foreground">({bucket.pct.toFixed(0)}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(0, Math.min(bucket.pct, 100))}%`,
+                          backgroundColor: row.color,
+                        }}
+                        aria-hidden
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {row.dailyChange != null && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                <span
+                  className={`tabular-nums ${row.dailyChange >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                >
+                  {formatSignedMoney(row.dailyChange, displayCurrency, isPrivate)}
+                  {!isPrivate && row.dailyChangePct != null && ` (${formatSignedPct(row.dailyChangePct, 1)})`}
+                </span>
+              </div>
+            )}
+            {row.dailyChange != null && row.dailyChangePct == null && (
+              <p className="text-[11px] text-muted-foreground">
+                {t("dashboard.accounts_overview.today_change_estimated", {
+                  coverage: Math.round(row.dailyChangeCoveragePct ?? 0),
+                })}
+              </p>
+            )}
+            {row.dailyChange == null && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {t("dashboard.accounts_overview.today_change_unavailable")}
+                </span>
+              </div>
+            )}
+
+            {row.accountGainLoss != null && accountReturnPct != null && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">
+                  {t("dashboard.accounts_overview.unrealized_pnl")}
+                </span>
+                <span
+                  className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                >
+                  {formatSignedMoney(row.accountGainLoss, displayCurrency, isPrivate)}
+                  {!isPrivate && ` (${formatSignedPct(accountReturnPct, 1)})`}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium text-foreground">
+                {t("dashboard.accounts_overview.top_positions_label")}
+              </p>
+              <Link
+                to={`/allocation?tab=accounts&accountId=${row.id}`}
+                className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                {t("dashboard.accounts_overview.view_positions")}
+              </Link>
+            </div>
+
+            {row.topHoldings.length === 0 ? (
+              <p className="text-muted-foreground">
+                {t("dashboard.accounts_overview.no_positions")} ·{" "}
+                <Link
+                  to={`/allocation?tab=accounts&accountId=${row.id}&action=trade`}
+                  className="underline underline-offset-2"
+                >
+                  {t("dashboard.accounts_overview.trade")}
+                </Link>
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {row.topHoldings.map((holding) => {
+                  const returnPct = holding.cost_total && holding.cost_total > 0
+                    ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
+                    : null
+                  const quantityUnit = getQuantityUnitKey(holding.category, holding.ticker)
+                  const returnClass = returnPct == null
+                    ? "text-muted-foreground"
+                    : returnPct >= 0
+                      ? FINANCE_TEXT.gain
+                      : FINANCE_TEXT.loss
+                  return (
+                    <li key={`${row.id}-${holding.ticker}`} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{holding.ticker}</p>
+                        <p className="truncate text-muted-foreground">
+                          {t(quantityUnit.key, {
+                            quantity: formatQuantity(holding.quantity, {
+                              category: holding.category,
+                              ticker: holding.ticker,
+                            }),
+                            ...quantityUnit.params,
+                          })}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="tabular-nums text-foreground">
+                          {isPrivate ? "***" : maskMoney(holding.market_value, displayCurrency)}
+                        </p>
+                        <p className={`tabular-nums ${returnClass}`}>
+                          {returnPct == null ? "—" : formatSignedPct(returnPct, 1)}
+                        </p>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {row.remainingCount > 0 && (
+              <Link
+                to={`/allocation?tab=accounts&accountId=${row.id}`}
+                className="inline-flex text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                {t("dashboard.accounts_overview.more_positions", { count: row.remainingCount })}
+              </Link>
+            )}
+          </div>
+
+          {showStandaloneCash && (
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
+              <span className="text-muted-foreground">
+                {t("dashboard.accounts_overview.cash_label")}:
+              </span>
+              <span className="tabular-nums text-foreground">
+                {cashSummary}
+              </span>
+            </div>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// AccountsOverview — orchestrator
+// ---------------------------------------------------------------------------
+
+export function AccountsOverview({
+  accountSummary = [],
+  rebalance,
+  displayCurrency,
+  isLoading = false,
+  isError = false,
+}: Props) {
+  const { t } = useTranslation()
+  const isPrivate = useIsPrivate()
+  const [activeRowId, setActiveRowId] = useState<number | null>(null)
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<number>>(new Set())
+
+  const { rows, total, legendRows, hiddenLegendCount } = useAccountsOverviewData(
+    accountSummary,
+    rebalance,
+    displayCurrency,
+  )
 
   function setExpanded(rowId: number, isOpen: boolean) {
     setExpandedRowIds((prev) => {
@@ -366,332 +776,29 @@ export function AccountsOverview({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span>{t("dashboard.accounts_overview.distribution_label")}</span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-                    aria-label={t("dashboard.accounts_overview.distribution_help_aria")}
-                  >
-                    <CircleHelp className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={6}>
-                  {t("dashboard.accounts_overview.distribution_help")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-
-          <div
-            className="flex h-3.5 w-full overflow-hidden rounded-full bg-muted"
-            role="group"
-            aria-label={t("dashboard.accounts_overview.stacked_bar_aria")}
-          >
-            {rows.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                className="h-full transition-opacity focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                style={{
-                  width: `${row.sharePct}%`,
-                  backgroundColor: row.color,
-                  opacity: activeRowId == null || activeRowId === row.id ? 1 : 0.35,
-                }}
-                aria-label={`${row.name} ${Math.round(row.sharePct)}%`}
-                aria-pressed={activeRowId === row.id}
-                title={isPrivate ? `${row.name}: ***` : `${row.name}: ${row.totalValue.toFixed(2)} ${displayCurrency}`}
-                onPointerEnter={() => setActiveRowId(row.id)}
-                onPointerLeave={() => setActiveRowId(null)}
-                onFocus={() => setActiveRowId(row.id)}
-                onBlur={() => setActiveRowId(null)}
-                onClick={() => setActiveRowId((prev) => (prev === row.id ? null : row.id))}
-              />
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            {legendRows.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-sm text-muted-foreground hover:text-foreground"
-                style={{ opacity: activeRowId == null || activeRowId === row.id ? 1 : 0.45 }}
-                aria-label={`${row.name} ${Math.round(row.sharePct)}%`}
-                aria-pressed={activeRowId === row.id}
-                onPointerEnter={() => setActiveRowId(row.id)}
-                onPointerLeave={() => setActiveRowId(null)}
-                onFocus={() => setActiveRowId(row.id)}
-                onBlur={() => setActiveRowId(null)}
-                onClick={() => setActiveRowId((prev) => (prev === row.id ? null : row.id))}
-              >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
-                <span className="max-w-28 truncate">{row.name}</span>
-                <span className="tabular-nums">{Math.round(row.sharePct)}%</span>
-              </button>
-            ))}
-            {hiddenLegendCount > 0 && (
-              <span className="text-muted-foreground">
-                {t("dashboard.accounts_overview.legend_more", { count: hiddenLegendCount })}
-              </span>
-            )}
-          </div>
-        </div>
+        <AccountDistributionBar
+          rows={rows}
+          legendRows={legendRows}
+          hiddenLegendCount={hiddenLegendCount}
+          activeRowId={activeRowId}
+          setActiveRowId={setActiveRowId}
+          isPrivate={isPrivate}
+          displayCurrency={displayCurrency}
+        />
 
         <ScrollArea className="pr-2" viewportClassName="max-h-[320px]">
           <div className="space-y-2">
-            {rows.map((row) => {
-              const cashSummary = isPrivate
-                ? "***"
-                : formatCashBalances(
-                    row.cashBalances,
-                    t("dashboard.accounts_overview.no_cash"),
-                  )
-              const rowMeta = `${t("dashboard.accounts_overview.positions_count", { count: row.holdingsCount })} · ${t("dashboard.accounts_overview.cash_label")}: ${cashSummary}`
-              const accountReturnPct = row.accountGainLoss != null && row.accountCostTotal > 0
-                ? (row.accountGainLoss / row.accountCostTotal) * 100
-                : null
-              const showStandaloneCash = row.topHoldings.length === 0 && row.remainingCount === 0
-
-              return (
-                <Collapsible key={row.id} open={expandedRowIds.has(row.id)} onOpenChange={(isOpen) => setExpanded(row.id, isOpen)}>
-                <div
-                  className="rounded-md border border-border/60"
-                  onPointerEnter={() => setActiveRowId(row.id)}
-                  onPointerLeave={() => setActiveRowId(null)}
-                >
-                  <div className="flex items-center gap-1.5 p-2">
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-sm px-1 py-1 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`${row.name} ${t("dashboard.accounts_overview.toggle_details")}`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
-                            <AccountTypeIcon accountType={row.accountType} />
-                            <span className="truncate text-sm font-semibold">{row.name}</span>
-                            {isTaxWrapperType(row.taxWrapper) ? (
-                              <Badge variant="outline" className="hidden text-[11px] sm:inline-flex">
-                                {TAX_WRAPPER_ICONS[row.taxWrapper]} {t(`wrapper.${row.taxWrapper}`)}
-                              </Badge>
-                            ) : null}
-                            <span className="hidden truncate text-xs text-muted-foreground sm:inline">{rowMeta}</span>
-                          </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground sm:hidden">{rowMeta}</p>
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-2">
-                          <div className="text-right">
-                            <p className="text-[11px] text-muted-foreground">{t("dashboard.accounts_overview.total_label")}</p>
-                            <p className="text-sm font-semibold tabular-nums">
-                              {isPrivate ? "***" : maskMoney(row.totalValue, displayCurrency)}
-                            </p>
-                          </div>
-                          <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expandedRowIds.has(row.id) ? "rotate-180" : ""}`}
-                            aria-hidden
-                          />
-                        </div>
-                      </button>
-                    </CollapsibleTrigger>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-                        <Link to={`/allocation?tab=accounts&accountId=${row.id}&action=deposit`}>
-                          {t("dashboard.accounts_overview.deposit")}
-                        </Link>
-                      </Button>
-                      <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-                        <Link to={`/allocation?tab=accounts&accountId=${row.id}&action=trade`}>
-                          {t("dashboard.accounts_overview.trade")}
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <CollapsibleContent className="border-t border-border/50 px-2.5 py-2">
-                    <p className="truncate text-xs text-muted-foreground">
-                      {row.broker} · {t(`config.account_type.${row.accountType}`)}
-                    </p>
-                    {row.missingFxCurrencies.length > 0 && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {t("dashboard.accounts_overview.cash_missing_fx_hint", {
-                          currencies: row.missingFxCurrencies.join(", "),
-                        })}
-                      </p>
-                    )}
-
-                    <div className="mt-2 space-y-1.5 text-xs">
-                      <div className="space-y-1.5 rounded-md border border-border/60 p-2">
-                        <p className="font-medium text-foreground">
-                          {t("dashboard.accounts_overview.value_breakdown_label")}
-                        </p>
-                        <ul className="space-y-1">
-                          {row.categoryBreakdown.map((bucket) => (
-                            <li key={`${row.id}-${bucket.category}-${bucket.customLabel ?? "default"}`} className="space-y-1">
-                              <div className="flex items-center justify-between gap-2 text-[11px]">
-                                <span
-                                  className="truncate text-muted-foreground"
-                                  title={bucket.category === "other" ? bucket.customLabel : undefined}
-                                >
-                                  {categoryLabel(t, bucket)}
-                                </span>
-                                <span className="shrink-0 tabular-nums text-foreground">
-                                  {isPrivate ? "***" : maskMoney(bucket.value, displayCurrency)}{" "}
-                                  <span className="text-muted-foreground">({bucket.pct.toFixed(0)}%)</span>
-                                </span>
-                              </div>
-                              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${Math.max(0, Math.min(bucket.pct, 100))}%`,
-                                    backgroundColor: row.color,
-                                  }}
-                                  aria-hidden
-                                />
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {row.dailyChange != null && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
-                          <span
-                            className={`tabular-nums ${row.dailyChange >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
-                          >
-                            {isPrivate
-                              ? "***"
-                              : `${row.dailyChange >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.dailyChange), displayCurrency)}${row.dailyChangePct == null ? "" : ` (${row.dailyChangePct >= 0 ? "+" : ""}${row.dailyChangePct.toFixed(1)}%)`}`}
-                          </span>
-                        </div>
-                      )}
-                      {row.dailyChange != null && row.dailyChangePct == null && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {t("dashboard.accounts_overview.today_change_estimated", {
-                            coverage: Math.round(row.dailyChangeCoveragePct ?? 0),
-                          })}
-                        </p>
-                      )}
-                      {row.dailyChange == null && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
-                          <span className="tabular-nums text-muted-foreground">
-                            {t("dashboard.accounts_overview.today_change_unavailable")}
-                          </span>
-                        </div>
-                      )}
-
-                      {row.accountGainLoss != null && accountReturnPct != null && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">
-                            {t("dashboard.accounts_overview.unrealized_pnl")}
-                          </span>
-                          <span
-                            className={`tabular-nums ${row.accountGainLoss >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
-                          >
-                            {isPrivate
-                              ? "***"
-                              : `${row.accountGainLoss >= 0 ? "+" : "-"}${maskMoney(Math.abs(row.accountGainLoss), displayCurrency)} (${accountReturnPct >= 0 ? "+" : ""}${accountReturnPct.toFixed(1)}%)`}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium text-foreground">
-                          {t("dashboard.accounts_overview.top_positions_label")}
-                        </p>
-                        <Link
-                          to={`/allocation?tab=accounts&accountId=${row.id}`}
-                          className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                        >
-                          {t("dashboard.accounts_overview.view_positions")}
-                        </Link>
-                      </div>
-
-                      {row.topHoldings.length === 0 ? (
-                        <p className="text-muted-foreground">
-                          {t("dashboard.accounts_overview.no_positions")} ·{" "}
-                          <Link
-                            to={`/allocation?tab=accounts&accountId=${row.id}&action=trade`}
-                            className="underline underline-offset-2"
-                          >
-                            {t("dashboard.accounts_overview.trade")}
-                          </Link>
-                        </p>
-                      ) : (
-                        <ul className="space-y-1">
-                          {row.topHoldings.map((holding) => {
-                            const returnPct = holding.cost_total && holding.cost_total > 0
-                              ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
-                              : null
-                            const quantityUnit = getQuantityUnitKey(holding.category, holding.ticker)
-                            const returnClass = returnPct == null
-                              ? "text-muted-foreground"
-                              : returnPct >= 0
-                                ? FINANCE_TEXT.gain
-                                : FINANCE_TEXT.loss
-                            return (
-                              <li key={`${row.id}-${holding.ticker}`} className="flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="truncate font-medium text-foreground">{holding.ticker}</p>
-                                  <p className="truncate text-muted-foreground">
-                                    {t(quantityUnit.key, {
-                                      quantity: formatQuantity(holding.quantity, {
-                                        category: holding.category,
-                                        ticker: holding.ticker,
-                                      }),
-                                      ...quantityUnit.params,
-                                    })}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <p className="tabular-nums text-foreground">
-                                    {isPrivate ? "***" : maskMoney(holding.market_value, displayCurrency)}
-                                  </p>
-                                  <p className={`tabular-nums ${returnClass}`}>
-                                    {returnPct == null ? "—" : `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`}
-                                  </p>
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-
-                      {row.remainingCount > 0 && (
-                        <Link
-                          to={`/allocation?tab=accounts&accountId=${row.id}`}
-                          className="inline-flex text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                        >
-                          {t("dashboard.accounts_overview.more_positions", { count: row.remainingCount })}
-                        </Link>
-                      )}
-                    </div>
-
-                    {showStandaloneCash && (
-                      <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
-                        <span className="text-muted-foreground">
-                          {t("dashboard.accounts_overview.cash_label")}:
-                        </span>
-                        <span className="tabular-nums text-foreground">
-                          {cashSummary}
-                        </span>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-              )
-            })}
+            {rows.map((row) => (
+              <AccountRow
+                key={row.id}
+                row={row}
+                isExpanded={expandedRowIds.has(row.id)}
+                onOpenChange={(isOpen) => setExpanded(row.id, isOpen)}
+                isPrivate={isPrivate}
+                displayCurrency={displayCurrency}
+                setActiveRowId={setActiveRowId}
+              />
+            ))}
           </div>
         </ScrollArea>
       </CardContent>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { cn, formatLocalTime } from "@/lib/utils"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatSignedPct } from "@/lib/format"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -45,7 +46,7 @@ function computeDailyChangePct(data: FxHistoryPoint[]): number | null {
 
 function formatChangePct(pct: number | null): string | null {
   if (pct === null) return null
-  return `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`
+  return formatSignedPct(pct, 2)
 }
 
 function trendIcon(direction: FxAnalysis["trend_direction"]) {

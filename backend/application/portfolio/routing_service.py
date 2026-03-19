@@ -12,6 +12,7 @@ from domain.enums import StockCategory, TransactionType
 from domain.portfolio.detax import DeTaxOpportunity, find_detax_opportunities
 from domain.portfolio.routing import RoutingSuggestion, suggest_purchase_routing
 from domain.portfolio.tax_wrapper import QuotaStatus
+from domain.portfolio.utils import is_cash_ticker
 from infrastructure import repositories as repo
 from infrastructure.market_data.market_data import get_technical_signals
 
@@ -31,10 +32,6 @@ STOCK_DECREASE_TYPES = {
     TransactionType.SELL,
     TransactionType.TRANSFER_OUT,
 }
-
-
-def _is_cash_ticker(ticker: str, currency: str) -> bool:
-    return ticker.strip().upper() == currency.strip().upper()
 
 
 def _is_japanese_routing_account(account: Any) -> bool:
@@ -81,7 +78,7 @@ def _compute_realized_gains_ytd(
 
         ticker = str(txn.ticker or "").strip().upper()
         currency = str(txn.currency or "").strip().upper()
-        if not ticker or _is_cash_ticker(ticker, currency):
+        if not ticker or is_cash_ticker(ticker, currency):
             continue
 
         key = (account_id, ticker)
@@ -286,15 +283,15 @@ def get_detax_suggestions(
 
     holdings_with_prices: list[Any] = []
     for holding in tokutei_holdings:
-        cat_val = (
+        category_value = (
             holding.category.value
             if hasattr(holding.category, "value")
             else str(holding.category)
         )
-        if cat_val == StockCategory.MUTUAL_FUND.value:
+        if category_value == StockCategory.MUTUAL_FUND.value:
             nav_row = repo.get_latest_nav(session, holding.ticker)
             current_price = nav_row.nav if nav_row else None
-        elif cat_val in SKIP_PRICE_FETCH_CATEGORIES:
+        elif category_value in SKIP_PRICE_FETCH_CATEGORIES:
             continue
         else:
             signals = get_technical_signals(holding.ticker)

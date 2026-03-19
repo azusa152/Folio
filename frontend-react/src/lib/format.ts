@@ -152,6 +152,34 @@ export function getTransactionQuantityUnitKey(opts: {
   return getQuantityUnitKey(opts.category ?? undefined, opts.ticker ?? undefined)
 }
 
+/**
+ * Format a signed percentage with an explicit "+" prefix for positive values.
+ * e.g. 1.5 → "+1.5%", -0.3 → "-0.3%"
+ */
+export function formatSignedPct(value: number, decimals = 1): string {
+  const sign = value >= 0 ? "+" : ""
+  return `${sign}${value.toFixed(decimals)}%`
+}
+
+/**
+ * Format a signed absolute money amount with an explicit "+" or "−" prefix.
+ * Handles null/undefined (returns "—") but does NOT apply privacy masking;
+ * callers that need privacy masking should wrap with maskMoney before calling.
+ * e.g. formatSignedMoney(1234, "USD") → "+$1,234.00"
+ *      formatSignedMoney(-50, "JPY") → "-¥50"
+ *      formatSignedMoney(0, "USD")   → "$0.00"
+ */
+export function formatSignedMoney(
+  value: number | null | undefined,
+  currencyCode: string,
+): string {
+  if (value == null) return "—"
+  const formatted = formatCurrency(Math.abs(value), currencyCode)
+  if (value > 0) return `+${formatted}`
+  if (value < 0) return `-${formatted}`
+  return formatted
+}
+
 export function formatMarketCap(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—"
   return COMPACT_FORMATTER.format(value)

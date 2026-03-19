@@ -9,6 +9,7 @@ import type { ProfileResponse } from "@/api/types/allocation"
 import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { cn, getErrorMessage } from "@/lib/utils"
+import { formatSignedPct } from "@/lib/format"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
@@ -156,7 +157,7 @@ export function CurrencyExposure({ privacyMode, profile, enabled, showFxDashboar
                     >
                       {privacyMode
                         ? "***"
-                        : `${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}% (${m.direction})`}
+                        : `${formatSignedPct(m.change_pct, 2)} (${m.direction})`}
                     </td>
                     <td className="py-0.5 text-right">
                       {privacyMode
@@ -186,7 +187,7 @@ export function CurrencyExposure({ privacyMode, profile, enabled, showFxDashboar
               >
                 <span className="font-semibold">{a.pair}</span>
                 <span>{a.period_label}</span>
-                <span>{privacyMode ? "***" : `${a.change_pct >= 0 ? "+" : ""}${a.change_pct.toFixed(2)}%`}</span>
+                <span>{privacyMode ? "***" : formatSignedPct(a.change_pct, 2)}</span>
                 <span className="text-muted-foreground">
                   {privacyMode ? "@ ***" : `@ ${a.current_rate.toFixed(4)}`}
                 </span>

@@ -4,7 +4,7 @@ import { ArrowUpDown, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatQuantity, getQuantityUnitKey } from "@/lib/format"
+import { formatQuantity, getQuantityUnitKey, formatSignedPct } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import {
   Tooltip,
@@ -53,8 +53,7 @@ function formatAccountList(accounts: string[]): { shortLabel: string; fullLabel:
 }
 
 function fmtPct(v: number, showSign = true): string {
-  const sign = showSign && v >= 0 ? "+" : ""
-  return `${sign}${v.toFixed(2)}%`
+  return showSign ? formatSignedPct(v, 2) : `${v.toFixed(2)}%`
 }
 
 function getValueClass(v: number | null | undefined): string {
@@ -71,7 +70,6 @@ function formatSignedMoney(
 ): string {
   if (value == null) return "—"
   if (privacyMode) return "***"
-
   const amount = maskMoney(Math.abs(value), currency)
   if (value > 0) return `+${amount}`
   if (value < 0) return `-${amount}`

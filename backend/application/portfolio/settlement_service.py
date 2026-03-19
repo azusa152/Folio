@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
     from sqlmodel import Session
 
+    from domain.core.entities import Account
+
 from application.portfolio.eligibility_service import check_asset_eligibility
 from application.portfolio.wrapper_service import (
     get_ledger_entries,
@@ -25,11 +27,14 @@ from domain.constants import (
     ERROR_ACCOUNT_NOT_FOUND,
     ERROR_INSUFFICIENT_BALANCE,
     ERROR_INVALID_INPUT,
+    HOLDING_QUANTITY_EPSILON,
+    POSITION_VERIFY_EPSILON,
 )
 from domain.core.entities import _normalize_stock_category
 from domain.entities import Holding, Transaction
 from domain.enums import StockCategory, TransactionType
 from domain.portfolio.tax_wrapper import validate_nisa_purchase
+from domain.portfolio.utils import is_cash_ticker
 from i18n import t
 from infrastructure import repositories as repo
 
@@ -66,6 +71,256 @@ SKIP_CASH_FOR_STOCK_TYPES = {
 ELIGIBILITY_CHECK_WRAPPERS = {"nisa_tsumitate", "nisa_growth", "ideco"}
 
 
+def _validate_settlement_inputs(
+    session: Session,
+    txn_data: dict,
+    txn_type: TransactionType,
+    ticker: str,
+    cash_position: bool,
+    wrapper: str,
+    txn_date: date,
+    user_id: str,
+    lang: str,
+    account: Account,
+) -> None:
+    """Validate NISA quota and asset eligibility.
+
+    Mutates *txn_data* to set the MUTUAL_FUND category when the NISA wrapper
+    requires it. Raises HTTPException on any violation.
+    """
+    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
+        amount = abs(float(txn_data.get("total_amount", 0) or 0))
+        entries = get_ledger_entries(session, user_id)
+        violations = validate_nisa_purchase(
+            entries=entries,
+            wrapper=wrapper,
+            amount=amount,
+            year=txn_date.year,
+            as_of=txn_date,
+        )
+        if violations:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "QUOTA_EXCEEDED",
+                    "detail": t("wrapper.quota_exceeded", lang=lang),
+                    "violations": violations,
+                },
+            )
+
+    eligibility = None
+    if (
+        wrapper in ELIGIBILITY_CHECK_WRAPPERS
+        and txn_type == TransactionType.BUY
+        and not cash_position
+    ):
+        eligibility = check_asset_eligibility(
+            session=session,
+            ticker=ticker,
+            wrapper=wrapper,
+            broker=account.broker,
+        )
+        if not eligibility.eligible:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "ASSET_NOT_ELIGIBLE",
+                    "detail": t("eligibility.not_eligible", lang=lang),
+                    "reasons": eligibility.reasons,
+                    "suggested_wrapper": eligibility.suggested_wrapper,
+                },
+            )
+
+    if (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_tsumitate"
+        and not cash_position
+    ) or (
+        txn_type == TransactionType.BUY
+        and wrapper == "nisa_growth"
+        and not cash_position
+        and eligibility is not None
+        and eligibility.asset_type == "mutual_fund"
+    ):
+        txn_data["category"] = StockCategory.MUTUAL_FUND.value
+
+
+def _apply_cash_update(
+    session: Session,
+    account_id: int,
+    account: Account,
+    txn_type: TransactionType,
+    txn_data: dict,
+    currency: str,
+    skip_cash: bool,
+    lang: str,
+) -> None:
+    """Resolve (or auto-create) the cash holding and apply the cash delta."""
+    if skip_cash:
+        return
+
+    cash_holding = repo.find_cash_holding_by_account_and_currency(
+        session, account_id, currency
+    )
+    if cash_holding is None and txn_type in AUTO_CREATE_CASH_TYPES:
+        cash_holding = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker=currency,
+            category=StockCategory.CASH,
+            quantity=0.0,
+            cost_basis=1.0,
+            broker=account.broker,
+            account_id=account_id,
+            currency=currency,
+            account_type=account.account_type,
+            is_cash=True,
+            purchase_fx_rate=1.0,
+        )
+        session.add(cash_holding)
+
+    if cash_holding is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("transaction.cash_holding_not_found", lang=lang),
+            },
+        )
+
+    delta = _cash_delta(txn_type, txn_data)
+    next_balance = cash_holding.quantity + delta
+    if next_balance < -HOLDING_QUANTITY_EPSILON:
+        _raise_insufficient_balance(
+            lang=lang,
+            available=cash_holding.quantity,
+            required=abs(delta),
+        )
+
+    cash_holding.quantity = next_balance
+    cash_holding.updated_at = datetime.now(UTC)
+    session.add(cash_holding)
+
+
+def _apply_stock_update(
+    session: Session,
+    account_id: int,
+    account: Account,
+    txn_type: TransactionType,
+    txn_data: dict,
+    ticker: str,
+    currency: str,
+    cash_position: bool,
+    lang: str,
+) -> float:
+    """Resolve (or auto-create) the stock holding and apply quantity / cost updates.
+
+    Returns the restoration amount (> 0 only for SELL transactions with cost basis).
+    """
+    if txn_type not in STOCK_MODIFY_TYPES or cash_position:
+        return 0.0
+
+    stock_holding = repo.find_stock_holding_by_account_and_ticker(
+        session, account_id, ticker
+    )
+    if stock_holding is None and txn_type in AUTO_CREATE_STOCK_TYPES:
+        stock_holding = Holding(
+            user_id=DEFAULT_USER_ID,
+            ticker=ticker,
+            category=_infer_category(session, txn_data),
+            quantity=0.0,
+            cost_basis=txn_data.get("price"),
+            broker=account.broker,
+            account_id=account_id,
+            currency=currency,
+            account_type=account.account_type,
+            is_cash=False,
+        )
+        session.add(stock_holding)
+
+    if stock_holding is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error_code": ERROR_INVALID_INPUT,
+                "detail": t("transaction.stock_holding_not_found", lang=lang),
+            },
+        )
+
+    # Keep holding category aligned with radar stock/category inference.
+    stock_holding.category = _infer_category(session, txn_data)
+
+    restoration_amount = 0.0
+    quantity = float(txn_data.get("quantity", 0) or 0)
+    if txn_type in (TransactionType.BUY, TransactionType.OPENING_BALANCE):
+        _update_cost_basis(stock_holding, quantity, txn_data)
+        stock_holding.quantity += quantity
+    elif txn_type == TransactionType.SELL:
+        restoration_amount = quantity * float(stock_holding.cost_basis or 0.0)
+        _raise_if_insufficient_shares(
+            lang=lang,
+            available=stock_holding.quantity,
+            required=quantity,
+        )
+        stock_holding.quantity -= quantity
+    elif txn_type == TransactionType.ADJUSTMENT:
+        total_amount = float(txn_data.get("total_amount", 0) or 0)
+        if total_amount >= 0:
+            stock_holding.quantity += quantity
+        else:
+            _raise_if_insufficient_shares(
+                lang=lang,
+                available=stock_holding.quantity,
+                required=quantity,
+            )
+            stock_holding.quantity -= quantity
+    elif txn_type == TransactionType.STOCK_SPLIT:
+        ratio = float(txn_data.get("price", 0) or 0)
+        stock_holding.quantity += quantity
+        if ratio > 0 and stock_holding.cost_basis is not None:
+            stock_holding.cost_basis = float(stock_holding.cost_basis) / ratio
+
+    stock_holding.updated_at = datetime.now(UTC)
+    session.add(stock_holding)
+    return restoration_amount
+
+
+def _record_contribution_if_nisa(
+    session: Session,
+    txn: Transaction,
+    wrapper: str,
+    txn_type: TransactionType,
+    txn_date: date,
+    user_id: str,
+    restoration_amount: float,
+) -> None:
+    """Record a NISA contribution or restoration for the given transaction."""
+    if wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+        return
+
+    if txn_type == TransactionType.BUY:
+        record_contribution(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=abs(float(txn.total_amount)),
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            effective_date=txn_date,
+            autocommit=False,
+        )
+    elif txn_type == TransactionType.SELL and restoration_amount > 0:
+        record_restoration(
+            session=session,
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=restoration_amount,
+            fiscal_year=txn_date.year,
+            transaction_id=txn.id,
+            sell_date=txn_date,
+            autocommit=False,
+        )
+
+
 def settle_transaction(
     session: Session,
     txn_data: dict,
@@ -100,205 +355,61 @@ def settle_transaction(
     currency = str(txn_data.get("currency", "USD")).upper().strip() or "USD"
     txn_data["currency"] = currency
     txn_date: date = txn_data["transaction_date"]
-    is_cash_ticker = _is_cash_ticker(ticker, currency)
-    skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not is_cash_ticker
+    cash_position = is_cash_ticker(ticker, currency)
+    skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not cash_position
     wrapper = (account.tax_wrapper or "").strip().lower()
     user_id = account.user_id or DEFAULT_USER_ID
 
-    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
-        amount = abs(float(txn_data.get("total_amount", 0) or 0))
-        entries = get_ledger_entries(session, user_id)
-        violations = validate_nisa_purchase(
-            entries=entries,
-            wrapper=wrapper,
-            amount=amount,
-            year=txn_date.year,
-            as_of=txn_date,
-        )
-        if violations:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": "QUOTA_EXCEEDED",
-                    "detail": t("wrapper.quota_exceeded", lang=lang),
-                    "violations": violations,
-                },
-            )
+    _validate_settlement_inputs(
+        session=session,
+        txn_data=txn_data,
+        txn_type=txn_type,
+        ticker=ticker,
+        cash_position=cash_position,
+        wrapper=wrapper,
+        txn_date=txn_date,
+        user_id=user_id,
+        lang=lang,
+        account=account,
+    )
 
-    eligibility = None
-    if (
-        wrapper in ELIGIBILITY_CHECK_WRAPPERS
-        and txn_type == TransactionType.BUY
-        and not is_cash_ticker
-    ):
-        eligibility = check_asset_eligibility(
-            session=session,
-            ticker=ticker,
-            wrapper=wrapper,
-            broker=account.broker,
-        )
-        if not eligibility.eligible:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": "ASSET_NOT_ELIGIBLE",
-                    "detail": t("eligibility.not_eligible", lang=lang),
-                    "reasons": eligibility.reasons,
-                    "suggested_wrapper": eligibility.suggested_wrapper,
-                },
-            )
+    _apply_cash_update(
+        session=session,
+        account_id=int(account_id),
+        account=account,
+        txn_type=txn_type,
+        txn_data=txn_data,
+        currency=currency,
+        skip_cash=skip_cash,
+        lang=lang,
+    )
 
-    if (
-        txn_type == TransactionType.BUY
-        and wrapper == "nisa_tsumitate"
-        and not is_cash_ticker
-    ) or (
-        txn_type == TransactionType.BUY
-        and wrapper == "nisa_growth"
-        and not is_cash_ticker
-        and eligibility is not None
-        and eligibility.asset_type == "mutual_fund"
-    ):
-        txn_data["category"] = StockCategory.MUTUAL_FUND.value
-
-    restoration_amount = 0.0
-
-    if not skip_cash:
-        cash_holding = repo.find_cash_holding_by_account_and_currency(
-            session, int(account_id), currency
-        )
-        if cash_holding is None and txn_type in AUTO_CREATE_CASH_TYPES:
-            cash_holding = Holding(
-                user_id=DEFAULT_USER_ID,
-                ticker=currency,
-                category=StockCategory.CASH,
-                quantity=0.0,
-                cost_basis=1.0,
-                broker=account.broker,
-                account_id=int(account_id),
-                currency=currency,
-                account_type=account.account_type,
-                is_cash=True,
-                purchase_fx_rate=1.0,
-            )
-            session.add(cash_holding)
-
-        if cash_holding is None:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": ERROR_INVALID_INPUT,
-                    "detail": t("transaction.cash_holding_not_found", lang=lang),
-                },
-            )
-
-        delta = _cash_delta(txn_type, txn_data)
-        next_balance = cash_holding.quantity + delta
-        if next_balance < -1e-9:
-            _raise_insufficient_balance(
-                lang=lang,
-                available=cash_holding.quantity,
-                required=abs(delta),
-            )
-
-        cash_holding.quantity = next_balance
-        cash_holding.updated_at = datetime.now(UTC)
-        session.add(cash_holding)
-
-    if txn_type in STOCK_MODIFY_TYPES and not is_cash_ticker:
-        stock_holding = repo.find_stock_holding_by_account_and_ticker(
-            session, int(account_id), ticker
-        )
-        if stock_holding is None and txn_type in AUTO_CREATE_STOCK_TYPES:
-            stock_holding = Holding(
-                user_id=DEFAULT_USER_ID,
-                ticker=ticker,
-                category=_infer_category(session, txn_data),
-                quantity=0.0,
-                cost_basis=txn_data.get("price"),
-                broker=account.broker,
-                account_id=int(account_id),
-                currency=currency,
-                account_type=account.account_type,
-                is_cash=False,
-            )
-            session.add(stock_holding)
-
-        if stock_holding is None:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": ERROR_INVALID_INPUT,
-                    "detail": t("transaction.stock_holding_not_found", lang=lang),
-                },
-            )
-
-        # Keep holding category aligned with radar stock/category inference.
-        stock_holding.category = _infer_category(session, txn_data)
-
-        quantity = float(txn_data.get("quantity", 0) or 0)
-        if txn_type in (TransactionType.BUY, TransactionType.OPENING_BALANCE):
-            _update_cost_basis(stock_holding, quantity, txn_data)
-            stock_holding.quantity += quantity
-        elif txn_type == TransactionType.SELL:
-            restoration_amount = quantity * float(stock_holding.cost_basis or 0.0)
-            _raise_if_insufficient_shares(
-                lang=lang,
-                available=stock_holding.quantity,
-                required=quantity,
-            )
-            stock_holding.quantity -= quantity
-        elif txn_type == TransactionType.ADJUSTMENT:
-            total_amount = float(txn_data.get("total_amount", 0) or 0)
-            if total_amount >= 0:
-                stock_holding.quantity += quantity
-            else:
-                _raise_if_insufficient_shares(
-                    lang=lang,
-                    available=stock_holding.quantity,
-                    required=quantity,
-                )
-                stock_holding.quantity -= quantity
-        elif txn_type == TransactionType.STOCK_SPLIT:
-            ratio = float(txn_data.get("price", 0) or 0)
-            stock_holding.quantity += quantity
-            if ratio > 0 and stock_holding.cost_basis is not None:
-                stock_holding.cost_basis = float(stock_holding.cost_basis) / ratio
-
-        stock_holding.updated_at = datetime.now(UTC)
-        session.add(stock_holding)
+    restoration_amount = _apply_stock_update(
+        session=session,
+        account_id=int(account_id),
+        account=account,
+        txn_type=txn_type,
+        txn_data=txn_data,
+        ticker=ticker,
+        currency=currency,
+        cash_position=cash_position,
+        lang=lang,
+    )
 
     txn = Transaction(**txn_data)
     session.add(txn)
     session.flush()
     session.refresh(txn)
 
-    if wrapper in {"nisa_tsumitate", "nisa_growth"} and txn_type == TransactionType.BUY:
-        record_contribution(
-            session=session,
-            user_id=user_id,
-            wrapper=wrapper,
-            amount=abs(float(txn.total_amount)),
-            fiscal_year=txn_date.year,
-            transaction_id=txn.id,
-            effective_date=txn_date,
-            autocommit=False,
-        )
-    elif (
-        wrapper in {"nisa_tsumitate", "nisa_growth"}
-        and txn_type == TransactionType.SELL
-        and restoration_amount > 0
-    ):
-        record_restoration(
-            session=session,
-            user_id=user_id,
-            wrapper=wrapper,
-            amount=restoration_amount,
-            fiscal_year=txn_date.year,
-            transaction_id=txn.id,
-            sell_date=txn_date,
-            autocommit=False,
-        )
+    _record_contribution_if_nisa(
+        session=session,
+        txn=txn,
+        wrapper=wrapper,
+        txn_type=txn_type,
+        txn_date=txn_date,
+        user_id=user_id,
+        restoration_amount=restoration_amount,
+    )
 
     if autocommit:
         session.commit()
@@ -312,8 +423,8 @@ def reverse_settlement(session: Session, txn: Transaction, lang: str) -> None:
         return
 
     txn_type = TransactionType(txn.transaction_type)
-    is_cash_ticker = _is_cash_ticker(txn.ticker, txn.currency)
-    skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not is_cash_ticker
+    cash_position = is_cash_ticker(txn.ticker, txn.currency)
+    skip_cash = txn_type in SKIP_CASH_FOR_STOCK_TYPES and not cash_position
 
     if not skip_cash:
         cash_holding = repo.find_cash_holding_by_account_and_currency(
@@ -330,7 +441,7 @@ def reverse_settlement(session: Session, txn: Transaction, lang: str) -> None:
 
         delta = -_cash_delta(txn_type, txn.model_dump())
         next_balance = cash_holding.quantity + delta
-        if next_balance < -1e-9:
+        if next_balance < -HOLDING_QUANTITY_EPSILON:
             _raise_insufficient_balance(
                 lang=lang,
                 available=cash_holding.quantity,
@@ -341,7 +452,7 @@ def reverse_settlement(session: Session, txn: Transaction, lang: str) -> None:
         cash_holding.updated_at = datetime.now(UTC)
         session.add(cash_holding)
 
-    if txn_type in STOCK_MODIFY_TYPES and not is_cash_ticker:
+    if txn_type in STOCK_MODIFY_TYPES and not cash_position:
         stock_holding = repo.find_stock_holding_by_account_and_ticker(
             session, int(txn.account_id), txn.ticker
         )
@@ -437,7 +548,7 @@ def _raise_insufficient_balance(
 def _raise_if_insufficient_shares(
     *, lang: str, available: float, required: float
 ) -> None:
-    if available >= required - 1e-9:
+    if available >= required - HOLDING_QUANTITY_EPSILON:
         return
     raise HTTPException(
         status_code=422,
@@ -448,11 +559,6 @@ def _raise_if_insufficient_shares(
             "required": max(0.0, round(required, 8)),
         },
     )
-
-
-def _is_cash_ticker(ticker: str, currency: str) -> bool:
-    """Return True when ticker represents a cash position."""
-    return ticker.upper().strip() == currency.upper().strip()
 
 
 def _infer_category(session: Session, txn_data: dict) -> StockCategory:
@@ -504,7 +610,7 @@ def _reverse_cost_basis(
     current_qty = float(holding.quantity or 0)
     current_basis = float(holding.cost_basis or 0)
     remaining_qty = current_qty - removed_qty
-    if remaining_qty <= 1e-9:
+    if remaining_qty <= HOLDING_QUANTITY_EPSILON:
         holding.cost_basis = 0.0
         return
 
@@ -574,7 +680,7 @@ def verify_positions(session: Session) -> list[dict]:
         if account_id is None:
             continue
         expected_val = float(expected or 0.0)
-        if abs(expected_val) <= 1e-6:
+        if abs(expected_val) <= POSITION_VERIFY_EPSILON:
             continue
         computed[(int(account_id), str(currency), True)] = expected_val
 
@@ -621,7 +727,7 @@ def verify_positions(session: Session) -> list[dict]:
         if account_id is None:
             continue
         expected_val = float(expected or 0.0)
-        if abs(expected_val) <= 1e-6:
+        if abs(expected_val) <= POSITION_VERIFY_EPSILON:
             continue
         key = (int(account_id), str(ticker), False)
         computed[key] = computed.get(key, 0.0) + expected_val
@@ -646,7 +752,7 @@ def verify_positions(session: Session) -> list[dict]:
         key = (int(account_id), str(key_ticker), bool(is_cash))
         expected = computed.pop(key, 0.0)
         actual_val = float(actual or 0.0)
-        if abs(actual_val - expected) > 1e-6:
+        if abs(actual_val - expected) > POSITION_VERIFY_EPSILON:
             discrepancies.append(
                 {
                     "account_id": int(account_id),
@@ -659,7 +765,7 @@ def verify_positions(session: Session) -> list[dict]:
             )
 
     for (account_id, ticker, is_cash), expected in computed.items():
-        if abs(expected) > 1e-6:
+        if abs(expected) > POSITION_VERIFY_EPSILON:
             discrepancies.append(
                 {
                     "account_id": account_id,

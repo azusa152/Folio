@@ -16,6 +16,7 @@ import type { CurrencyExposureResponse } from "@/api/types/allocation"
 import { CHART_COLOR_PALETTE, DISPLAY_CURRENCIES } from "@/lib/constants"
 import { FINANCE_BADGE, FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { cn } from "@/lib/utils"
+import { formatSignedPct } from "@/lib/format"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 
 interface Props {
@@ -406,7 +407,7 @@ export function PortfolioImpactSnapshot({
                         {privacyMode ? "***" : formatAmount(row.holdingsValue, exposure.home_currency, false)}
                       </td>
                       <td className="py-1 text-right">
-                        {privacyMode ? "***" : `${row.rateChangePct >= 0 ? "+" : ""}${row.rateChangePct.toFixed(2)}%`}
+                        {privacyMode ? "***" : formatSignedPct(row.rateChangePct, 2)}
                       </td>
                       <td className="py-1 text-right">
                         {privacyMode
@@ -476,7 +477,7 @@ export function PortfolioImpactSnapshot({
               >
                 <span className="font-semibold">{alert.pair}</span>
                 <span>{alert.period_label}</span>
-                <span>{privacyMode ? "***" : `${alert.change_pct >= 0 ? "+" : ""}${alert.change_pct.toFixed(2)}%`}</span>
+                <span>{privacyMode ? "***" : formatSignedPct(alert.change_pct, 2)}</span>
               </span>
             ))}
           </div>
