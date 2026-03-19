@@ -34,6 +34,7 @@ from api.routes.preferences_routes import router as preferences_router
 from api.routes.scan_routes import router as scan_router
 from api.routes.snapshot_routes import router as snapshot_router
 from api.routes.stock_routes import router as stock_router
+from api.routes.stock_split_routes import router as stock_split_router
 from api.routes.telegram_routes import router as telegram_router
 from api.routes.thesis_routes import router as thesis_router
 from api.routes.transaction_routes import router as transaction_router
@@ -162,6 +163,7 @@ auth_deps = [Depends(require_api_key)]
 app.include_router(analytics_router, dependencies=auth_deps)
 app.include_router(account_router, dependencies=auth_deps)
 app.include_router(stock_router, dependencies=auth_deps)
+app.include_router(stock_split_router, dependencies=auth_deps)
 app.include_router(thesis_router, dependencies=auth_deps)
 app.include_router(scan_router, dependencies=auth_deps)
 app.include_router(backtest_router, dependencies=auth_deps)

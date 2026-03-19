@@ -40,6 +40,7 @@ from infrastructure.market_data.market_data import (  # noqa: F401
     get_jp_volatility_index,
     get_price_history,
     get_stock_beta,
+    get_stock_splits,
     get_technical_signals,
     get_ticker_sector,
     get_ticker_sector_cached,

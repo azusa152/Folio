@@ -31,6 +31,7 @@ Composite actions (token-efficient):
 
 - `dashboard` — portfolio summary + market fear/greed context in one call
 - `analyze` — technical signals + moat trend + fundamentals in one call
+- `stock_splits` — detect split events for held tickers in one call
 
 ---
 
@@ -187,6 +188,11 @@ Returned as `"TW"` key when user holds `.TW` (Taiwan) tickers. `source` = `"TAIE
 | `GET` | `/snapshots` | Historical snapshots — `?days=30` (1–730) or `?start=YYYY-MM-DD&end=YYYY-MM-DD` |
 | `GET` | `/snapshots/twr` | Time-weighted return — `?start=&end=` (defaults YTD); `twr_pct` null when < 2 snapshots |
 | `POST` | `/snapshots/take` | Trigger today's snapshot (background, upsert) |
+| `POST` | `/stock-splits/check` | Detect stock split events for held tickers |
+| `GET` | `/stock-splits/pending` | List pending stock split events |
+| `POST` | `/stock-splits/{event_id}/apply` | Apply one split event to matching holdings |
+| `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
+| `POST` | `/stock-splits/apply-all` | Apply all pending split events |
 | `GET` | `/personas/templates` | Investment persona templates |
 | `GET` | `/profiles` | Active investment profile |
 | `POST` | `/profiles` | Create investment profile |
@@ -278,7 +284,7 @@ Branch on `error_code` (machine-readable), not localized `detail`.
 |-------|------|----------|-------------|
 | `ticker` | string | Yes (via params or ticker) | Asset symbol |
 | `account_id` | integer | Yes | Account identifier for ledger settlement |
-| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT |
+| `type` | string | Yes | BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT |
 | `quantity` | float | Yes | Number of shares/units |
 | `price` | float | No | Per-unit price |
 | `total_amount` | float | Yes | Total transaction value |
@@ -316,6 +322,11 @@ Array of insight objects:
 | `POST` | `/transactions` | Create transaction |
 | `GET` | `/transactions/{id}` | Get transaction by ID |
 | `DELETE` | `/transactions/{id}` | Delete transaction |
+| `POST` | `/stock-splits/check` | Detect stock split events for held tickers |
+| `GET` | `/stock-splits/pending` | List pending stock split events |
+| `POST` | `/stock-splits/{event_id}/apply` | Apply one split event |
+| `POST` | `/stock-splits/{event_id}/dismiss` | Dismiss one split event |
+| `POST` | `/stock-splits/apply-all` | Apply all pending split events |
 | `GET` | `/accounts` | List accounts |
 | `POST` | `/accounts` | Create account |
 | `PUT` | `/accounts/{id}` | Update account |

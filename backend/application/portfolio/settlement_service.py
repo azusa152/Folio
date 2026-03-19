@@ -42,6 +42,7 @@ STOCK_MODIFY_TYPES = {
     TransactionType.SELL,
     TransactionType.OPENING_BALANCE,
     TransactionType.ADJUSTMENT,
+    TransactionType.STOCK_SPLIT,
 }
 
 # Stock OPENING_BALANCE/ADJUSTMENT represent position snapshots or corrections,
@@ -49,6 +50,7 @@ STOCK_MODIFY_TYPES = {
 SKIP_CASH_FOR_STOCK_TYPES = {
     TransactionType.OPENING_BALANCE,
     TransactionType.ADJUSTMENT,
+    TransactionType.STOCK_SPLIT,
 }
 
 
@@ -183,6 +185,11 @@ def settle_transaction(
                     required=quantity,
                 )
                 stock_holding.quantity -= quantity
+        elif txn_type == TransactionType.STOCK_SPLIT:
+            ratio = float(txn_data.get("price", 0) or 0)
+            stock_holding.quantity += quantity
+            if ratio > 0 and stock_holding.cost_basis is not None:
+                stock_holding.cost_basis = float(stock_holding.cost_basis) / ratio
 
         stock_holding.updated_at = datetime.now(UTC)
         session.add(stock_holding)
@@ -267,6 +274,20 @@ def reverse_settlement(session: Session, txn: Transaction, lang: str) -> None:
                 stock_holding.quantity -= quantity
             else:
                 stock_holding.quantity += quantity
+        elif txn_type == TransactionType.STOCK_SPLIT:
+            # quantity is the additive delta (positive for forward splits, negative for
+            # reverse splits). Reversing removes that delta — for a reverse split the
+            # delta is negative, so we add abs(quantity) back.
+            abs_quantity = abs(quantity)
+            _raise_if_insufficient_shares(
+                lang=lang,
+                available=stock_holding.quantity,
+                required=abs_quantity,
+            )
+            ratio = float(txn.price or 0)
+            stock_holding.quantity -= quantity  # subtracts the signed delta
+            if ratio > 0 and stock_holding.cost_basis is not None:
+                stock_holding.cost_basis = float(stock_holding.cost_basis) * ratio
 
         stock_holding.updated_at = datetime.now(UTC)
         session.add(stock_holding)
@@ -472,6 +493,11 @@ def verify_positions(session: Session) -> list[dict]:
             & (txn_type_col == TransactionType.ADJUSTMENT.value)
             & (Transaction.total_amount < 0),
             -Transaction.quantity,
+        ),
+        (
+            (~is_cash_ticker_expr)
+            & (txn_type_col == TransactionType.STOCK_SPLIT.value),
+            Transaction.quantity,
         ),
         else_=0.0,
     )

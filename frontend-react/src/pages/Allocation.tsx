@@ -21,6 +21,7 @@ import { TerminologySettings } from "@/components/allocation/settings/Terminolog
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import { AccountsTab } from "@/components/allocation/accounts/AccountsTab"
+import { StockSplitAlert } from "@/components/allocation/StockSplitAlert"
 import { AddTransactionSheet } from "@/components/allocation/transactions/AddTransactionSheet"
 
 type TransactionSheetType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
@@ -292,6 +293,7 @@ export default function Allocation() {
 
         {/* Accounts tab */}
         <TabsContent value="accounts" className="mt-4 space-y-4">
+          <StockSplitAlert enabled={activeTab === "accounts"} />
           <AccountsTab
             enabled={activeTab === "accounts"}
             onDepositToAccount={(accountId, currency) =>

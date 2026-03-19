@@ -350,6 +350,57 @@ class TestWebhookFXWatch:
         assert body["message"] == expected_msg
 
 
+class TestWebhookStockSplits:
+    """Tests for the 'stock_splits' webhook action."""
+
+    @patch("application.messaging.webhook_service.check_splits")
+    def test_stock_splits_should_return_success_with_summary(
+        self, mock_check_splits, client
+    ):
+        mock_check_splits.return_value = {
+            "checked_tickers": 2,
+            "detected": 1,
+            "auto_applied": 1,
+            "events": [],
+        }
+
+        resp = client.post("/webhook", json={"action": "stock_splits"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is True
+        assert body["data"]["checked_tickers"] == 2
+        assert body["data"]["detected"] == 1
+        assert body["data"]["auto_applied"] == 1
+        expected_msg = t(
+            "webhook.stock_splits_summary",
+            lang="zh-TW",
+            checked=2,
+            detected=1,
+            auto_applied=1,
+        )
+        assert body["message"] == expected_msg
+
+    @patch(
+        "application.messaging.webhook_service.check_splits",
+        side_effect=RuntimeError("split source unavailable"),
+    )
+    def test_stock_splits_should_return_failure_on_service_exception(
+        self, _mock_check_splits, client
+    ):
+        resp = client.post("/webhook", json={"action": "stock_splits"})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["success"] is False
+        expected_msg = t(
+            "webhook.stock_splits_failed",
+            lang="zh-TW",
+            error="split source unavailable",
+        )
+        assert body["message"] == expected_msg
+
+
 class TestWebhookDiscoverability:
     """Tests ensuring AI agent discoverability stays in sync with WEBHOOK_ACTION_REGISTRY."""
 

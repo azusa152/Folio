@@ -24,6 +24,7 @@ function typeBadgeClass(type: string): string {
   if (type === "SELL") return "bg-rose-600/15 text-rose-700 dark:text-rose-300"
   if (type === "DIVIDEND") return "bg-sky-600/15 text-sky-700 dark:text-sky-300"
   if (type === "DEPOSIT") return "bg-violet-600/15 text-violet-700 dark:text-violet-300"
+  if (type === "STOCK_SPLIT") return "bg-indigo-600/15 text-indigo-700 dark:text-indigo-300"
   return "bg-amber-600/15 text-amber-700 dark:text-amber-300"
 }
 

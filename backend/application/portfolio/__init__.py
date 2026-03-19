@@ -50,6 +50,15 @@ from application.portfolio.snapshot_service import (  # noqa: F401
     get_snapshots,
     take_daily_snapshot,
 )
+from application.portfolio.stock_split_service import (  # noqa: F401
+    apply_all_pending_splits,
+    apply_split,
+    build_split_preview,
+    check_splits,
+    dismiss_split,
+    list_split_events,
+    send_split_alerts,
+)
 from application.portfolio.stress_test_service import (  # noqa: F401
     calculate_stress_test,
 )

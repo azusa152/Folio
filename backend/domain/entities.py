@@ -16,6 +16,7 @@ from domain.core.entities import (  # noqa: F401
     RemovalLog,
     ScanLog,
     Stock,
+    StockSplitEvent,
     SystemTemplate,
     ThesisLog,
     Transaction,

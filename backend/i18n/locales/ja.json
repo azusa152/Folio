@@ -36,6 +36,8 @@
     "guru_sync_failed": "❌ 13F 同期失敗：{error}",
     "guru_summary_complete": "✅ 13F ダイジェスト通知処理済み（{status}）、{count} 人のグル。",
     "guru_summary_failed": "❌ 13F ダイジェスト通知失敗：{error}",
+    "stock_splits_summary": "株式分割チェック完了：{checked} 銘柄を確認し、{detected} 件を検出、{auto_applied} 件を自動適用しました。",
+    "stock_splits_failed": "株式分割チェックに失敗しました：{error}",
     "transactions_summary": "直近の取引 {count} 件を取得しました",
     "accounts_summary": "{count} 件のアカウントが設定されています",
     "analytics_summary": "ポートフォリオのリスク指標を算出しました",
@@ -57,6 +59,7 @@
       "fx_watch_ready": "FXウォッチ分析の準備ができました。",
       "guru_sync_ready": "13F同期サマリーの準備ができました。",
       "guru_summary_ready": "グルダイジェストの準備ができました。",
+      "stock_splits_ready": "株式分割の検出結果を取得しました。",
       "transactions_ready": "直近 {count} 件の取引を表示しています。",
       "transaction_recorded": "取引を記録しました。",
       "accounts_ready": "アカウント概要の準備ができました。",
@@ -310,6 +313,12 @@
     "snapshot_triggered": "スナップショットをトリガーしました。バックグラウンドで構築中です。",
     "backfill_triggered": "ベンチマーク補完をトリガーしました。バックグラウンドで実行中です。"
   },
+  "stock_split": {
+    "not_found": "株式分割イベントが見つかりません。",
+    "notification_header": "🔀 <b>株式分割を検出しました</b>",
+    "notification_line": "• <b>{ticker}</b> が {split_date} に <b>{ratio}</b> の分割を実施",
+    "notification_footer": "株式分割で総額は変わりません。保有株数と1株あたり取得単価を調整します。"
+  },
   "constants": {
     "removal_reason_unknown": "不明",
     "default_webhook_thesis": "AIエージェントにより追加。",
@@ -325,6 +334,7 @@
     "notification_fx_alerts": "為替エクスポージャーアラート",
     "notification_fx_watch_alerts": "外貨両替タイミングアラート",
     "notification_guru_alerts": "グル 13F 四半期レポート・共鳴アラート",
+    "notification_stock_split_alerts": "株式分割の検出通知",
     "stress_pain_low": "そよ風",
     "stress_pain_moderate": "実感できる調整",
     "stress_pain_high": "かなりのダメージ",

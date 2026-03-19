@@ -20,6 +20,7 @@ from application.portfolio.analytics_service import (
 from application.portfolio.fx_watch_service import send_fx_watch_alerts
 from application.portfolio.insight_service import get_portfolio_insights
 from application.portfolio.rebalance_service import calculate_withdrawal
+from application.portfolio.stock_split_service import check_splits
 from application.portfolio.transaction_service import (
     create_transaction,
     list_transactions,
@@ -473,6 +474,35 @@ def handle_webhook(
             return _wrap_response(
                 success=False,
                 message=t("webhook.fx_watch_failed", lang=lang, error=str(e)),
+                interpretation=t("webhook.interpretation.action_failed", lang=lang),
+                params=params,
+                error_code=ERROR_INTERNAL_ERROR,
+            )
+
+    if action == "stock_splits":
+        try:
+            result = check_splits(session)
+            return _wrap_response(
+                success=True,
+                message=t(
+                    "webhook.stock_splits_summary",
+                    lang=lang,
+                    checked=result["checked_tickers"],
+                    detected=result["detected"],
+                    auto_applied=result["auto_applied"],
+                ),
+                interpretation=t(
+                    "webhook.interpretation.stock_splits_ready",
+                    lang=lang,
+                ),
+                params=params,
+                data=result,
+            )
+        except Exception as e:
+            logger.error("stock_splits 執行失敗：%s", e)
+            return _wrap_response(
+                success=False,
+                message=t("webhook.stock_splits_failed", lang=lang, error=str(e)),
                 interpretation=t("webhook.interpretation.action_failed", lang=lang),
                 params=params,
                 error_code=ERROR_INTERNAL_ERROR,

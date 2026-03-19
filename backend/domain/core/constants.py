@@ -60,6 +60,8 @@ EARNINGS_CACHE_MAXSIZE = 200
 EARNINGS_CACHE_TTL = 86400  # 24 hours
 DIVIDEND_CACHE_MAXSIZE = 200
 DIVIDEND_CACHE_TTL = 3600  # 1 hour
+STOCK_SPLIT_CACHE_MAXSIZE = 200
+STOCK_SPLIT_CACHE_TTL = 86400  # 24 hours
 FUNDAMENTALS_CACHE_MAXSIZE = 200
 FUNDAMENTALS_CACHE_TTL = 300  # 5 minutes
 YF_INFO_CACHE_MAXSIZE = 200
@@ -115,6 +117,7 @@ BACKFILL_SAMPLE_INTERVAL = 5
 BACKFILL_MARKET_STATUS = "BACKFILL"
 BACKFILL_DEFAULT_MOAT = "STABLE"
 BACKFILL_MIN_HISTORY_DAYS = 200  # MA200 warmup requirement for replay
+STOCK_SPLIT_LOOKBACK_DAYS = 30
 
 SCAN_THREAD_POOL_SIZE = 2  # 2 threads match 0.4 req/sec global rate limit
 ENRICHED_THREAD_POOL_SIZE = 4  # 與 0.4 req/sec 速率限制相符，避免過度競爭
@@ -397,6 +400,7 @@ DISK_KEY_SIGNALS = "signals"
 DISK_KEY_MOAT = "moat"
 DISK_KEY_EARNINGS = "earnings"
 DISK_KEY_DIVIDEND = "dividend"
+DISK_KEY_STOCK_SPLIT = "stock_split"
 DISK_KEY_FUNDAMENTALS = "fundamentals"
 DISK_KEY_YF_INFO = "yf_info"
 DISK_KEY_PRICE_HISTORY = "price_history"
@@ -474,6 +478,10 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Check FX watch configs & send Telegram alerts (with cooldown)",
         "requires_ticker": False,
     },
+    "stock_splits": {
+        "description": "Check stock splits for held tickers and notify/apply updates",
+        "requires_ticker": False,
+    },
     "guru_sync": {
         "description": "Trigger 13F filing sync for all tracked gurus (EDGAR fetch)",
         "requires_ticker": False,
@@ -497,7 +505,7 @@ WEBHOOK_ACTION_REGISTRY: dict[str, dict] = {
         "description": "Record a new transaction",
         "requires_ticker": True,
         "params": {
-            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)",
+            "type": "str (required — BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT)",
             "account_id": "int (required — account identifier)",
             "quantity": "float (required)",
             "price": "float (optional — per-unit price)",
@@ -565,6 +573,7 @@ NOTIFICATION_TYPES = {
     "fx_alerts": "constants.notification_fx_alerts",
     "fx_watch_alerts": "constants.notification_fx_watch_alerts",
     "guru_alerts": "constants.notification_guru_alerts",
+    "stock_split_alerts": "constants.notification_stock_split_alerts",
 }
 DEFAULT_NOTIFICATION_PREFERENCES: dict[str, bool] = dict.fromkeys(
     NOTIFICATION_TYPES, True

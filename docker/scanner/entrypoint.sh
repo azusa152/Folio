@@ -30,6 +30,7 @@ echo "$(date) Running startup snapshot..."
 #   30 */6 * * *       FX watch timing alert every 6 hours (offset 30min to avoid concurrent yfinance calls)
 #   0 2 * * *          13F sync daily 02:00 UTC (sync-13f.sh handles filing-season logic)
 #   0 23 * * *         daily portfolio snapshot 23:00 UTC (after markets close)
+#   0 6 * * *          stock split detection daily 06:00 UTC
 (
   echo "*/15 * * * * /usr/local/bin/smart-scan.sh >> /proc/1/fd/1 2>&1"
   echo "15 21 * * 1-5 /usr/local/bin/folio-curl.sh -X POST http://backend:8000/scan > /dev/null 2>&1"
@@ -37,6 +38,7 @@ echo "$(date) Running startup snapshot..."
   echo "0 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/currency-exposure/alert > /dev/null 2>&1"
   echo "30 */6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/fx-watch/alert > /dev/null 2>&1"
   echo "0 2 * * * /usr/local/bin/sync-13f.sh >> /proc/1/fd/1 2>&1"
+  echo "0 6 * * * /usr/local/bin/folio-curl.sh -X POST http://backend:8000/stock-splits/check > /dev/null 2>&1"
   echo "0 23 * * * /usr/local/bin/take-snapshot.sh >> /proc/1/fd/1 2>&1"
 ) | crontab -
 

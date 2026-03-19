@@ -2378,6 +2378,273 @@
         }
       }
     },
+    "/stock-splits/check": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Check held tickers for stock split events",
+        "operationId": "check_stock_splits_stock_splits_check_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/pending": {
+      "get": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "List pending stock split events",
+        "operationId": "list_pending_stock_splits_stock_splits_pending_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StockSplitEventResponse"
+                  },
+                  "title": "Response List Pending Stock Splits Stock Splits Pending Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/{event_id}/apply": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Apply one stock split event",
+        "operationId": "apply_stock_split_stock_splits__event_id__apply_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/{event_id}/dismiss": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Dismiss one stock split event",
+        "operationId": "dismiss_stock_split_stock_splits__event_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitDismissResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stock-splits/apply-all": {
+      "post": {
+        "tags": [
+          "stock-splits"
+        ],
+        "summary": "Apply all pending stock split events",
+        "operationId": "apply_all_stock_splits_stock_splits_apply_all_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSplitApplyAllResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ticker/{ticker}/thesis": {
       "post": {
         "summary": "Add a thesis for a stock",
@@ -11065,6 +11332,228 @@
         "title": "StockResponse",
         "description": "GET /stocks \u56de\u50b3\u7684\u55ae\u7b46\u80a1\u7968\u8cc7\u6599\u3002"
       },
+      "StockSplitApplyAllResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitApplyResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "applied"
+        ],
+        "title": "StockSplitApplyAllResponse",
+        "description": "Response payload for applying all pending split events."
+      },
+      "StockSplitApplyResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/StockSplitEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "applied_accounts": {
+            "type": "integer",
+            "title": "Applied Accounts"
+          },
+          "transactions": {
+            "type": "integer",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status",
+          "applied_accounts",
+          "transactions"
+        ],
+        "title": "StockSplitApplyResponse",
+        "description": "Response payload for applying a split event."
+      },
+      "StockSplitCheckResponse": {
+        "properties": {
+          "checked_tickers": {
+            "type": "integer",
+            "title": "Checked Tickers"
+          },
+          "detected": {
+            "type": "integer",
+            "title": "Detected"
+          },
+          "auto_applied": {
+            "type": "integer",
+            "title": "Auto Applied"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked_tickers",
+          "detected",
+          "auto_applied"
+        ],
+        "title": "StockSplitCheckResponse",
+        "description": "Response payload for split detection check."
+      },
+      "StockSplitDismissResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/StockSplitEventResponse"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "status"
+        ],
+        "title": "StockSplitDismissResponse",
+        "description": "Response payload for dismissing a split event."
+      },
+      "StockSplitEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "split_date": {
+            "type": "string",
+            "title": "Split Date"
+          },
+          "ratio": {
+            "type": "number",
+            "title": "Ratio"
+          },
+          "ratio_label": {
+            "type": "string",
+            "title": "Ratio Label"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detected_at": {
+            "type": "string",
+            "title": "Detected At"
+          },
+          "applied_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "preview": {
+            "items": {
+              "$ref": "#/components/schemas/StockSplitHoldingPreview"
+            },
+            "type": "array",
+            "title": "Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ticker",
+          "split_date",
+          "ratio",
+          "ratio_label",
+          "status",
+          "detected_at"
+        ],
+        "title": "StockSplitEventResponse",
+        "description": "Single stock split event payload."
+      },
+      "StockSplitHoldingPreview": {
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "before_qty": {
+            "type": "number",
+            "title": "Before Qty"
+          },
+          "after_qty": {
+            "type": "number",
+            "title": "After Qty"
+          },
+          "before_cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Cost Basis"
+          },
+          "after_cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Cost Basis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "before_qty",
+          "after_qty"
+        ],
+        "title": "StockSplitHoldingPreview",
+        "description": "Before/after preview for one holding that will be affected by the split."
+      },
       "StressTestHoldingBreakdown": {
         "properties": {
           "ticker": {
@@ -11423,11 +11912,10 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
           "price": {
@@ -11554,11 +12042,10 @@
           "transaction_type": {
             "type": "string",
             "title": "Transaction Type",
-            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / TRANSFER_IN / TRANSFER_OUT"
+            "description": "BUY / SELL / DIVIDEND / DEPOSIT / WITHDRAWAL / OPENING_BALANCE / ADJUSTMENT / STOCK_SPLIT / TRANSFER_IN / TRANSFER_OUT"
           },
           "quantity": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
           "price": {

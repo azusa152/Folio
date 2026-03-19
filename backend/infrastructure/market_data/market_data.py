@@ -88,6 +88,7 @@ from domain.constants import (
     DISK_KEY_ROGUE_WAVE,
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
+    DISK_KEY_STOCK_SPLIT,
     DISK_KEY_YF_INFO,
     DISK_MOAT_FAILURE_TTL,
     DISK_MOAT_PERSISTENT_TTL,
@@ -146,6 +147,9 @@ from domain.constants import (
     SCAN_THREAD_POOL_SIZE,
     SIGNALS_CACHE_MAXSIZE,
     SIGNALS_CACHE_TTL,
+    STOCK_SPLIT_CACHE_MAXSIZE,
+    STOCK_SPLIT_CACHE_TTL,
+    STOCK_SPLIT_LOOKBACK_DAYS,
     TWII_TICKER,
     VIX_HISTORY_PERIOD,
     VIX_TICKER,
@@ -346,6 +350,9 @@ _earnings_cache: TTLCache = TTLCache(
 _dividend_cache: TTLCache = TTLCache(
     maxsize=DIVIDEND_CACHE_MAXSIZE, ttl=DIVIDEND_CACHE_TTL
 )
+_stock_split_cache: TTLCache = TTLCache(
+    maxsize=STOCK_SPLIT_CACHE_MAXSIZE, ttl=STOCK_SPLIT_CACHE_TTL
+)
 _fundamentals_cache: TTLCache = TTLCache(
     maxsize=FUNDAMENTALS_CACHE_MAXSIZE, ttl=FUNDAMENTALS_CACHE_TTL
 )
@@ -404,6 +411,7 @@ def clear_all_caches() -> dict:
         _moat_cache,
         _earnings_cache,
         _dividend_cache,
+        _stock_split_cache,
         _fundamentals_cache,
         _yf_info_cache,
         _price_history_cache,
@@ -705,6 +713,14 @@ def _yf_dividends(ticker: str):
     stock = yf.Ticker(ticker, session=_get_session())
     _rate_limiter.wait()
     return stock.get_dividends()
+
+
+@_yf_retry
+def _yf_splits(ticker: str):
+    """取得股票分割歷史（含重試）。"""
+    stock = yf.Ticker(ticker, session=_get_session())
+    _rate_limiter.wait()
+    return stock.get_splits()
 
 
 # ===========================================================================
@@ -1500,6 +1516,80 @@ def get_earnings_date(ticker: str) -> dict:
         DISK_KEY_EARNINGS,
         DISK_EARNINGS_TTL,
         _fetch_earnings_from_yf,
+    )
+
+
+# ===========================================================================
+# 股票分割 (Stock Splits)
+# ===========================================================================
+
+
+def _fetch_stock_splits_from_yf(cache_key: str) -> list[dict]:
+    """實際從 yfinance 取得股票分割（供 _cached_fetch 使用）。"""
+    try:
+        ticker, lookback_raw = cache_key.rsplit(":", 1)
+        lookback_days = max(1, int(lookback_raw))
+    except (ValueError, TypeError):
+        ticker = cache_key
+        lookback_days = STOCK_SPLIT_LOOKBACK_DAYS
+
+    try:
+        splits = _yf_splits(ticker)
+    except Exception as exc:
+        logger.warning("無法取得 %s 股票分割資訊：%s", ticker, exc)
+        return []
+
+    if splits is None or getattr(splits, "empty", True):
+        return []
+
+    cutoff = date.today() - timedelta(days=lookback_days)
+    rows: list[dict] = []
+    for raw_date, raw_ratio in splits.items():
+        try:
+            ratio = float(raw_ratio)
+        except (TypeError, ValueError):
+            continue
+        if ratio <= 0 or math.isnan(ratio):
+            continue
+
+        split_date: date | None = None
+        if hasattr(raw_date, "date"):
+            split_date = raw_date.date()
+        elif isinstance(raw_date, date):
+            split_date = raw_date
+        else:
+            try:
+                split_date = date.fromisoformat(str(raw_date)[:10])
+            except ValueError:
+                split_date = None
+        if split_date is None or split_date < cutoff:
+            continue
+
+        rows.append(
+            {
+                "ticker": ticker,
+                "split_date": split_date.isoformat(),
+                "ratio": round(ratio, 8),
+            }
+        )
+
+    rows.sort(key=lambda x: str(x["split_date"]), reverse=True)
+    return rows
+
+
+def get_stock_splits(
+    ticker: str, lookback_days: int = STOCK_SPLIT_LOOKBACK_DAYS
+) -> list[dict]:
+    """取得近期股票分割事件（含快取）。"""
+    normalized_ticker = ticker.upper().strip()
+    normalized_lookback = max(1, int(lookback_days))
+    cache_key = f"{normalized_ticker}:{normalized_lookback}"
+    return _cached_fetch(
+        _stock_split_cache,
+        cache_key,
+        DISK_KEY_STOCK_SPLIT,
+        STOCK_SPLIT_CACHE_TTL,
+        _fetch_stock_splits_from_yf,
     )
 
 

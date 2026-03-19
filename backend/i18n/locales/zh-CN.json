@@ -36,6 +36,8 @@
     "guru_sync_failed": "❌ 13F 同步失败：{error}",
     "guru_summary_complete": "✅ 13F 摘要通知已处理（{status}），共 {count} 位大师。",
     "guru_summary_failed": "❌ 13F 摘要通知失败：{error}",
+    "stock_splits_summary": "股票拆分检查完成：检查 {checked} 只，检测 {detected} 条，自动应用 {auto_applied} 条。",
+    "stock_splits_failed": "股票拆分检查失败：{error}",
     "transactions_summary": "找到 {count} 笔近期交易",
     "accounts_summary": "已配置 {count} 个账户",
     "analytics_summary": "投资组合风险指标已计算",
@@ -57,6 +59,7 @@
       "fx_watch_ready": "外汇监控分析已准备完成。",
       "guru_sync_ready": "13F 同步摘要已准备完成。",
       "guru_summary_ready": "大师摘要已准备完成。",
+      "stock_splits_ready": "股票拆分检测结果已准备完成。",
       "transactions_ready": "正在显示最近 {count} 笔交易。",
       "transaction_recorded": "交易已记录。",
       "accounts_ready": "账户摘要已准备完成。",
@@ -310,6 +313,12 @@
     "snapshot_triggered": "快照已触发，正在后台构建中。",
     "backfill_triggered": "基准指数回填已触发，正在后台执行中。"
   },
+  "stock_split": {
+    "not_found": "找不到股票拆分事件。",
+    "notification_header": "🔀 <b>检测到股票拆分</b>",
+    "notification_line": "• <b>{ticker}</b> 于 {split_date} 发生 <b>{ratio}</b> 拆分",
+    "notification_footer": "股票拆分不会改变总市值。系统会调整持股数量与每股成本。"
+  },
   "constants": {
     "removal_reason_unknown": "未知",
     "default_webhook_thesis": "由 AI agent 新增。",
@@ -325,6 +334,7 @@
     "notification_fx_alerts": "汇率曝险警报",
     "notification_fx_watch_alerts": "外汇换汇时机警报",
     "notification_guru_alerts": "大师 13F 季报与共鸣警报",
+    "notification_stock_split_alerts": "股票拆分检测警报",
     "stress_pain_low": "微风轻拂 (Just a Scratch)",
     "stress_pain_moderate": "有感修正 (Correction)",
     "stress_pain_high": "伤筋动骨 (Bear Market)",

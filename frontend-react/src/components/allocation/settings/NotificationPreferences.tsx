@@ -14,6 +14,8 @@ const PREF_KEYS = [
   "fx_alerts",
   "fx_watch_alerts",
   "guru_alerts",
+  "stock_split_alerts",
+  "auto_apply_splits",
 ]
 
 // Keys that support per-type rate limiting

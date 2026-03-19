@@ -6,7 +6,7 @@ Domain — 資料庫實體 (SQLModel Tables)。
 import json as _json
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Index
+from sqlalchemy import Index, UniqueConstraint
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
@@ -220,7 +220,7 @@ class Transaction(SQLModel, table=True):
     transaction_type: TransactionType = Field(
         description=(
             "交易類型 (BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/"
-            "OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT)"
+            "OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT)"
         )
     )
     quantity: float = Field(description="交易數量")
@@ -237,6 +237,27 @@ class Transaction(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         description="建立時間",
     )
+
+
+class StockSplitEvent(SQLModel, table=True):
+    """偵測到的股票分割事件（待處理/已套用/已忽略）。"""
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "split_date", "ratio", name="uq_stock_split_event"),
+        Index("ix_stock_split_event_ticker_date", "ticker", "split_date"),
+        Index("ix_stock_split_event_status", "status"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    ticker: str = Field(description="股票代號")
+    split_date: date = Field(description="分割生效日")
+    ratio: float = Field(description="分割倍率（4:1=4.0，1:20=0.05）")
+    status: str = Field(default="pending", description="pending/applied/dismissed")
+    detected_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="偵測時間",
+    )
+    applied_at: datetime | None = Field(default=None, description="套用時間")
 
 
 class UserTelegramSettings(SQLModel, table=True):

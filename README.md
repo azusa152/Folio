@@ -45,6 +45,7 @@
 ### 通知與警報
 
 - **自訂價格警報** — 為個股設定 RSI / 價格 / 乖離率門檻，觸發時 Telegram 即時通知
+- **股票分割自動偵測** — 每日檢查持有部位的股票分割事件，支援通知、手動套用與一鍵全部套用（可選自動套用）
 - **智慧定時掃描** — 每 30 分鐘檢查資料新鮮度，僅推播差異通知，避免重複掃描
 - **每週摘要** — 每週日自動發送豐富投資組合報告（總市值 WoW + S&P 500 Alpha + 健康分數 + 本週漲跌前三名 + 異常訊號 + 配置偏移 + Smart Money 大師動態）
 - **雙模式通知** — 系統預設 Bot 或自訂 Bot Token，兩種 Telegram 發送模式
@@ -627,6 +628,11 @@ docker compose up --build -d
 | `GET` | `/snapshots` | 歷史投資組合快照（`?days=30` 或 `?start=&end=`） |
 | `GET` | `/snapshots/twr` | 時間加權報酬率（YTD 或自訂日期範圍） |
 | `POST` | `/snapshots/take` | 手動觸發當日快照建立 |
+| `POST` | `/stock-splits/check` | 檢查持有股票是否發生分割（可由排程或手動觸發） |
+| `GET` | `/stock-splits/pending` | 取得待處理的股票分割事件 |
+| `POST` | `/stock-splits/{event_id}/apply` | 套用單一股票分割事件 |
+| `POST` | `/stock-splits/{event_id}/dismiss` | 忽略單一股票分割事件 |
+| `POST` | `/stock-splits/apply-all` | 一鍵套用所有待處理股票分割事件 |
 
 <details>
 <summary>📋 完整 API 端點列表（點擊展開）</summary>
@@ -712,7 +718,12 @@ docker compose up --build -d
 | `GET` | `/resonance` | 取得投資組合共鳴總覽（所有大師 vs 觀察清單/持倉的重疊） |
 | `GET` | `/resonance/{ticker}` | 取得特定股票的大師持有情況 |
 | `GET` | `/transactions` | 交易紀錄列表（支援 `ticker`、`limit` 篩選） |
-| `POST` | `/transactions` | 新增交易紀錄（支援 BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT） |
+| `POST` | `/transactions` | 新增交易紀錄（支援 BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT） |
+| `POST` | `/stock-splits/check` | 檢查持有股票是否發生分割（排程或手動觸發） |
+| `GET` | `/stock-splits/pending` | 取得待處理股票分割事件 |
+| `POST` | `/stock-splits/{event_id}/apply` | 套用單一股票分割事件 |
+| `POST` | `/stock-splits/{event_id}/dismiss` | 忽略單一股票分割事件 |
+| `POST` | `/stock-splits/apply-all` | 一鍵套用全部待處理股票分割事件 |
 | `GET` | `/transactions/{id}` | 取得單筆交易紀錄 |
 | `DELETE` | `/transactions/{id}` | 刪除交易紀錄 |
 | `GET` | `/accounts` | 帳戶列表 |
@@ -919,8 +930,9 @@ cp docs/agents/AGENTS.md ~/.openclaw/workspace/AGENTS.md
 | `moat` | 護城河分析 | 是 |
 | `alerts` | 查看價格警報 | 是 |
 | `add_stock` | 新增股票 | 是（在 params 中） |
+| `stock_splits` | 檢查持有部位的股票分割並回傳摘要 | 否 |
 | `transactions` | 查看近期交易紀錄（可選 `ticker`、`limit`） | 否 |
-| `add_transaction` | 記錄交易（BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/TRANSFER_IN/TRANSFER_OUT） | 是 |
+| `add_transaction` | 記錄交易（BUY/SELL/DIVIDEND/DEPOSIT/WITHDRAWAL/OPENING_BALANCE/ADJUSTMENT/STOCK_SPLIT/TRANSFER_IN/TRANSFER_OUT） | 是 |
 | `accounts` | 列出帳戶及持倉數量 | 否 |
 | `analytics` | 風險指標：Sharpe、Sortino、最大回撤 | 否 |
 | `insights` | 自然語言投資組合洞察 | 否 |

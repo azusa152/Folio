@@ -45,3 +45,11 @@ export type UpdateProfileRequest = components["schemas"]["ProfileUpdateRequest"]
 export type SaveTelegramRequest = components["schemas"]["TelegramSettingsRequest"]
 // privacy_mode is required in backend schema; frontend must always include current value
 export type SavePreferencesRequest = components["schemas"]["PreferencesRequest"]
+
+// Stock splits
+export type StockSplitHoldingPreview = components["schemas"]["StockSplitHoldingPreview"]
+export type StockSplitEvent = components["schemas"]["StockSplitEventResponse"]
+export type StockSplitCheckResponse = components["schemas"]["StockSplitCheckResponse"]
+export type StockSplitApplyResponse = components["schemas"]["StockSplitApplyResponse"]
+export type StockSplitApplyAllResponse = components["schemas"]["StockSplitApplyAllResponse"]
+export type StockSplitDismissResponse = components["schemas"]["StockSplitDismissResponse"]

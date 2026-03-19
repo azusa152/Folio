@@ -183,6 +183,8 @@ _PATCHES: list[tuple[str, object]] = [
         "application.messaging.telegram_settings_service.send_telegram_message_dual",
         None,
     ),
+    ("application.portfolio.stock_split_service.send_telegram_message_dual", None),
+    ("application.portfolio.stock_split_service.is_notification_enabled", False),
     # scan_service
     ("application.scan.scan_service.get_technical_signals", MOCK_SIGNALS),
     ("application.scan.scan_service.analyze_moat_trend", MOCK_MOAT),

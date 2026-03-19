@@ -7,6 +7,8 @@ Infrastructure — Repository Pattern。
 
 from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from domain.constants import (
@@ -27,6 +29,7 @@ from domain.entities import (
     RemovalLog,
     ScanLog,
     Stock,
+    StockSplitEvent,
     SystemTemplate,
     ThesisLog,
     Transaction,
@@ -494,6 +497,99 @@ def count_recent_notifications(
         NotificationLog.sent_at >= since,
     )
     return session.exec(statement).one()
+
+
+# ===========================================================================
+# Stock Split Event Repository
+# ===========================================================================
+
+
+def find_stock_split_event_by_id(
+    session: Session, event_id: int
+) -> StockSplitEvent | None:
+    """根據 ID 查詢單一股票分割事件。"""
+    return session.get(StockSplitEvent, event_id)
+
+
+def find_stock_split_events(
+    session: Session,
+    *,
+    status: str | None = None,
+    ticker: str | None = None,
+    limit: int | None = 200,
+) -> list[StockSplitEvent]:
+    """查詢股票分割事件（可依狀態與 ticker 篩選）。"""
+    stmt = select(StockSplitEvent).order_by(StockSplitEvent.detected_at.desc())
+    if status is not None:
+        stmt = stmt.where(StockSplitEvent.status == status)
+    if ticker is not None:
+        stmt = stmt.where(StockSplitEvent.ticker == ticker.upper().strip())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(session.exec(stmt).all())
+
+
+def find_stock_split_event_by_unique_key(
+    session: Session, *, ticker: str, split_date: date, ratio: float
+) -> StockSplitEvent | None:
+    """依 ticker + split_date + ratio 查詢事件（避免重複建立）。"""
+    normalized_ticker = ticker.upper().strip()
+    stmt = (
+        select(StockSplitEvent)
+        .where(StockSplitEvent.ticker == normalized_ticker)
+        .where(StockSplitEvent.split_date == split_date)
+        .where(StockSplitEvent.ratio == ratio)
+    )
+    return session.exec(stmt).first()
+
+
+def create_stock_split_event(
+    session: Session, event: StockSplitEvent
+) -> StockSplitEvent:
+    """建立股票分割事件（idempotent — 若 unique key 已存在則回傳現有記錄）。"""
+    try:
+        session.add(event)
+        session.commit()
+        session.refresh(event)
+        return event
+    except IntegrityError:
+        session.rollback()
+        existing = find_stock_split_event_by_unique_key(
+            session,
+            ticker=event.ticker,
+            split_date=event.split_date,
+            ratio=event.ratio,
+        )
+        if existing is not None:
+            return existing
+        raise
+
+
+def save_stock_split_event(session: Session, event: StockSplitEvent) -> StockSplitEvent:
+    """更新股票分割事件（含 commit + refresh）。"""
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def try_claim_stock_split_event(
+    session: Session, event_id: int, *, from_status: str, to_status: str
+) -> bool:
+    """Atomic CAS: transition event status from_status -> to_status.
+
+    Returns True when exactly one row was updated (this caller wins the race).
+    Returns False when another writer already moved the row away from from_status.
+    """
+    result = session.exec(  # type: ignore[call-overload]
+        update(StockSplitEvent)
+        .where(StockSplitEvent.id == event_id)
+        .where(StockSplitEvent.status == from_status)
+        .values(status=to_status)
+        .execution_options(synchronize_session="evaluate")
+    )
+    session.commit()
+    return (result.rowcount or 0) == 1
 
 
 # ===========================================================================

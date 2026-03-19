@@ -36,6 +36,8 @@
     "guru_sync_failed": "❌ 13F sync failed: {error}",
     "guru_summary_complete": "✅ 13F digest notification processed ({status}), {count} gurus.",
     "guru_summary_failed": "❌ 13F digest notification failed: {error}",
+    "stock_splits_summary": "Stock split check complete: checked {checked} tickers, detected {detected}, auto-applied {auto_applied}.",
+    "stock_splits_failed": "Stock split check failed: {error}",
     "transactions_summary": "Found {count} recent transactions",
     "accounts_summary": "{count} accounts configured",
     "analytics_summary": "Portfolio risk metrics computed",
@@ -57,6 +59,7 @@
       "fx_watch_ready": "FX watch analysis is ready.",
       "guru_sync_ready": "13F sync summary is ready.",
       "guru_summary_ready": "Guru digest summary is ready.",
+      "stock_splits_ready": "Stock split detection results are ready.",
       "transactions_ready": "Showing {count} most recent transactions.",
       "transaction_recorded": "Transaction has been recorded.",
       "accounts_ready": "Account summary is ready.",
@@ -310,6 +313,12 @@
     "snapshot_triggered": "Snapshot triggered. Building in background.",
     "backfill_triggered": "Benchmark backfill triggered. Running in background."
   },
+  "stock_split": {
+    "not_found": "Stock split event not found.",
+    "notification_header": "🔀 <b>Stock Split Detected</b>",
+    "notification_line": "• <b>{ticker}</b> split ratio <b>{ratio}</b> on {split_date}",
+    "notification_footer": "Your total market value does not change from a split. Shares and per-share cost basis will be adjusted."
+  },
   "constants": {
     "removal_reason_unknown": "Unknown",
     "default_webhook_thesis": "Added by AI agent.",
@@ -325,6 +334,7 @@
     "notification_fx_alerts": "FX exposure alerts",
     "notification_fx_watch_alerts": "FX exchange timing alerts",
     "notification_guru_alerts": "Guru 13F filing digest & resonance alerts",
+    "notification_stock_split_alerts": "Stock split detection alerts",
     "stress_pain_low": "Just a Scratch",
     "stress_pain_moderate": "Noticeable Correction",
     "stress_pain_high": "Significant Damage (Bear Market)",
