@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useAccountCashBalances, useAccountSellablePositions, useAccounts } from "@/api/hooks/useAccounts"
-import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
+import { useAccounts } from "@/api/hooks/useAccounts"
 import { useHoldings } from "@/api/hooks/useDashboard"
 import { useRadarStocks } from "@/api/hooks/useRadar"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -9,6 +8,7 @@ import { useCommandListScrollFix } from "@/hooks/useCommandListScrollFix"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { ELIGIBILITY_CHECK_WRAPPERS } from "@/lib/constants"
 import { todayISO } from "@/lib/utils"
+import { useTransactionQueries } from "./useTransactionQueries"
 import type {
   TransactionType,
   StockCategory,
@@ -84,9 +84,6 @@ export function useTransactionFormState({
   const debouncedNisaPickerSearch = useDebouncedValue(nisaPickerSearch, 300)
 
   const selectedAccountId = accountId ? Number(accountId) : null
-  const { data: cashBalances } = useAccountCashBalances(selectedAccountId, open)
-  const selectedCurrencyCashBalance =
-    (cashBalances ?? []).find((b) => b.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
   const selectedWrapper =
     typeof selectedAccount?.tax_wrapper === "string" ? selectedAccount.tax_wrapper.trim().toLowerCase() : ""
@@ -126,20 +123,44 @@ export function useTransactionFormState({
     selectedAccountId != null
   const nisaStockFreeInput =
     shouldShowNisaPicker && selectedWrapper === "nisa_growth" && nisaAssetTypeFilter === "stock"
-  const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
-    search: debouncedNisaPickerSearch || undefined,
-    assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
-    limit: 50,
-    enabled: shouldShowNisaPicker && !nisaStockFreeInput,
+  const shouldShowQuotaSummary =
+    open &&
+    transactionType === "BUY" &&
+    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
+
+  const queries = useTransactionQueries({
+    open,
+    accounts,
+    selectedAccountId,
+    selectedWrapper,
+    selectedAccountBroker: selectedAccount?.broker || undefined,
+    currency,
+    ticker: debouncedTicker,
+    totalAmount,
+    shouldShowNisaPicker,
+    shouldShowSellPicker,
+    shouldCheckEligibility,
+    shouldSuggestRouting,
+    shouldShowQuotaSummary,
+    nisaStockFreeInput,
+    nisaPickerSearch: debouncedNisaPickerSearch,
+    nisaAssetTypeFilter,
   })
-  const nisaReitFreeInput =
-    shouldShowNisaPicker &&
-    selectedWrapper === "nisa_growth" &&
-    nisaAssetTypeFilter === "reit" &&
-    nisaEligibleAssetsQuery.isFetched &&
-    (nisaEligibleAssetsQuery.data?.items?.length ?? 0) === 0
-  const nisaFreeTickerInput = nisaStockFreeInput || nisaReitFreeInput
-  const sellablePositionsQuery = useAccountSellablePositions(selectedAccountId, shouldShowSellPicker)
+
+  const {
+    nisaEligibleAssetsQuery,
+    nisaFreeTickerInput,
+    sellablePositionsQuery,
+    eligibility,
+    forcedCategory,
+    suggestedAccount,
+    routingSuggestedAccounts,
+    splitRoutingPlan,
+    canSplitPurchase,
+    wrapperQuotaQuery,
+    selectedQuota,
+  } = queries
+
   const filteredSellablePositions = useMemo(() => {
     const keyword = sellPickerSearch.trim().toLowerCase()
     const rows = (sellablePositionsQuery.data ?? []) as SellablePositionItem[]
@@ -150,6 +171,7 @@ export function useTransactionFormState({
       return tickerLower.includes(keyword) || fundNameLower.includes(keyword)
     })
   }, [sellPickerSearch, sellablePositionsQuery.data])
+
   const selectedSellablePosition = useMemo(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) return null
@@ -170,62 +192,6 @@ export function useTransactionFormState({
     )
   }, [ticker, nisaEligibleAssetsQuery.data?.items])
   const selectedNisaAssetForDisplay = selectedNisaAsset ?? cachedSelectedNisaAsset
-  const routingSuggestionQuery = useSuggestRouting(
-    debouncedTicker,
-    Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : null,
-    shouldSuggestRouting,
-  )
-  const eligibilityQuery = useWrapperEligibility(
-    selectedWrapper || undefined,
-    debouncedTicker,
-    selectedAccount?.broker || undefined,
-    shouldCheckEligibility,
-  )
-  const eligibility = eligibilityQuery.data
-  const shouldShowQuotaSummary =
-    open &&
-    transactionType === "BUY" &&
-    (selectedWrapper === "nisa_tsumitate" || selectedWrapper === "nisa_growth")
-  const wrapperQuotaQuery = useWrapperQuota(shouldShowQuotaSummary)
-  const selectedQuota = shouldShowQuotaSummary ? wrapperQuotaQuery.data?.quotas?.[selectedWrapper] : undefined
-  const forcedCategory = useMemo<StockCategory | null>(() => {
-    if (selectedWrapper === "nisa_tsumitate") return "Mutual_Fund"
-    if (eligibility?.asset_type === "mutual_fund") return "Mutual_Fund"
-    return null
-  }, [eligibility?.asset_type, selectedWrapper])
-  const suggestedAccount = useMemo(() => {
-    const suggestedWrapper = eligibility?.suggested_wrapper
-    if (!suggestedWrapper) return null
-    return (accounts ?? []).find((account) => {
-      if (account.id == null || account.id === selectedAccountId) return false
-      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
-      return wrapper === suggestedWrapper
-    })
-  }, [accounts, eligibility?.suggested_wrapper, selectedAccountId])
-  const routingSuggestedAccounts = useMemo(() => {
-    const byWrapper = new Map<string, { id: number; currency: string }>()
-    for (const account of accounts ?? []) {
-      if (account.id == null) continue
-      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
-      if (!wrapper || byWrapper.has(wrapper)) continue
-      byWrapper.set(wrapper, { id: account.id, currency: (account.currency || "USD").toUpperCase() })
-    }
-    return byWrapper
-  }, [accounts])
-  const splitRoutingPlan = useMemo(() => {
-    const suggestions = routingSuggestionQuery.data?.suggestions ?? []
-    return suggestions
-      .map((item) => ({
-        wrapper: item.wrapper,
-        amount: Number(item.amount),
-        account: routingSuggestedAccounts.get(item.wrapper) ?? null,
-      }))
-      .filter((item) => item.amount > 0)
-  }, [routingSuggestionQuery.data?.suggestions, routingSuggestedAccounts])
-  const canSplitPurchase =
-    transactionType === "BUY" &&
-    splitRoutingPlan.length >= 2 &&
-    splitRoutingPlan.every((item) => item.account != null)
 
   const holdingOptions = useMemo(
     () =>
@@ -424,7 +390,7 @@ export function useTransactionFormState({
     selectedAccountId,
     selectedAccount,
     selectedWrapper,
-    selectedCurrencyCashBalance,
+    selectedCurrencyCashBalance: queries.selectedCurrencyCashBalance,
     hasNoAccounts,
     isCashMovement,
     isNewToRadar,
@@ -449,12 +415,12 @@ export function useTransactionFormState({
     selectedQuota,
     // Queries
     accounts,
-    cashBalances,
+    cashBalances: queries.cashBalancesQuery.data,
     holdings,
     nisaEligibleAssetsQuery,
     sellablePositionsQuery,
-    routingSuggestionQuery,
-    eligibilityQuery,
+    routingSuggestionQuery: queries.routingSuggestionQuery,
+    eligibilityQuery: queries.eligibilityQuery,
     wrapperQuotaQuery,
     // Helpers
     isMobile,
