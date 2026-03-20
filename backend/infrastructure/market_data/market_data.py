@@ -1,6 +1,3 @@
-# pyright: reportAttributeAccessIssue=false, reportOptionalSubscript=false
-# pyright: reportOptionalMemberAccess=false, reportReturnType=false
-# pyright: reportCallIssue=false, reportIndexIssue=false, reportGeneralTypeIssues=false
 """
 Infrastructure — 市場資料適配器 (yfinance)。
 負責外部 API 呼叫、快取管理、速率限制。

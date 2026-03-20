@@ -89,6 +89,104 @@ class TestGetSignalsForTicker:
         assert result == {}
 
 
+class TestGetEnrichedSignalsForTicker:
+    """Unit tests for get_enriched_signals_for_ticker.
+
+    The function adds bias_percentile and is_rogue_wave to the raw signals
+    returned by get_signals_for_ticker.  Infrastructure calls are mocked.
+    """
+
+    def test_adds_bias_percentile_and_rogue_wave_when_signals_present(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # ROGUE_WAVE_MIN_HISTORY_DAYS = 200; must provide at least that many points
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 55.0, "volume_ratio": 0.5}
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert "bias_percentile" in result
+        assert isinstance(result["bias_percentile"], float)
+        assert "is_rogue_wave" in result
+        assert isinstance(result["is_rogue_wave"], bool)
+
+    def test_sets_is_rogue_wave_true_at_extreme_bias_and_volume(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # 250 points; bias=249 → rank 249/250 = 99.6th percentile ≥ 95; volume_ratio ≥ 1.5
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 249.0, "volume_ratio": 2.0}
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result["is_rogue_wave"] is True
+
+    def test_sets_is_rogue_wave_false_when_volume_ratio_low(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # Extreme bias percentile but volume below threshold → not rogue wave
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 249.0, "volume_ratio": 0.5}
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result["is_rogue_wave"] is False
+
+    def test_returns_empty_dict_when_signals_none(self, db_session) -> None:
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{STOCK_MODULE}.get_bias_distribution"),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result == {}
+
+    def test_returns_signals_unchanged_when_error_key_present(self, db_session) -> None:
+        mock_signals = {"error": "timeout"}
+        with (
+            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
+            patch(f"{STOCK_MODULE}.get_bias_distribution"),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        # Enrichment must not be applied; error key must be preserved
+        assert result.get("error") == "timeout"
+        assert "bias_percentile" not in result
+        assert "is_rogue_wave" not in result
+
+
 class TestGetPriceHistoryForTicker:
     def test_delegates_to_yfinance_for_regular_stock(self, db_session) -> None:
         from domain.entities import Stock

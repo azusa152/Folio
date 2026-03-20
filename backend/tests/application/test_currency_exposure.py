@@ -79,7 +79,7 @@ class TestCalculateCurrencyExposure:
         with (
             patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
             patch(
-                f"{REBALANCE_MODULE}.get_technical_signals",
+                "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 150.0},
             ),
             patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
@@ -105,7 +105,7 @@ class TestCalculateCurrencyExposure:
         with (
             patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
             patch(
-                f"{REBALANCE_MODULE}.get_technical_signals",
+                "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 200.0},
             ),
             patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
@@ -127,7 +127,7 @@ class TestCalculateCurrencyExposure:
         with (
             patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 31.5}),
             patch(
-                f"{REBALANCE_MODULE}.get_technical_signals",
+                "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 100.0},
             ),
             patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
@@ -154,7 +154,10 @@ class TestCalculateCurrencyExposure:
 
         with (
             patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
-            patch(f"{REBALANCE_MODULE}.get_technical_signals", return_value=None),
+            patch(
+                "application.portfolio.pricing_service.get_technical_signals",
+                return_value=None,
+            ),
             patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
             patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
             patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
@@ -241,7 +244,7 @@ class TestCalculateCurrencyExposure:
         with (
             patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(
-                f"{REBALANCE_MODULE}.get_technical_signals",
+                "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 100.0},
             ),
             patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),

@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { ChevronDown, ChevronUp, SendHorizontal } from "lucide-react"
 import { getNextMarketOpenInfo, isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import { DISPLAY_CURRENCIES, SCAN_STALE_SECONDS_MARKET_CLOSED, SCAN_STALE_SECONDS_MARKET_OPEN } from "@/lib/constants"
 import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useStocks,
@@ -191,7 +191,7 @@ export default function Dashboard() {
     : null
   const usMarketOpen = isMarketOpen("US")
   const nextUsOpenInfo = !usMarketOpen ? getNextMarketOpenInfo("US") : null
-  const staleScanThresholdSeconds = usMarketOpen ? 30 * 60 : 2 * 60 * 60
+  const staleScanThresholdSeconds = usMarketOpen ? SCAN_STALE_SECONDS_MARKET_OPEN : SCAN_STALE_SECONDS_MARKET_CLOSED
   const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > staleScanThresholdSeconds
   const scanStaleSuffix = isScanStale && scanAgeSeconds !== null
     ? t("dashboard.scan_stale_suffix", {

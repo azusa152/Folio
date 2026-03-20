@@ -197,7 +197,7 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan.backtest_service.get_price_history", []),
     ("application.scan.backfill_service.batch_download_history_extended", {}),
     # rebalance_service
-    ("application.portfolio.rebalance_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.portfolio.pricing_service.get_technical_signals", MOCK_SIGNALS),
     ("application.portfolio.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
     ("application.portfolio.rebalance_service.get_etf_top_holdings", None),
     ("application.portfolio.rebalance_service.get_etf_sector_weights", None),

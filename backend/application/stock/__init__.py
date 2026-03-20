@@ -26,6 +26,7 @@ from application.stock.stock_service import (  # noqa: F401
     export_stocks,
     get_dividend_for_ticker,
     get_earnings_for_ticker,
+    get_enriched_signals_for_ticker,
     get_enriched_stocks,
     get_market_sentiment_multi,
     get_moat_for_ticker,

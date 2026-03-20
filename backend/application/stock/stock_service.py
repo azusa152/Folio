@@ -8,7 +8,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlmodel import Session
 
 from application.portfolio.nav_sync_service import sync_single_fund_nav
-from domain.analysis import determine_scan_signal
+from domain.analysis import (
+    compute_bias_percentile,
+    detect_rogue_wave,
+    determine_scan_signal,
+)
 from domain.constants import (
     DEFAULT_IMPORT_CATEGORY,
     ENRICHED_CACHE_MAXSIZE,
@@ -1075,6 +1079,21 @@ def get_signals_for_ticker(session: Session, ticker: str) -> dict | None:
     signals = get_technical_signals(upper)
     if signals:
         signals["bias_distribution"] = get_bias_distribution(upper)
+    return signals
+
+
+def get_enriched_signals_for_ticker(session: Session, ticker: str) -> dict:
+    """Return technical signals enriched with bias_percentile and is_rogue_wave flags."""
+    signals = get_signals_for_ticker(session, ticker) or {}
+    if signals and "error" not in signals:
+        bias = signals.get("bias")
+        volume_ratio = signals.get("volume_ratio")
+        dist = signals.get("bias_distribution")
+        bias_percentile: float | None = None
+        if dist and bias is not None:
+            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
+        signals["bias_percentile"] = bias_percentile
+        signals["is_rogue_wave"] = detect_rogue_wave(bias_percentile, volume_ratio)
     return signals
 
 

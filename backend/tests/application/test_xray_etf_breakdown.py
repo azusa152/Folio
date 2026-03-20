@@ -32,6 +32,7 @@ from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # no
 from domain.enums import StockCategory  # noqa: E402
 
 _MODULE = "application.portfolio.rebalance_service"
+_PRICING_MODULE = "application.portfolio.pricing_service"
 
 _MOCK_SIGNALS_BASE = {
     "price": 100.0,
@@ -117,7 +118,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_etf_with_holdings_produces_indirect_exposure(
         self,
         mock_signals,
@@ -170,7 +171,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_known_etf_with_failed_holdings_fetch_excluded_from_xray(
         self,
         mock_signals,
@@ -209,7 +210,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_non_etf_stock_with_no_holdings_is_direct_exposure(
         self,
         mock_signals,
@@ -275,7 +276,10 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_etf_sector_weights", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.detect_is_etf", side_effect=lambda t: t == "0050.TW"),
             patch(f"{_MODULE}.get_etf_top_holdings", side_effect=_holdings_side_effect),
         ):
@@ -294,7 +298,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_xray_coverage_should_exclude_cash_from_denominator(
         self,
         mock_signals,
@@ -344,7 +348,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_mixed_portfolio_etf_and_stock(
         self,
         mock_signals,
@@ -448,7 +452,10 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.get_forex_history", return_value=None),
             patch(f"{_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.detect_is_etf", return_value=False),
             patch(
                 f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}
@@ -506,7 +513,10 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.get_forex_history", return_value=None),
             patch(f"{_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
             patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
             patch(

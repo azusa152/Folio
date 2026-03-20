@@ -52,7 +52,6 @@ from application.stock.stock_service import (
     get_enriched_stocks,
     invalidate_enriched_cache,
 )
-from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
     ERROR_INTERNAL_ERROR,
@@ -166,18 +165,7 @@ def get_signals_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """取得指定股票的技術訊號（含快取）。"""
-    ticker_upper = ticker.upper()
-    signals = stock_service.get_signals_for_ticker(session, ticker_upper) or {}
-    if signals and "error" not in signals:
-        bias = signals.get("bias")
-        volume_ratio = signals.get("volume_ratio")
-        dist = signals.get("bias_distribution")
-        bias_percentile: float | None = None
-        if dist and bias is not None:
-            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
-        signals["bias_percentile"] = bias_percentile
-        signals["is_rogue_wave"] = detect_rogue_wave(bias_percentile, volume_ratio)
-    return signals
+    return stock_service.get_enriched_signals_for_ticker(session, ticker.upper())
 
 
 @router.get(

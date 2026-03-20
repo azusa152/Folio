@@ -23,6 +23,9 @@ from application.portfolio.pricing_service import (
 from application.portfolio.pricing_service import (
     resolve_holding_price as _resolve_holding_price,
 )
+from application.portfolio.pricing_service import (
+    resolve_holding_price_with_prev as _resolve_holding_price_with_prev,
+)
 from application.portfolio.wrapper_service import get_all_wrapper_quotas
 from application.stock.stock_service import StockNotFoundError
 from domain.analysis import compute_daily_change_pct
@@ -67,13 +70,11 @@ from infrastructure.database import engine
 from infrastructure.market_data import (
     are_all_signals_in_l1,
     detect_is_etf,
-    get_crypto_price,
     get_etf_sector_weights,
     get_etf_top_holdings,
     get_exchange_rates,
     get_forex_history,
     get_forex_history_long,
-    get_technical_signals,
     get_ticker_sector,
     prewarm_crypto_prices,
     prewarm_etf_holdings_batch,
@@ -135,117 +136,6 @@ class _HoldingLike(Protocol):
     currency: str
 
 
-def _resolve_cash_price_and_prev(
-    holding: _HoldingLike, fx: float, cash_currency_values: dict[str, float]
-) -> tuple[float | None, float | None, float, float, bool]:
-    """現金持倉：price=1, prev=same, has_prev_close=True。"""
-    market_value = holding.quantity * fx
-    cash_currency_values[holding.currency] = (
-        cash_currency_values.get(holding.currency, 0.0) + market_value
-    )
-    return 1.0, None, market_value, market_value, True
-
-
-def _resolve_crypto_price_and_prev(
-    holding: _HoldingLike, fx: float
-) -> tuple[float | None, float | None, float, float, bool]:
-    """加密貨幣持倉：從 CoinGecko 取得現價與 24h 漲跌推算前日收盤。"""
-    crypto_data = get_crypto_price(holding.coingecko_id, holding.ticker)
-    price = crypto_data.get("price_usd") if crypto_data else None
-    change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
-
-    previous_close: float | None = None
-    if (
-        price is not None
-        and isinstance(price, (int, float))
-        and change_24h_pct is not None
-        and isinstance(change_24h_pct, (int, float))
-        and (1 + change_24h_pct / 100) != 0
-    ):
-        previous_close = price / (1 + change_24h_pct / 100)
-
-    if price is not None and isinstance(price, (int, float)):
-        market_value = holding.quantity * price * fx
-    elif holding.cost_basis is not None:
-        market_value = holding.quantity * holding.cost_basis * fx
-    else:
-        market_value = 0.0
-
-    if previous_close is not None and isinstance(previous_close, (int, float)):
-        return (
-            price,
-            previous_close,
-            market_value,
-            holding.quantity * previous_close * fx,
-            True,
-        )
-    return price, previous_close, market_value, market_value, False
-
-
-def _resolve_mutual_fund_price_and_prev(
-    holding: _HoldingLike, fx: float, nav_cache: dict[str, dict]
-) -> tuple[float | None, float | None, float, float, bool]:
-    """投信基金持倉：從 NAV 快取取得當日與前日淨值。"""
-    nav_data = nav_cache.get(holding.ticker)
-    price = nav_data.get("nav") if nav_data else None
-    previous_close = nav_data.get("nav_previous") if nav_data else None
-
-    if price is not None and isinstance(price, (int, float)):
-        market_value = holding.quantity * price * fx
-    elif holding.cost_basis is not None:
-        market_value = holding.quantity * holding.cost_basis * fx
-    else:
-        market_value = 0.0
-
-    if previous_close is not None and isinstance(previous_close, (int, float)):
-        return (
-            price,
-            previous_close,
-            market_value,
-            holding.quantity * previous_close * fx,
-            True,
-        )
-    return price, previous_close, market_value, market_value, False
-
-
-def _resolve_skip_category_price_and_prev(
-    holding: _HoldingLike, fx: float
-) -> tuple[float | None, float | None, float, float, bool]:
-    """Skip-price 分類（Bond/ETF 等）：直接用成本基礎，前後市值相同。"""
-    market_value = (
-        holding.quantity * holding.cost_basis * fx
-        if holding.cost_basis is not None
-        else 0.0
-    )
-    return None, None, market_value, market_value, True
-
-
-def _resolve_equity_price_and_prev(
-    holding: _HoldingLike, fx: float
-) -> tuple[float | None, float | None, float, float, bool]:
-    """一般股票持倉：從技術訊號取得現價與前日收盤。"""
-    signals = get_technical_signals(holding.ticker)
-    price = signals.get("price") if signals else None
-    previous_close = signals.get("previous_close") if signals else None
-
-    if price is not None and isinstance(price, (int, float)):
-        market_value = holding.quantity * price * fx
-    elif holding.cost_basis is not None:
-        market_value = holding.quantity * holding.cost_basis * fx
-    else:
-        market_value = 0.0
-
-    if previous_close is not None and isinstance(previous_close, (int, float)):
-        return (
-            price,
-            previous_close,
-            market_value,
-            holding.quantity * previous_close * fx,
-            True,
-        )
-    return price, previous_close, market_value, market_value, False
-
-
 def _compute_holding_market_values(
     holdings: list,
     fx_rates: dict[str, float],
@@ -276,26 +166,29 @@ def _compute_holding_market_values(
         )
         fx = fx_rates.get(holding.currency, 1.0)
 
+        price, previous_close, has_prev_close = _resolve_holding_price_with_prev(
+            holding, _nav
+        )
         if holding.is_cash:
-            price, _, market_value, previous_market_value, has_prev_close = (
-                _resolve_cash_price_and_prev(holding, fx, cash_currency_values)
+            market_value = holding.quantity * fx
+            cash_currency_values[holding.currency] = (
+                cash_currency_values.get(holding.currency, 0.0) + market_value
             )
-        elif holding.category == StockCategory.CRYPTO:
-            price, _, market_value, previous_market_value, has_prev_close = (
-                _resolve_crypto_price_and_prev(holding, fx)
-            )
-        elif category == StockCategory.MUTUAL_FUND.value:
-            price, _, market_value, previous_market_value, has_prev_close = (
-                _resolve_mutual_fund_price_and_prev(holding, fx, _nav)
-            )
-        elif category in SKIP_PRICE_FETCH_CATEGORIES:
-            price, _, market_value, previous_market_value, has_prev_close = (
-                _resolve_skip_category_price_and_prev(holding, fx)
-            )
+            previous_market_value = market_value
+        elif price is not None:
+            market_value = holding.quantity * price * fx
+            if previous_close is not None:
+                previous_market_value = holding.quantity * previous_close * fx
+            else:
+                previous_market_value = market_value
         else:
-            price, _, market_value, previous_market_value, has_prev_close = (
-                _resolve_equity_price_and_prev(holding, fx)
+            # No live price (skip categories or unavailable) — fall back to cost_basis.
+            market_value = (
+                holding.quantity * holding.cost_basis * fx
+                if holding.cost_basis is not None
+                else 0.0
             )
+            previous_market_value = market_value
 
         currency_values[holding.currency] = (
             currency_values.get(holding.currency, 0.0) + market_value
@@ -913,171 +806,112 @@ def _compute_sector_exposure(
     ]
 
 
-def _do_calculate_rebalance(
+def _build_wrapper_location_result(
     session: Session,
-    display_currency: str,
-    lang: str,
-    _cache_key: tuple,
+    accounts: list,
+    ticker_agg: dict[str, dict],
+    account_ticker_agg: dict[tuple, dict],
+    total_value: float,
+    target_config: dict,
 ) -> dict:
-    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+    """Phase 8: Tax-aware asset location optimization.
 
-    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
-    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
-    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
-    (3) SQLite 無伺服器端連線逾時；
-    (4) 等待時間受限於主計算耗時（數秒）。
-    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    Returns a dict of wrapper-related keys to merge into the rebalance result.
+    Returns an empty dict when no tax-advantaged accounts are present.
     """
-
-    # 1-3.5) 讀取設定檔、持倉、匯率、並行預熱
-    target_config, holdings, fx_rates, account_name_by_id, accounts = (
-        _load_rebalance_inputs(session, display_currency, lang)
-    )
-
-    # 4) 使用共用邏輯計算各持倉市值
-    _nav_cache = _build_nav_cache(session, holdings)
-    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
-        _compute_holding_market_values(
-            holdings,
-            fx_rates,
-            account_name_by_id,
-            nav_cache=_nav_cache,
-        )
-    )
-
-    # 4.5) 取得每個分類的市值合計
-    category_values: dict[str, float] = {}
-    for aggregate in ticker_agg.values():
-        category = aggregate["category"]
-        category_values[category] = category_values.get(category, 0.0) + aggregate["mv"]
-
-    # 5) 委託 domain 純函式計算
-    result = _pure_rebalance(category_values, target_config)
-
-    # 5.5) 將 domain 回傳的結構化建議翻譯為用戶語言字串
-    result["advice"] = [
-        t(item["key"], lang=lang, **item["params"]) for item in result["advice"]
-    ]
-
-    # 6) 計算投資組合日漲跌
-    total_value = result["total_value"]
-    previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
-    total_value_change = round(total_value - previous_total_value, 2)
-    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
-
-    logger.debug(
-        "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
-        previous_total_value,
-        total_value,
-        total_value_change,
-        total_value_change_pct if total_value_change_pct is not None else 0.0,
-    )
-
-    # 加入結果
-    result["previous_total_value"] = round(previous_total_value, 2)
-    result["total_value_change"] = round(total_value_change, 2)
-    result["total_value_change_pct"] = total_value_change_pct
-
-    # 7) 建立個股明細（account+ticker，含佔比）
-    result["holdings_detail"] = _build_holdings_detail_list(
-        account_ticker_agg, total_value
-    )
-    result["display_currency"] = display_currency
-
-    # 8) Tax-aware asset location optimization (Phase 5)
     wrappers_present = {
         (account.tax_wrapper or "").strip().lower()
         for account in accounts
         if account.tax_wrapper
     }
-    has_wrappers = bool(wrappers_present)
-    if has_wrappers:
-        today = datetime.now(UTC).date()
-        nisa_quotas = get_all_wrapper_quotas(
-            session=session,
-            user_id=DEFAULT_USER_ID,
-            year=today.year,
-            as_of=today,
-        )
-        quota_map = _build_quota_status_map(nisa_quotas, wrappers_present, total_value)
+    if not wrappers_present:
+        return {}
 
-        category_targets = {
-            category: round((float(pct) / 100.0) * total_value, 2)
-            for category, pct in target_config.items()
-            if float(pct) > 0
-        }
-        all_categories = set(category_targets.keys())
-        eligibility_map, tsumitate_eligible_tickers = _compute_category_eligibility_map(
-            session=session,
-            ticker_agg=ticker_agg,
-            categories=all_categories,
-        )
+    today = datetime.now(UTC).date()
+    nisa_quotas = get_all_wrapper_quotas(
+        session=session,
+        user_id=DEFAULT_USER_ID,
+        year=today.year,
+        as_of=today,
+    )
+    quota_map = _build_quota_status_map(nisa_quotas, wrappers_present, total_value)
 
-        account_wrapper_by_id = {
-            account.id: (account.tax_wrapper or "tokutei").strip().lower()
-            for account in accounts
-            if account.id is not None
-        }
-        current_placements: dict[str, dict[str, float]] = {}
-        ticker_categories: dict[str, str] = {}
-        growth_holdings: list[dict[str, float | str]] = []
-        tokutei_holdings: list[dict[str, float | str]] = []
-        for agg in account_ticker_agg.values():
-            raw_account_id = agg.get("account_id")
-            ticker = str(agg.get("ticker", ""))
-            category = str(agg.get("category", ""))
-            mv = float(agg.get("mv", 0.0))
-            if not ticker or mv <= 0:
-                continue
-            account_id = raw_account_id if isinstance(raw_account_id, int) else None
-            wrapper = (
-                account_wrapper_by_id.get(account_id, "tokutei")
-                if account_id is not None
-                else "tokutei"
-            )
-            current_placements.setdefault(ticker, {})
-            current_placements[ticker][wrapper] = (
-                float(current_placements[ticker].get(wrapper, 0.0)) + mv
-            )
-            ticker_categories[ticker] = category
-            if wrapper == "nisa_growth":
-                growth_holdings.append({"ticker": ticker, "amount": mv})
-            elif wrapper == "tokutei":
-                tokutei_holdings.append({"ticker": ticker, "amount": mv})
+    category_targets = {
+        category: round((float(pct) / 100.0) * total_value, 2)
+        for category, pct in target_config.items()
+        if float(pct) > 0
+    }
+    eligibility_map, tsumitate_eligible_tickers = _compute_category_eligibility_map(
+        session=session,
+        ticker_agg=ticker_agg,
+        categories=set(category_targets.keys()),
+    )
 
-        location_plan = compute_optimal_location(
-            category_targets=category_targets,
-            quotas=quota_map,
-            eligibility=eligibility_map,
-            current_placements=current_placements,
-            ticker_categories=ticker_categories,
+    account_wrapper_by_id = {
+        account.id: (account.tax_wrapper or "tokutei").strip().lower()
+        for account in accounts
+        if account.id is not None
+    }
+    current_placements: dict[str, dict[str, float]] = {}
+    ticker_categories: dict[str, str] = {}
+    growth_holdings: list[dict[str, float | str]] = []
+    tokutei_holdings: list[dict[str, float | str]] = []
+    for agg in account_ticker_agg.values():
+        raw_account_id = agg.get("account_id")
+        ticker = str(agg.get("ticker", ""))
+        category = str(agg.get("category", ""))
+        mv = float(agg.get("mv", 0.0))
+        if not ticker or mv <= 0:
+            continue
+        account_id = raw_account_id if isinstance(raw_account_id, int) else None
+        wrapper = (
+            account_wrapper_by_id.get(account_id, "tokutei")
+            if account_id is not None
+            else "tokutei"
         )
+        current_placements.setdefault(ticker, {})
+        current_placements[ticker][wrapper] = (
+            float(current_placements[ticker].get(wrapper, 0.0)) + mv
+        )
+        ticker_categories[ticker] = category
+        if wrapper == "nisa_growth":
+            growth_holdings.append({"ticker": ticker, "amount": mv})
+        elif wrapper == "tokutei":
+            tokutei_holdings.append({"ticker": ticker, "amount": mv})
 
-        tsumitate_quota = quota_map.get(
-            "nisa_tsumitate",
-            QuotaStatus(
-                wrapper_annual_remaining=0.0,
-                combined_annual_remaining=0.0,
-                lifetime_remaining=0.0,
-                growth_sub_limit_remaining=None,
-            ),
-        )
-        location_plan.tsumitate_migration = suggest_tsumitate_migration(
-            growth_holdings=growth_holdings,
-            tokutei_holdings=tokutei_holdings,
-            tsumitate_eligible=tsumitate_eligible_tickers,
-            tsumitate_quota=tsumitate_quota,
-        )
+    location_plan = compute_optimal_location(
+        category_targets=category_targets,
+        quotas=quota_map,
+        eligibility=eligibility_map,
+        current_placements=current_placements,
+        ticker_categories=ticker_categories,
+    )
+    tsumitate_quota = quota_map.get(
+        "nisa_tsumitate",
+        QuotaStatus(
+            wrapper_annual_remaining=0.0,
+            combined_annual_remaining=0.0,
+            lifetime_remaining=0.0,
+            growth_sub_limit_remaining=None,
+        ),
+    )
+    location_plan.tsumitate_migration = suggest_tsumitate_migration(
+        growth_holdings=growth_holdings,
+        tokutei_holdings=tokutei_holdings,
+        tsumitate_eligible=tsumitate_eligible_tickers,
+        tsumitate_quota=tsumitate_quota,
+    )
 
-        result["wrapper_allocations"] = [
+    return {
+        "wrapper_allocations": [
             {
                 "wrapper": item.wrapper,
                 "categories": item.categories,
                 "total": item.total,
             }
             for item in location_plan.wrapper_allocations
-        ]
-        result["placement_suggestions"] = [
+        ],
+        "placement_suggestions": [
             {
                 "ticker": item.ticker,
                 "category": item.category,
@@ -1087,17 +921,17 @@ def _do_calculate_rebalance(
                 "reason": item.reason,
             }
             for item in location_plan.suggestions
-        ]
-        result["tax_savings_estimate"] = {
+        ],
+        "tax_savings_estimate": {
             "annual_nisa_benefit": location_plan.tax_savings_estimate.annual_nisa_benefit,
             "annual_detax_benefit": location_plan.tax_savings_estimate.annual_detax_benefit,
             "annual_ideco_deduction": location_plan.tax_savings_estimate.annual_ideco_deduction,
             "total_annual": location_plan.tax_savings_estimate.total_annual,
             "projected_10yr": location_plan.tax_savings_estimate.projected_10yr,
             "projected_20yr": location_plan.tax_savings_estimate.projected_20yr,
-        }
-        result["tax_efficiency_score"] = location_plan.tax_efficiency_score
-        result["tsumitate_migration"] = (
+        },
+        "tax_efficiency_score": location_plan.tax_efficiency_score,
+        "tsumitate_migration": (
             {
                 "monthly_amount": location_plan.tsumitate_migration.monthly_amount,
                 "source_wrapper": location_plan.tsumitate_migration.source_wrapper,
@@ -1106,10 +940,21 @@ def _do_calculate_rebalance(
             }
             if location_plan.tsumitate_migration
             else None
-        )
+        ),
+    }
 
-    # 9) X-Ray 穿透式持倉分析（解析 ETF 成分股，計算真實曝險）
-    # 從 DB 取得已知 ETF 集合；known_etf_tickers/stock_is_etf_map 可能在分析中自我修復更新。
+
+def _build_xray_and_health(
+    session: Session,
+    ticker_agg: dict[str, dict],
+    categories: dict,
+) -> tuple[dict, set[str]]:
+    """Phase 9: X-Ray ETF look-through analysis and portfolio health score.
+
+    Returns (result_fields, known_etf_tickers).
+    known_etf_tickers is passed downstream to the sector/geo allocation phases.
+    """
+    # 從 DB 取得已知 ETF 集合；stock_is_etf_map 可能在分析中自我修復更新。
     stock_rows = session.exec(select(Stock.ticker, Stock.is_etf)).all()
     stock_is_etf_map: dict[str, bool] = {
         ticker.upper(): bool(is_etf) for ticker, is_etf in stock_rows
@@ -1120,19 +965,33 @@ def _do_calculate_rebalance(
     xray_entries, xray_coverage_pct, xray_skipped_etfs = _compute_xray_analysis(
         ticker_agg, session, known_etf_tickers, stock_is_etf_map
     )
-    result["xray"] = xray_entries
-    result["xray_coverage_pct"] = xray_coverage_pct
-    result["xray_skipped_etfs"] = xray_skipped_etfs
-
     health_score, health_level = compute_portfolio_health_score(
-        result["categories"], xray_entries
+        categories, xray_entries
     )
-    result["health_score"] = health_score
-    result["health_level"] = health_level
     logger.info("投資組合健康分數：%d (%s)", health_score, health_level)
+    return (
+        {
+            "xray": xray_entries,
+            "xray_coverage_pct": xray_coverage_pct,
+            "xray_skipped_etfs": xray_skipped_etfs,
+            "health_score": health_score,
+            "health_level": health_level,
+        },
+        known_etf_tickers,
+    )
 
-    # 10) 行業板塊曝險（僅股票持倉，Bond/Cash 排除）
-    # 並行預熱 equity 持倉的 sector 快取，並收集 ETF 成分股供 Approach A 使用。
+
+def _build_spatial_allocation(
+    ticker_agg: dict[str, dict],
+    known_etf_tickers: set[str],
+    total_value: float,
+    categories: dict,
+) -> dict:
+    """Phases 10-12: Sector exposure, geographic allocation, asset class allocation.
+
+    Returns a dict of the three allocation keys to merge into the rebalance result.
+    """
+    # 10) 行業板塊曝險 — 並行預熱 equity ticker 的 sector 快取
     equity_tickers_for_sector = [
         ticker
         for ticker, agg in ticker_agg.items()
@@ -1154,10 +1013,6 @@ def _do_calculate_rebalance(
         logger.info("並行預熱 %d 個 ticker 的 sector 快取...", len(all_sector_tickers))
         prewarm_ticker_sector_batch(all_sector_tickers)
 
-    result["sector_exposure"] = _compute_sector_exposure(
-        ticker_agg, known_etf_tickers, etf_constituents_cache, total_value
-    )
-
     # 11) 地理區域配置（股票按 ticker 後綴，現金按幣別）
     holding_market_data: list[dict] = []
     for ticker, agg in ticker_agg.items():
@@ -1170,24 +1025,113 @@ def _do_calculate_rebalance(
                     "market_value": agg["mv"],
                 }
             )
-            continue
+        else:
+            holding_market_data.append({"ticker": ticker, "market_value": agg["mv"]})
 
-        holding_market_data.append({"ticker": ticker, "market_value": agg["mv"]})
-    result["geographic_allocation"] = compute_geographic_allocation(holding_market_data)
+    return {
+        "sector_exposure": _compute_sector_exposure(
+            ticker_agg, known_etf_tickers, etf_constituents_cache, total_value
+        ),
+        "geographic_allocation": compute_geographic_allocation(holding_market_data),
+        # 12) 資產類別配置（Folio 分類 → 標準資產類別）
+        "asset_class_allocation": compute_asset_class_allocation(
+            {cat: info.get("market_value", 0.0) for cat, info in categories.items()}
+        ),
+    }
 
-    # 12) 資產類別配置（Folio 分類 → 標準資產類別）
-    result["asset_class_allocation"] = compute_asset_class_allocation(
-        {
-            cat: info.get("market_value", 0.0)
-            for cat, info in result["categories"].items()
-        }
+
+def _do_calculate_rebalance(
+    session: Session,
+    display_currency: str,
+    lang: str,
+    _cache_key: tuple,
+) -> dict:
+    """再平衡計算的實際邏輯（由 calculate_rebalance 呼叫，已完成去重後執行）。
+
+    session 安全性：晉升的等待者仍使用呼叫端注入的 Session。此處安全因為：
+    (1) SQLAlchemy 不會回收已被 Session 持有的連線；
+    (2) 呼叫端（FastAPI Depends）的 with Session(engine) 區塊在請求結束前不會關閉；
+    (3) SQLite 無伺服器端連線逾時；
+    (4) 等待時間受限於主計算耗時（數秒）。
+    若未來遷移至 PostgreSQL 且啟用連線池 idle timeout，需改為此處開啟獨立 Session。
+    """
+    # 1-3.5) 讀取設定檔、持倉、匯率、並行預熱
+    target_config, holdings, fx_rates, account_name_by_id, accounts = (
+        _load_rebalance_inputs(session, display_currency, lang)
+    )
+
+    # 4) 計算各持倉市值（含前日市值，用於日漲跌）
+    _nav_cache = _build_nav_cache(session, holdings)
+    _currency_values, _cash_values, ticker_agg, account_ticker_agg = (
+        _compute_holding_market_values(
+            holdings,
+            fx_rates,
+            account_name_by_id,
+            nav_cache=_nav_cache,
+        )
+    )
+
+    # 4.5) 每個分類的市值合計 → 5) domain 純函式計算再平衡建議
+    category_values: dict[str, float] = {}
+    for aggregate in ticker_agg.values():
+        category_values[aggregate["category"]] = (
+            category_values.get(aggregate["category"], 0.0) + aggregate["mv"]
+        )
+    result = _pure_rebalance(category_values, target_config)
+    result["advice"] = [
+        t(item["key"], lang=lang, **item["params"]) for item in result["advice"]
+    ]
+
+    # 6) 投資組合日漲跌
+    total_value = result["total_value"]
+    previous_total_value = sum(agg["prev_mv"] for agg in ticker_agg.values())
+    total_value_change = round(total_value - previous_total_value, 2)
+    total_value_change_pct = compute_daily_change_pct(total_value, previous_total_value)
+    logger.debug(
+        "投資組合日漲跌：previous=%.2f, current=%.2f, change=%.2f (%.2f%%)",
+        previous_total_value,
+        total_value,
+        total_value_change,
+        total_value_change_pct if total_value_change_pct is not None else 0.0,
+    )
+    result["previous_total_value"] = round(previous_total_value, 2)
+    result["total_value_change"] = round(total_value_change, 2)
+    result["total_value_change_pct"] = total_value_change_pct
+
+    # 7) 個股明細
+    result["holdings_detail"] = _build_holdings_detail_list(
+        account_ticker_agg, total_value
+    )
+    result["display_currency"] = display_currency
+
+    # 8) Tax-aware asset location optimization
+    result.update(
+        _build_wrapper_location_result(
+            session,
+            accounts,
+            ticker_agg,
+            account_ticker_agg,
+            total_value,
+            target_config,
+        )
+    )
+
+    # 9) X-Ray ETF look-through + portfolio health score
+    xray_health, known_etf_tickers = _build_xray_and_health(
+        session, ticker_agg, result["categories"]
+    )
+    result.update(xray_health)
+
+    # 10-12) Sector exposure, geographic allocation, asset class allocation
+    result.update(
+        _build_spatial_allocation(
+            ticker_agg, known_etf_tickers, total_value, result["categories"]
+        )
     )
 
     result["calculated_at"] = datetime.now(UTC).isoformat()
-
     with _rebalance_cache_lock:
         _rebalance_cache.set(_cache_key, result)
-
     return result
 
 
