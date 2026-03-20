@@ -52,7 +52,7 @@ def _acct_to_dict(acct: Account) -> dict:
     }
 
 
-def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Account:
+def _get_account_or_raise(session: Session, account_id: int) -> Account:
     account = repo.find_account_by_id(session, account_id)
     if account is None:
         raise ApplicationError(
@@ -63,7 +63,7 @@ def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Accou
     return account
 
 
-def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
+def _normalize_tax_wrapper(value: str | None) -> str | None:
     """Normalize and validate tax wrapper values for internal callers."""
     if value is None:
         return None
@@ -107,7 +107,7 @@ def list_accounts(session: Session, include_inactive: bool = False) -> list[dict
 def create_account(session: Session, data: dict, lang: str) -> dict:
     """Create a new account. Returns the created account dict."""
     payload = dict(data)
-    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"), lang)
+    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"))
     account = Account(**payload)
     session.add(account)
     session.flush()
@@ -165,11 +165,11 @@ def ensure_default_account(session: Session) -> Account:
 
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:
     """Partially update an existing account. Only provided fields are overwritten."""
-    account = _get_account_or_raise(session, account_id, lang)
+    account = _get_account_or_raise(session, account_id)
     normalized_data = dict(data)
     if "tax_wrapper" in normalized_data:
         normalized_data["tax_wrapper"] = _normalize_tax_wrapper(
-            normalized_data.get("tax_wrapper"), lang
+            normalized_data.get("tax_wrapper")
         )
     explicit_market = "market" in normalized_data
     if explicit_market:
@@ -192,7 +192,7 @@ def update_account(session: Session, account_id: int, data: dict, lang: str) -> 
 
 def remove_account(session: Session, account_id: int, lang: str) -> None:
     """Cascade-clean account transactions/holdings, then soft-delete the account."""
-    account = _get_account_or_raise(session, account_id, lang)
+    account = _get_account_or_raise(session, account_id)
     cleanup_account_transactions(session, account_id, lang)
     repo.delete_holdings_by_account(session, account_id)
     repo.deactivate_account(session, account)
@@ -257,7 +257,7 @@ def get_account_cash_balances(
     session: Session, account_id: int, lang: str
 ) -> list[dict]:
     """Return account cash balances grouped by currency."""
-    _get_account_or_raise(session, account_id, lang)
+    _get_account_or_raise(session, account_id)
     holdings = repo.find_all_holdings(session)
 
     balances: dict[str, float] = {}

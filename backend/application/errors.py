@@ -19,6 +19,8 @@ class ApplicationError(Exception):
     error_code: str
     message_key: str
     status_hint: StatusHint | None = None
+    # Deprecated: prefer status_hint. status_code is a transport concept and
+    # breaks the application/transport boundary.
     status_code: int | None = None
     params: dict[str, object] = field(default_factory=dict)
 

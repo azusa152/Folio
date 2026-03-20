@@ -101,5 +101,5 @@ def update_preferences(session: Session, payload: dict) -> dict:
         raise ApplicationError(
             error_code=ERROR_PREFERENCES_UPDATE_FAILED,
             message_key=GENERIC_PREFERENCES_ERROR,
-            status_code=500,
+            status_hint="internal",
         ) from e

@@ -75,7 +75,7 @@ class TestUpdatePreferences:
             raise ApplicationError(
                 error_code="PREFERENCES_WRITE_FAILED",
                 message_key="common.generic_error",
-                status_code=500,
+                status_hint="internal",
             )
 
         monkeypatch.setattr(
