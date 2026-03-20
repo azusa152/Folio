@@ -6,7 +6,7 @@ Application — Pricing Service。
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from sqlmodel import Session
@@ -17,7 +17,21 @@ from infrastructure.market_data import get_crypto_price, get_technical_signals
 from infrastructure.repositories import get_latest_nav
 
 
-def build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
+class PricingHolding(Protocol):
+    """Structural interface required by the pricing service.
+
+    Any SQLModel or dataclass that exposes these three attributes satisfies
+    this Protocol without needing an explicit inheritance declaration.
+    """
+
+    category: StockCategory
+    is_cash: bool
+    ticker: str
+
+
+def build_nav_cache(
+    session: Session, holdings: list[PricingHolding]
+) -> dict[str, dict]:
     """Pre-fetch latest NAV for all Mutual_Fund holdings.
 
     Returns a mapping of ticker → {nav, nav_previous}.
@@ -41,7 +55,7 @@ def build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
 
 
 def resolve_holding_price(
-    holding: object,
+    holding: PricingHolding,
     nav_cache: dict[str, dict],
 ) -> float | None:
     """Resolve current market price for a holding based on its category.
@@ -54,7 +68,7 @@ def resolve_holding_price(
 
 
 def resolve_holding_price_with_prev(
-    holding: object,
+    holding: PricingHolding,
     nav_cache: dict[str, dict],
 ) -> tuple[float | None, float | None, bool]:
     """Resolve current and previous-close price for a holding.
@@ -65,18 +79,18 @@ def resolve_holding_price_with_prev(
     - has_prev_close:  True when a reliable prev baseline exists (including cost-basis cases)
     """
     cat = (
-        holding.category.value  # type: ignore[attr-defined]
-        if hasattr(holding.category, "value")  # type: ignore[attr-defined]
-        else str(holding.category)  # type: ignore[attr-defined]
+        holding.category.value
+        if hasattr(holding.category, "value")
+        else str(holding.category)
     )
 
-    if holding.is_cash:  # type: ignore[attr-defined]
+    if holding.is_cash:
         return 1.0, None, True
 
-    if holding.category == StockCategory.CRYPTO:  # type: ignore[attr-defined]
+    if holding.category == StockCategory.CRYPTO:
         crypto_data = get_crypto_price(
             getattr(holding, "coingecko_id", None),
-            holding.ticker,  # type: ignore[attr-defined]
+            holding.ticker,
         )
         price = crypto_data.get("price_usd") if crypto_data else None
         change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
@@ -93,7 +107,7 @@ def resolve_holding_price_with_prev(
         return price_f, previous_close, previous_close is not None
 
     if cat == StockCategory.MUTUAL_FUND.value:
-        nav_data = nav_cache.get(holding.ticker)  # type: ignore[attr-defined]
+        nav_data = nav_cache.get(holding.ticker)
         nav = nav_data.get("nav") if nav_data else None
         nav_prev = nav_data.get("nav_previous") if nav_data else None
         nav_f: float | None = float(nav) if isinstance(nav, (int, float)) else None
@@ -106,7 +120,7 @@ def resolve_holding_price_with_prev(
         # No live price; caller uses cost_basis for both current and previous MV.
         return None, None, True
 
-    signals = get_technical_signals(holding.ticker)  # type: ignore[attr-defined]
+    signals = get_technical_signals(holding.ticker)
     price_s = signals.get("price") if signals else None
     prev_s = signals.get("previous_close") if signals else None
     price_sf: float | None = (
