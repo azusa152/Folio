@@ -1,5 +1,9 @@
 # Folio Agent Guide
 
+> **Audience:** AI coding assistants and human contributors working on the codebase.
+> For the Folio webhook AI agent behavioral rules (action routing, auth, runtime
+> discovery), see [`docs/agents/AGENTS.md`](docs/agents/AGENTS.md).
+
 Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for watchlists, ledger-driven positions, FX monitoring, and guru 13F analysis.
 
 ## Run And Verify
