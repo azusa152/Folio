@@ -1265,31 +1265,219 @@ def acknowledge_xray_alert(
 # ===========================================================================
 
 
+def _resolve_home_currency(session: Session, home_currency: str | None) -> str:
+    """Return home_currency from arg, or load the active profile, defaulting to TWD."""
+    if home_currency:
+        return home_currency
+    profile = session.exec(
+        select(UserInvestmentProfile)
+        .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
+        .where(UserInvestmentProfile.is_active == True)  # noqa: E712
+    ).first()
+    return profile.home_currency if profile else "TWD"
+
+
+def _load_and_value_holdings_for_fx(
+    session: Session, home_currency: str
+) -> tuple[list, dict[str, float], dict[str, float], dict[str, float], float, float]:
+    """Load active holdings, fetch FX rates, warm caches, compute home-currency values.
+
+    Returns (holdings, fx_rates, currency_values, cash_currency_values,
+             total_value_home, total_cash_home).
+    Returns an empty holdings list if no holdings exist.
+    """
+    holdings = find_holdings_for_active_accounts(
+        session, include_unlinked=False, user_id=DEFAULT_USER_ID
+    )
+    if not holdings:
+        return holdings, {}, {}, {}, 0.0, 0.0
+
+    holding_currencies = list({h.currency for h in holdings})
+    fx_rates = get_exchange_rates(home_currency, holding_currencies)
+    logger.info(
+        "匯率曝險分析 → %s：%s",
+        home_currency,
+        {k: round(v, 4) for k, v in fx_rates.items()},
+    )
+
+    stock_tickers = list(
+        {
+            h.ticker
+            for h in holdings
+            if not h.is_cash
+            and h.category != StockCategory.CRYPTO
+            and h.category.value not in SKIP_PRICE_FETCH_CATEGORIES
+        }
+    )
+    crypto_ids = list(
+        {
+            h.coingecko_id
+            for h in holdings
+            if (
+                not h.is_cash
+                and h.category == StockCategory.CRYPTO
+                and getattr(h, "coingecko_id", None)
+            )
+        }
+    )
+    if stock_tickers:
+        prewarm_signals_batch(stock_tickers)
+    if crypto_ids:
+        prewarm_crypto_prices(crypto_ids)
+
+    nav_cache = _build_nav_cache(session, holdings)
+    currency_values, cash_currency_values, _ticker_agg, _account_ticker_agg = (
+        _compute_holding_market_values(holdings, fx_rates, nav_cache=nav_cache)
+    )
+    return (
+        holdings,
+        fx_rates,
+        currency_values,
+        cash_currency_values,
+        sum(currency_values.values()),
+        sum(cash_currency_values.values()),
+    )
+
+
+def _build_currency_breakdown(
+    currency_values: dict[str, float],
+    cash_currency_values: dict[str, float],
+    home_currency: str,
+    total_value_home: float,
+    total_cash_home: float,
+) -> tuple[list[dict], float, list[dict], float]:
+    """Compute per-currency percentage breakdowns for total and cash positions.
+
+    Returns (breakdown, non_home_pct, cash_breakdown, cash_non_home_pct).
+    """
+    breakdown = [
+        {
+            "currency": cur,
+            "value": round(val, 2),
+            "percentage": round((val / total_value_home) * 100, 2)
+            if total_value_home > 0
+            else 0.0,
+            "is_home": cur == home_currency,
+        }
+        for cur, val in sorted(
+            currency_values.items(), key=lambda x: x[1], reverse=True
+        )
+    ]
+    non_home_pct = round(sum(b["percentage"] for b in breakdown if not b["is_home"]), 2)
+
+    cash_breakdown = [
+        {
+            "currency": cur,
+            "value": round(val, 2),
+            "percentage": round((val / total_cash_home) * 100, 2)
+            if total_cash_home > 0
+            else 0.0,
+            "is_home": cur == home_currency,
+        }
+        for cur, val in sorted(
+            cash_currency_values.items(), key=lambda x: x[1], reverse=True
+        )
+    ]
+    cash_non_home_pct = round(
+        sum(b["percentage"] for b in cash_breakdown if not b["is_home"]), 2
+    )
+    return breakdown, non_home_pct, cash_breakdown, cash_non_home_pct
+
+
+def _analyze_fx_movements(
+    currency_values: dict[str, float],
+    cash_currency_values: dict[str, float],
+    home_currency: str,
+) -> tuple[list[dict], list[FXRateAlert], list[dict], str]:
+    """Detect recent FX movements, run multi-period alert analysis, determine risk level.
+
+    Returns (fx_movements, all_fx_alerts, fx_rate_alerts_serialized, risk_level).
+    """
+    non_home_currencies = [cur for cur in currency_values if cur != home_currency]
+    fx_movements: list[dict] = []
+    currency_histories: dict[str, list[dict]] = {}
+
+    for cur in non_home_currencies:
+        history = get_forex_history(cur, home_currency)
+        currency_histories[cur] = history
+        if len(history) >= 2:
+            first_close = history[0]["close"]
+            last_close = history[-1]["close"]
+            if first_close > 0:
+                change_pct = round(((last_close - first_close) / first_close) * 100, 2)
+                direction = (
+                    "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
+                )
+                currency_value_home = currency_values.get(cur, 0.0)
+                cash_value_home = cash_currency_values.get(cur, 0.0)
+                investment_value_home = max(currency_value_home - cash_value_home, 0.0)
+                fx_movements.append(
+                    {
+                        "pair": f"{cur}/{home_currency}",
+                        "current_rate": last_close,
+                        "change_pct": change_pct,
+                        "direction": direction,
+                        "impact_home_value": round(
+                            currency_value_home * (change_pct / 100.0), 2
+                        ),
+                        "impact_cash_home_value": round(
+                            cash_value_home * (change_pct / 100.0), 2
+                        ),
+                        "impact_investment_home_value": round(
+                            investment_value_home * (change_pct / 100.0), 2
+                        ),
+                    }
+                )
+
+    all_fx_alerts: list[FXRateAlert] = []
+    for cur in non_home_currencies:
+        short_hist = currency_histories.get(cur, [])
+        long_hist = get_forex_history_long(cur, home_currency)
+        current_rate = short_hist[-1]["close"] if short_hist else 0.0
+        all_fx_alerts.extend(
+            analyze_fx_rate_changes(
+                pair=f"{cur}/{home_currency}",
+                current_rate=current_rate,
+                short_history=short_hist,
+                long_history=long_hist,
+            )
+        )
+
+    risk_level = determine_fx_risk_level(all_fx_alerts)
+    fx_rate_alerts_serialized = [
+        {
+            "pair": a.pair,
+            "alert_type": a.alert_type.value,
+            "change_pct": a.change_pct,
+            "direction": a.direction,
+            "current_rate": a.current_rate,
+            "period_label": a.period_label,
+        }
+        for a in all_fx_alerts
+    ]
+    return fx_movements, all_fx_alerts, fx_rate_alerts_serialized, risk_level
+
+
 def calculate_currency_exposure(
     session: Session, home_currency: str | None = None
 ) -> dict:
-    """
-    計算匯率曝險分析：
-    1. 讀取使用者 Profile 的 home_currency（或使用參數覆寫）
-    2. 將所有持倉按幣別分組，計算以本幣計價的市值
-    3. 偵測近期匯率變動
-    4. 產出風險等級與建議
-    """
-    # 1) 決定本幣
-    if not home_currency:
-        profile = session.exec(
-            select(UserInvestmentProfile)
-            .where(UserInvestmentProfile.user_id == DEFAULT_USER_ID)
-            .where(UserInvestmentProfile.is_active == True)  # noqa: E712
-        ).first()
-        home_currency = profile.home_currency if profile else "TWD"
+    """計算匯率曝險分析 (orchestrator).
 
-    # 2) 取得持倉（僅啟用帳戶）
-    holdings = find_holdings_for_active_accounts(
-        session,
-        include_unlinked=False,
-        user_id=DEFAULT_USER_ID,
-    )
+    1. 決定本幣（profile 或預設 TWD）
+    2. 載入持倉並計算以本幣計價的市值
+    3. 建立幣別分佈與百分比
+    4. 偵測近期匯率變動並評估風險等級
+    5. 產出建議文字
+    """
+    home_currency = _resolve_home_currency(session, home_currency)
+    (
+        holdings,
+        _fx_rates,
+        currency_values,
+        cash_currency_values,
+        total_value_home,
+        total_cash_home,
+    ) = _load_and_value_holdings_for_fx(session, home_currency)
 
     if not holdings:
         return {
@@ -1311,161 +1499,18 @@ def calculate_currency_exposure(
             "calculated_at": datetime.now(UTC).isoformat(),
         }
 
-    # 3) 取得匯率（all currencies → home_currency）
-    holding_currencies = list({holding.currency for holding in holdings})
-    fx_rates = get_exchange_rates(home_currency, holding_currencies)
-    logger.info(
-        "匯率曝險分析 → %s：%s",
-        home_currency,
-        {k: round(v, 4) for k, v in fx_rates.items()},
-    )
-
-    # 3.5) 並行預熱所有非現金持倉的技術訊號（MF 走 NAV 日次同步，不經 yfinance）
-    stock_tickers = list(
-        {
-            holding.ticker
-            for holding in holdings
-            if not holding.is_cash
-            and holding.category != StockCategory.CRYPTO
-            and holding.category.value not in SKIP_PRICE_FETCH_CATEGORIES
-        }
-    )
-    crypto_ids = list(
-        {
-            holding.coingecko_id
-            for holding in holdings
-            if (
-                not holding.is_cash
-                and holding.category == StockCategory.CRYPTO
-                and getattr(holding, "coingecko_id", None)
-            )
-        }
-    )
-    if stock_tickers:
-        prewarm_signals_batch(stock_tickers)
-    if crypto_ids:
-        prewarm_crypto_prices(crypto_ids)
-
-    # 4) 使用共用邏輯計算市值（以本幣計價），同時追蹤現金部位
-    _nav_cache_ce = _build_nav_cache(session, holdings)
-    currency_values, cash_currency_values, _ticker_agg, _account_ticker_agg = (
-        _compute_holding_market_values(
-            holdings,
-            fx_rates,
-            nav_cache=_nav_cache_ce,
+    breakdown, non_home_pct, cash_breakdown, cash_non_home_pct = (
+        _build_currency_breakdown(
+            currency_values,
+            cash_currency_values,
+            home_currency,
+            total_value_home,
+            total_cash_home,
         )
     )
-
-    total_value_home = sum(currency_values.values())
-    total_cash_home = sum(cash_currency_values.values())
-
-    # 5) 建立幣別分佈（全資產）
-    breakdown = []
-    for cur, val in sorted(currency_values.items(), key=lambda x: x[1], reverse=True):
-        pct = round((val / total_value_home) * 100, 2) if total_value_home > 0 else 0.0
-        breakdown.append(
-            {
-                "currency": cur,
-                "value": round(val, 2),
-                "percentage": pct,
-                "is_home": cur == home_currency,
-            }
-        )
-
-    non_home_pct = round(
-        sum(b["percentage"] for b in breakdown if not b["is_home"]),
-        2,
+    fx_movements, all_fx_alerts, fx_rate_alerts_serialized, risk_level = (
+        _analyze_fx_movements(currency_values, cash_currency_values, home_currency)
     )
-
-    # 5b) 建立現金幣別分佈
-    cash_breakdown = []
-    for cur, val in sorted(
-        cash_currency_values.items(), key=lambda x: x[1], reverse=True
-    ):
-        pct = round((val / total_cash_home) * 100, 2) if total_cash_home > 0 else 0.0
-        cash_breakdown.append(
-            {
-                "currency": cur,
-                "value": round(val, 2),
-                "percentage": pct,
-                "is_home": cur == home_currency,
-            }
-        )
-
-    cash_non_home_pct = round(
-        sum(b["percentage"] for b in cash_breakdown if not b["is_home"]),
-        2,
-    )
-
-    # 6) 偵測近期匯率變動（非本幣 → 本幣）
-    fx_movements = []
-    non_home_currencies = [cur for cur in currency_values if cur != home_currency]
-    currency_histories: dict[str, list[dict]] = {}
-    for cur in non_home_currencies:
-        history = get_forex_history(cur, home_currency)
-        currency_histories[cur] = history
-        if len(history) >= 2:
-            first_close = history[0]["close"]
-            last_close = history[-1]["close"]
-            if first_close > 0:
-                change_pct = round(((last_close - first_close) / first_close) * 100, 2)
-                direction = (
-                    "up" if change_pct > 0 else ("down" if change_pct < 0 else "flat")
-                )
-                currency_value_home = currency_values.get(cur, 0.0)
-                cash_value_home = cash_currency_values.get(cur, 0.0)
-                investment_value_home = max(currency_value_home - cash_value_home, 0.0)
-                impact_home_value = round(currency_value_home * (change_pct / 100.0), 2)
-                impact_cash_home_value = round(
-                    cash_value_home * (change_pct / 100.0), 2
-                )
-                impact_investment_home_value = round(
-                    investment_value_home * (change_pct / 100.0),
-                    2,
-                )
-                fx_movements.append(
-                    {
-                        "pair": f"{cur}/{home_currency}",
-                        "current_rate": last_close,
-                        "change_pct": change_pct,
-                        "direction": direction,
-                        "impact_home_value": impact_home_value,
-                        "impact_cash_home_value": impact_cash_home_value,
-                        "impact_investment_home_value": impact_investment_home_value,
-                    }
-                )
-
-    # 6b) 三層匯率變動警報（單日 / 5日 / 3月）
-    all_fx_alerts: list[FXRateAlert] = []
-    for cur in non_home_currencies:
-        short_hist = currency_histories.get(cur, [])
-        long_hist = get_forex_history_long(cur, home_currency)
-        current_rate = short_hist[-1]["close"] if short_hist else 0.0
-        alerts_for_pair = analyze_fx_rate_changes(
-            pair=f"{cur}/{home_currency}",
-            current_rate=current_rate,
-            short_history=short_hist,
-            long_history=long_hist,
-        )
-        all_fx_alerts.extend(alerts_for_pair)
-
-    # 7) 風險等級（基於匯率變動警報嚴重程度）
-    risk_level = determine_fx_risk_level(all_fx_alerts)
-
-    # 8) 序列化警報
-    fx_rate_alerts_serialized = [
-        {
-            "pair": a.pair,
-            "alert_type": a.alert_type.value,
-            "change_pct": a.change_pct,
-            "direction": a.direction,
-            "current_rate": a.current_rate,
-            "period_label": a.period_label,
-        }
-        for a in all_fx_alerts
-    ]
-
-    # 9) 建議（包含現金部位資訊）
     lang = get_user_language(session)
     advice = _generate_fx_advice(
         FXAdviceContext(
@@ -1478,7 +1523,6 @@ def calculate_currency_exposure(
             lang=lang,
         )
     )
-
     return {
         "home_currency": home_currency,
         "total_value_home": round(total_value_home, 2),
@@ -1488,12 +1532,10 @@ def calculate_currency_exposure(
         "cash_non_home_pct": cash_non_home_pct,
         "total_cash_home": round(total_cash_home, 2),
         "net_cash_impact": round(
-            sum(m.get("impact_cash_home_value", 0.0) for m in fx_movements),
-            2,
+            sum(m.get("impact_cash_home_value", 0.0) for m in fx_movements), 2
         ),
         "net_investment_impact": round(
-            sum(m.get("impact_investment_home_value", 0.0) for m in fx_movements),
-            2,
+            sum(m.get("impact_investment_home_value", 0.0) for m in fx_movements), 2
         ),
         "fx_movement_period": FX_HISTORY_PERIOD,
         "fx_movements": fx_movements,
