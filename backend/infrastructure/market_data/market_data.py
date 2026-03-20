@@ -12,7 +12,7 @@ import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import yfinance as yf
 from cachetools import TTLCache
@@ -685,7 +685,7 @@ def _yf_ticker_obj(ticker: str):
     return yf.Ticker(ticker, session=_get_session())
 
 
-def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
+def _yf_dividend_data(ticker: str) -> tuple[dict, Any]:
     """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
     info 走 _yf_info（含短 TTL 快取）以共享給 fundamentals 路徑，降低重複呼叫。
     """
@@ -799,7 +799,7 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
                             val = row[col]
                             # 將 Timestamp / NaT 等轉為字串
                             if hasattr(val, "isoformat"):
-                                holder_entry[col] = val.isoformat()[:10]
+                                holder_entry[col] = val.isoformat()[:10]  # type: ignore[union-attr]
                             elif val is None or (
                                 hasattr(val, "item") and str(val) == "NaT"
                             ):
@@ -887,8 +887,8 @@ def batch_download_history(
         result: dict = {}
         for ticker in tickers:
             try:
-                df = data[ticker] if len(tickers) > 1 else data
-                df = df.dropna(how="all")
+                df = data[ticker] if len(tickers) > 1 else data  # type: ignore[index]
+                df = df.dropna(how="all")  # type: ignore[union-attr]
                 if not df.empty and len(df) >= MIN_HISTORY_DAYS_FOR_SIGNALS:
                     result[ticker] = df
                 else:
@@ -933,8 +933,8 @@ def batch_download_history_extended(
         result: dict[str, list[dict]] = {}
         for ticker in tickers:
             try:
-                df = data[ticker] if len(tickers) > 1 else data
-                df = df.dropna(how="all")
+                df = data[ticker] if len(tickers) > 1 else data  # type: ignore[index]
+                df = df.dropna(how="all")  # type: ignore[union-attr]
                 if df.empty:
                     continue
                 prices = _extract_price_history(df)
@@ -1540,7 +1540,7 @@ def _fetch_stock_splits_from_yf(cache_key: str) -> list[dict]:
 
         split_date: date | None = None
         if hasattr(raw_date, "date"):
-            split_date = raw_date.date()
+            split_date = raw_date.date()  # type: ignore[attr-defined]
         elif isinstance(raw_date, date):
             split_date = raw_date
         else:
@@ -1608,7 +1608,7 @@ def _fetch_dividend_events_from_yf(
 
         ex_date: date | None = None
         if hasattr(raw_date, "date"):
-            ex_date = raw_date.date()
+            ex_date = raw_date.date()  # type: ignore[attr-defined]
         elif isinstance(raw_date, date):
             ex_date = raw_date
         else:
@@ -1893,7 +1893,7 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
         if hist is not None and not hist.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),
+                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
                     "close": round(float(row["Close"]), 4),
                 }
                 for idx, row in hist.iterrows()
@@ -1907,7 +1907,7 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
         if hist_rev is not None and not hist_rev.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),
+                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
                     "close": round(1.0 / float(row["Close"]), 4),
                 }
                 for idx, row in hist_rev.iterrows()
@@ -1957,7 +1957,7 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
         if hist is not None and not hist.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),
+                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
                     "close": round(float(row["Close"]), 4),
                 }
                 for idx, row in hist.iterrows()
@@ -1971,7 +1971,7 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
         if hist_rev is not None and not hist_rev.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),
+                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
                     "close": round(1.0 / float(row["Close"]), 4),
                 }
                 for idx, row in hist_rev.iterrows()
@@ -2198,7 +2198,7 @@ def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
             merged: dict[str, float] = {}
             for item in weights:
                 if isinstance(item, dict):
-                    merged.update(item)
+                    merged.update(item)  # type: ignore[arg-type]
             weights = merged
         if not isinstance(weights, dict) or not weights:
             return None
@@ -3176,9 +3176,9 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 rp: float | None = None
                 try:
                     if len(uncached_tickers) == 1:
-                        rp = float(hist["Close"].iloc[0]) if not hist.empty else None
+                        rp = float(hist["Close"].iloc[0]) if not hist.empty else None  # type: ignore[index,union-attr]
                     else:
-                        col = hist["Close"].get(ticker)
+                        col = hist["Close"].get(ticker)  # type: ignore[index]
                         if col is not None:
                             dropped = col.dropna()
                             rp = float(dropped.iloc[0]) if not dropped.empty else None
@@ -3209,9 +3209,9 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
             cp: float | None = None
             try:
                 if len(tickers) == 1:
-                    cp = float(current["Close"].iloc[-1]) if not current.empty else None
+                    cp = float(current["Close"].iloc[-1]) if not current.empty else None  # type: ignore[index,union-attr]
                 else:
-                    col = current["Close"].get(ticker)
+                    col = current["Close"].get(ticker)  # type: ignore[index]
                     if col is not None:
                         dropped = col.dropna()
                         cp = float(dropped.iloc[-1]) if not dropped.empty else None

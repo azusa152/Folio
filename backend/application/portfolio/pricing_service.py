@@ -65,10 +65,10 @@ def resolve_holding_price_with_prev(
     - has_prev_close:  True when a reliable prev baseline exists (including cost-basis cases)
     """
     cat = (
-        holding.category.value
-        if hasattr(holding.category, "value")
-        else str(holding.category)
-    )  # type: ignore[attr-defined]
+        holding.category.value  # type: ignore[attr-defined]
+        if hasattr(holding.category, "value")  # type: ignore[attr-defined]
+        else str(holding.category)  # type: ignore[attr-defined]
+    )
 
     if holding.is_cash:  # type: ignore[attr-defined]
         return 1.0, None, True

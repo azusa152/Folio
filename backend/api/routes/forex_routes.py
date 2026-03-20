@@ -3,6 +3,8 @@ Forex Exchange Rate API Routes
 Exposes FX historical data for frontend chart visualization.
 """
 
+from typing import cast
+
 from fastapi import APIRouter
 
 from api.schemas.fx_watch import ForexHistoryPoint
@@ -27,4 +29,4 @@ def get_forex_history_endpoint(base: str, quote: str) -> list[ForexHistoryPoint]
         - L1 (in-memory): 2 hours
         - L2 (disk): 4 hours
     """
-    return get_forex_history(base, quote)
+    return cast("list[ForexHistoryPoint]", get_forex_history(base, quote))

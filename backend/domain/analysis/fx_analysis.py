@@ -6,6 +6,7 @@ Domain — 匯率變動分析純函式。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from domain.constants import (
     FX_DAILY_SPIKE_PCT,
@@ -122,7 +123,9 @@ def analyze_fx_rate_changes(
     return alerts
 
 
-def determine_fx_risk_level(all_alerts: list[FXRateAlert]) -> str:
+def determine_fx_risk_level(
+    all_alerts: list[FXRateAlert],
+) -> Literal["low", "medium", "high"]:
     """
     根據觸發的警報類型決定整體匯率風險等級。
 
