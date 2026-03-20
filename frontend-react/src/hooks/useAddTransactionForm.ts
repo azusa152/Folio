@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react"
-import { useTranslation } from "react-i18next"
 import { STOCK_CATEGORIES } from "@/lib/constants"
 import {
   useTransactionFormState,
@@ -75,8 +74,6 @@ export function useAddTransactionForm({
   onClose,
   onOpenBuyForAccount,
 }: UseAddTransactionFormProps) {
-  const { t: _t } = useTranslation()
-
   const formState = useTransactionFormState({
     open,
     defaultTicker,
