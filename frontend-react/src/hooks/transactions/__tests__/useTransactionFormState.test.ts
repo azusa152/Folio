@@ -2,8 +2,16 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useTransactionFormState } from "../useTransactionFormState"
 
+const { accountsState } = vi.hoisted(() => ({
+  accountsState: {
+    accounts: [{ id: 1, name: "Main", broker: "IB", currency: "USD", tax_wrapper: "tokutei" }] as Array<{
+      id: number; name: string; broker: string; currency: string; tax_wrapper: string
+    }>,
+  },
+}))
+
 vi.mock("@/api/hooks/useAccounts", () => ({
-  useAccounts: () => ({ data: [{ id: 1, name: "Main", broker: "IB", currency: "USD", tax_wrapper: "tokutei" }] }),
+  useAccounts: () => ({ data: accountsState.accounts }),
   useAccountCashBalances: () => ({ data: [{ currency: "USD", balance: 1000 }] }),
   useAccountSellablePositions: () => ({ data: [], isLoading: false, isError: false }),
 }))
@@ -46,6 +54,9 @@ const defaultProps = {
 describe("useTransactionFormState", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    accountsState.accounts = [
+      { id: 1, name: "Main", broker: "IB", currency: "USD", tax_wrapper: "tokutei" },
+    ]
   })
 
   describe("initial state", () => {
@@ -314,6 +325,80 @@ describe("useTransactionFormState", () => {
       expect(result.current.ticker).toBe("AAPL")
       expect(result.current.sellPickerOpen).toBe(false)
       expect(result.current.sellPickerSearch).toBe("")
+    })
+  })
+
+  describe("useEffect syncs", () => {
+    describe("nisaAssetTypeFilter reset when wrapper leaves nisa_growth", () => {
+      it("resets nisaAssetTypeFilter to 'all' when switching from nisa_growth to a non-NISA account", () => {
+        accountsState.accounts = [
+          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+          { id: 2, name: "Tokutei", broker: "Rakuten", currency: "JPY", tax_wrapper: "tokutei" },
+        ]
+        const { result } = renderHook(() =>
+          useTransactionFormState({ ...defaultProps, defaultAccountId: 1 }),
+        )
+
+        // Set a non-default filter while on nisa_growth account
+        act(() => {
+          result.current.setNisaAssetTypeFilter("etf")
+        })
+        expect(result.current.nisaAssetTypeFilter).toBe("etf")
+
+        // Switch to the tokutei account — wrapper changes from nisa_growth to tokutei
+        act(() => {
+          result.current.setAccountId("2")
+        })
+        expect(result.current.nisaAssetTypeFilter).toBe("all")
+      })
+
+      it("does not reset nisaAssetTypeFilter when staying on nisa_growth", () => {
+        accountsState.accounts = [
+          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+        ]
+        const { result } = renderHook(() =>
+          useTransactionFormState({ ...defaultProps, defaultAccountId: 1 }),
+        )
+
+        act(() => {
+          result.current.setNisaAssetTypeFilter("etf")
+        })
+        // No account change — filter should be preserved
+        expect(result.current.nisaAssetTypeFilter).toBe("etf")
+      })
+    })
+
+    describe("nisaFreeTickerInput toggle clears ticker and pickers", () => {
+      it("clears ticker when nisaFreeTickerInput transitions from true to false", () => {
+        // nisa_growth + transactionType=BUY + nisaAssetTypeFilter=stock → nisaStockFreeInput=true → nisaFreeTickerInput=true
+        accountsState.accounts = [
+          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+          { id: 2, name: "Tokutei", broker: "Rakuten", currency: "JPY", tax_wrapper: "tokutei" },
+        ]
+        const { result } = renderHook(() =>
+          useTransactionFormState({ ...defaultProps, defaultAccountId: 1 }),
+        )
+
+        // Enter free-ticker mode: nisa_growth + filter=stock
+        act(() => {
+          result.current.setNisaAssetTypeFilter("stock")
+        })
+        // Manually set a ticker value to verify it gets cleared
+        act(() => {
+          result.current.setTicker("7203.T")
+        })
+        expect(result.current.ticker).toBe("7203.T")
+
+        // Leave free-ticker mode by switching to non-NISA account
+        // (this changes selectedWrapper away from nisa_growth, so nisaStockFreeInput becomes false)
+        act(() => {
+          result.current.setAccountId("2")
+        })
+        // ticker should be cleared and pickers should close
+        expect(result.current.ticker).toBe("")
+        expect(result.current.nisaPickerOpen).toBe(false)
+        expect(result.current.nisaPickerSearch).toBe("")
+      })
     })
   })
 })
