@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useAccountCashBalances, useAccountSellablePositions } from "@/api/hooks/useAccounts"
 import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
 import type { AccountResponse } from "@/api/types/account"
-import type { NisaAssetTypeFilter, StockCategory } from "@/hooks/useAddTransactionForm"
+import type { NisaAssetTypeFilter, StockCategory } from "./types"
 
 interface Props {
   open: boolean

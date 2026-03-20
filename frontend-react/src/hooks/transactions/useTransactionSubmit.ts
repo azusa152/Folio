@@ -6,7 +6,7 @@ import client from "@/api/client"
 import { useAddTransaction } from "@/api/hooks/useTransactions"
 import { getErrorMessage } from "@/lib/utils"
 import { parseEligibilityError, parseInsufficientBalance } from "@/lib/transactionErrors"
-import type { TransactionType, StockCategory } from "@/hooks/useAddTransactionForm"
+import type { TransactionType, StockCategory } from "./types"
 
 interface SplitRoutingItem {
   wrapper: string

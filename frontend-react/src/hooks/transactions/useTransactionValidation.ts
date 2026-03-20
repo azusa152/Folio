@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import type { FieldErrors, SellablePositionItem } from "@/hooks/useAddTransactionForm"
+import type { FieldErrors, SellablePositionItem } from "./types"
 
 export interface TransactionValidationInput {
   accountId: string

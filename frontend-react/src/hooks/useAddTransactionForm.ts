@@ -1,49 +1,25 @@
 import { useEffect, useRef } from "react"
-import { STOCK_CATEGORIES } from "@/lib/constants"
 import {
   useTransactionFormState,
   type UseTransactionFormStateProps,
 } from "@/hooks/transactions/useTransactionFormState"
 import { useTransactionValidation } from "@/hooks/transactions/useTransactionValidation"
 import { useTransactionSubmit } from "@/hooks/transactions/useTransactionSubmit"
+import type { NisaEligibleAssetItem, SellablePositionItem } from "@/hooks/transactions/types"
 
 // ---------------------------------------------------------------------------
-// Public types (imported by components and sub-hooks)
+// Public types — defined in transactions/types.ts; re-exported here so all
+// existing consumers (components, pages) can continue importing from this path.
 // ---------------------------------------------------------------------------
 
-export type TransactionType = "BUY" | "SELL" | "DIVIDEND" | "DEPOSIT" | "WITHDRAWAL"
-export type StockCategory = (typeof STOCK_CATEGORIES)[number]
-
-export interface FieldErrors {
-  account?: string
-  ticker?: string
-  quantity?: string
-  price?: string
-  totalAmount?: string
-  transactionDate?: string
-  fxRate?: string
-  fee?: string
-}
-
-export type NisaEligibleAssetItem = {
-  ticker: string
-  fund_name?: string | null
-  asset_type?: string | null
-  trust_fee_pct?: number | null
-}
-
-export type SellablePositionItem = {
-  ticker: string
-  fund_name: string
-  quantity: number
-  cost_basis?: number | null
-  current_price?: number | null
-  market_value?: number | null
-  currency: string
-  value_source?: "live_price" | "cost_basis" | "unavailable"
-}
-
-export type NisaAssetTypeFilter = "all" | "mutual_fund" | "etf" | "stock" | "reit"
+export type {
+  TransactionType,
+  StockCategory,
+  FieldErrors,
+  NisaEligibleAssetItem,
+  SellablePositionItem,
+  NisaAssetTypeFilter,
+} from "@/hooks/transactions/types"
 
 // ---------------------------------------------------------------------------
 // Props

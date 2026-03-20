@@ -15,7 +15,7 @@ import type {
   NisaEligibleAssetItem,
   SellablePositionItem,
   NisaAssetTypeFilter,
-} from "@/hooks/useAddTransactionForm"
+} from "./types"
 
 export interface UseTransactionFormStateProps {
   open: boolean
