@@ -1,5 +1,7 @@
 """Tests for user preferences routes (GET/PUT /settings/preferences)."""
 
+from application.errors import ApplicationError
+
 
 class TestGetPreferences:
     """Tests for GET /settings/preferences."""
@@ -65,6 +67,27 @@ class TestUpdatePreferences:
 
         # Assert
         assert resp.status_code == 422
+
+    def test_update_preferences_should_map_application_error(self, client, monkeypatch):
+        from api.routes import preferences_routes
+
+        def _raise_app_error(_session, _payload):
+            raise ApplicationError(
+                error_code="PREFERENCES_WRITE_FAILED",
+                message_key="common.generic_error",
+                status_code=500,
+            )
+
+        monkeypatch.setattr(
+            preferences_routes.preferences_service,
+            "update_preferences",
+            _raise_app_error,
+        )
+        resp = client.put("/settings/preferences", json={"privacy_mode": True})
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "PREFERENCES_WRITE_FAILED"
 
 
 class TestNotificationPreferences:

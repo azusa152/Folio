@@ -5,6 +5,7 @@ API — 投資人格 (Persona) 與投資組合配置 (Profile) 路由。
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from api.error_mapping import to_http_exception
 from api.schemas import (
     MessageResponse,
     PersonaTemplateResponse,
@@ -12,9 +13,10 @@ from api.schemas import (
     ProfileResponse,
     ProfileUpdateRequest,
 )
+from application.errors import ApplicationError
 from application.services import invalidate_insight_cache, invalidate_rebalance_cache
 from application.settings import persona_service
-from i18n import get_user_language
+from i18n import get_user_language, t
 from infrastructure.database import get_session
 from logging_config import get_logger
 
@@ -88,11 +90,12 @@ def update_profile(
 ) -> ProfileResponse:
     """更新投資組合配置。"""
     lang = get_user_language(session)
-    result = ProfileResponse(
-        **persona_service.update_profile(
-            session, profile_id, payload.model_dump(), lang
+    try:
+        result = ProfileResponse(
+            **persona_service.update_profile(session, profile_id, payload.model_dump())
         )
-    )
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
     invalidate_rebalance_cache()
     invalidate_insight_cache()
     return result
@@ -109,7 +112,10 @@ def delete_profile(
 ) -> dict:
     """停用投資組合配置（軟刪除）。"""
     lang = get_user_language(session)
-    result = persona_service.deactivate_profile(session, profile_id, lang)
+    try:
+        result = persona_service.deactivate_profile(session, profile_id)
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
     invalidate_rebalance_cache()
     invalidate_insight_cache()
-    return result
+    return {"message": t("api.profile_deactivated", lang=lang, name=result["name"])}

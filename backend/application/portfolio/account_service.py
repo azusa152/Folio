@@ -5,11 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.errors import ApplicationError
 from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
 from application.portfolio.transaction_service import cleanup_account_transactions
@@ -24,7 +23,6 @@ from domain.constants import (
 )
 from domain.entities import Account, Holding
 from domain.enums import StockCategory
-from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
 
@@ -57,12 +55,10 @@ def _acct_to_dict(acct: Account) -> dict:
 def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Account:
     account = repo.find_account_by_id(session, account_id)
     if account is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_ACCOUNT_NOT_FOUND,
-                "detail": t("account.not_found", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_ACCOUNT_NOT_FOUND,
+            message_key="account.not_found",
+            status_hint="not_found",
         )
     return account
 
@@ -75,12 +71,10 @@ def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
     if not normalized:
         return None
     if normalized not in TAX_WRAPPER_OPTIONS:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error_code": ERROR_INVALID_INPUT,
-                "detail": t("common.validation_error", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_INVALID_INPUT,
+            message_key="common.validation_error",
+            status_hint="validation",
         )
     return normalized
 

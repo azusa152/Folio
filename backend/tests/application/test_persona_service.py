@@ -6,9 +6,9 @@ Uses db_session fixture (in-memory SQLite) — no mocks required for pure CRUD.
 import json
 
 import pytest
-from fastapi import HTTPException
 from sqlmodel import Session
 
+from application.errors import ApplicationError
 from application.settings.persona_service import (
     create_profile,
     deactivate_profile,
@@ -197,30 +197,30 @@ class TestCreateProfile:
 class TestUpdateProfile:
     def test_updates_name(self, db_session: Session) -> None:
         profile = _seed_profile(db_session, name="Original")
-        result = update_profile(db_session, profile.id, {"name": "Updated"}, _LANG)
+        result = update_profile(db_session, profile.id, {"name": "Updated"})
         assert result["name"] == "Updated"
 
     def test_updates_config(self, db_session: Session) -> None:
         profile = _seed_profile(db_session)
         new_cfg = {"Bond": 100}
-        result = update_profile(db_session, profile.id, {"config": new_cfg}, _LANG)
+        result = update_profile(db_session, profile.id, {"config": new_cfg})
         assert result["config"] == new_cfg
 
     def test_updates_home_currency(self, db_session: Session) -> None:
         profile = _seed_profile(db_session)
-        result = update_profile(db_session, profile.id, {"home_currency": "USD"}, _LANG)
+        result = update_profile(db_session, profile.id, {"home_currency": "USD"})
         assert result["home_currency"] == "USD"
 
     def test_partial_update_preserves_other_fields(self, db_session: Session) -> None:
         profile = _seed_profile(db_session, name="Keep Me")
-        result = update_profile(db_session, profile.id, {"home_currency": "JPY"}, _LANG)
+        result = update_profile(db_session, profile.id, {"home_currency": "JPY"})
         assert result["name"] == "Keep Me"
 
     def test_raises_404_for_nonexistent_id(self, db_session: Session) -> None:
-        with pytest.raises(HTTPException) as exc_info:
-            update_profile(db_session, 99999, {"name": "X"}, _LANG)
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.detail["error_code"] == "PROFILE_NOT_FOUND"
+        with pytest.raises(ApplicationError) as exc_info:
+            update_profile(db_session, 99999, {"name": "X"})
+        assert exc_info.value.status_hint == "not_found"
+        assert exc_info.value.error_code == "PROFILE_NOT_FOUND"
 
 
 # ---------------------------------------------------------------------------
@@ -231,23 +231,23 @@ class TestUpdateProfile:
 class TestDeactivateProfile:
     def test_deactivates_active_profile(self, db_session: Session) -> None:
         profile = _seed_profile(db_session, is_active=True)
-        deactivate_profile(db_session, profile.id, _LANG)
+        deactivate_profile(db_session, profile.id)
         db_session.refresh(profile)
         assert profile.is_active is False
 
     def test_returns_message(self, db_session: Session) -> None:
         profile = _seed_profile(db_session)
-        result = deactivate_profile(db_session, profile.id, _LANG)
-        assert "message" in result
+        result = deactivate_profile(db_session, profile.id)
+        assert result["name"] == profile.name
 
     def test_raises_404_for_nonexistent_id(self, db_session: Session) -> None:
-        with pytest.raises(HTTPException) as exc_info:
-            deactivate_profile(db_session, 99999, _LANG)
-        assert exc_info.value.status_code == 404
-        assert exc_info.value.detail["error_code"] == "PROFILE_NOT_FOUND"
+        with pytest.raises(ApplicationError) as exc_info:
+            deactivate_profile(db_session, 99999)
+        assert exc_info.value.status_hint == "not_found"
+        assert exc_info.value.error_code == "PROFILE_NOT_FOUND"
 
     def test_profile_no_longer_returned_as_active(self, db_session: Session) -> None:
         profile = _seed_profile(db_session)
-        deactivate_profile(db_session, profile.id, _LANG)
+        deactivate_profile(db_session, profile.id)
         result = get_active_profile(db_session)
         assert result is None

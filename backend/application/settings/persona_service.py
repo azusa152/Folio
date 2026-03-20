@@ -9,14 +9,12 @@ import json
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.errors import ApplicationError
 from domain.constants import DEFAULT_USER_ID, ERROR_PROFILE_NOT_FOUND
 from domain.entities import UserInvestmentProfile
-from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
 
@@ -103,16 +101,14 @@ def create_profile(session: Session, payload: dict, lang: str) -> dict:
     return _profile_to_dict(profile)
 
 
-def update_profile(session: Session, profile_id: int, payload: dict, lang: str) -> dict:
-    """Update an existing profile. Raises HTTPException 404 if not found."""
+def update_profile(session: Session, profile_id: int, payload: dict) -> dict:
+    """Update an existing profile. Raises ApplicationError if not found."""
     profile = repo.find_profile_by_id(session, profile_id)
     if not profile:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_PROFILE_NOT_FOUND,
-                "detail": t("api.profile_not_found", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_PROFILE_NOT_FOUND,
+            message_key="api.profile_not_found",
+            status_hint="not_found",
         )
     if payload.get("name") is not None:
         profile.name = payload["name"]
@@ -126,17 +122,15 @@ def update_profile(session: Session, profile_id: int, payload: dict, lang: str) 
     return _profile_to_dict(profile)
 
 
-def deactivate_profile(session: Session, profile_id: int, lang: str) -> dict:
-    """Soft-delete (deactivate) a profile. Raises HTTPException 404 if not found."""
+def deactivate_profile(session: Session, profile_id: int) -> dict:
+    """Soft-delete (deactivate) a profile. Raises ApplicationError if not found."""
     profile = repo.find_profile_by_id(session, profile_id)
     if not profile:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_PROFILE_NOT_FOUND,
-                "detail": t("api.profile_not_found", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_PROFILE_NOT_FOUND,
+            message_key="api.profile_not_found",
+            status_hint="not_found",
         )
     profile.is_active = False
     session.commit()
-    return {"message": t("api.profile_deactivated", lang=lang, name=profile.name)}
+    return {"name": profile.name}

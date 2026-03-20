@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.errors import ApplicationError
 from domain.constants import (
     DEFAULT_DISPLAY_CURRENCY,
     DEFAULT_LANGUAGE,
@@ -22,7 +21,6 @@ from domain.constants import (
     GENERIC_PREFERENCES_ERROR,
 )
 from domain.entities import UserPreferences
-from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
 
@@ -51,8 +49,8 @@ def get_preferences(session: Session) -> dict:
     }
 
 
-def update_preferences(session: Session, payload: dict, lang: str) -> dict:
-    """Update user preferences (upsert). Raises HTTPException on failure."""
+def update_preferences(session: Session, payload: dict) -> dict:
+    """Update user preferences (upsert). Raises ApplicationError on failure."""
     try:
         prefs = repo.find_user_preferences(session)
         if prefs:
@@ -98,14 +96,10 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             "notification_preferences": prefs.get_notification_prefs(),
             "notification_rate_limits": prefs.get_notification_rate_limits(),
         }
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error("使用者偏好更新失敗：%s", e, exc_info=True)
-        raise HTTPException(
+        raise ApplicationError(
+            error_code=ERROR_PREFERENCES_UPDATE_FAILED,
+            message_key=GENERIC_PREFERENCES_ERROR,
             status_code=500,
-            detail={
-                "error_code": ERROR_PREFERENCES_UPDATE_FAILED,
-                "detail": t(GENERIC_PREFERENCES_ERROR, lang=lang),
-            },
         ) from e
