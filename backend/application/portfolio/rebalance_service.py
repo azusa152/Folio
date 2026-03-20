@@ -7,7 +7,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 from sqlmodel import Session, select
 
@@ -41,7 +41,7 @@ from domain.constants import (
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Stock, UserInvestmentProfile
+from domain.entities import Holding, Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL, StockCategory
 from domain.fx_analysis import (
     FXRateAlert,
@@ -1279,7 +1279,9 @@ def _resolve_home_currency(session: Session, home_currency: str | None) -> str:
 
 def _load_and_value_holdings_for_fx(
     session: Session, home_currency: str
-) -> tuple[list, dict[str, float], dict[str, float], dict[str, float], float, float]:
+) -> tuple[
+    list[Holding], dict[str, float], dict[str, float], dict[str, float], float, float
+]:
     """Load active holdings, fetch FX rates, warm caches, compute home-currency values.
 
     Returns (holdings, fx_rates, currency_values, cash_currency_values,
@@ -1388,7 +1390,7 @@ def _analyze_fx_movements(
     currency_values: dict[str, float],
     cash_currency_values: dict[str, float],
     home_currency: str,
-) -> tuple[list[dict], list[FXRateAlert], list[dict], str]:
+) -> tuple[list[dict], list[FXRateAlert], list[dict], Literal["low", "medium", "high"]]:
     """Detect recent FX movements, run multi-period alert analysis, determine risk level.
 
     Returns (fx_movements, all_fx_alerts, fx_rate_alerts_serialized, risk_level).

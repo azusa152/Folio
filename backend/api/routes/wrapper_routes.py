@@ -266,6 +266,10 @@ def refresh_eligible_assets_endpoint(
                 ERROR_INVALID_INPUT, "eligibility.refresh_unsupported_wrapper"
             ),
         )
+    # TODO(tech-debt): migrate to ApplicationError flow once
+    # sync_wrapper_from_official_source raises ApplicationError instead of bare
+    # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
+    #     raise to_http_exception(exc, lang=lang) from exc
     try:
         stats = sync_wrapper_from_official_source(session, normalized_wrapper)
     except httpx.HTTPError as exc:
@@ -345,6 +349,10 @@ async def upload_eligible_assets(
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
+    # TODO(tech-debt): migrate to ApplicationError flow once
+    # refresh_eligible_assets raises ApplicationError instead of bare
+    # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
+    #     raise to_http_exception(exc, lang=lang) from exc
     try:
         try:
             stats = refresh_eligible_assets(

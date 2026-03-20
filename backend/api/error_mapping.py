@@ -22,6 +22,8 @@ _HINT_TO_STATUS: dict[str | None, int] = {
 
 def to_http_exception(error: ApplicationError, *, lang: str) -> HTTPException:
     """Convert an application error into a transport-safe HTTPException."""
+    # status_code fallback bridges callers still using the deprecated field
+    # during the migration to status_hint. Remove once all callers are updated.
     status_code = error.status_code or _HINT_TO_STATUS.get(error.status_hint, 500)
     return HTTPException(
         status_code=status_code,

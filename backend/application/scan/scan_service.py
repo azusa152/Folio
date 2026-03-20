@@ -7,6 +7,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlmodel import Session, select
 
@@ -114,12 +115,12 @@ class _ScanContext:
     lang: str
     all_stocks: list[Stock]
     stock_map: dict[str, Stock]
-    market_sentiment: dict
+    market_sentiment: dict[str, Any]
     market_status_value: str
     market_status_details_value: str
-    fear_greed: dict
+    fear_greed: dict[str, Any]
     fg_label: str
-    nav_cache: dict[str, dict] = field(default_factory=dict)
+    nav_cache: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _prepare_scan_context(session: Session) -> _ScanContext:

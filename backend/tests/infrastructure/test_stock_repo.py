@@ -15,6 +15,7 @@ from domain.enums import StockCategory
 from infrastructure.repositories import (
     bulk_update_scan_signals,
     create_scan_log,
+    find_previous_distinct_signal,
     find_stock_by_ticker,
     save_stock,
 )
@@ -110,11 +111,7 @@ class TestBulkUpdateScanSignals:
 
 
 class TestFindPreviousDistinctSignal:
-    from infrastructure.repositories import find_previous_distinct_signal
-
     def test_returns_none_none_when_no_history(self, test_session: Session):
-        from infrastructure.repositories import find_previous_distinct_signal
-
         prev, changed_at = find_previous_distinct_signal(
             test_session, "STOCKREPO_A", "NORMAL"
         )
@@ -122,8 +119,6 @@ class TestFindPreviousDistinctSignal:
         assert changed_at is None
 
     def test_finds_previous_distinct_signal(self, test_session: Session):
-        from infrastructure.repositories import find_previous_distinct_signal
-
         now = datetime.now(UTC)
         # Older: OVERSOLD → newer: NORMAL
         for i, sig in enumerate(["OVERSOLD", "NORMAL", "NORMAL"]):
@@ -145,8 +140,6 @@ class TestFindPreviousDistinctSignal:
         assert changed_at is not None
 
     def test_returns_none_when_all_logs_have_same_signal(self, test_session: Session):
-        from infrastructure.repositories import find_previous_distinct_signal
-
         now = datetime.now(UTC)
         for i in range(3):
             create_scan_log(
