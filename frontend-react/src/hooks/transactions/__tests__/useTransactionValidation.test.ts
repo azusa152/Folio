@@ -153,12 +153,11 @@ describe("useTransactionValidation", () => {
           quantity: "20",
           shouldShowSellPicker: true,
           selectedSellablePosition: {
-            holdingId: 1,
             ticker: "AAPL",
+            fund_name: "Apple Inc.",
             quantity: 10,
             currency: "USD",
-            accountId: 1,
-            accountName: "Main",
+            value_source: "live_price",
           },
         })),
       )
@@ -172,12 +171,11 @@ describe("useTransactionValidation", () => {
           quantity: "10",
           shouldShowSellPicker: true,
           selectedSellablePosition: {
-            holdingId: 1,
             ticker: "AAPL",
+            fund_name: "Apple Inc.",
             quantity: 10,
             currency: "USD",
-            accountId: 1,
-            accountName: "Main",
+            value_source: "live_price",
           },
         })),
       )

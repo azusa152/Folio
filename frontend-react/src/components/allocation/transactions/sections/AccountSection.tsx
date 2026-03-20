@@ -12,7 +12,7 @@ interface AccountItem {
   name?: string
   broker?: string
   currency?: string
-  tax_wrapper?: string
+  tax_wrapper?: string | null
 }
 
 interface AccountSectionProps {

@@ -18,10 +18,12 @@ import type {
 import type { UseQueryResult } from "@tanstack/react-query"
 
 interface EligibilityResult {
+  ticker: string
+  wrapper: string
   eligible: boolean
-  asset_type?: string
-  suggested_wrapper?: string
-  reasons?: string[]
+  asset_type?: string | null
+  suggested_wrapper?: string | null
+  reasons: string[]
 }
 
 interface AccountItem {
@@ -64,7 +66,7 @@ interface AssetSectionProps {
   nisaEligibleAssetsQuery: UseQueryResult<NisaEligibleAssetsData>
   selectedNisaAssetForDisplay: NisaEligibleAssetItem | null
   isMobile: boolean
-  commandListScrollFix: { onMouseDown: (e: React.MouseEvent) => void }
+  commandListScrollFix: Record<string, unknown>
   sellPickerOpen: boolean
   sellPickerSearch: string
   filteredSellablePositions: SellablePositionItem[]
@@ -278,7 +280,7 @@ export function AssetSection({
 
           {transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) ? (
             <div className="pt-1 space-y-1">
-              <EligibilityBadge result={eligibility} loading={eligibilityQueryIsLoading} />
+              <EligibilityBadge result={eligibility ?? undefined} loading={eligibilityQueryIsLoading} />
               {eligibility && !eligibility.eligible ? (
                 <div className="space-y-1">
                   <p className="text-[11px] text-destructive">{t("eligibility.not_eligible")}</p>

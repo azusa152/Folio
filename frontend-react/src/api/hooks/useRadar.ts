@@ -88,7 +88,7 @@ export function useResonance() {
       const acc: ResonanceMap = {}
       for (const entry of response.results) {
         for (const rawH of entry.holdings) {
-          const h = rawH as ResonanceHolding
+          const h = rawH as unknown as ResonanceHolding
           const item: ResonanceHolding & { guru_display_name: string } = {
             ticker: h.ticker,
             action: h.action,
