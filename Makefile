@@ -52,6 +52,7 @@
 #    make restart-all      Restart all services (down + up, no rebuild)
 #    make rebuild          Rebuild images and restart all services
 #    make logs             Tail backend logs
+#    make pin-images       Print current SHA256 digests for pinned base images (rotate monthly)
 #
 #  Database:
 #    make migrate-ledger   Run ledger migration (backfill opening balances)
@@ -148,7 +149,7 @@ backend-dev: .venv-check ## Start backend with hot-reload (local development)
 	cd $(BACKEND_DIR) && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 backend-lint: .venv-check ## Ruff check + format --check (backend only)
-	$(RUFF) check --fix $(BACKEND_DIR)/
+	$(RUFF) check $(BACKEND_DIR)/
 	$(RUFF) format --check $(BACKEND_DIR)/
 
 backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend only)
@@ -191,7 +192,7 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: dev lint test format ci ci-quick clean frontend-test frontend-typecheck
+.PHONY: dev lint test format ci ci-quick clean pin-images frontend-test frontend-typecheck
 .PHONY: _ci-fast _ci-heavy _ci-network
 
 dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
@@ -239,6 +240,15 @@ clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.c
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
 	rm -rf .pytest_cache .ruff_cache
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/node_modules/.cache
+
+pin-images: ## Print current SHA256 digests for all pinned base images (run monthly or after a CVE)
+	@echo "=== Current manifest-list digests (copy into Dockerfiles) ==="
+	@echo -n "backend/Dockerfile   python:3.12-slim  -> "
+	@docker buildx imagetools inspect python:3.12-slim 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "frontend-react/      node:20-alpine    -> "
+	@docker buildx imagetools inspect node:20-alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "frontend-react/      nginx:alpine      -> "
+	@docker buildx imagetools inspect nginx:alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
 
 # ---------------------------------------------------------------------------
 #  API Codegen

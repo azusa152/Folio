@@ -7,21 +7,10 @@ Covers:
   non-ETF ticker, and cache sentinel deduplication.
 """
 
-import os
-import tempfile
 from unittest.mock import MagicMock, patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_sector"
-)
-
-from domain.constants import DISK_KEY_SECTOR, DISK_SECTOR_TTL  # noqa: E402
-from infrastructure.market_data.market_data import (  # noqa: E402
+from domain.constants import DISK_KEY_SECTOR, DISK_SECTOR_TTL
+from infrastructure.market_data.market_data import (
     _ETF_SECTOR_KEY_MAP,
     _SECTOR_NOT_FOUND,
     _disk_set,

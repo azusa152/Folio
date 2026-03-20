@@ -9,25 +9,12 @@ Covers:
 - clear_all_caches: _rogue_wave_cache is included.
 """
 
-import os
-import tempfile
+from unittest.mock import MagicMock, patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+from cachetools import TTLCache
 
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_rogue_wave"
-)
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-from cachetools import TTLCache  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _fetch_bias_distribution_from_yf,
     _rogue_wave_cache,
     clear_all_caches,

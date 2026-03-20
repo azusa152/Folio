@@ -1,19 +1,8 @@
-import os
-import tempfile
 from unittest.mock import patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-
 import domain.constants
-import infrastructure.common.config
 from domain.enums import FearGreedLevel
 from infrastructure.market_data import market_data
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_fear_greed"
-)
 
 
 @patch("infrastructure.market_data.market_data.compute_composite_fear_greed")

@@ -154,3 +154,10 @@ class FXWatchAlertResponse(BaseModel):
     triggered_alerts: int
     sent_alerts: int
     alerts: list[FXWatchCheckResultItem]
+
+
+class ForexHistoryPoint(BaseModel):
+    """Single daily FX rate data point returned by GET /forex/{base}/{quote}/history-long."""
+
+    date: str
+    close: float

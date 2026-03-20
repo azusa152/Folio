@@ -9,30 +9,17 @@ Covers:
 - Non-network errors (e.g., ValueError) are NOT retried.
 """
 
-import os
-import tempfile
 import time
+from unittest.mock import MagicMock, patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+import pytest
+from cachetools import TTLCache
+from curl_cffi.curl import CurlError
+from tenacity import stop_after_attempt, wait_none
 
 import domain.constants
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_retry"
-)
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-import pytest  # noqa: E402
-from cachetools import TTLCache  # noqa: E402
-from curl_cffi.curl import CurlError  # noqa: E402
-from tenacity import stop_after_attempt, wait_none  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _ETF_NOT_FOUND_SENTINEL,
     _ETF_SECTOR_WEIGHTS_NOT_FOUND,
     _cached_fetch,

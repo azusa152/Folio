@@ -4965,8 +4965,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/components/schemas/ForexHistoryPoint"
                   },
                   "title": "Response Get Forex History Endpoint Forex  Base   Quote  History Long Get"
                 }
@@ -10798,6 +10797,25 @@
         "type": "object",
         "title": "FilingHistoryResponse",
         "description": "GET /gurus/{guru_id}/filings \u5b8c\u6574\u56de\u61c9\u3002"
+      },
+      "ForexHistoryPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "close"
+        ],
+        "title": "ForexHistoryPoint",
+        "description": "Single daily FX rate data point returned by GET /forex/{base}/{quote}/history-long."
       },
       "FundamentalsResponse": {
         "properties": {

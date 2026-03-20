@@ -37,7 +37,6 @@ from application.portfolio.insight_service import (  # noqa: F401
     invalidate_insight_cache,
 )
 from application.portfolio.rebalance_service import (  # noqa: F401
-    _compute_holding_market_values,
     acknowledge_xray_alert,
     calculate_currency_exposure,
     calculate_rebalance,
@@ -80,10 +79,6 @@ from application.stock.stock_service import (  # noqa: F401
     StockAlreadyExistsError,
     StockAlreadyInactiveError,
     StockNotFoundError,
-    _append_thesis_log,
-    _get_stock_or_raise,
-    _str_to_tags,
-    _tags_to_str,
     add_thesis,
     create_stock,
     deactivate_stock,

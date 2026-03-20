@@ -10,12 +10,17 @@ import { HoldingsManager } from "@/components/allocation/holdings/HoldingsManage
 
 type SettingsTab = "general" | "portfolio" | "notifications"
 
+const VALID_TABS: SettingsTab[] = ["general", "portfolio", "notifications"]
+
 export default function Settings() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const privacyMode = useIsPrivate()
 
-  const activeTab = (searchParams.get("tab") as SettingsTab) ?? "general"
+  const rawTab = searchParams.get("tab")
+  const activeTab: SettingsTab = VALID_TABS.includes(rawTab as SettingsTab)
+    ? (rawTab as SettingsTab)
+    : "general"
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true })

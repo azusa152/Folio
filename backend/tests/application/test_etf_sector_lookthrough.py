@@ -10,26 +10,14 @@ Covers:
 """
 
 import json
-import os
-import tempfile
+from unittest.mock import patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pytest
+from sqlmodel import Session
 
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_sector_lookthrough"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-import pytest  # noqa: E402
-from sqlmodel import Session  # noqa: E402
-
-from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # noqa: E402
-from domain.enums import StockCategory  # noqa: E402
+from application.portfolio.rebalance_service import calculate_rebalance
+from domain.entities import Account, Holding, Stock, UserInvestmentProfile
+from domain.enums import StockCategory
 
 # ---------------------------------------------------------------------------
 # Helpers

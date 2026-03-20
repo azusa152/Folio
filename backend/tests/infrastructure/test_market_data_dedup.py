@@ -8,24 +8,11 @@ Covers:
 - Fetcher exception: waiters fall through to result_getter (which retries via fetcher).
 """
 
-import os
-import tempfile
 import threading
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pytest
 
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_dedup"
-)
-
-
-import pytest  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _deduped_fetch,
     _inflight_events,
 )

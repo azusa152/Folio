@@ -5,13 +5,14 @@ Exposes FX historical data for frontend chart visualization.
 
 from fastapi import APIRouter
 
+from api.schemas.fx_watch import ForexHistoryPoint
 from application.portfolio.fx_watch_service import get_forex_history
 
 router = APIRouter(prefix="/forex", tags=["Forex"])
 
 
-@router.get("/{base}/{quote}/history-long")
-def get_forex_history_endpoint(base: str, quote: str) -> list[dict]:
+@router.get("/{base}/{quote}/history-long", response_model=list[ForexHistoryPoint])
+def get_forex_history_endpoint(base: str, quote: str) -> list[ForexHistoryPoint]:
     """
     Get 3-month daily FX rate history for a currency pair.
 

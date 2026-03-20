@@ -9,24 +9,11 @@ Covers:
 - Sentinel value caching prevents repeated yfinance calls for unavailable Beta.
 """
 
-import os
-import tempfile
+from unittest.mock import patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+from cachetools import TTLCache
 
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_beta"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-from cachetools import TTLCache  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _BETA_NOT_AVAILABLE,
     _fetch_beta_from_yf,
     get_stock_beta,

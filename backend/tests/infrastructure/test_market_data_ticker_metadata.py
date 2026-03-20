@@ -7,26 +7,15 @@ Covers:
 - _fetch_exchange_from_yf returns exchange code or sentinel.
 """
 
-import os
-import tempfile
 from unittest.mock import patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_ticker_metadata"
-)
-
-from domain.constants import (  # noqa: E402
+from domain.constants import (
     DISK_EXCHANGE_TTL,
     DISK_KEY_EXCHANGE,
     DISK_KEY_NAME,
     DISK_NAME_TTL,
 )
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _EXCHANGE_NOT_FOUND,
     _NAME_NOT_FOUND,
     _disk_set,

@@ -43,6 +43,7 @@ from api.schemas.dividend import (  # noqa: F401
     DividendHoldingPreview,
 )
 from api.schemas.fx_watch import (  # noqa: F401
+    ForexHistoryPoint,
     FXTimingResultResponse,
     FXWatchAlertResponse,
     FXWatchCheckResponse,

@@ -9,32 +9,20 @@ production databases (with persistent radar.db) to crash on INSERT.
 """
 
 import inspect
-import os
 import re
-import tempfile
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-
-import infrastructure.common.config
-
-infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_migration"
-)
-
-from sqlalchemy import (  # noqa: E402
+from sqlalchemy import (
     Column,
     MetaData,
     Table,
     create_engine,
     text,
 )
-from sqlalchemy import inspect as sa_inspect  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.pool import StaticPool
+from sqlmodel import SQLModel
 
-from infrastructure.database import _run_migrations  # noqa: E402
+from infrastructure.database import _run_migrations
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -227,10 +227,20 @@ def _run_migrations() -> None:
                 conn.execute(text(sql))
                 conn.commit()
                 logger.debug("Migration 成功：%s", sql.strip())
-            except OperationalError:
-                # SQLite 在欄位已存在時（duplicate column name）拋出 OperationalError，
-                # 屬預期的冪等行為，靜默跳過。UPDATE 語句零列更新不會觸發此路徑。
+            except OperationalError as e:
                 conn.rollback()
+                if "duplicate column" in str(e).lower():
+                    # SQLite 在欄位已存在時（duplicate column name）拋出 OperationalError，
+                    # 屬預期的冪等行為，靜默跳過。
+                    pass
+                else:
+                    # Other OperationalErrors (e.g. "no such column" from DML that references
+                    # a column already dropped in a later migration) are also expected during
+                    # schema evolution on existing databases. Log at WARNING so they are visible
+                    # but do not abort startup.
+                    logger.warning(
+                        "Migration skipped (idempotent): %s — %s", sql.strip(), e
+                    )
 
 
 def _load_system_personas() -> None:
