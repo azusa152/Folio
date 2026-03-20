@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { STOCK_CATEGORIES } from "@/lib/constants"
 import { TransactionTypePicker } from "./asset/TransactionTypePicker"
-import { TickerInput } from "./asset/TickerInput"
+import { TickerInput, type TickerInputProps } from "./asset/TickerInput"
 import { RoutingSuggestion } from "./asset/RoutingSuggestion"
 import type {
   TransactionType,
@@ -148,6 +148,39 @@ export function AssetSection({
 }: AssetSectionProps) {
   const { t } = useTranslation()
 
+  const tickerInputProps: TickerInputProps = {
+    transactionType,
+    ticker,
+    shouldShowNisaPicker,
+    shouldShowSellPicker,
+    nisaFreeTickerInput,
+    selectedWrapper,
+    nisaAssetTypeFilter,
+    nisaPickerOpen,
+    nisaPickerSearch,
+    nisaEligibleAssetsQuery,
+    selectedNisaAssetForDisplay,
+    isMobile,
+    commandListScrollFix,
+    sellPickerOpen,
+    sellPickerSearch,
+    filteredSellablePositions,
+    selectedSellablePositionForDisplay,
+    sellablePositionsQuery,
+    fieldErrors,
+    setTicker,
+    setNisaAssetTypeFilter,
+    setNisaPickerOpen,
+    setNisaPickerSearch,
+    setSellPickerOpen,
+    setSellPickerSearch,
+    setFieldErrors,
+    setInsufficientBalance,
+    onSelectNisaAsset,
+    onSelectSellablePosition,
+    getSellValueSourceLabel,
+  }
+
   return (
     <>
       <TransactionTypePicker
@@ -163,38 +196,7 @@ export function AssetSection({
 
       {!isCashMovement ? (
         <>
-          <TickerInput
-            transactionType={transactionType}
-            ticker={ticker}
-            shouldShowNisaPicker={shouldShowNisaPicker}
-            shouldShowSellPicker={shouldShowSellPicker}
-            nisaFreeTickerInput={nisaFreeTickerInput}
-            selectedWrapper={selectedWrapper}
-            nisaAssetTypeFilter={nisaAssetTypeFilter}
-            nisaPickerOpen={nisaPickerOpen}
-            nisaPickerSearch={nisaPickerSearch}
-            nisaEligibleAssetsQuery={nisaEligibleAssetsQuery}
-            selectedNisaAssetForDisplay={selectedNisaAssetForDisplay}
-            isMobile={isMobile}
-            commandListScrollFix={commandListScrollFix}
-            sellPickerOpen={sellPickerOpen}
-            sellPickerSearch={sellPickerSearch}
-            filteredSellablePositions={filteredSellablePositions}
-            selectedSellablePositionForDisplay={selectedSellablePositionForDisplay}
-            sellablePositionsQuery={sellablePositionsQuery}
-            fieldErrors={fieldErrors}
-            setTicker={setTicker}
-            setNisaAssetTypeFilter={setNisaAssetTypeFilter}
-            setNisaPickerOpen={setNisaPickerOpen}
-            setNisaPickerSearch={setNisaPickerSearch}
-            setSellPickerOpen={setSellPickerOpen}
-            setSellPickerSearch={setSellPickerSearch}
-            setFieldErrors={setFieldErrors}
-            setInsufficientBalance={setInsufficientBalance}
-            onSelectNisaAsset={onSelectNisaAsset}
-            onSelectSellablePosition={onSelectSellablePosition}
-            getSellValueSourceLabel={getSellValueSourceLabel}
-          />
+          <TickerInput {...tickerInputProps} />
 
           <RoutingSuggestion
             transactionType={transactionType}

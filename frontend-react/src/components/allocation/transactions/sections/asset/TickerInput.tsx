@@ -16,7 +16,7 @@ interface NisaEligibleAssetsData {
   items?: NisaEligibleAssetItem[]
 }
 
-interface Props {
+export interface TickerInputProps {
   transactionType: TransactionType
   ticker: string
   shouldShowNisaPicker: boolean
@@ -80,7 +80,7 @@ export function TickerInput({
   onSelectNisaAsset,
   onSelectSellablePosition,
   getSellValueSourceLabel,
-}: Props) {
+}: TickerInputProps) {
   const { t } = useTranslation()
 
   return (

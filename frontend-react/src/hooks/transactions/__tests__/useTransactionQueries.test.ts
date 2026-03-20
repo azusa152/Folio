@@ -39,27 +39,31 @@ vi.mock("@/api/hooks/useWrappers", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-const TOKUTEI_ACCOUNT: AccountResponse = {
-  id: 1,
-  name: "Tokutei",
-  broker: "Rakuten",
-  currency: "JPY",
-  tax_wrapper: "tokutei",
+function makeAccount(overrides: {
+  id: number
+  name: string
+  tax_wrapper: string
+  currency?: string
+}): AccountResponse {
+  return {
+    id: overrides.id,
+    user_id: "test",
+    name: overrides.name,
+    broker: "Rakuten",
+    account_type: "brokerage",
+    tax_wrapper: overrides.tax_wrapper as AccountResponse["tax_wrapper"],
+    currency: overrides.currency ?? "JPY",
+    institution: "",
+    note: "",
+    is_active: true,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  }
 }
-const NISA_GROWTH_ACCOUNT: AccountResponse = {
-  id: 2,
-  name: "NISA Growth",
-  broker: "Rakuten",
-  currency: "JPY",
-  tax_wrapper: "nisa_growth",
-}
-const NISA_TSUMITATE_ACCOUNT: AccountResponse = {
-  id: 3,
-  name: "NISA Tsumitate",
-  broker: "Rakuten",
-  currency: "JPY",
-  tax_wrapper: "nisa_tsumitate",
-}
+
+const TOKUTEI_ACCOUNT = makeAccount({ id: 1, name: "Tokutei", tax_wrapper: "tokutei" })
+const NISA_GROWTH_ACCOUNT = makeAccount({ id: 2, name: "NISA Growth", tax_wrapper: "nisa_growth" })
+const NISA_TSUMITATE_ACCOUNT = makeAccount({ id: 3, name: "NISA Tsumitate", tax_wrapper: "nisa_tsumitate" })
 
 function makeProps(
   overrides: Partial<{
@@ -108,12 +112,9 @@ describe("useTransactionQueries", () => {
   describe("forcedCategory", () => {
     it("returns 'Mutual_Fund' for nisa_tsumitate regardless of eligibility", () => {
       const { result } = renderHook(() =>
-        makeProps({ selectedWrapper: "nisa_tsumitate" }),
-      )
-      const { result: hookResult } = renderHook(() =>
         useTransactionQueries(makeProps({ selectedWrapper: "nisa_tsumitate" })),
       )
-      expect(hookResult.current.forcedCategory).toBe("Mutual_Fund")
+      expect(result.current.forcedCategory).toBe("Mutual_Fund")
     })
 
     it("returns 'Mutual_Fund' when eligibility asset_type is mutual_fund", () => {
@@ -205,7 +206,7 @@ describe("useTransactionQueries", () => {
     })
 
     it("uses first account per wrapper (deduplication)", () => {
-      const duplicate: AccountResponse = { id: 99, name: "Dup", broker: "SBI", currency: "JPY", tax_wrapper: "tokutei" }
+      const duplicate = makeAccount({ id: 99, name: "Dup", tax_wrapper: "tokutei" })
       const { result } = renderHook(() =>
         useTransactionQueries(makeProps({ accounts: [TOKUTEI_ACCOUNT, duplicate] })),
       )
@@ -214,7 +215,7 @@ describe("useTransactionQueries", () => {
     })
 
     it("uppercases currency in the map", () => {
-      const lower: AccountResponse = { id: 5, name: "X", broker: "X", currency: "jpy", tax_wrapper: "tokutei" }
+      const lower = makeAccount({ id: 5, name: "X", tax_wrapper: "tokutei", currency: "jpy" })
       const { result } = renderHook(() =>
         useTransactionQueries(makeProps({ accounts: [lower] })),
       )
