@@ -1,12 +1,10 @@
 import { useTranslation } from "react-i18next"
-import { Button } from "@/components/ui/button"
-import { EligibilityBadge } from "@/components/common/EligibilityBadge"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ELIGIBILITY_CHECK_WRAPPERS, STOCK_CATEGORIES } from "@/lib/constants"
-import { cn } from "@/lib/utils"
-import { NisaAssetPicker } from "../NisaAssetPicker"
-import { SellablePositionPicker } from "../SellablePositionPicker"
+import { Input } from "@/components/ui/input"
+import { STOCK_CATEGORIES } from "@/lib/constants"
+import { TransactionTypePicker } from "./asset/TransactionTypePicker"
+import { TickerInput } from "./asset/TickerInput"
+import { RoutingSuggestion } from "./asset/RoutingSuggestion"
 import type {
   TransactionType,
   StockCategory,
@@ -33,14 +31,8 @@ interface AccountItem {
   currency?: string
 }
 
-interface RoutingSuggestion {
-  wrapper: string
-  amount: number
-  reason: string
-}
-
 interface RoutingSuggestionData {
-  suggestions?: RoutingSuggestion[]
+  suggestions?: Array<{ wrapper: string; amount: number; reason: string }>
 }
 
 interface NisaEligibleAssetsData {
@@ -158,218 +150,69 @@ export function AssetSection({
 
   return (
     <>
-      <div className="space-y-1">
-        <p className="text-xs font-medium">{t("transactions.form.type")}</p>
-        <div className="grid grid-cols-2 gap-1">
-          {(["BUY", "SELL", "DIVIDEND", "DEPOSIT", "WITHDRAWAL"] as TransactionType[]).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => {
-                setTransactionType(type)
-                setSellPickerOpen(false)
-                setSellPickerSearch("")
-                setInsufficientBalance(null)
-                setFieldErrors(() => ({}))
-                if (type === "DEPOSIT" || type === "WITHDRAWAL") {
-                  applyCashMovementDefaults(currency)
-                }
-              }}
-              className={`text-xs py-1.5 rounded border transition-colors ${
-                transactionType === type
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border hover:bg-muted/30"
-              }`}
-            >
-              {t(`transactions.type.${type.toLowerCase()}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TransactionTypePicker
+        transactionType={transactionType}
+        currency={currency}
+        setTransactionType={setTransactionType}
+        setSellPickerOpen={setSellPickerOpen}
+        setSellPickerSearch={setSellPickerSearch}
+        setInsufficientBalance={setInsufficientBalance}
+        setFieldErrors={setFieldErrors}
+        applyCashMovementDefaults={applyCashMovementDefaults}
+      />
 
       {!isCashMovement ? (
-        <div className="space-y-1">
-          <p className="text-xs font-medium">{t("transactions.form.ticker")}</p>
-          {shouldShowNisaPicker && selectedWrapper === "nisa_growth" ? (
-            <div className="flex flex-wrap gap-1 pb-1">
-              {(["all", "mutual_fund", "etf", "stock", "reit"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setNisaAssetTypeFilter(type)}
-                  className={cn(
-                    "rounded-full border px-2 py-1 text-[11px] leading-none",
-                    nisaAssetTypeFilter === type
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted/40",
-                  )}
-                >
-                  {type === "all" ? t("nisa.eligible.filter_all") : t(`nisa.eligible.asset_type.${type}`)}
-                </button>
-              ))}
-            </div>
-          ) : null}
+        <>
+          <TickerInput
+            transactionType={transactionType}
+            ticker={ticker}
+            shouldShowNisaPicker={shouldShowNisaPicker}
+            shouldShowSellPicker={shouldShowSellPicker}
+            nisaFreeTickerInput={nisaFreeTickerInput}
+            selectedWrapper={selectedWrapper}
+            nisaAssetTypeFilter={nisaAssetTypeFilter}
+            nisaPickerOpen={nisaPickerOpen}
+            nisaPickerSearch={nisaPickerSearch}
+            nisaEligibleAssetsQuery={nisaEligibleAssetsQuery}
+            selectedNisaAssetForDisplay={selectedNisaAssetForDisplay}
+            isMobile={isMobile}
+            commandListScrollFix={commandListScrollFix}
+            sellPickerOpen={sellPickerOpen}
+            sellPickerSearch={sellPickerSearch}
+            filteredSellablePositions={filteredSellablePositions}
+            selectedSellablePositionForDisplay={selectedSellablePositionForDisplay}
+            sellablePositionsQuery={sellablePositionsQuery}
+            fieldErrors={fieldErrors}
+            setTicker={setTicker}
+            setNisaAssetTypeFilter={setNisaAssetTypeFilter}
+            setNisaPickerOpen={setNisaPickerOpen}
+            setNisaPickerSearch={setNisaPickerSearch}
+            setSellPickerOpen={setSellPickerOpen}
+            setSellPickerSearch={setSellPickerSearch}
+            setFieldErrors={setFieldErrors}
+            setInsufficientBalance={setInsufficientBalance}
+            onSelectNisaAsset={onSelectNisaAsset}
+            onSelectSellablePosition={onSelectSellablePosition}
+            getSellValueSourceLabel={getSellValueSourceLabel}
+          />
 
-          {nisaFreeTickerInput ? (
-            <>
-              <Input
-                value={ticker}
-                aria-label={t("transactions.form.ticker")}
-                onChange={(event) => {
-                  setTicker(event.target.value.normalize("NFKC").toUpperCase())
-                  setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
-                  setInsufficientBalance(null)
-                }}
-                onBlur={() => {
-                  if (/^\d{4}$/.test(ticker)) setTicker(`${ticker}.T`)
-                }}
-                placeholder="e.g. 7203.T"
-                className="text-xs"
-              />
-              <p className="text-[11px] text-muted-foreground">{t("nisa.eligible.listed_input_hint")}</p>
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                {t("nisa.eligible.listed_eligibility_disclaimer")}
-              </p>
-            </>
-          ) : shouldShowNisaPicker ? (
-            <NisaAssetPicker
-              ticker={ticker}
-              selectedWrapper={selectedWrapper}
-              nisaPickerOpen={nisaPickerOpen}
-              nisaPickerSearch={nisaPickerSearch}
-              nisaEligibleAssetsQuery={nisaEligibleAssetsQuery}
-              selectedNisaAssetForDisplay={selectedNisaAssetForDisplay}
-              isMobile={isMobile}
-              commandListScrollFix={commandListScrollFix}
-              onSelect={onSelectNisaAsset}
-              setNisaPickerOpen={setNisaPickerOpen}
-              setNisaPickerSearch={setNisaPickerSearch}
-            />
-          ) : shouldShowSellPicker ? (
-            <SellablePositionPicker
-              ticker={ticker}
-              transactionType={transactionType}
-              sellPickerOpen={sellPickerOpen}
-              sellPickerSearch={sellPickerSearch}
-              filteredSellablePositions={filteredSellablePositions}
-              selectedSellablePositionForDisplay={selectedSellablePositionForDisplay}
-              sellablePositionsQuery={sellablePositionsQuery}
-              isMobile={isMobile}
-              commandListScrollFix={commandListScrollFix}
-              getSellValueSourceLabel={getSellValueSourceLabel}
-              onSelect={onSelectSellablePosition}
-              setSellPickerOpen={setSellPickerOpen}
-              setSellPickerSearch={setSellPickerSearch}
-            />
-          ) : (
-            <Input
-              value={ticker}
-              aria-label={t("transactions.form.ticker")}
-              onChange={(event) => {
-                setTicker(event.target.value.normalize("NFKC").toUpperCase())
-                setFieldErrors((prev) => ({ ...prev, ticker: undefined }))
-                setInsufficientBalance(null)
-              }}
-              onBlur={() => {
-                if (/^\d{4}$/.test(ticker)) setTicker(`${ticker}.T`)
-              }}
-              placeholder="e.g. AAPL, 7203.T"
-              className="text-xs"
-            />
-          )}
-
-          {transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper) ? (
-            <div className="pt-1 space-y-1">
-              <EligibilityBadge result={eligibility ?? undefined} loading={eligibilityQueryIsLoading} />
-              {eligibility && !eligibility.eligible ? (
-                <div className="space-y-1">
-                  <p className="text-[11px] text-destructive">{t("eligibility.not_eligible")}</p>
-                  {eligibility.suggested_wrapper ? (
-                    suggestedAccount ? (
-                      <button
-                        type="button"
-                        className="text-[11px] text-primary hover:underline"
-                        onClick={() => {
-                          if (suggestedAccount.id == null) return
-                          setAccountId(String(suggestedAccount.id))
-                          const nextCurrency = (suggestedAccount.currency || currency).toUpperCase()
-                          setCurrency(nextCurrency)
-                          setInsufficientBalance(null)
-                        }}
-                      >
-                        {t("eligibility.switch_to_suggested_account", {
-                          wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
-                        })}
-                      </button>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground">
-                        {t("eligibility.no_suggested_account", {
-                          wrapper: t(`wrapper.${eligibility.suggested_wrapper}`),
-                        })}
-                      </p>
-                    )
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {transactionType === "BUY" && routingSuggestionQuery.data?.suggestions?.length ? (
-            <div className="pt-1 space-y-1">
-              <p className="text-[11px] font-medium">{t("routing.suggest_title")}</p>
-              <div className="space-y-1">
-                {routingSuggestionQuery.data.suggestions.map((item, idx) => {
-                  const suggested = routingSuggestedAccounts.get(item.wrapper)
-                  return (
-                    <div
-                      key={`${item.wrapper}-${idx}`}
-                      className="rounded-md border border-border bg-muted/20 px-2 py-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-2 text-[11px]">
-                        <span>{t(`wrapper.${item.wrapper}`, { defaultValue: item.wrapper })}</span>
-                        <span>{Math.round(item.amount).toLocaleString()}</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t(item.reason, { defaultValue: item.reason })}
-                      </p>
-                      {suggested ? (
-                        <button
-                          type="button"
-                          className="text-[11px] text-primary hover:underline"
-                          onClick={() => {
-                            setAccountId(String(suggested.id))
-                            setCurrency(suggested.currency)
-                            setInsufficientBalance(null)
-                          }}
-                        >
-                          {t("smart_actions.apply_suggestion")}
-                        </button>
-                      ) : null}
-                    </div>
-                  )
-                })}
-              </div>
-              {canSplitPurchase ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px]"
-                  disabled={splitSubmitting || addTransactionMutationIsPending}
-                  onClick={() => {
-                    createSplitTransactions().catch(() => {
-                      // createSplitTransactions handles all user feedback paths.
-                    })
-                  }}
-                >
-                  {t("smart_actions.split_purchase")}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {fieldErrors.ticker ? <p className="text-xs text-destructive">{fieldErrors.ticker}</p> : null}
-        </div>
+          <RoutingSuggestion
+            transactionType={transactionType}
+            selectedWrapper={selectedWrapper}
+            eligibility={eligibility}
+            eligibilityQueryIsLoading={eligibilityQueryIsLoading}
+            suggestedAccount={suggestedAccount}
+            routingSuggestionQuery={routingSuggestionQuery}
+            routingSuggestedAccounts={routingSuggestedAccounts}
+            canSplitPurchase={canSplitPurchase}
+            splitSubmitting={splitSubmitting}
+            addTransactionMutationIsPending={addTransactionMutationIsPending}
+            setAccountId={setAccountId}
+            setCurrency={setCurrency}
+            setInsufficientBalance={setInsufficientBalance}
+            createSplitTransactions={createSplitTransactions}
+          />
+        </>
       ) : null}
 
       {!isCashMovement && isNewToRadar ? (
