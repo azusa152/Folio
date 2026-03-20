@@ -14,6 +14,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, TypeVar
 
+import pandas as pd
 import yfinance as yf
 from cachetools import TTLCache
 from curl_cffi import requests as cffi_requests
@@ -685,12 +686,24 @@ def _yf_ticker_obj(ticker: str):
     return yf.Ticker(ticker, session=_get_session())
 
 
-def _yf_dividend_data(ticker: str) -> tuple[dict, Any]:
+def _yf_download(*args: Any, **kwargs: Any) -> pd.DataFrame:
+    """Thin typed wrapper around yf.download().
+
+    yfinance stubs do not declare a precise return type, so pyright infers
+    ``DataFrame | None`` for the result and all downstream subscript /
+    member accesses.  Centralising the suppression here keeps call sites
+    clean and future-proof.
+    """
+    result = yf.download(*args, **kwargs)
+    return result  # type: ignore[return-value]
+
+
+def _yf_dividend_data(ticker: str) -> tuple[dict, pd.Series | None]:
     """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
     info 走 _yf_info（含短 TTL 快取）以共享給 fundamentals 路徑，降低重複呼叫。
     """
     info = _yf_info(ticker)
-    dividends = _yf_dividends(ticker)
+    dividends: pd.Series | None = _yf_dividends(ticker)
     return info, dividends
 
 
@@ -875,7 +888,7 @@ def batch_download_history(
         return {}
     try:
         _rate_limiter.wait()
-        data = yf.download(
+        data = _yf_download(
             tickers,
             period=period,
             group_by="ticker",
@@ -887,8 +900,8 @@ def batch_download_history(
         result: dict = {}
         for ticker in tickers:
             try:
-                df = data[ticker] if len(tickers) > 1 else data  # type: ignore[index]
-                df = df.dropna(how="all")  # type: ignore[union-attr]
+                df = data[ticker] if len(tickers) > 1 else data
+                df = df.dropna(how="all")
                 if not df.empty and len(df) >= MIN_HISTORY_DAYS_FOR_SIGNALS:
                     result[ticker] = df
                 else:
@@ -921,7 +934,7 @@ def batch_download_history_extended(
         return {}
     try:
         _rate_limiter.wait()
-        data = yf.download(
+        data = _yf_download(
             tickers,
             period=period,
             group_by="ticker",
@@ -933,8 +946,8 @@ def batch_download_history_extended(
         result: dict[str, list[dict]] = {}
         for ticker in tickers:
             try:
-                df = data[ticker] if len(tickers) > 1 else data  # type: ignore[index]
-                df = df.dropna(how="all")  # type: ignore[union-attr]
+                df = data[ticker] if len(tickers) > 1 else data
+                df = df.dropna(how="all")
                 if df.empty:
                     continue
                 prices = _extract_price_history(df)
@@ -1654,7 +1667,7 @@ def get_dividend_events(
 def _fetch_dividend_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
     try:
-        info, dividends = _yf_dividend_data(ticker)
+        info, dividends = _yf_dividend_data(ticker)  # dividends: pd.Series | None
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")
@@ -1677,7 +1690,8 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
         try:
             if dividends is not None and not dividends.empty:
                 current_year = datetime.now(tz=UTC).year
-                ytd_divs = dividends[dividends.index.year == current_year]
+                dtidx = pd.DatetimeIndex(dividends.index)
+                ytd_divs: pd.Series = dividends[dtidx.year == current_year]  # type: ignore[index,assignment]
                 ytd_dividend_per_share = (
                     round(float(ytd_divs.sum()), 6) if not ytd_divs.empty else 0.0
                 )
@@ -1893,7 +1907,7 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
         if hist is not None and not hist.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
                     "close": round(float(row["Close"]), 4),
                 }
                 for idx, row in hist.iterrows()
@@ -1907,7 +1921,7 @@ def _fetch_forex_history(pair_key: str) -> list[dict]:
         if hist_rev is not None and not hist_rev.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
                     "close": round(1.0 / float(row["Close"]), 4),
                 }
                 for idx, row in hist_rev.iterrows()
@@ -1957,7 +1971,7 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
         if hist is not None and not hist.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
                     "close": round(float(row["Close"]), 4),
                 }
                 for idx, row in hist.iterrows()
@@ -1971,7 +1985,7 @@ def _fetch_forex_history_long(pair_key: str) -> list[dict]:
         if hist_rev is not None and not hist_rev.empty:
             return [
                 {
-                    "date": idx.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
                     "close": round(1.0 / float(row["Close"]), 4),
                 }
                 for idx, row in hist_rev.iterrows()
@@ -3163,7 +3177,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 .date()
                 .isoformat()
             )
-            hist = yf.download(
+            hist = _yf_download(
                 uncached_tickers,
                 start=report_date,
                 end=end_date,
@@ -3176,9 +3190,9 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 rp: float | None = None
                 try:
                     if len(uncached_tickers) == 1:
-                        rp = float(hist["Close"].iloc[0]) if not hist.empty else None  # type: ignore[index,union-attr]
+                        rp = float(hist["Close"].iloc[0]) if not hist.empty else None
                     else:
-                        col = hist["Close"].get(ticker)  # type: ignore[index]
+                        col = hist["Close"].get(ticker)
                         if col is not None:
                             dropped = col.dropna()
                             rp = float(dropped.iloc[0]) if not dropped.empty else None
@@ -3197,7 +3211,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
     current_prices: dict[str, float | None] = dict.fromkeys(tickers)
     try:
         _rate_limiter.wait()
-        current = yf.download(
+        current = _yf_download(
             tickers,
             period="5d",
             auto_adjust=True,
@@ -3209,9 +3223,9 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
             cp: float | None = None
             try:
                 if len(tickers) == 1:
-                    cp = float(current["Close"].iloc[-1]) if not current.empty else None  # type: ignore[index,union-attr]
+                    cp = float(current["Close"].iloc[-1]) if not current.empty else None
                 else:
-                    col = current["Close"].get(ticker)  # type: ignore[index]
+                    col = current["Close"].get(ticker)
                     if col is not None:
                         dropped = col.dropna()
                         cp = float(dropped.iloc[-1]) if not dropped.empty else None
