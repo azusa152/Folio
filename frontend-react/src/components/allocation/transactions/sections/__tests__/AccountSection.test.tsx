@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { AccountSection } from "../AccountSection"
 import type { UseQueryResult } from "@tanstack/react-query"
 
+type WrapperQuotaData = {
+  quotas?: Record<string, { wrapper_annual_remaining: number; wrapper_annual_used: number }>
+}
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
@@ -14,8 +18,8 @@ vi.mock("react-i18next", () => ({
 
 const noop = vi.fn()
 
-function makeQuery<T>(data: T): UseQueryResult<T> {
-  return { data, isLoading: false, isError: false } as unknown as UseQueryResult<T>
+function makeQuery<T>(data: T | undefined = undefined): UseQueryResult<T> {
+  return { data: data as T, isLoading: false, isError: false } as unknown as UseQueryResult<T>
 }
 
 const defaultProps = {
@@ -33,7 +37,7 @@ const defaultProps = {
   shouldShowQuotaSummary: false,
   selectedWrapper: "",
   selectedQuota: undefined,
-  wrapperQuotaQuery: makeQuery(undefined),
+  wrapperQuotaQuery: makeQuery<WrapperQuotaData>(),
   hasNoAccounts: false,
   fieldErrors: {},
   insufficientBalance: null,
