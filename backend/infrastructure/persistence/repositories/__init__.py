@@ -1,8 +1,6 @@
-# pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
-# pyright: reportCallIssue=false
 """Infrastructure — Repository Pattern.
 
-Re-exports all repository functions from the sub-modules below.
+Re-exports all public repository functions from the sub-modules below.
 Each sub-module owns one aggregate group:
 
   account_repo   — Account
@@ -15,16 +13,19 @@ Each sub-module owns one aggregate group:
   settings_repo  — UserPreferences, UserTelegramSettings, UserInvestmentProfile
   stock_repo     — Stock, ThesisLog, RemovalLog
   transaction_repo — Transaction, ContributionLedgerEntry
+
+Private helpers (prefix ``_``) remain in their own sub-module and are not
+re-exported here. Import directly from the sub-module if needed in tests:
+  from infrastructure.persistence.repositories.guru_repo import _compute_trend
 """
 
-from .account_repo import (  # noqa: F401
+from .account_repo import (
     deactivate_account,
     find_account_by_id,
     find_all_accounts,
     save_account,
 )
-from .eligible_repo import (  # noqa: F401
-    _build_eligible_assets_stmt,
+from .eligible_repo import (
     backfill_isin_for_ticker,
     count_eligible_assets,
     find_eligible_asset_by_ticker,
@@ -37,9 +38,7 @@ from .eligible_repo import (  # noqa: F401
     is_active_eligible_mutual_fund,
     upsert_eligible_assets,
 )
-from .guru_repo import (  # noqa: F401
-    _compute_trend,
-    _latest_filing_ids_subquery,
+from .guru_repo import (
     deactivate_guru,
     find_activity_feed,
     find_all_active_gurus,
@@ -62,7 +61,7 @@ from .guru_repo import (  # noqa: F401
     save_holdings_batch,
     update_guru,
 )
-from .holding_repo import (  # noqa: F401
+from .holding_repo import (
     delete_all_holdings,
     delete_holding,
     delete_holdings_by_account,
@@ -75,13 +74,13 @@ from .holding_repo import (  # noqa: F401
     find_stock_holding_by_account_and_ticker,
     save_holding,
 )
-from .nav_repo import (  # noqa: F401
+from .nav_repo import (
     bulk_upsert_nav,
     get_latest_nav,
     get_nav_history,
     upsert_nav,
 )
-from .scan_repo import (  # noqa: F401
+from .scan_repo import (
     count_recent_notifications,
     create_dividend_event,
     create_fx_watch,
@@ -119,7 +118,7 @@ from .scan_repo import (  # noqa: F401
     update_fx_watch_last_alerted,
     upsert_drift_acknowledgment,
 )
-from .settings_repo import (  # noqa: F401
+from .settings_repo import (
     find_active_profile,
     find_profile_by_id,
     find_system_templates,
@@ -129,7 +128,7 @@ from .settings_repo import (  # noqa: F401
     save_telegram_settings,
     save_user_preferences,
 )
-from .stock_repo import (  # noqa: F401
+from .stock_repo import (
     bulk_update_display_order,
     bulk_update_scan_signals,
     count_consecutive_scans,
@@ -149,7 +148,7 @@ from .stock_repo import (  # noqa: F401
     save_stock,
     update_stock,
 )
-from .transaction_repo import (  # noqa: F401
+from .transaction_repo import (
     create_ledger_entry,
     delete_ledger_entries_by_transaction,
     delete_transaction,
@@ -162,3 +161,130 @@ from .transaction_repo import (  # noqa: F401
     find_transactions_by_account,
     save_transaction,
 )
+
+__all__ = [
+    "backfill_isin_for_ticker",
+    "bulk_update_display_order",
+    "bulk_update_scan_signals",
+    "bulk_upsert_nav",
+    "count_consecutive_scans",
+    "count_eligible_assets",
+    "count_recent_notifications",
+    "create_dividend_event",
+    "create_fx_watch",
+    "create_ledger_entry",
+    "create_price_alert",
+    "create_removal_log",
+    "create_scan_log",
+    "create_stock_split_event",
+    "create_thesis_log",
+    "deactivate_account",
+    "deactivate_guru",
+    "delete_all_holdings",
+    "delete_drift_acknowledgment",
+    "delete_fx_watch",
+    "delete_holding",
+    "delete_holdings_by_account",
+    "delete_ledger_entries_by_transaction",
+    "delete_price_alert",
+    "delete_transaction",
+    "delete_transactions_by_account",
+    "find_account_by_id",
+    "find_active_alerts_for_stock",
+    "find_active_fx_watches",
+    "find_active_profile",
+    "find_active_stocks",
+    "find_active_stocks_by_category",
+    "find_activity_feed",
+    "find_all_accounts",
+    "find_all_active_alerts",
+    "find_all_active_gurus",
+    "find_all_alerts_for_stock",
+    "find_all_drift_acknowledgments",
+    "find_all_fx_watches",
+    "find_all_guru_summaries",
+    "find_all_holdings",
+    "find_all_transactions",
+    "find_cash_holding_by_account_and_currency",
+    "find_consensus_stocks",
+    "find_dividend_event_by_id",
+    "find_dividend_event_by_unique_key",
+    "find_dividend_events",
+    "find_drift_acknowledgment",
+    "find_eligible_asset_by_ticker",
+    "find_eligible_assets",
+    "find_eligible_tickers",
+    "find_filing_by_accession",
+    "find_filings_by_guru",
+    "find_fund_code_by_isin",
+    "find_fund_names_by_tickers",
+    "find_fx_watch_by_id",
+    "find_grand_portfolio",
+    "find_guru_by_cik",
+    "find_guru_by_id",
+    "find_holding_by_id",
+    "find_holding_by_ticker",
+    "find_holding_history_by_guru",
+    "find_holdings_by_account",
+    "find_holdings_by_filing",
+    "find_holdings_by_guru_latest",
+    "find_holdings_by_ticker_across_gurus",
+    "find_holdings_for_active_accounts",
+    "find_inactive_stocks",
+    "find_isin_for_ticker",
+    "find_latest_filing_by_guru",
+    "find_latest_removal",
+    "find_latest_removals_batch",
+    "find_latest_scan_logs",
+    "find_ledger_entries",
+    "find_ledger_entries_by_wrapper",
+    "find_ledger_entry_by_transaction_and_type",
+    "find_notable_changes_all_gurus",
+    "find_previous_distinct_signal",
+    "find_price_alert_by_id",
+    "find_profile_by_id",
+    "find_recent_scan_logs_for_tickers",
+    "find_removal_history",
+    "find_scan_history",
+    "find_scan_logs_for_backtest",
+    "find_scan_logs_since",
+    "find_sector_breakdown",
+    "find_stock_by_ticker",
+    "find_stock_holding_by_account_and_ticker",
+    "find_stock_split_event_by_id",
+    "find_stock_split_event_by_unique_key",
+    "find_stock_split_events",
+    "find_system_templates",
+    "find_telegram_settings",
+    "find_thesis_history",
+    "find_transaction_by_id",
+    "find_transactions_by_account",
+    "find_user_preferences",
+    "get_eligible_assets_metadata",
+    "get_latest_nav",
+    "get_max_thesis_version",
+    "get_nav_history",
+    "is_active_eligible_mutual_fund",
+    "log_notification_sent",
+    "save_account",
+    "save_dividend_event",
+    "save_filing",
+    "save_guru",
+    "save_holding",
+    "save_holdings_batch",
+    "save_profile",
+    "save_stock",
+    "save_stock_split_event",
+    "save_telegram_settings",
+    "save_transaction",
+    "save_user_preferences",
+    "try_claim_dividend_event",
+    "try_claim_stock_split_event",
+    "update_fx_watch",
+    "update_fx_watch_last_alerted",
+    "update_guru",
+    "update_stock",
+    "upsert_drift_acknowledgment",
+    "upsert_eligible_assets",
+    "upsert_nav",
+]

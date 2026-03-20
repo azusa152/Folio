@@ -26,7 +26,7 @@ def find_all_transactions(
     limit: int | None = 500,
 ) -> list[Transaction]:
     """查詢交易紀錄（支援篩選）。"""
-    stmt = select(Transaction).order_by(Transaction.transaction_date.desc())
+    stmt = select(Transaction).order_by(Transaction.transaction_date.desc())  # pyright: ignore[reportAttributeAccessIssue]
     if ticker:
         stmt = stmt.where(Transaction.ticker == ticker)
     if account_id is not None:
@@ -49,7 +49,7 @@ def find_transactions_by_account(
     stmt = (
         select(Transaction)
         .where(Transaction.account_id == account_id)
-        .order_by(Transaction.transaction_date.desc())
+        .order_by(Transaction.transaction_date.desc())  # pyright: ignore[reportAttributeAccessIssue]
         .offset(offset)
         .limit(limit)
     )
@@ -98,7 +98,7 @@ def find_ledger_entry_by_transaction_and_type(
         select(ContributionLedgerEntry)
         .where(ContributionLedgerEntry.transaction_id == transaction_id)
         .where(ContributionLedgerEntry.entry_type == entry_type)
-        .order_by(ContributionLedgerEntry.id.desc())
+        .order_by(ContributionLedgerEntry.id.desc())  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
     )
     return session.exec(stmt).first()
 

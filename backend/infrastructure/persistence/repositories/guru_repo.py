@@ -142,7 +142,7 @@ def find_holdings_by_ticker_across_gurus(
     ).subquery()
 
     latest_filing_subq = (
-        select(GuruFiling.id.label("filing_id")).join(
+        select(GuruFiling.id.label("filing_id")).join(  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
             subq,
             (GuruFiling.guru_id == subq.c.guru_id)
             & (GuruFiling.report_date == subq.c.max_report),
@@ -184,7 +184,7 @@ def _latest_filing_ids_subquery(style: str | None = None):
         ).group_by(GuruFiling.guru_id)
     ).subquery()
 
-    stmt = select(GuruFiling.id.label("filing_id")).join(
+    stmt = select(GuruFiling.id.label("filing_id")).join(  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         latest_date_subq,
         (GuruFiling.guru_id == latest_date_subq.c.guru_id)
         & (GuruFiling.report_date == latest_date_subq.c.max_report),
@@ -265,11 +265,11 @@ def find_all_guru_summaries(session: Session, style: str | None = None) -> list[
                     GuruHolding.weight_pct.isnot(None),  # type: ignore[union-attr]
                     GuruHolding.action != HoldingAction.SOLD_OUT.value,
                 )
-                .order_by(GuruHolding.weight_pct.desc())
+                .order_by(GuruHolding.weight_pct.desc())  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
                 .limit(5)
             ).all()
             if top5:
-                top5_concentration_pct = round(sum(top5), 1)
+                top5_concentration_pct = round(sum(top5), 1)  # pyright: ignore[reportCallIssue]
 
             # Turnover: (new_positions + sold_out) / holdings_count * 100
             if filing.holdings_count > 0:
@@ -593,7 +593,7 @@ def find_activity_feed(
         )
         .join(Guru, GuruHolding.guru_id == Guru.id)
         .where(
-            GuruHolding.action.in_(all_actions),
+            GuruHolding.action.in_(all_actions),  # pyright: ignore[reportAttributeAccessIssue]
             GuruHolding.ticker.isnot(None),  # type: ignore[union-attr]
         )
     )

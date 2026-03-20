@@ -75,7 +75,7 @@ def bulk_update_display_order(session: Session, ordered_tickers: list[str]) -> N
     """批次更新多檔股票的 display_order（單一 SELECT + 批次寫入）。"""
     if not ordered_tickers:
         return
-    stocks = session.exec(select(Stock).where(Stock.ticker.in_(ordered_tickers))).all()
+    stocks = session.exec(select(Stock).where(Stock.ticker.in_(ordered_tickers))).all()  # pyright: ignore[reportAttributeAccessIssue]
     stock_map = {s.ticker: s for s in stocks}
     for index, ticker in enumerate(ordered_tickers):
         s = stock_map.get(ticker)
@@ -92,7 +92,7 @@ def bulk_update_scan_signals(
     """批次更新多檔股票的 last_scan_signal 與 signal_since。"""
     if not updates:
         return
-    stocks = session.exec(select(Stock).where(Stock.ticker.in_(updates.keys()))).all()
+    stocks = session.exec(select(Stock).where(Stock.ticker.in_(updates.keys()))).all()  # pyright: ignore[reportAttributeAccessIssue]
     for stock in stocks:
         stock.last_scan_signal = updates[stock.ticker]
         if signal_since_updates and stock.ticker in signal_since_updates:

@@ -99,7 +99,7 @@ def find_stock_holding_by_account_and_ticker(
     nocase_stmt = (
         select(Holding)
         .where(Holding.account_id == account_id)
-        .where(Holding.ticker.collate("NOCASE") == normalized_ticker)
+        .where(Holding.ticker.collate("NOCASE") == normalized_ticker)  # pyright: ignore[reportAttributeAccessIssue]
         .where(Holding.is_cash == False)  # noqa: E712
     )
     return session.exec(nocase_stmt).first()

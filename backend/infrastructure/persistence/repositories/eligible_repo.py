@@ -49,10 +49,10 @@ def find_fund_names_by_tickers(
     stmt = (
         select(EligibleAsset.ticker, EligibleAsset.fund_name)
         .where(
-            EligibleAsset.ticker.in_(normalized_tickers),
+            EligibleAsset.ticker.in_(normalized_tickers),  # pyright: ignore[reportAttributeAccessIssue]
             EligibleAsset.is_active == True,  # noqa: E712
         )
-        .order_by(EligibleAsset.ticker, EligibleAsset.updated_at.desc())
+        .order_by(EligibleAsset.ticker, EligibleAsset.updated_at.desc())  # pyright: ignore[reportAttributeAccessIssue]
     )
 
     names_by_ticker: dict[str, str] = {}
@@ -98,7 +98,7 @@ def find_eligible_asset_by_ticker(
         stmt = stmt.where(
             or_(EligibleAsset.broker == broker, EligibleAsset.broker == None)  # noqa: E711
         )
-    return session.exec(stmt.order_by(EligibleAsset.broker.is_not(None).desc())).first()
+    return session.exec(stmt.order_by(EligibleAsset.broker.is_not(None).desc())).first()  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
 
 
 def find_eligible_assets(
@@ -164,8 +164,8 @@ def _build_eligible_assets_stmt(
         pattern = f"%{normalized_search}%"
         stmt = stmt.where(
             or_(
-                EligibleAsset.ticker.ilike(pattern),
-                EligibleAsset.fund_name.ilike(pattern),
+                EligibleAsset.ticker.ilike(pattern),  # pyright: ignore[reportAttributeAccessIssue]
+                EligibleAsset.fund_name.ilike(pattern),  # pyright: ignore[reportAttributeAccessIssue]
             )
         )
     return stmt

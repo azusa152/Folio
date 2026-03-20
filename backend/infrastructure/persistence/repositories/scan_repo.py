@@ -260,7 +260,7 @@ def find_stock_split_events(
     limit: int | None = 200,
 ) -> list[StockSplitEvent]:
     """查詢股票分割事件（可依狀態與 ticker 篩選）。"""
-    stmt = select(StockSplitEvent).order_by(StockSplitEvent.detected_at.desc())
+    stmt = select(StockSplitEvent).order_by(StockSplitEvent.detected_at.desc())  # pyright: ignore[reportAttributeAccessIssue]
     if status is not None:
         stmt = stmt.where(StockSplitEvent.status == status)
     if ticker is not None:
@@ -351,7 +351,7 @@ def find_dividend_events(
     limit: int | None = 200,
 ) -> list[DividendEvent]:
     """查詢股息事件（可依狀態與 ticker 篩選）。"""
-    stmt = select(DividendEvent).order_by(DividendEvent.detected_at.desc())
+    stmt = select(DividendEvent).order_by(DividendEvent.detected_at.desc())  # pyright: ignore[reportAttributeAccessIssue]
     if status is not None:
         stmt = stmt.where(DividendEvent.status == status)
     if ticker is not None:

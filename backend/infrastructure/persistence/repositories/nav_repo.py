@@ -23,7 +23,7 @@ def get_latest_nav(session: Session, fund_code: str) -> MutualFundNav | None:
     stmt = (
         select(MutualFundNav)
         .where(MutualFundNav.fund_code == fund_code.upper().strip())
-        .order_by(MutualFundNav.nav_date.desc())
+        .order_by(MutualFundNav.nav_date.desc())  # pyright: ignore[reportAttributeAccessIssue]
         .limit(1)
     )
     return session.exec(stmt).first()
@@ -36,7 +36,7 @@ def get_nav_history(
     stmt = (
         select(MutualFundNav)
         .where(MutualFundNav.fund_code == fund_code.upper().strip())
-        .order_by(MutualFundNav.nav_date.desc())
+        .order_by(MutualFundNav.nav_date.desc())  # pyright: ignore[reportAttributeAccessIssue]
         .limit(limit)
     )
     return list(session.exec(stmt).all())
