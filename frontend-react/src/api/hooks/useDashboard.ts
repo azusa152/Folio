@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   Stock,
   EnrichedStock,
@@ -21,7 +22,7 @@ export function useStocks() {
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks")
       if (error) throw error
-      return data as unknown as Stock[]
+      return fromApiData<Stock[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -34,7 +35,7 @@ export function useEnrichedStocks({ enabled = true }: { enabled?: boolean } = {}
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks/enriched")
       if (error) throw error
-      return data as unknown as EnrichedStock[]
+      return fromApiData<EnrichedStock[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -48,7 +49,7 @@ export function useLastScan() {
     queryFn: async () => {
       const { data, error } = await client.GET("/scan/last")
       if (error) throw error
-      return data as unknown as LastScanResponse
+      return fromApiData<LastScanResponse>(data)
     },
     staleTime: 120 * 1000,
     refetchInterval: 120 * 1000,
@@ -62,7 +63,7 @@ export function useHoldings() {
     queryFn: async () => {
       const { data, error } = await client.GET("/holdings")
       if (error) throw error
-      return data as unknown as Holding[]
+      return fromApiData<Holding[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -77,7 +78,7 @@ export function useRebalance(displayCurrency: string) {
         params: { query: { display_currency: displayCurrency } },
       })
       if (error) throw error
-      return data as unknown as RebalanceResponse
+      return fromApiData<RebalanceResponse>(data)
     },
     staleTime: 60 * 1000,
     // Keep previous currency's data visible while switching display currency
@@ -91,7 +92,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await client.GET("/profiles")
       if (error) throw error
-      return data as unknown as ProfileResponse
+      return fromApiData<ProfileResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -104,7 +105,7 @@ export function useFearGreed({ enabled = true }: { enabled?: boolean } = {}) {
     queryFn: async () => {
       const { data, error } = await client.GET("/market/fear-greed")
       if (error) throw error
-      return data as unknown as FearGreedResponse
+      return fromApiData<FearGreedResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -120,7 +121,7 @@ export function useSnapshots(days = 730) {
         params: { query: { days } },
       })
       if (error) throw error
-      return data as unknown as Snapshot[]
+      return fromApiData<Snapshot[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -133,7 +134,7 @@ export function useTwr() {
     queryFn: async () => {
       const { data, error } = await client.GET("/snapshots/twr")
       if (error) throw error
-      return data as unknown as TwrResponse
+      return fromApiData<TwrResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
@@ -146,7 +147,7 @@ export function useGreatMinds({ enabled = true }: { enabled?: boolean } = {}) {
     queryFn: async () => {
       const { data, error } = await client.GET("/resonance/great-minds")
       if (error) throw error
-      return data as unknown as GreatMindsResponse
+      return fromApiData<GreatMindsResponse>(data)
     },
     staleTime: 24 * 60 * 60 * 1000,
     enabled,
@@ -160,7 +161,7 @@ export function useSignalActivity() {
     queryFn: async () => {
       const { data, error } = await client.GET("/signals/activity")
       if (error) throw error
-      return data as unknown as SignalActivityItem[]
+      return fromApiData<SignalActivityItem[]>(data)
     },
     staleTime: 120 * 1000,
     placeholderData: keepPreviousData,
@@ -175,7 +176,7 @@ export function useInsights(displayCurrency: string, enabled = true) {
         params: { query: { display_currency: displayCurrency } },
       })
       if (error) throw error
-      return data as unknown as InsightResponse[]
+      return fromApiData<InsightResponse[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,

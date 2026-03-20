@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   Guru,
   DashboardResponse,
@@ -25,7 +26,7 @@ export function useGurus() {
     queryFn: async () => {
       const { data, error } = await client.GET("/gurus")
       if (error) throw error
-      return data as unknown as Guru[]
+      return fromApiData<Guru[]>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -39,7 +40,7 @@ export function useGuruDashboard(style?: string | null) {
         params: { query: style ? { style: style as GuruStyle } : undefined },
       })
       if (error) throw error
-      return data as unknown as DashboardResponse
+      return fromApiData<DashboardResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -53,7 +54,7 @@ export function useGuruFiling(id: number, enabled = true) {
         params: { path: { guru_id: id } },
       })
       if (error) throw error
-      return data as unknown as GuruFiling
+      return fromApiData<GuruFiling>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -68,7 +69,7 @@ export function useGuruFilings(id: number, enabled = true) {
         params: { path: { guru_id: id } },
       })
       if (error) throw error
-      return data as unknown as FilingHistoryResponse
+      return fromApiData<FilingHistoryResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -83,7 +84,7 @@ export function useGuruHoldingChanges(id: number, enabled = true, includePerform
         params: { path: { guru_id: id }, query: { limit: 20, include_performance: includePerformance } },
       })
       if (error) throw error
-      return data as unknown as GuruHolding[]
+      return fromApiData<GuruHolding[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -98,7 +99,7 @@ export function useGuruTopHoldings(id: number, enabled = true, includePerformanc
         params: { path: { guru_id: id }, query: { n: 15, include_performance: includePerformance } },
       })
       if (error) throw error
-      return data as unknown as GuruHolding[]
+      return fromApiData<GuruHolding[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -111,7 +112,7 @@ export function useGreatMinds() {
     queryFn: async () => {
       const { data, error } = await client.GET("/resonance/great-minds")
       if (error) throw error
-      return data as unknown as GreatMindsResponse
+      return fromApiData<GreatMindsResponse>(data)
     },
     staleTime: 24 * 60 * 60 * 1000,
   })
@@ -125,7 +126,7 @@ export function useGuruQoQ(id: number, enabled = true) {
         params: { path: { guru_id: id } },
       })
       if (error) throw error
-      return data as unknown as QoQResponse
+      return fromApiData<QoQResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -140,7 +141,7 @@ export function useGrandPortfolio(style?: string | null) {
         params: { query: style ? { style: style as GuruStyle } : undefined },
       })
       if (error) throw error
-      return data as unknown as GrandPortfolioResponse
+      return fromApiData<GrandPortfolioResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -154,7 +155,7 @@ export function useGuruHeatmap(style?: string | null, enabled = true) {
         params: { query: style ? { style: style as GuruStyle } : undefined },
       })
       if (error) throw error
-      return data as unknown as HeatmapResponse
+      return fromApiData<HeatmapResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -178,7 +179,7 @@ export function useGuruBacktest(
         },
       })
       if (error) throw error
-      return data as unknown as GuruBacktestResponse
+      return fromApiData<GuruBacktestResponse>(data)
     },
     staleTime: 60 * 60 * 1000,
     enabled: enabled && !!guruId,
@@ -195,7 +196,7 @@ export function useAddGuru() {
     mutationFn: async (payload: AddGuruRequest) => {
       const { data, error } = await client.POST("/gurus", { body: payload })
       if (error) throw error
-      return data as unknown as Guru
+      return fromApiData<Guru>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gurus"] })

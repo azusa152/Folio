@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   AccountCashBalanceItem,
   AccountRequest,
@@ -24,7 +25,7 @@ export function useAccounts(enabled = true, includeInactive = false) {
         },
       })
       if (error) throw error
-      return (data ?? []) as unknown as AccountResponse[]
+      return fromApiData<AccountResponse[]>(data ?? [])
     },
     staleTime: 60 * 1000,
     enabled,
@@ -37,7 +38,7 @@ export function useAccountSummary(enabled = true) {
     queryFn: async () => {
       const { data, error } = await client.GET("/accounts/summary")
       if (error) throw error
-      return (data ?? []) as unknown as AccountSummaryItem[]
+      return fromApiData<AccountSummaryItem[]>(data ?? [])
     },
     enabled,
     staleTime: 30 * 1000,
@@ -53,7 +54,7 @@ export function useAccountCashBalances(accountId: number | null, enabled = true)
         params: { path: { account_id: accountId } },
       })
       if (error) throw error
-      return (data ?? []) as unknown as AccountCashBalanceItem[]
+      return fromApiData<AccountCashBalanceItem[]>(data ?? [])
     },
     enabled: enabled && accountId != null,
     staleTime: 30 * 1000,
@@ -69,7 +70,7 @@ export function useAccountPositions(accountId: number | null, enabled = true) {
         params: { path: { account_id: accountId } },
       })
       if (error) throw error
-      return (data ?? []) as unknown as Holding[]
+      return fromApiData<Holding[]>(data ?? [])
     },
     enabled: enabled && accountId != null,
     staleTime: 30 * 1000,
@@ -85,7 +86,7 @@ export function useAccountSellablePositions(accountId: number | null, enabled = 
         params: { path: { account_id: accountId } },
       })
       if (error) throw error
-      const payload = (data ?? { items: [], count: 0 }) as unknown as SellablePositionsResponse
+      const payload = fromApiData<SellablePositionsResponse>(data ?? { items: [], count: 0 })
       return payload.items ?? []
     },
     enabled: enabled && accountId != null,
@@ -110,7 +111,7 @@ export function useAccountTransactions(
         },
       })
       if (error) throw error
-      return (data ?? []) as unknown as TransactionResponse[]
+      return fromApiData<TransactionResponse[]>(data ?? [])
     },
     enabled: enabled && accountId != null,
     staleTime: 30 * 1000,
@@ -123,7 +124,7 @@ export function useCreateAccount() {
     mutationFn: async (payload: AccountRequest) => {
       const { data, error } = await client.POST("/accounts", { body: payload })
       if (error) throw error
-      return data as unknown as AccountResponse
+      return fromApiData<AccountResponse>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
@@ -147,7 +148,7 @@ export function useUpdateAccount() {
         body: payload,
       })
       if (error) throw error
-      return data as unknown as AccountResponse
+      return fromApiData<AccountResponse>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] })

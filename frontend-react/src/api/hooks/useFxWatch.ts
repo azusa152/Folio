@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   FxWatch,
   FxAnalysis,
@@ -21,7 +22,7 @@ export function useFxWatches() {
     queryFn: async () => {
       const { data, error } = await client.GET("/fx-watch")
       if (error) throw error
-      return data as unknown as FxWatch[]
+      return fromApiData<FxWatch[]>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -35,7 +36,7 @@ export function useFxHistory(base: string, quote: string, enabled = true) {
         params: { path: { base, quote } },
       })
       if (error) throw error
-      return data as unknown as FxHistoryPoint[]
+      return fromApiData<FxHistoryPoint[]>(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -54,7 +55,7 @@ export function useFxHistoryMap(pairs: Array<{ base: string; quote: string }>) {
               params: { path: { base, quote } },
             })
             if (error) return [`${base}/${quote}`, []] as const
-            return [`${base}/${quote}`, data as unknown as FxHistoryPoint[]] as const
+            return [`${base}/${quote}`, fromApiData<FxHistoryPoint[]>(data)] as const
           } catch {
             return [`${base}/${quote}`, []] as const
           }
@@ -77,7 +78,7 @@ export function useCreateFxWatch() {
     mutationFn: async (payload: CreateFxWatchRequest) => {
       const { data, error } = await client.POST("/fx-watch", { body: payload })
       if (error) throw error
-      return data as unknown as FxWatch
+      return fromApiData<FxWatch>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -94,7 +95,7 @@ export function useUpdateFxWatch() {
         body: payload,
       })
       if (error) throw error
-      return data as unknown as FxWatch
+      return fromApiData<FxWatch>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -126,7 +127,7 @@ export function useToggleFxWatch() {
         body: { is_active: !isActive },
       })
       if (error) throw error
-      return data as unknown as FxWatch
+      return fromApiData<FxWatch>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fxWatches"] })
@@ -139,7 +140,7 @@ async function fetchFxAnalysis(forceRefresh = false): Promise<FxAnalysisState> {
     params: { query: { force_refresh: forceRefresh } },
   })
   if (error) throw error
-  const response = data as unknown as FxCheckResponse
+  const response = fromApiData<FxCheckResponse>(data)
   const map: FxAnalysisMap = {}
   for (const r of response.results) {
     const entry: FxAnalysis = {

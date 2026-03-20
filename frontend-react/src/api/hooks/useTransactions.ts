@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type { components } from "@/api/types/generated"
 import type { TransactionRequest, TransactionResponse } from "@/api/types/transaction"
 
@@ -58,7 +59,7 @@ export function useTransactions({
         },
       })
       if (error) throw error
-      return data as unknown as TransactionResponse[]
+      return fromApiData<TransactionResponse[]>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -72,7 +73,7 @@ export function useAddTransaction() {
     mutationFn: async (payload: TransactionRequest) => {
       const { data, error } = await client.POST("/transactions", { body: payload })
       if (error) throw error
-      return data as unknown as TransactionResponse
+      return fromApiData<TransactionResponse>(data)
     },
     onSuccess: () => invalidateTransactionDerivedQueries(queryClient),
   })
