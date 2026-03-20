@@ -166,7 +166,7 @@ backend-test-quick: .venv-check ## Fast test run — no coverage, for local iter
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
 
-backend-typecheck: .venv-check ## pyright static type check (basic mode, advisory)
+backend-typecheck: .venv-check ## pyright static type check (hard gate — mirrors CI)
 	cd $(BACKEND_DIR) && uv run pyright .
 
 # ---------------------------------------------------------------------------
