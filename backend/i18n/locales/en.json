@@ -246,7 +246,10 @@
     "rea_consec_disabled": "📊 {consec} consecutive days but not near {high_days}-day high — may still rise",
     "rea_no_signal": "📊 Not near recent high, only {consec} consecutive rising days",
     "rea_disabled": "📊 Enable near-high or consecutive-rise alerts to receive notifications",
-    "rea_no_data": "📊 Not enough historical data for this pair"
+    "rea_no_data": "📊 Not enough historical data for this pair",
+    "error": {
+      "refresh_cooldown": "Force refresh is cooling down. Please retry in {retry_after_seconds} seconds."
+    }
   },
   "stress_test": {
     "no_holdings": "No holdings",

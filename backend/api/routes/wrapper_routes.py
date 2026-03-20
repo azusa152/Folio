@@ -54,7 +54,9 @@ from domain.constants import (
 )
 from i18n import t
 from infrastructure.database import get_session
+from logging_config import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(tags=["wrapper"])
 _CONTRIBUTION_WRAPPERS = {"nisa_tsumitate", "nisa_growth"}
 
@@ -266,20 +268,38 @@ def refresh_eligible_assets_endpoint(
         )
     try:
         stats = sync_wrapper_from_official_source(session, normalized_wrapper)
-    except (ValueError, httpx.HTTPError):
+    except httpx.HTTPError as exc:
+        logger.exception(
+            "Eligible-asset refresh failed for wrapper=%r", normalized_wrapper
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=_error_detail(
+                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
+            ),
+        ) from exc
+    except ValueError as exc:
+        logger.exception(
+            "Eligible-asset refresh validation failed for wrapper=%r",
+            normalized_wrapper,
+        )
         raise HTTPException(
             status_code=422,
             detail=_error_detail(
                 "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
             ),
-        ) from None
-    except Exception:
+        ) from exc
+    except Exception as exc:
+        logger.exception(
+            "Unexpected error during eligible-asset refresh for wrapper=%r",
+            normalized_wrapper,
+        )
         raise HTTPException(
-            status_code=422,
+            status_code=500,
             detail=_error_detail(
                 "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
             ),
-        ) from None
+        ) from exc
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)
     return {
         "wrapper": normalized_wrapper,
@@ -334,20 +354,38 @@ async def upload_eligible_assets(
                 source="manual_upload",
                 autocommit=True,
             )
-        except (ValueError, httpx.HTTPError):
+        except httpx.HTTPError as exc:
+            logger.exception(
+                "Eligible-asset upload failed for wrapper=%r", normalized_wrapper
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=_error_detail(
+                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
+                ),
+            ) from exc
+        except ValueError as exc:
+            logger.exception(
+                "Eligible-asset upload validation failed for wrapper=%r",
+                normalized_wrapper,
+            )
             raise HTTPException(
                 status_code=422,
                 detail=_error_detail(
                     "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
                 ),
-            ) from None
-        except Exception:
+            ) from exc
+        except Exception as exc:
+            logger.exception(
+                "Unexpected error during eligible-asset upload for wrapper=%r",
+                normalized_wrapper,
+            )
             raise HTTPException(
-                status_code=422,
+                status_code=500,
                 detail=_error_detail(
                     "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
                 ),
-            ) from None
+            ) from exc
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)
@@ -403,11 +441,12 @@ def sync_nav_endpoint():
         pre_refresh_status["error"] = str(exc)
     try:
         result = sync_mutual_fund_navs()
-    except Exception:
+    except Exception as exc:
+        logger.exception("NAV sync failed")
         raise HTTPException(
-            status_code=422,
+            status_code=500,
             detail=_error_detail("NAV_SYNC_FAILED", "nav_sync.failed"),
-        ) from None
+        ) from exc
     invalidate_enriched_cache()
     return {**result, "pre_refresh": pre_refresh_status}
 

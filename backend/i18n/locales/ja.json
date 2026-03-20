@@ -246,7 +246,10 @@
     "rea_consec_disabled": "📊 {consec} 日連続上昇中、ただし {high_days} 日高値未達",
     "rea_no_signal": "📊 直近高値未達、連続上昇は {consec} 日のみ",
     "rea_disabled": "📊 高値接近または連続上昇のいずれかのアラートを有効にしてください",
-    "rea_no_data": "📊 この通貨ペアの履歴データが不足しています"
+    "rea_no_data": "📊 この通貨ペアの履歴データが不足しています",
+    "error": {
+      "refresh_cooldown": "強制更新はクールダウン中です。{retry_after_seconds} 秒後に再試行してください。"
+    }
   },
   "stress_test": {
     "no_holdings": "保有なし",

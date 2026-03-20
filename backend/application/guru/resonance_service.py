@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 from domain.constants import RESONANCE_CACHE_TTL
 from domain.entities import Holding, Stock
 from domain.smart_money import compute_resonance_matches
-from infrastructure.cache import SWRCache
+from infrastructure.common.cache import SWRCache
 from infrastructure.database import engine
 from infrastructure.repositories import (
     find_all_active_gurus,

@@ -566,7 +566,7 @@ def test_wrapper_eligible_assets_refresh_should_map_http_errors_to_structured_er
 
     monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
     refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
-    assert refresh_resp.status_code == 422
+    assert refresh_resp.status_code == 502
     detail = refresh_resp.json()["detail"]
     assert detail["error_code"] == "ELIGIBILITY_REFRESH_FAILED"
 
@@ -582,7 +582,7 @@ def test_wrapper_eligible_assets_refresh_should_map_runtime_errors_to_structured
 
     monkeypatch.setattr(wrapper_routes, "sync_wrapper_from_official_source", _fake_sync)
     refresh_resp = client.post("/wrappers/nisa_growth/eligible-assets/refresh")
-    assert refresh_resp.status_code == 422
+    assert refresh_resp.status_code == 500
     detail = refresh_resp.json()["detail"]
     assert detail["error_code"] == "ELIGIBILITY_REFRESH_FAILED"
 
@@ -601,7 +601,7 @@ def test_wrapper_eligible_assets_upload_should_map_runtime_errors_to_structured_
         "/wrappers/nisa_tsumitate/eligible-assets/upload",
         files={"file": ("eligible.csv", b"ticker,fund_name\n", "text/csv")},
     )
-    assert upload_resp.status_code == 422
+    assert upload_resp.status_code == 500
     detail = upload_resp.json()["detail"]
     assert detail["error_code"] == "ELIGIBILITY_UPLOAD_FAILED"
 

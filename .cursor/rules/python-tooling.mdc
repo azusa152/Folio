@@ -30,10 +30,11 @@ alwaysApply: false
 
 ## Test Coverage
 
-- `make backend-test` runs pytest with `pytest-cov` and enforces a coverage threshold. Config lives in `backend/pyproject.toml` under `[tool.coverage.report]`.
-- Current floor: `fail_under = 85`. When coverage improves, raise this value and commit the new floor (ratchet approach — thresholds only go up).
+- `make backend-test` runs pytest with `pytest-cov` and enforces a coverage threshold via `--cov-fail-under=85` on the pytest command line (in `Makefile` and `.github/workflows/ci.yml`).
+- **Do NOT set `fail_under` in `[tool.coverage.report]` in `backend/pyproject.toml`.** It affects all `coverage` subcommands including those run internally by third-party GitHub Actions (e.g. `py-cov-action/python-coverage-comment-action`), causing CI failure with exit code 2. Use `--cov-fail-under=N` on the pytest command line only.
+- Current floor: 85%. When coverage improves, raise the `--cov-fail-under` value in both `Makefile` and `.github/workflows/ci.yml` and commit as the new baseline (ratchet approach — thresholds only go up).
 - All new code in `application/`, `domain/`, and `api/` should have corresponding tests. Use `# pragma: no cover` sparingly for genuinely untestable branches.
-- `relative_files = true` is set in the coverage config — required for CI and py-cov-action badge generation to work correctly.
+- `relative_files = true` is set in `[tool.coverage.report]` in `pyproject.toml` — required for CI and py-cov-action badge generation to work correctly.
 
 ## Logging
 - Use `from logging_config import get_logger` and `logger = get_logger(__name__)` in every backend module.
@@ -51,4 +52,4 @@ alwaysApply: false
 
 ## Pydantic Schemas
 - **Separate Create vs Update schemas.** Every endpoint that mutates a resource must have its own schema: `FooRequest` for creation (required fields) and `UpdateFooRequest` for partial updates (all fields `Optional`). Never reuse a create schema as the update endpoint's request body — required fields will cause 422 errors when the frontend sends partial payloads.
-- After adding or changing any schema in `backend/api/schemas.py`, run `make generate-api` to keep the frontend TypeScript types in sync.
+- After adding or changing any schema in the appropriate module under `backend/api/schemas/` (e.g. `account.py`, `guru.py`), run `make generate-api` to keep the frontend TypeScript types in sync. `backend/api/schemas/__init__.py` re-exports all schemas so `from api.schemas import X` keeps working.

@@ -41,7 +41,7 @@ from api.routes.thesis_routes import router as thesis_router
 from api.routes.transaction_routes import router as transaction_router
 from api.routes.wrapper_routes import router as wrapper_router
 from api.schemas import HealthResponse
-from config.settings import init_settings
+from infrastructure.common.config import init_settings
 from infrastructure.database import create_db_and_tables
 from logging_config import get_logger, request_id_var
 

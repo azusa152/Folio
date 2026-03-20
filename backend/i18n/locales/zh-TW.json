@@ -246,7 +246,10 @@
     "rea_consec_disabled": "📊 連續上漲 {consec} 日，但匯率尚未達 {high_days} 日高點附近",
     "rea_no_signal": "📊 匯率未達近期高點，且連續上漲僅 {consec} 日",
     "rea_disabled": "📊 請啟用近期高點或連續上漲其中一項警報條件",
-    "rea_no_data": "📊 此貨幣對歷史資料不足"
+    "rea_no_data": "📊 此貨幣對歷史資料不足",
+    "error": {
+      "refresh_cooldown": "強制刷新冷卻中，請於 {retry_after_seconds} 秒後再試。"
+    }
   },
   "stress_test": {
     "no_holdings": "無持倉",

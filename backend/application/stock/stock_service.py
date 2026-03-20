@@ -27,7 +27,7 @@ from domain.entities import RemovalLog, Stock, ThesisLog
 from domain.enums import CATEGORY_LABEL, ScanSignal, StockCategory
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
-from infrastructure.cache import SWRCache
+from infrastructure.common.cache import SWRCache
 from infrastructure.database import engine
 from infrastructure.market_data import (
     analyze_moat_trend,

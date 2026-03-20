@@ -65,7 +65,7 @@ from domain.rebalance import (
     compute_portfolio_health_score,
 )
 from i18n import get_user_language, t
-from infrastructure.cache import SWRCache
+from infrastructure.common.cache import SWRCache
 from infrastructure.database import engine
 from infrastructure.market_data import (
     are_all_signals_in_l1,

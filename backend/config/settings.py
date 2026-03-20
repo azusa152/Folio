@@ -1,50 +1,23 @@
-"""
-Config — 從環境變數覆寫 domain 常數。
-在應用程式啟動時呼叫一次 init_settings()。
+"""Backward-compat shim for legacy imports from ``config.settings``.
+
+Canonical location is ``infrastructure.common.config``.
+Use module-attribute delegation so callers importing this module as
+``from config import settings`` always see the latest values after
+``init_settings()`` mutates runtime configuration.
 """
 
-import os
+from infrastructure.common import config as _config
 
-ELIGIBLE_TSUMITATE_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
-ELIGIBLE_GROWTH_URL = "https://www.toushin.or.jp/static/NISA_growth_productsList/"
-ELIGIBLE_SYNC_INTERVAL_HOURS = 168
-NAV_SYNC_INTERVAL_HOURS = 24
-TOUSHIN_LIB_CSV_URL = (
-    "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST030000/csv-file-download"
-)
-TOUSHIN_LIB_SEARCH_URL = (
-    "https://toushin-lib.fwg.ne.jp/FdsWeb/FDST999900/fundDataSearch"
-)
+__all__ = [name for name in dir(_config) if name == "init_settings" or name.isupper()]
 
 
 def init_settings() -> None:
-    """Override domain constants from environment. Call once at startup."""
-    global \
-        ELIGIBLE_GROWTH_URL, \
-        ELIGIBLE_SYNC_INTERVAL_HOURS, \
-        ELIGIBLE_TSUMITATE_URL, \
-        NAV_SYNC_INTERVAL_HOURS, \
-        TOUSHIN_LIB_CSV_URL, \
-        TOUSHIN_LIB_SEARCH_URL
-    ELIGIBLE_TSUMITATE_URL = os.getenv(
-        "ELIGIBLE_TSUMITATE_URL",
-        ELIGIBLE_TSUMITATE_URL,
-    )
-    ELIGIBLE_GROWTH_URL = os.getenv(
-        "ELIGIBLE_GROWTH_URL",
-        ELIGIBLE_GROWTH_URL,
-    )
-    ELIGIBLE_SYNC_INTERVAL_HOURS = int(
-        os.getenv("ELIGIBLE_SYNC_INTERVAL_HOURS", str(ELIGIBLE_SYNC_INTERVAL_HOURS))
-    )
-    NAV_SYNC_INTERVAL_HOURS = int(
-        os.getenv("NAV_SYNC_INTERVAL_HOURS", str(NAV_SYNC_INTERVAL_HOURS))
-    )
-    TOUSHIN_LIB_CSV_URL = os.getenv(
-        "TOUSHIN_LIB_CSV_URL",
-        TOUSHIN_LIB_CSV_URL,
-    )
-    TOUSHIN_LIB_SEARCH_URL = os.getenv(
-        "TOUSHIN_LIB_SEARCH_URL",
-        TOUSHIN_LIB_SEARCH_URL,
-    )
+    _config.init_settings()
+
+
+def __getattr__(name: str):
+    return getattr(_config, name)
+
+
+def __dir__():
+    return sorted(set(globals()) | set(dir(_config)))

@@ -13,7 +13,7 @@ import httpx
 from sqlmodel import Session
 
 from application.portfolio.eligibility_service import refresh_eligible_assets_from_rows
-from config import settings
+from infrastructure.common import config as settings
 from infrastructure.database import engine
 from infrastructure.external.eligible_fund_parser import (
     parse_growth_xlsx,

@@ -14,9 +14,9 @@ import time
 
 from sqlmodel import Session
 
-from config import settings
 from domain.enums import StockCategory
 from infrastructure import repositories as repo
+from infrastructure.common import config as settings
 from infrastructure.database import engine
 from infrastructure.market_data.toushin_adapter import fetch_fund_nav_csv
 from infrastructure.market_data.toushin_lib_adapter import (
