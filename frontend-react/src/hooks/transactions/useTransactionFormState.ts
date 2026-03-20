@@ -137,6 +137,7 @@ export function useTransactionFormState({
     currency,
     ticker: debouncedTicker,
     totalAmount,
+    transactionType,
     shouldShowNisaPicker,
     shouldShowSellPicker,
     shouldCheckEligibility,

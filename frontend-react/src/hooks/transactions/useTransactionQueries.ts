@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useAccountCashBalances, useAccountSellablePositions } from "@/api/hooks/useAccounts"
 import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
 import type { AccountResponse } from "@/api/types/account"
-import type { NisaAssetTypeFilter, StockCategory } from "./types"
+import type { NisaAssetTypeFilter, StockCategory, TransactionType } from "./types"
 
 interface Props {
   open: boolean
@@ -13,6 +13,7 @@ interface Props {
   currency: string
   ticker: string
   totalAmount: string
+  transactionType: TransactionType
   shouldShowNisaPicker: boolean
   shouldShowSellPicker: boolean
   shouldCheckEligibility: boolean
@@ -36,6 +37,7 @@ export function useTransactionQueries({
   currency,
   ticker,
   totalAmount,
+  transactionType,
   shouldShowNisaPicker,
   shouldShowSellPicker,
   shouldCheckEligibility,
@@ -135,7 +137,9 @@ export function useTransactionQueries({
     routingSuggestedAccounts,
     splitRoutingPlan,
     canSplitPurchase:
-      splitRoutingPlan.length >= 2 && splitRoutingPlan.every((item) => item.account != null),
+      transactionType === "BUY" &&
+      splitRoutingPlan.length >= 2 &&
+      splitRoutingPlan.every((item) => item.account != null),
     wrapperQuotaQuery,
     selectedQuota,
   }
