@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { getSignalLabel } from "@/lib/signal-label"
+import { downloadCsvFromApi } from "@/lib/downloadCsv"
 import { FINANCE_BADGE } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { cn, formatLocalTime } from "@/lib/utils"
@@ -59,20 +60,7 @@ export default function Backtest() {
   const handleExportCsv = async () => {
     setExporting(true)
     try {
-      const headers: HeadersInit = {}
-      const apiKey = import.meta.env.VITE_API_KEY
-      if (apiKey) headers["X-API-Key"] = apiKey
-
-      const response = await fetch("/api/backtest/export-csv", { headers })
-      if (!response.ok) throw new Error(response.statusText)
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = "backtest_signals.csv"
-      link.click()
-      URL.revokeObjectURL(url)
+      await downloadCsvFromApi("/api/backtest/export-csv", undefined, "backtest_signals.csv")
     } catch {
       toast.error(t("common.error"))
     } finally {

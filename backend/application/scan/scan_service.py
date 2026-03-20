@@ -1,4 +1,3 @@
-# pyright: reportCallIssue=false
 """
 Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史。
 """

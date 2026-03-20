@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Download, Info, Upload } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { downloadCsvFromApi } from "@/lib/downloadCsv"
 import {
   useAccounts,
   useAccountPositions,
@@ -219,31 +220,15 @@ export function AccountsTab({
   const handleExportCsv = async () => {
     setExportingCsv(true)
     try {
-      const headers: HeadersInit = {}
-      const apiKey = import.meta.env.VITE_API_KEY
-      if (apiKey) headers["X-API-Key"] = apiKey
-
-      const params = new URLSearchParams()
+      const params: Record<string, string> = {}
       if (effectiveExportScope === "selected" && selectedAccount?.id != null) {
-        params.set("account_id", String(selectedAccount.id))
+        params["account_id"] = String(selectedAccount.id)
       }
-      const requestUrl = params.toString()
-        ? `/api/transactions/export-csv?${params.toString()}`
-        : "/api/transactions/export-csv"
-      const response = await fetch(requestUrl, {
-        headers,
-      })
-      if (!response.ok) throw new Error(response.statusText)
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      const contentDisposition = response.headers.get("Content-Disposition") || ""
-      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
-      link.download = filenameMatch?.[1] || "transactions.csv"
-      link.href = url
-      link.click()
-      URL.revokeObjectURL(url)
+      await downloadCsvFromApi(
+        "/api/transactions/export-csv",
+        Object.keys(params).length ? params : undefined,
+        "transactions.csv",
+      )
     } catch {
       toast.error(t("transactions.export_error"))
     } finally {

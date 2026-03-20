@@ -14,9 +14,9 @@ from unittest.mock import MagicMock, patch
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
-import domain.constants
+import infrastructure.common.config
 
-domain.constants.DISK_CACHE_DIR = os.path.join(
+infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_sector"
 )
 

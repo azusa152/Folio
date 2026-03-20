@@ -17,7 +17,6 @@ from application.formatters import (
 )
 from domain.analysis import compute_signal_duration
 from domain.constants import (
-    DATA_DIR,
     DRIFT_THRESHOLD_PCT,
     NOTIFICATION_TYPE_GURU_ALERTS,
     STOCK_CATEGORIES,
@@ -26,6 +25,7 @@ from domain.constants import (
 from domain.enums import CATEGORY_LABEL, HoldingAction, ScanSignal
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
+from infrastructure.common.config import DATA_DIR
 from infrastructure.market_data import get_fear_greed_index
 from infrastructure.notification import (
     is_notification_enabled,

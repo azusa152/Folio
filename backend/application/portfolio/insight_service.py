@@ -103,7 +103,7 @@ def get_portfolio_insights(
         {
             "key": i.key,
             "severity": i.severity,
-            "vars": i.vars,
+            "vars": i.template_vars,
             "category": i.category,
         }
         for i in insights

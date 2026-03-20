@@ -57,8 +57,6 @@ from domain.constants import (
     CURL_CFFI_IMPERSONATE,
     DEFAULT_LANGUAGE,
     DISK_BETA_TTL,
-    DISK_CACHE_DIR,
-    DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
     DISK_ETF_HOLDINGS_TTL,
@@ -167,6 +165,7 @@ from domain.constants import (
 )
 from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
 from i18n import t
+from infrastructure.common.config import DISK_CACHE_DIR, DISK_CACHE_SIZE_LIMIT
 from infrastructure.common.disk_cache import DiskCache
 from infrastructure.common.rate_limiter import RateLimiter
 from infrastructure.market_data.formatters import (

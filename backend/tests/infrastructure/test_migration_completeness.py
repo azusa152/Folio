@@ -17,9 +17,9 @@ import tempfile
 os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
-import domain.constants
+import infrastructure.common.config
 
-domain.constants.DISK_CACHE_DIR = os.path.join(
+infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_migration"
 )
 
@@ -34,7 +34,6 @@ from sqlalchemy import inspect as sa_inspect  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 from sqlmodel import SQLModel  # noqa: E402
 
-import domain.entities  # noqa: E402 — register all entity models
 from infrastructure.database import _run_migrations  # noqa: E402
 
 # ---------------------------------------------------------------------------

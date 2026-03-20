@@ -228,7 +228,6 @@ def suggest_transaction_routing(
         eligibility[wrapper] = eligibility_result.eligible
 
     base_suggestions = suggest_purchase_routing(
-        ticker=normalized_ticker,
         total_amount=float(total_amount),
         quotas=quotas,
         eligibility=eligibility,

@@ -18,7 +18,6 @@ class RoutingSuggestion:
 
 
 def suggest_purchase_routing(
-    ticker: str,
     total_amount: float,
     quotas: dict[str, QuotaStatus],
     eligibility: dict[str, bool],

@@ -118,3 +118,40 @@ class TestApiControllerBoundary:
         assert violations == [], "API layer infrastructure violations:\n" + "\n".join(
             violations
         )
+
+
+class TestDomainConstantsAllSync:
+    """Guard that domain/core/constants.__all__ stays in sync with the module's
+    public names.  Prevents the __all__ list from drifting when constants are
+    added or removed."""
+
+    def test_all_contains_every_public_name(self):
+        import types
+
+        import domain.core.constants as mod
+
+        declared = set(mod.__all__)
+        actual = {
+            name
+            for name in dir(mod)
+            if not name.startswith("_")
+            and not isinstance(getattr(mod, name), types.ModuleType)
+        }
+        missing_from_all = actual - declared
+        assert not missing_from_all, (
+            f"Names defined in domain.core.constants but missing from __all__: "
+            f"{sorted(missing_from_all)}\n"
+            "Add them to __all__ in backend/domain/core/constants.py."
+        )
+
+    def test_all_has_no_phantom_names(self):
+        import domain.core.constants as mod
+
+        declared = set(mod.__all__)
+        actual = set(dir(mod))
+        phantom = declared - actual
+        assert not phantom, (
+            f"Names in __all__ that are not defined in domain.core.constants: "
+            f"{sorted(phantom)}\n"
+            "Remove them from __all__ in backend/domain/core/constants.py."
+        )

@@ -26,12 +26,14 @@ os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
 
 # Patch disk cache dir and data dir before any infrastructure imports
-import domain.constants
+import infrastructure.common.config
 
-domain.constants.DISK_CACHE_DIR = os.path.join(
+infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
 )
-domain.constants.DATA_DIR = os.path.join(tempfile.gettempdir(), "folio_test_data")
+infrastructure.common.config.DATA_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_data"
+)
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402

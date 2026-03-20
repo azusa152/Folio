@@ -7,10 +7,11 @@ os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 import domain.constants
+import infrastructure.common.config
 from domain.enums import FearGreedLevel
 from infrastructure.market_data import market_data
 
-domain.constants.DISK_CACHE_DIR = os.path.join(
+infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache_fear_greed"
 )
 

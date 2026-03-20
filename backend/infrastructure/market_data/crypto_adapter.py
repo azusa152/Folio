@@ -27,11 +27,10 @@ from domain.constants import (
     CRYPTO_CACHE_MAXSIZE,
     CRYPTO_CACHE_TTL,
     CURL_CFFI_IMPERSONATE,
-    DISK_CACHE_DIR,
-    DISK_CACHE_SIZE_LIMIT,
     DISK_CRYPTO_TTL,
     DISK_KEY_CRYPTO,
 )
+from infrastructure.common.config import DISK_CACHE_DIR, DISK_CACHE_SIZE_LIMIT
 from infrastructure.common.disk_cache import DiskCache
 from infrastructure.common.rate_limiter import RateLimiter
 from logging_config import get_logger

@@ -20,8 +20,6 @@ from tenacity import (
 )
 
 from domain.constants import (
-    DISK_CACHE_DIR,
-    DISK_CACHE_SIZE_LIMIT,
     DISK_GURU_FILING_TTL,
     DISK_KEY_GURU_FILING,
     GURU_FILING_CACHE_MAXSIZE,
@@ -35,6 +33,7 @@ from domain.constants import (
     YFINANCE_RETRY_WAIT_MAX,
     YFINANCE_RETRY_WAIT_MIN,
 )
+from infrastructure.common.config import DISK_CACHE_DIR, DISK_CACHE_SIZE_LIMIT
 from infrastructure.common.disk_cache import DiskCache
 from infrastructure.common.rate_limiter import RateLimiter
 from logging_config import get_logger
