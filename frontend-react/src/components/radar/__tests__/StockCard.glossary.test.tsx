@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { StockCard } from "../StockCard"
-import type { RadarStock, RadarEnrichedStock } from "@/api/types/radar"
+import { makeRadarEnrichedStock, makeRadarStock } from "./fixtures"
 
 const GLOSSARY: Record<string, string> = {
   "glossary.rsi": "RSI definition.",
@@ -51,19 +51,16 @@ vi.mock("@/components/radar/FundamentalsTab", () => ({
   FundamentalsTab: () => <div data-testid="fundamentals" />,
 }))
 
-const STOCK: RadarStock = {
+const STOCK = makeRadarStock({
   ticker: "AAPL",
   category: "Growth",
   current_thesis: "Strong ecosystem moat",
   current_tags: ["tech"],
-  display_order: 0,
   last_scan_signal: "NORMAL",
   signal_since: null,
-  is_active: true,
-  is_etf: false,
-} as RadarStock
+})
 
-const ENRICHMENT: RadarEnrichedStock = {
+const ENRICHMENT = makeRadarEnrichedStock({
   ticker: "AAPL",
   price: 185.5,
   change_pct: 1.2,
@@ -84,7 +81,7 @@ const ENRICHMENT: RadarEnrichedStock = {
     ma60: 178.0,
   },
   fundamentals: { market_cap: 2_800_000_000_000 },
-} as unknown as RadarEnrichedStock
+})
 
 describe("StockCard – glossary integration", () => {
   async function renderExpanded() {

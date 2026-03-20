@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import client from "@/api/client"
 import { fromApiData } from "@/api/lib/fromApi"
+import { assertRadarEnrichedStocks, assertPricePoints, assertMoatAnalysis } from "@/api/lib/guards"
 import type {
   RadarStock,
   RemovedStock,
@@ -44,7 +45,7 @@ export function useRadarEnrichedStocks() {
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks/enriched")
       if (error) throw error
-      return fromApiData<RadarEnrichedStock[]>(data)
+      return assertRadarEnrichedStocks(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -177,7 +178,7 @@ export function usePriceHistory(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return fromApiData<PricePoint[]>(data)
+      return assertPricePoints(data)
     },
     enabled,
     staleTime: 5 * 60 * 1000,
@@ -192,7 +193,7 @@ export function useMoatAnalysis(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return fromApiData<MoatAnalysis>(data)
+      return assertMoatAnalysis(data)
     },
     enabled,
     staleTime: 60 * 60 * 1000,

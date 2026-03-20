@@ -37,6 +37,7 @@ vi.mock("recharts", () => {
     const groups = data ?? []
     const leaves = groups.flatMap((group) => group.children ?? [])
     const firstLeaf = leaves[0] ?? null
+    // justified: accessing Recharts Treemap internals not in public types
     const CellRenderer = content ? (content as unknown as { type?: React.ComponentType<Record<string, unknown>> }).type : null
 
     return (

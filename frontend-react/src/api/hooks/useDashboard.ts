@@ -1,9 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import client from "@/api/client"
 import { fromApiData } from "@/api/lib/fromApi"
+import { assertEnrichedStocks } from "@/api/lib/guards"
 import type {
   Stock,
-  EnrichedStock,
   RebalanceResponse,
   FearGreedResponse,
   Snapshot,
@@ -35,7 +35,7 @@ export function useEnrichedStocks({ enabled = true }: { enabled?: boolean } = {}
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks/enriched")
       if (error) throw error
-      return fromApiData<EnrichedStock[]>(data)
+      return assertEnrichedStocks(data)
     },
     staleTime: 5 * 60 * 1000,
     enabled,

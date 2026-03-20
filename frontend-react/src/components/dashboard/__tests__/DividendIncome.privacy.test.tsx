@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DividendIncome } from "../DividendIncome"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
-import type { RebalanceResponse, EnrichedStock } from "@/api/types/dashboard"
+import type { EnrichedStock } from "@/api/types/dashboard"
+import { makeRebalanceResponse } from "./fixtures"
 
 vi.mock("../InfoPopover", () => ({
   InfoPopover: ({ children }: { children: React.ReactNode }) => (
@@ -10,10 +11,9 @@ vi.mock("../InfoPopover", () => ({
   ),
 }))
 
-const rebalance: RebalanceResponse = {
+const rebalance = makeRebalanceResponse({
   total_value: 10000,
   display_currency: "USD",
-  advice: [],
   holdings_detail: [
     {
       ticker: "AAPL",
@@ -28,14 +28,12 @@ const rebalance: RebalanceResponse = {
       purchase_fx_rate: null,
     },
   ],
-} as unknown as RebalanceResponse
+})
 
+// Only `ticker` is required by EnrichedStock; all other fields are optional.
 const enrichedStocks: EnrichedStock[] = [
-  {
-    ticker: "AAPL",
-    dividend: { ytd_dividend_per_share: 2.5 },
-  },
-] as unknown as EnrichedStock[]
+  { ticker: "AAPL", dividend: { ytd_dividend_per_share: 2.5 } },
+]
 
 describe("DividendIncome privacy", () => {
   beforeEach(() => {
