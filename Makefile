@@ -34,6 +34,7 @@
 #    make check-constants  Verify backend/frontend constant sync
 #    make check-i18n       Verify backend/frontend locale key parity
 #    make check-agent-doc-tokens Verify AI agent doc token budgets
+#    make check-agent-docs     Verify AGENTS.md cross-references are intact
 #    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
 #  Setup:
@@ -214,7 +215,7 @@ format: backend-format ## Format entire project (backend code)
 
 # Phase group targets for parallel CI execution.
 # Parsed by scripts/check_ci_completeness.py to verify all CI jobs are covered.
-_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-api-spec
+_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-agent-docs check-api-spec
 _ci-heavy: backend-test frontend-test frontend-build backend-typecheck
 _ci-network: frontend-security backend-security
 
@@ -322,7 +323,7 @@ refresh-eligible: ## Refresh NISA eligible assets from official sources (runs in
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-makefile-db-targets backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-agent-docs check-makefile-db-targets backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
@@ -332,6 +333,9 @@ check-i18n: .venv-check ## Check locale key parity (backend + frontend locale fi
 
 check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no venv needed)
 	python3 scripts/check_agent_doc_tokens.py
+
+check-agent-docs: ## Verify AGENTS.md cross-references are present in both docs files
+	bash scripts/check_agent_docs.sh
 
 check-makefile-db-targets: ## Ensure DB maintenance make targets execute in Docker
 	python3 scripts/check_makefile_db_targets.py
