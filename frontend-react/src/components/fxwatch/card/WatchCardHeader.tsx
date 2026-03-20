@@ -1,9 +1,10 @@
-import { ChevronDown, Minus, TrendingDown, TrendingUp } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { cn, formatLocalTime } from "@/lib/utils"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { Badge } from "@/components/ui/badge"
 import { FxSparkline } from "../FxSparkline"
+import { trendIcon } from "./watchCardUtils"
 import type { FxWatch, FxAnalysis, FxHistoryPoint } from "@/api/types/fxWatch"
 
 interface Props {
@@ -22,11 +23,6 @@ interface Props {
   setExpanded: (updater: (v: boolean) => boolean) => void
 }
 
-function trendIcon(direction: FxAnalysis["trend_direction"]) {
-  if (direction === "rising") return <TrendingUp className="h-3.5 w-3.5" />
-  if (direction === "falling") return <TrendingDown className="h-3.5 w-3.5" />
-  return <Minus className="h-3.5 w-3.5" />
-}
 
 export function WatchCardHeader({
   watch,
