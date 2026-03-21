@@ -9,12 +9,20 @@ updates:
     labels:
       - "dependencies"
     groups:
+      # Minor and patch updates are grouped into one PR per week (low risk).
       python-minor-patch:
         patterns:
           - "*"
         update-types:
           - "minor"
           - "patch"
+      # Major updates are opened as individual PRs so each can be reviewed and
+      # tested separately. These may contain breaking changes.
+      python-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   - package-ecosystem: "npm"
     directory: "/frontend-react"
@@ -25,12 +33,20 @@ updates:
     labels:
       - "dependencies"
     groups:
+      # Minor and patch updates are grouped into one PR per week (low risk).
       npm-minor-patch:
         patterns:
           - "*"
         update-types:
           - "minor"
           - "patch"
+      # Major updates are opened as individual PRs so each can be reviewed and
+      # tested separately. These may contain breaking changes.
+      npm-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   - package-ecosystem: "github-actions"
     directory: "/"

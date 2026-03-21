@@ -46,7 +46,8 @@ KNOWN_JOB_MAP: dict[str, str] = {
 
 # Infrastructure-only jobs — path filtering, meta-checks, etc.
 # These have no meaningful local equivalent and do not need a make target.
-SKIP_JOBS: set[str] = {"changes", "ci-completeness", "ci-gate"}
+# docker-build: requires Docker daemon; validated in CI only (use `make rebuild` locally).
+SKIP_JOBS: set[str] = {"changes", "ci-completeness", "ci-gate", "docker-build"}
 
 # ---------------------------------------------------------------------------
 # Helpers

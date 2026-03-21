@@ -619,6 +619,12 @@ docker compose up --build -d
 - **Docker 隔離** — 容器內使用非 root 使用者執行服務，限縮攻擊面
 - **隱私模式** — 前端一鍵遮蔽金額、數量、Chat ID，設定持久化至資料庫
 - **依賴掃描** — CI 使用 `pip-audit` + `npm audit` 檢查已知 CVE；本地可執行 `make backend-security`（pip-audit）與 `make frontend-security`（npm audit）
+
+**已知豁免 CVE：**
+
+| CVE | 套件 | 狀態 | 說明 |
+|-----|------|------|------|
+| CVE-2025-69872 | `diskcache` | 無可用修補版本 | pickle 反序列化漏洞。`diskcache` 用於 L2 市場資料快取；快取目錄位於 Docker 容器內部，不對外暴露，且容器以非 root 使用者執行。遠端攻擊者需先取得容器寫入權限（已高於此漏洞的嚴重性）。詳見 [`docs/adr/0005-diskcache-cve-2025-69872-waiver.md`](docs/adr/0005-diskcache-cve-2025-69872-waiver.md)。 |
 - **敏感資料防護** — `.gitignore` 排除資料庫檔案（`*.db`）、環境變數（`.env`）、日誌檔案（`logs/`）
 
 ### 安全最佳實務
@@ -1202,3 +1208,41 @@ tail -f logs/radar.log
 **環境變數調整：**
 - `LOG_LEVEL` — 日誌等級，預設 `INFO`（可設為 `DEBUG` 取得更詳細資訊）
 - `LOG_DIR` — 日誌目錄，預設 `/app/data/logs`
+- `LOG_FORMAT` — 輸出格式：`text`（預設，人類可讀）或 `json`（結構化，適用 ELK / Loki / Grafana）
+
+**JSON 格式（`LOG_FORMAT=json`）：**
+
+設定 `LOG_FORMAT=json` 後，每行日誌為單一 JSON 物件，欄位如下：
+
+```json
+{
+  "timestamp": "2026-03-20 14:30:00",
+  "level": "INFO",
+  "request_id": "a1b2c3d4",
+  "method": "GET",
+  "path": "/api/stocks",
+  "status": 200,
+  "latency_ms": 42.5,
+  "logger": "application.stock.stock_service",
+  "message": "..."
+}
+```
+
+`method`、`path`、`status`、`latency_ms` 僅在 HTTP 請求上下文中有值；其他背景執行緒日誌這些欄位為 `null`。
+
+### 進階可觀測性（選用）
+
+**Sentry 錯誤追蹤：**
+
+```bash
+# 安裝 SDK（在 backend/ 目錄下）
+uv add "sentry-sdk[fastapi]"
+# 在 .env 中設定
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+```
+
+設定後，未處理例外與慢速請求會自動回報至 Sentry。詳見 `.env.example` 中的 `SENTRY_TRACES_SAMPLE_RATE` 說明。
+
+**Prometheus / OpenTelemetry（評估中）：**
+
+如需 RED（rate / error / duration）指標儀表板，可考慮加入 [`prometheus-fastapi-instrumentator`](https://github.com/trallnag/prometheus-fastapi-instrumentator)，在 `/metrics` 端點暴露 Prometheus 格式指標。如需分散式追蹤，可評估 `opentelemetry-instrumentation-fastapi` 自動插樁。目前版本未內建這些整合；有需求時請開 Issue。

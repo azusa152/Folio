@@ -56,6 +56,7 @@
 #    make pin-images       Print current SHA256 digests for pinned base images (rotate monthly)
 #
 #  Database:
+#    make seed-demo        Seed representative demo data (watchlist + portfolio) into Docker DB
 #    make migrate-ledger   Run ledger migration (backfill opening balances)
 #    make migrate-ledger-dry Dry-run ledger migration
 #    make purge-legacy     Purge orphaned/zero-qty legacy data + drop net worth tables
@@ -154,15 +155,13 @@ backend-lint: .venv-check ## Ruff check + format --check (backend only)
 	$(RUFF) format --check $(BACKEND_DIR)/
 
 backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend only)
-	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
-		-n auto --durations=20 \
-		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing --cov-fail-under=85
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
+		uv run pytest -v \
+		--cov --cov-report=term-missing --cov-fail-under=85
 
 backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
-	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -q --tb=short \
-		-n auto
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
+		uv run pytest -q
 
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
@@ -243,13 +242,17 @@ clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.c
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/node_modules/.cache
 
 pin-images: ## Print current SHA256 digests for all pinned base images (run monthly or after a CVE)
-	@echo "=== Current manifest-list digests (copy into Dockerfiles) ==="
-	@echo -n "backend/Dockerfile   python:3.12-slim  -> "
+	@echo "=== Current manifest-list digests (copy into Dockerfiles / docker-compose.yml) ==="
+	@echo -n "backend/Dockerfile     python:3.12-slim  -> "
 	@docker buildx imagetools inspect python:3.12-slim 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
-	@echo -n "frontend-react/      node:20-alpine    -> "
+	@echo -n "frontend-react/        node:20-alpine    -> "
 	@docker buildx imagetools inspect node:20-alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
-	@echo -n "frontend-react/      nginx:alpine      -> "
+	@echo -n "frontend-react/        nginx:alpine      -> "
 	@docker buildx imagetools inspect nginx:alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "docker-compose.yml     alpine:3.19       -> "
+	@docker buildx imagetools inspect alpine:3.19 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo ""
+	@echo "After updating digests, run: make rebuild"
 
 # ---------------------------------------------------------------------------
 #  API Codegen
@@ -285,7 +288,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
+.PHONY: backup restore seed-demo migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -304,6 +307,9 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 	docker run --rm -v $$vol:/data -v $$(pwd)/backups:/backup alpine \
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "Restored from $$file"
+
+seed-demo: ## Seed representative demo data (watchlist + portfolio) into the running Docker DB
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.seed_demo
 
 migrate-ledger: ## Run ledger migration (backfill opening balances; runs inside Docker)
 	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger

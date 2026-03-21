@@ -6,6 +6,7 @@ Folio — FastAPI 應用程式進入點。
 
 import os
 import threading
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -43,13 +44,51 @@ from api.routes.wrapper_routes import router as wrapper_router
 from api.schemas import HealthResponse
 from infrastructure.common.config import init_settings
 from infrastructure.database import create_db_and_tables
-from logging_config import get_logger, request_id_var
+from logging_config import (
+    get_logger,
+    http_latency_ms_var,
+    http_method_var,
+    http_path_var,
+    http_status_var,
+    request_id_var,
+)
 
 # Load environment variables from .env file
 load_dotenv()
 init_settings()
 
 logger = get_logger(__name__)
+_access_logger = get_logger("folio.access")
+
+# ---------------------------------------------------------------------------
+# Optional Sentry integration — set SENTRY_DSN in .env to enable.
+# Install: uv add "sentry-sdk[fastapi]"
+# Docs:    docs/adr/ and README 安全性 section
+# ---------------------------------------------------------------------------
+_SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk  # type: ignore[import-not-found]
+        from sentry_sdk.integrations.fastapi import (
+            FastApiIntegration,  # type: ignore[import-not-found]
+        )
+        from sentry_sdk.integrations.sqlalchemy import (
+            SqlalchemyIntegration,  # type: ignore[import-not-found]
+        )
+
+        _trace_rate = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.05"))
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+            traces_sample_rate=_trace_rate,
+            send_default_pii=False,
+        )
+        logger.info("Sentry enabled (traces_sample_rate=%.2f)", _trace_rate)
+    except ImportError:
+        logger.warning(
+            "SENTRY_DSN is set but sentry-sdk is not installed. "
+            "Run `uv add 'sentry-sdk[fastapi]'` inside the backend to enable error tracking."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -128,22 +167,57 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 class _RequestIdMiddleware(BaseHTTPMiddleware):
-    """Injects a per-request correlation ID into the logging context.
+    """Injects per-request context into the logging system.
 
-    Reads ``X-Request-ID`` from the incoming request (useful for client-side
-    tracing) or generates a short UUID. The ID is echoed back in the response
-    header and is available in every log line via ``request_id_var``.
+    Sets request ID, HTTP method, path, response status, and latency into
+    context variables so every log line emitted during a request automatically
+    carries those fields — especially useful with ``LOG_FORMAT=json``.
+
+    On unhandled exceptions the access log still records status 500 and
+    latency.  The ``X-Request-ID`` response header cannot be attached
+    when Starlette's internal error handler generates the 500 response,
+    but the correlation ID is captured in the structured log output.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
         rid = request.headers.get("X-Request-ID") or str(uuid4())[:8]
-        token = request_id_var.set(rid)
+        t_rid = request_id_var.set(rid)
+        t_method = http_method_var.set(request.method)
+        t_path = http_path_var.set(request.url.path)
+        t_status = http_status_var.set(0)
+        t_latency = http_latency_ms_var.set(0.0)
+        start = time.perf_counter()
         try:
             response: Response = await call_next(request)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            http_status_var.set(response.status_code)
+            http_latency_ms_var.set(elapsed_ms)
+            _access_logger.debug(
+                "%s %s %d %.1fms",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+            response.headers["X-Request-ID"] = rid
+            return response
+        except Exception:
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            http_status_var.set(500)
+            http_latency_ms_var.set(elapsed_ms)
+            _access_logger.debug(
+                "%s %s 500 %.1fms (unhandled)",
+                request.method,
+                request.url.path,
+                elapsed_ms,
+            )
+            raise
         finally:
-            request_id_var.reset(token)
-        response.headers["X-Request-ID"] = rid
-        return response
+            request_id_var.reset(t_rid)
+            http_method_var.reset(t_method)
+            http_path_var.reset(t_path)
+            http_status_var.reset(t_status)
+            http_latency_ms_var.reset(t_latency)
 
 
 # CORS middleware for frontend access

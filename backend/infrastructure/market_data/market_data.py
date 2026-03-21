@@ -689,10 +689,11 @@ def _yf_ticker_obj(ticker: str):
 def _yf_download(*args: Any, **kwargs: Any) -> pd.DataFrame:
     """Thin typed wrapper around yf.download().
 
-    yfinance stubs do not declare a precise return type, so pyright infers
-    ``DataFrame | None`` for the result and all downstream subscript /
-    member accesses.  Centralising the suppression here keeps call sites
-    clean and future-proof.
+    ``yf.download()`` always returns a ``DataFrame`` — an empty one when no
+    data is available (invalid ticker, network error, etc.), never ``None``.
+    The yfinance type stubs are overly conservative and cause pyright to infer
+    ``DataFrame | None`` for the result and all downstream member accesses.
+    Centralising the single suppression here keeps call sites clean.
     """
     result = yf.download(*args, **kwargs)
     return result  # type: ignore[return-value]
@@ -1667,7 +1668,7 @@ def get_dividend_events(
 def _fetch_dividend_from_yf(ticker: str) -> dict:
     """實際從 yfinance 取得股息資訊（供 _cached_fetch 使用）。"""
     try:
-        info, dividends = _yf_dividend_data(ticker)  # dividends: pd.Series | None
+        info, dividends = _yf_dividend_data(ticker)
 
         dividend_yield = info.get("dividendYield")
         ex_date_raw = info.get("exDividendDate")

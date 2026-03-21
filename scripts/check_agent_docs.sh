@@ -14,7 +14,7 @@ if ! grep -q 'docs/agents/AGENTS.md' "$ROOT_DOC"; then
   FAILED=1
 fi
 
-if ! grep -q 'AGENTS.md' "$AGENT_DOC"; then
+if ! grep -q '\.\./\.\./AGENTS\.md' "$AGENT_DOC"; then
   echo "ERROR: $AGENT_DOC is missing cross-reference to $ROOT_DOC" >&2
   FAILED=1
 fi

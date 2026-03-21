@@ -1,22 +1,32 @@
 ## Summary
 
-- What changed?
-- Why was this change needed?
+<!-- What changed and why? Link to the relevant issue if applicable. -->
 
-## Type Of Change
+-
+-
 
-- [ ] feature
-- [ ] fix
-- [ ] refactor
-- [ ] docs
-- [ ] chore
+Closes #
 
-## Verification
+## Type of change
+
+- [ ] feature — new capability
+- [ ] fix — bug fix (include regression test)
+- [ ] refactor — no behaviour change
+- [ ] docs — documentation only
+- [ ] chore — dependency update, tooling, CI
+
+## Test plan
+
+<!-- How was this change verified? Tick all that apply. -->
 
 - [ ] `make ci` passes locally
-- [ ] Relevant docs were updated
-- [ ] No secrets were added (`.env`, tokens, credentials)
+- [ ] Added / updated unit tests for new logic
+- [ ] Manually tested in Docker (`make up` + browser or `curl`)
+- [ ] `make seed-demo` still produces a working portfolio (if portfolio code changed)
 
-## Related
+## Checklist
 
-- Closes #
+- [ ] Relevant docs updated (README, ADR, agent docs, in-page help)
+- [ ] `make generate-api` run and `openapi.json` committed (if backend schemas changed)
+- [ ] No secrets added (`.env`, tokens, credentials, API keys)
+- [ ] Architecture boundaries respected (`make ci` includes `test_architecture.py`)

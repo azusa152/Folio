@@ -1,2 +1,24 @@
-# 所有檔案都由 @azusa152 負責審核
+# CODEOWNERS — automatic review assignment
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: catch-all for anything not matched below
 * @azusa152
+
+# Backend (Python / FastAPI)
+/backend/ @azusa152
+
+# Frontend (React / TypeScript)
+/frontend-react/ @azusa152
+
+# Infrastructure / Docker / CI
+/docker/ @azusa152
+/.github/ @azusa152
+/Makefile @azusa152
+/docker-compose.yml @azusa152
+
+# Architecture Decision Records — require explicit review before merging
+/docs/adr/ @azusa152
+
+# Agent / AI docs — require explicit review to preserve token budgets
+/docs/agents/ @azusa152
+/AGENTS.md @azusa152

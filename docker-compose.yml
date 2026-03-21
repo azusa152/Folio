@@ -38,6 +38,8 @@ services:
       start_period: 10s
 
   scanner:
+    # Pin with digest for supply-chain consistency (run `make pin-images` to get current digest):
+    #   image: alpine:3.19@sha256:<digest>
     image: alpine:3.19
     depends_on:
       backend:

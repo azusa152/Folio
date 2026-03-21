@@ -45,6 +45,13 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-n auto --tb=short --durations=20"
+markers = [
+    "unit: fast tests with no DB or external-service dependencies",
+    "integration: tests that touch the DB or application service layer",
+    "slow: long-running tests (excluded from quick feedback loops with -m 'not slow')",
+]
 filterwarnings = [
     # StaticPool (in-memory SQLite) connections are intentionally kept alive across
     # tests; the GC-triggered ResourceWarning is harmless and expected.

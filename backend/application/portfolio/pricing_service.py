@@ -22,6 +22,9 @@ class PricingHolding(Protocol):
 
     Any SQLModel or dataclass that exposes these three attributes satisfies
     this Protocol without needing an explicit inheritance declaration.
+
+    Not decorated with ``@runtime_checkable`` — use it for static type
+    annotations only; ``isinstance(x, PricingHolding)`` will raise TypeError.
     """
 
     category: StockCategory
