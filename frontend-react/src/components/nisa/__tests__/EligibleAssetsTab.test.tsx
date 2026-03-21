@@ -17,8 +17,7 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/api/hooks/useWrappers", () => ({
   useEligibleAssets: (...args: unknown[]) => useEligibleAssetsMock(...args),
-  useEligibleAssetsMetadata: (...args: unknown[]) =>
-    useEligibleAssetsMetadataMock(...args),
+  useEligibleAssetsMetadata: (...args: unknown[]) => useEligibleAssetsMetadataMock(...args),
 }))
 
 function renderTab() {
@@ -95,24 +94,24 @@ describe("EligibleAssetsTab", () => {
         const items = options?.assetType
           ? allItems.filter((item) => item.asset_type === options.assetType)
           : allItems
-      if (wrapper === "nisa_tsumitate") {
+        if (wrapper === "nisa_tsumitate") {
+          return {
+            isLoading: false,
+            isFetching: false,
+            data: {
+              count: items.length,
+              total_count: options?.assetType ? items.length : 200,
+              items,
+            },
+            options,
+          }
+        }
         return {
           isLoading: false,
           isFetching: false,
-          data: {
-            count: items.length,
-            total_count: options?.assetType ? items.length : 200,
-            items,
-          },
+          data: { count: 0, total_count: 0, items: [] },
           options,
         }
-      }
-      return {
-        isLoading: false,
-        isFetching: false,
-        data: { count: 0, total_count: 0, items: [] },
-        options,
-      }
       },
     )
 
@@ -144,18 +143,20 @@ describe("EligibleAssetsTab", () => {
 
   it("passes selected asset type to eligible-assets query", async () => {
     useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
-    useEligibleAssetsMock.mockImplementation((_wrapper: string, options?: { assetType?: string }) => ({
-      isLoading: false,
-      isFetching: false,
-      data: {
-        count: options?.assetType === "etf" ? 1 : 0,
-        total_count: options?.assetType === "etf" ? 1 : 0,
-        items:
-          options?.assetType === "etf"
-            ? [{ ticker: "BBB", fund_name: "Beta ETF", asset_type: "etf", trust_fee_pct: 0.2 }]
-            : [],
-      },
-    }))
+    useEligibleAssetsMock.mockImplementation(
+      (_wrapper: string, options?: { assetType?: string }) => ({
+        isLoading: false,
+        isFetching: false,
+        data: {
+          count: options?.assetType === "etf" ? 1 : 0,
+          total_count: options?.assetType === "etf" ? 1 : 0,
+          items:
+            options?.assetType === "etf"
+              ? [{ ticker: "BBB", fund_name: "Beta ETF", asset_type: "etf", trust_fee_pct: 0.2 }]
+              : [],
+        },
+      }),
+    )
 
     renderTab()
     fireEvent.change(screen.getByLabelText("nisa.eligible.filter_asset_type"), {
@@ -172,24 +173,37 @@ describe("EligibleAssetsTab", () => {
 
   it("shows filter-mismatch empty state when data exists but filter excludes all", () => {
     useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
-    useEligibleAssetsMock.mockImplementation((wrapper: string, options?: { assetType?: string }) => {
-      if (wrapper === "nisa_tsumitate") {
-        const items =
-          options?.assetType === "etf"
-            ? []
-            : [{ ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 }]
+    useEligibleAssetsMock.mockImplementation(
+      (wrapper: string, options?: { assetType?: string }) => {
+        if (wrapper === "nisa_tsumitate") {
+          const items =
+            options?.assetType === "etf"
+              ? []
+              : [
+                  {
+                    ticker: "AAA",
+                    fund_name: "Alpha Fund",
+                    asset_type: "mutual_fund",
+                    trust_fee_pct: 0.1,
+                  },
+                ]
+          return {
+            isLoading: false,
+            isFetching: false,
+            data: {
+              count: items.length,
+              total_count: items.length,
+              items,
+            },
+          }
+        }
         return {
           isLoading: false,
           isFetching: false,
-          data: {
-            count: items.length,
-            total_count: items.length,
-            items,
-          },
+          data: { count: 0, total_count: 0, items: [] },
         }
-      }
-      return { isLoading: false, isFetching: false, data: { count: 0, total_count: 0, items: [] } }
-    })
+      },
+    )
 
     renderTab()
 
@@ -214,29 +228,45 @@ describe("EligibleAssetsTab", () => {
 
     expect(screen.getByText("nisa.eligible.empty_title")).toBeInTheDocument()
     expect(screen.getByText("nisa.eligible.empty")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "nisa.eligible.empty_cta" })).toHaveAttribute("href", "/nisa?tab=data")
+    expect(screen.getByRole("link", { name: "nisa.eligible.empty_cta" })).toHaveAttribute(
+      "href",
+      "/nisa?tab=data",
+    )
   })
 
   it("clears filter when clear-filter button is clicked", () => {
     useEligibleAssetsMetadataMock.mockReturnValue({ data: { wrapper: "nisa_tsumitate", count: 1 } })
-    useEligibleAssetsMock.mockImplementation((wrapper: string, options?: { assetType?: string }) => {
-      if (wrapper === "nisa_tsumitate") {
-        const items =
-          options?.assetType === "etf"
-            ? []
-            : [{ ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 }]
+    useEligibleAssetsMock.mockImplementation(
+      (wrapper: string, options?: { assetType?: string }) => {
+        if (wrapper === "nisa_tsumitate") {
+          const items =
+            options?.assetType === "etf"
+              ? []
+              : [
+                  {
+                    ticker: "AAA",
+                    fund_name: "Alpha Fund",
+                    asset_type: "mutual_fund",
+                    trust_fee_pct: 0.1,
+                  },
+                ]
+          return {
+            isLoading: false,
+            isFetching: false,
+            data: {
+              count: items.length,
+              total_count: items.length,
+              items,
+            },
+          }
+        }
         return {
           isLoading: false,
           isFetching: false,
-          data: {
-            count: items.length,
-            total_count: items.length,
-            items,
-          },
+          data: { count: 0, total_count: 0, items: [] },
         }
-      }
-      return { isLoading: false, isFetching: false, data: { count: 0, total_count: 0, items: [] } }
-    })
+      },
+    )
 
     renderTab()
 
@@ -259,7 +289,14 @@ describe("EligibleAssetsTab", () => {
         : {
             count: 1,
             total_count: 1,
-            items: [{ ticker: "AAA", fund_name: "Alpha Fund", asset_type: "mutual_fund", trust_fee_pct: 0.1 }],
+            items: [
+              {
+                ticker: "AAA",
+                fund_name: "Alpha Fund",
+                asset_type: "mutual_fund",
+                trust_fee_pct: 0.1,
+              },
+            ],
           },
     }))
 
@@ -273,5 +310,4 @@ describe("EligibleAssetsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "nisa.eligible.clear_search" }))
     expect(screen.getByText("Alpha Fund")).toBeInTheDocument()
   })
-
 })

@@ -2,7 +2,13 @@ import { memo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { STOCK_CATEGORIES, CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { useAddThesis, useUpdateCategory, useDeactivateStock } from "@/api/hooks/useRadar"
@@ -26,7 +32,13 @@ function ThesisForm({ ticker, stock }: { ticker: string; stock: RadarStock }) {
       .map((s) => s.trim())
       .filter(Boolean)
     addThesis.mutate(
-      { ticker, payload: { content: thesisText.trim(), tags: tagList.length ? tagList : stock.current_tags } },
+      {
+        ticker,
+        payload: {
+          content: thesisText.trim(),
+          tags: tagList.length ? tagList : stock.current_tags,
+        },
+      },
       {
         onSuccess: () => {
           setFeedback(t("common.success"))
@@ -63,7 +75,13 @@ function ThesisForm({ ticker, stock }: { ticker: string; stock: RadarStock }) {
   )
 }
 
-function ChangeCategoryForm({ ticker, currentCategory }: { ticker: string; currentCategory: StockCategory }) {
+function ChangeCategoryForm({
+  ticker,
+  currentCategory,
+}: {
+  ticker: string
+  currentCategory: StockCategory
+}) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<StockCategory>(
     STOCK_CATEGORIES.find((c) => c !== currentCategory) ?? "Growth",
@@ -105,7 +123,12 @@ function ChangeCategoryForm({ ticker, currentCategory }: { ticker: string; curre
           ))}
         </SelectContent>
       </Select>
-      <Button size="sm" variant="outline" onClick={handleConfirm} disabled={updateCategory.isPending}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleConfirm}
+        disabled={updateCategory.isPending}
+      >
         {t("radar.stock_card.confirm_switch")}
       </Button>
       {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}
@@ -148,7 +171,12 @@ function RemoveForm({ ticker }: { ticker: string }) {
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
-      <Button size="sm" variant="destructive" onClick={handleRemove} disabled={deactivate.isPending}>
+      <Button
+        size="sm"
+        variant="destructive"
+        onClick={handleRemove}
+        disabled={deactivate.isPending}
+      >
         {t("radar.stock_card.confirm_remove")}
       </Button>
       {feedback && <p className="text-xs text-muted-foreground">{feedback}</p>}

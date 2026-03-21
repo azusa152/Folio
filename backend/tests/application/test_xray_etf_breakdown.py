@@ -106,6 +106,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
+    @pytest.mark.slow
     @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_etf_with_holdings_produces_indirect_exposure(
         self,
@@ -234,6 +235,7 @@ class TestXRayEtfBreakdown:
         assert xray["NVDA"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.01)
         assert xray["NVDA"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
 
+    @pytest.mark.slow
     def test_non_etf_flagged_stock_can_self_heal_and_decompose(
         self, db_session: Session
     ):

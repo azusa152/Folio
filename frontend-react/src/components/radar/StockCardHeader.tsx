@@ -117,18 +117,16 @@ export const StockCardHeader = memo(function StockCardHeader({
               </span>
             </span>
           ) : (
-            <span className="truncate">{signalIcon} {ticker}</span>
+            <span className="truncate">
+              {signalIcon} {ticker}
+            </span>
           )}
           <span className="shrink-0 text-muted-foreground">{catIcon}</span>
           {!displayName && signalLabel && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span
-                    className={signalBadgeClass}
-                    aria-label={signalDescription}
-                    role="status"
-                  >
+                  <span className={signalBadgeClass} aria-label={signalDescription} role="status">
                     {signalLabel}
                   </span>
                 </TooltipTrigger>
@@ -144,7 +142,8 @@ export const StockCardHeader = memo(function StockCardHeader({
             <span className="flex flex-col items-end leading-tight">
               <span className="flex items-center gap-1">
                 <span className="text-sm font-semibold tabular-nums">
-                  {currency.symbol}{formatPrice(price, currency.code)}
+                  {currency.symbol}
+                  {formatPrice(price, currency.code)}
                 </span>
                 {isMutualFund && (
                   <span className="text-[9px] rounded px-1 py-0.5 bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-medium">
@@ -155,8 +154,11 @@ export const StockCardHeader = memo(function StockCardHeader({
               {changePct != null && (
                 <span className={`text-xs tabular-nums font-medium ${changeColor}`}>
                   {isUp ? "▲" : "▼"}{" "}
-                  {changeAbs != null ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} ` : ""}
-                  ({Math.abs(changePct).toFixed(2)}%{isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
+                  {changeAbs != null
+                    ? `${currency.symbol}${formatPrice(Math.abs(changeAbs), currency.code)} `
+                    : ""}
+                  ({Math.abs(changePct).toFixed(2)}%
+                  {isCrypto ? ` ${t("allocation.crypto.change_24h_short")}` : ""})
                 </span>
               )}
               {isMutualFund && navDate && (
@@ -166,19 +168,29 @@ export const StockCardHeader = memo(function StockCardHeader({
               )}
             </span>
           )}
-          {!expanded && (
-            priceHistory && priceHistory.length >= 5
-              ? <SparklineHeader data={priceHistory} />
-              : <Skeleton className="h-8 w-20 shrink-0" />
-          )}
+          {!expanded &&
+            (priceHistory && priceHistory.length >= 5 ? (
+              <SparklineHeader data={priceHistory} />
+            ) : (
+              <Skeleton className="h-8 w-20 shrink-0" />
+            ))}
           <span
             className={`inline-flex items-center gap-1 text-[10px] ${marketOpen ? FINANCE_TEXT.gain : "text-muted-foreground"}`}
-            aria-label={marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}
+            aria-label={
+              marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")
+            }
           >
             {marketOpen ? "●" : "○"}
-            <span>{marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}</span>
+            <span>
+              {marketOpen ? t("dashboard.market_open_short") : t("dashboard.market_closed_short")}
+            </span>
           </span>
-          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+          />
         </span>
       </span>
     </button>

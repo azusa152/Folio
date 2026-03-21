@@ -66,11 +66,7 @@ vi.mock("@/api/hooks/useRadar", () => ({
 vi.mock("@/components/radar/CategoryTabs", () => ({
   CategoryTabs: (props: { heldTickers: Set<string> }) => {
     mockCategoryTabs(props)
-    return (
-      <div data-testid="held-tickers">
-        {Array.from(props.heldTickers).sort().join(",")}
-      </div>
-    )
+    return <div data-testid="held-tickers">{Array.from(props.heldTickers).sort().join(",")}</div>
   },
 }))
 

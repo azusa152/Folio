@@ -39,10 +39,7 @@ export function SmartActionCards({
   )
   const detaxQuery = useDeTaxSuggestions(queryEnabled)
 
-  const accountByWrapper = useMemo(
-    () => getPreferredWrapperAccountMap(accounts),
-    [accounts],
-  )
+  const accountByWrapper = useMemo(() => getPreferredWrapperAccountMap(accounts), [accounts])
   const accountById = useMemo(() => {
     const map = new Map<number, string>()
     for (const account of accounts ?? []) {
@@ -137,19 +134,22 @@ export function SmartActionCards({
                 {t("smart_actions.why_toggle")}
               </button>
               {routingSuggestions.map((item, index) => {
-                const suggestionAccount = item.account_id != null
-                  ? {
-                    id: item.account_id,
-                    currency: accountById.get(item.account_id) ?? "JPY",
-                  }
-                  : accountByWrapper.get(item.wrapper)
+                const suggestionAccount =
+                  item.account_id != null
+                    ? {
+                        id: item.account_id,
+                        currency: accountById.get(item.account_id) ?? "JPY",
+                      }
+                    : accountByWrapper.get(item.wrapper)
                 return (
                   <div
                     key={`${item.wrapper}-${index}`}
                     className="rounded-md border border-border bg-muted/20 p-2 space-y-1"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium">{t(`wrapper.${item.wrapper}`, { defaultValue: item.wrapper })}</span>
+                      <span className="font-medium">
+                        {t(`wrapper.${item.wrapper}`, { defaultValue: item.wrapper })}
+                      </span>
                       <span>{Math.round(item.amount).toLocaleString()}</span>
                     </div>
                     {whyOpen ? (
@@ -196,7 +196,10 @@ export function SmartActionCards({
               })}
             </p>
             {detaxQuery.data?.opportunities.map((item) => (
-              <div key={`${item.account_id}-${item.ticker}`} className="rounded-md border border-border p-2">
+              <div
+                key={`${item.account_id}-${item.ticker}`}
+                className="rounded-md border border-border p-2"
+              >
                 <p className="text-xs font-medium">{item.ticker}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {t(item.reason, { defaultValue: item.reason })}
@@ -207,10 +210,7 @@ export function SmartActionCards({
                     variant="outline"
                     className="mt-1 h-7 text-[11px]"
                     onClick={() =>
-                      onReviewDetax(
-                        item.account_id,
-                        accountById.get(item.account_id) ?? "USD",
-                      )
+                      onReviewDetax(item.account_id, accountById.get(item.account_id) ?? "USD")
                     }
                   >
                     {t("smart_actions.review_button")}

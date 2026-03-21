@@ -41,14 +41,20 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setDebouncedDrop(sliderValue), 300)
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [sliderValue])
 
   const { data, isLoading } = useStressTest(-debouncedDrop, displayCurrency, enabled)
 
   const painLevel = data?.pain_level.level
-  const painTextClass = painLevel ? (PAIN_TEXT_CLASSES[painLevel] ?? FINANCE_TEXT.neutral) : FINANCE_TEXT.neutral
-  const painSurfaceClass = painLevel ? (PAIN_SURFACE_CLASSES[painLevel] ?? "border-border bg-muted/30") : "border-border bg-muted/30"
+  const painTextClass = painLevel
+    ? (PAIN_TEXT_CLASSES[painLevel] ?? FINANCE_TEXT.neutral)
+    : FINANCE_TEXT.neutral
+  const painSurfaceClass = painLevel
+    ? (PAIN_SURFACE_CLASSES[painLevel] ?? "border-border bg-muted/30")
+    : "border-border bg-muted/30"
 
   return (
     <div className="space-y-4">
@@ -57,7 +63,9 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
       {/* Slider */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label htmlFor="stress-market-drop" className="text-xs text-muted-foreground">{t("allocation.stress.slider_label")}</label>
+          <label htmlFor="stress-market-drop" className="text-xs text-muted-foreground">
+            {t("allocation.stress.slider_label")}
+          </label>
           <span className={`text-sm font-semibold ${FINANCE_TEXT.loss}`}>-{sliderValue}%</span>
         </div>
         <input
@@ -104,7 +112,8 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
             <div className={cn("rounded-lg border p-3", painSurfaceClass)}>
               <p className="text-muted-foreground">{t("allocation.stress.pain_level")}</p>
               <p className={cn("text-base font-bold", painTextClass)}>
-                {data.pain_level.emoji} {t(`allocation.stress.pain_labels.${data.pain_level.level}`)}
+                {data.pain_level.emoji}{" "}
+                {t(`allocation.stress.pain_labels.${data.pain_level.level}`)}
               </p>
             </div>
           </div>
@@ -113,7 +122,9 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
           {data.advice.length > 0 && (
             <ul className="space-y-1">
               {data.advice.map((a) => (
-                <li key={a} className="text-xs text-muted-foreground">• {a}</li>
+                <li key={a} className="text-xs text-muted-foreground">
+                  • {a}
+                </li>
               ))}
             </ul>
           )}

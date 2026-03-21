@@ -71,13 +71,17 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
   const [open, setOpen] = useState(false)
 
   if (!fundamentals) {
-    return <p className="text-xs text-muted-foreground">{t("radar.stock_card.fundamentals.no_data")}</p>
+    return (
+      <p className="text-xs text-muted-foreground">{t("radar.stock_card.fundamentals.no_data")}</p>
+    )
   }
 
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground">{t("radar.stock_card.fundamentals.affordable")}</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          {t("radar.stock_card.fundamentals.affordable")}
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.trailing_pe")}
@@ -105,7 +109,9 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground">{t("radar.stock_card.fundamentals.profitable")}</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          {t("radar.stock_card.fundamentals.profitable")}
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.return_on_equity")}
@@ -135,7 +141,9 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground">{t("radar.stock_card.fundamentals.growing")}</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          {t("radar.stock_card.fundamentals.growing")}
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.revenue_growth")}
@@ -169,7 +177,9 @@ export function FundamentalsTab({ ticker, fundamentals }: Props) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground">{t("radar.stock_card.fundamentals.size")}</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          {t("radar.stock_card.fundamentals.size")}
+        </p>
         <div className="grid grid-cols-1 gap-2">
           <MetricItem
             label={t("radar.stock_card.fundamentals.market_cap")}

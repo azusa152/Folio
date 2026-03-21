@@ -76,7 +76,8 @@ export function useTransactionValidation(input: TransactionValidationInput) {
     if (!transactionDate) nextErrors.transactionDate = t("transactions.form.error_date")
     if (fxRate && (Number.isNaN(fxRateNum) || fxRateNum <= 0))
       nextErrors.fxRate = t("transactions.form.error_fx_rate")
-    if (fee && (Number.isNaN(feeNum) || feeNum < 0)) nextErrors.fee = t("transactions.form.error_fee")
+    if (fee && (Number.isNaN(feeNum) || feeNum < 0))
+      nextErrors.fee = t("transactions.form.error_fee")
 
     setFieldErrors(nextErrors)
     return Object.keys(nextErrors).length === 0

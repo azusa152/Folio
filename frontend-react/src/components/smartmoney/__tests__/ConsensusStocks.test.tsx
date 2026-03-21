@@ -22,9 +22,7 @@ function makeItem(overrides: Partial<ConsensusStockItem> = {}): ConsensusStockIt
 describe("ConsensusStocks", () => {
   it("shows empty state when items is empty", () => {
     render(<ConsensusStocks items={[]} />)
-    expect(
-      screen.getByText("smart_money.overview.consensus_empty"),
-    ).toBeInTheDocument()
+    expect(screen.getByText("smart_money.overview.consensus_empty")).toBeInTheDocument()
   })
 
   it("renders ticker and company name", () => {
@@ -45,9 +43,7 @@ describe("ConsensusStocks", () => {
 
   it("renders guru count badge", () => {
     render(<ConsensusStocks items={[makeItem()]} />)
-    expect(
-      screen.getByText(/2.*smart_money\.overview\.consensus_gurus/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/2.*smart_money\.overview\.consensus_gurus/)).toBeInTheDocument()
   })
 
   it("renders avg_weight_pct when present", () => {

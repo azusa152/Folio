@@ -32,7 +32,10 @@ export default function Nisa() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get("tab")
   const activeTab: NisaTab =
-    tabParam === "quota" || tabParam === "contributions" || tabParam === "actions" || tabParam === "data"
+    tabParam === "quota" ||
+    tabParam === "contributions" ||
+    tabParam === "actions" ||
+    tabParam === "data"
       ? tabParam
       : "eligible"
 
@@ -51,29 +54,37 @@ export default function Nisa() {
   const [cooldownUntil, setCooldownUntil] = useState(0)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   const [transactionSheetOpen, setTransactionSheetOpen] = useState(false)
-  const [transactionDefaultTicker, setTransactionDefaultTicker] = useState<string | undefined>(undefined)
-  const [transactionDefaultAccountId, setTransactionDefaultAccountId] = useState<number | undefined>(undefined)
-  const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionType | undefined>(undefined)
-  const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(undefined)
+  const [transactionDefaultTicker, setTransactionDefaultTicker] = useState<string | undefined>(
+    undefined,
+  )
+  const [transactionDefaultAccountId, setTransactionDefaultAccountId] = useState<
+    number | undefined
+  >(undefined)
+  const [transactionDefaultType, setTransactionDefaultType] = useState<TransactionType | undefined>(
+    undefined,
+  )
+  const [transactionDefaultCurrency, setTransactionDefaultCurrency] = useState<string | undefined>(
+    undefined,
+  )
   const [sopOpen, setSopOpen] = useState(false)
 
-  const accountByWrapper = useMemo(
-    () => getPreferredWrapperAccountMap(accounts),
-    [accounts],
-  )
+  const accountByWrapper = useMemo(() => getPreferredWrapperAccountMap(accounts), [accounts])
 
-  const openTransactionSheet = useCallback((options?: {
-    ticker?: string
-    accountId?: number
-    transactionType?: TransactionType
-    currency?: string
-  }) => {
-    setTransactionDefaultTicker(options?.ticker)
-    setTransactionDefaultAccountId(options?.accountId)
-    setTransactionDefaultType(options?.transactionType)
-    setTransactionDefaultCurrency(options?.currency)
-    setTransactionSheetOpen(true)
-  }, [])
+  const openTransactionSheet = useCallback(
+    (options?: {
+      ticker?: string
+      accountId?: number
+      transactionType?: TransactionType
+      currency?: string
+    }) => {
+      setTransactionDefaultTicker(options?.ticker)
+      setTransactionDefaultAccountId(options?.accountId)
+      setTransactionDefaultType(options?.transactionType)
+      setTransactionDefaultCurrency(options?.currency)
+      setTransactionSheetOpen(true)
+    },
+    [],
+  )
 
   useEffect(() => {
     if (cooldownUntil <= 0) return
@@ -157,7 +168,9 @@ export default function Nisa() {
             onClick={handleSyncNav}
             disabled={syncNavMutation.isPending || cooldownRemaining > 0}
           >
-            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${syncNavMutation.isPending ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`mr-1 h-3.5 w-3.5 ${syncNavMutation.isPending ? "animate-spin" : ""}`}
+            />
             {syncNavMutation.isPending
               ? t("nisa.nav_sync.syncing")
               : cooldownRemaining > 0
@@ -194,7 +207,9 @@ export default function Nisa() {
         <NisaOnboardingBanner
           onLearnMore={() => {
             setSopOpen(true)
-            document.getElementById("nisa-sop")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            document
+              .getElementById("nisa-sop")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
           }}
         />
       ) : null}
@@ -244,16 +259,19 @@ export default function Nisa() {
                 accountId,
                 currency,
                 transactionType: "BUY",
-              })}
+              })
+            }
             onReviewDetax={(accountId, currency) =>
               openTransactionSheet({
                 accountId,
                 currency,
                 transactionType: "SELL",
-              })}
+              })
+            }
           />
 
-          {hasJapaneseWrapperAccounts && (rebalanceQuery.data?.wrapper_allocations?.length ?? 0) > 0 ? (
+          {hasJapaneseWrapperAccounts &&
+          (rebalanceQuery.data?.wrapper_allocations?.length ?? 0) > 0 ? (
             <>
               <AssetLocationViz
                 taxEfficiencyScore={rebalanceQuery.data?.tax_efficiency_score}

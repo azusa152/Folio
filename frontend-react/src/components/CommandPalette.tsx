@@ -61,7 +61,11 @@ export function CommandPalette() {
     const next = !isPrivate
     savePreferences.mutate(
       { privacy_mode: next },
-      { onError: () => { /* fail silently — UI already updated optimistically */ } },
+      {
+        onError: () => {
+          /* fail silently — UI already updated optimistically */
+        },
+      },
     )
     setOpen(false)
   }
@@ -123,9 +127,7 @@ export function CommandPalette() {
           <CommandItem onSelect={onToggleTheme}>
             {t("command_palette.action_toggle_theme")}
           </CommandItem>
-          <CommandItem onSelect={onTriggerScan}>
-            {t("command_palette.action_run_scan")}
-          </CommandItem>
+          <CommandItem onSelect={onTriggerScan}>{t("command_palette.action_run_scan")}</CommandItem>
           <CommandItem onSelect={onSendDigest}>
             {t("command_palette.action_send_digest")}
           </CommandItem>

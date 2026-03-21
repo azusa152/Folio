@@ -34,10 +34,17 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
 
   const skipPrice = SKIP_PRICE_CATEGORIES.has(stock.category)
   const skipMoat = SKIP_MOAT_CATEGORIES.has(stock.category)
-  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(stock.ticker, (expanded || sparklineEnabled) && !skipPrice)
-  const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(stock.ticker, expanded && !skipMoat)
+  const { data: priceHistory, isLoading: priceLoading } = usePriceHistory(
+    stock.ticker,
+    (expanded || sparklineEnabled) && !skipPrice,
+  )
+  const { data: moatData, isLoading: moatLoading } = useMoatAnalysis(
+    stock.ticker,
+    expanded && !skipMoat,
+  )
   const isCrypto = stock.category === "Crypto"
-  const showMoatChart = !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
+  const showMoatChart =
+    !isCrypto && moatData != null && moatData.moat !== "N/A" && moatData.moat !== "NOT_AVAILABLE"
 
   const isMutualFund = stock.category === "Mutual_Fund"
   const signal = enrichment?.computed_signal ?? stock.last_scan_signal ?? "NORMAL"
@@ -52,7 +59,10 @@ export function StockCard({ stock, enrichment, resonance, isHeld = false, index 
   const companyName = enrichment?.name
   const exchange = enrichment?.exchange
 
-  const currency = useMemo(() => inferCurrency(stock.ticker, stock.category), [stock.ticker, stock.category])
+  const currency = useMemo(
+    () => inferCurrency(stock.ticker, stock.category),
+    [stock.ticker, stock.category],
+  )
   const marketLabel = inferMarketLabel(stock.ticker, stock.category, exchange)
   const handleToggle = useCallback(() => setExpanded((v) => !v), [])
   const marketKey = inferMarket(stock.ticker, stock.category)

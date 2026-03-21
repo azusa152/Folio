@@ -46,7 +46,12 @@ export function GrossMarginChart({ data }: Props) {
   const chartData = trend.map((p, i) => ({
     date: p.date,
     value: p.value as number,
-    fill: i === 0 ? "#6b7280" : ((p.value as number) >= (trend[i - 1].value as number) ? "#22c55e" : "#ef4444"),
+    fill:
+      i === 0
+        ? "#6b7280"
+        : (p.value as number) >= (trend[i - 1].value as number)
+          ? "#22c55e"
+          : "#ef4444",
   }))
 
   const moatColor = MOAT_STATUS_COLOR[data.moat] ?? "text-muted-foreground"
@@ -73,7 +78,9 @@ export function GrossMarginChart({ data }: Props) {
           />
           <Tooltip
             contentStyle={theme.tooltipStyle}
-            formatter={(value: number | undefined) => value != null ? [`${value.toFixed(1)}%`, t("chart.gross_margin")] : ["", ""]}
+            formatter={(value: number | undefined) =>
+              value != null ? [`${value.toFixed(1)}%`, t("chart.gross_margin")] : ["", ""]
+            }
             labelStyle={{ color: theme.tooltipText }}
             cursor={{ fill: "rgba(128,128,128,0.08)" }}
           />
@@ -92,15 +99,13 @@ export function GrossMarginChart({ data }: Props) {
             <LabelList
               dataKey="value"
               position="top"
-              formatter={(v: unknown) => typeof v === "number" ? `${v.toFixed(1)}%` : ""}
+              formatter={(v: unknown) => (typeof v === "number" ? `${v.toFixed(1)}%` : "")}
               style={{ fontSize: 9, fill: theme.tickColor }}
             />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      {data.details && (
-        <p className={`text-xs ${moatColor}`}>{data.details}</p>
-      )}
+      {data.details && <p className={`text-xs ${moatColor}`}>{data.details}</p>}
     </div>
   )
 }

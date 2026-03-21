@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlmodel import Session
 
 from application.scan.prewarm_service import (
@@ -310,6 +311,7 @@ class TestCollectTickers:
 class TestPrewarmAllCaches:
     """Tests for the orchestration function."""
 
+    @pytest.mark.slow
     @patch("application.scan.prewarm_service.get_ticker_sector")
     @patch("application.scan.prewarm_service.prewarm_beta_batch")
     @patch("application.scan.prewarm_service.prewarm_etf_holdings_batch")

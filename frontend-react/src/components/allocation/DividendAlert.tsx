@@ -89,7 +89,10 @@ export function DividendAlert({ enabled = true }: DividendAlertProps) {
       ) : (
         <div className="space-y-2">
           {pending.map((event) => (
-            <div key={event.id} className="rounded border border-border/60 bg-background/60 p-2 space-y-2">
+            <div
+              key={event.id}
+              className="rounded border border-border/60 bg-background/60 p-2 space-y-2"
+            >
               <p className="text-xs font-medium">
                 {t("allocation.dividend.item_title", {
                   ticker: event.ticker,
@@ -97,9 +100,7 @@ export function DividendAlert({ enabled = true }: DividendAlertProps) {
                   amount: event.amount_per_share,
                 })}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {t("allocation.dividend.item_help")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("allocation.dividend.item_help")}</p>
               <PreviewRows event={event} />
               <div className="flex gap-2 flex-wrap">
                 <Button
@@ -145,9 +146,10 @@ export function DividendAlert({ enabled = true }: DividendAlertProps) {
           onClick={() => {
             applyAllMutation.mutate(undefined, {
               onSuccess: (result) =>
-                toast.success(t("allocation.dividend.apply_all_success", { count: result.applied })),
-              onError: (err: unknown) =>
-                toast.error(getErrorMessage(err) || t("common.error")),
+                toast.success(
+                  t("allocation.dividend.apply_all_success", { count: result.applied }),
+                ),
+              onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
             })
           }}
         >

@@ -225,6 +225,7 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @pytest.mark.slow
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_a_fallback_uses_constituent_sectors(
         self,
@@ -281,6 +282,7 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @pytest.mark.slow
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_approach_a_residual_not_dumped_to_unknown(
         self,
@@ -466,6 +468,7 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @pytest.mark.slow
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_non_etf_without_sector_stays_unknown(
         self,
@@ -512,6 +515,7 @@ class TestEtfSectorLookthrough:
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.prewarm_etf_sector_weights_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
+    @pytest.mark.slow
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     def test_mixed_portfolio_etf_and_direct(
         self,

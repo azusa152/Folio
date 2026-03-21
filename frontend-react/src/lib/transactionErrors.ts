@@ -1,6 +1,8 @@
 /** Pure error-parsing utilities for transaction API responses. */
 
-export function parseInsufficientBalance(err: unknown): { available: number; required: number } | null {
+export function parseInsufficientBalance(
+  err: unknown,
+): { available: number; required: number } | null {
   const detail =
     err && typeof err === "object" && "detail" in err ? (err as { detail?: unknown }).detail : null
   if (!detail || typeof detail !== "object") return null
@@ -17,7 +19,9 @@ export function parseInsufficientBalance(err: unknown): { available: number; req
   return { available, required }
 }
 
-export function parseEligibilityError(err: unknown): { reasons: string[]; suggestedWrapper?: string } | null {
+export function parseEligibilityError(
+  err: unknown,
+): { reasons: string[]; suggestedWrapper?: string } | null {
   const detail =
     err && typeof err === "object" && "detail" in err ? (err as { detail?: unknown }).detail : null
   if (!detail || typeof detail !== "object") return null
@@ -25,7 +29,9 @@ export function parseEligibilityError(err: unknown): { reasons: string[]; sugges
   if (errorCode !== "ASSET_NOT_ELIGIBLE") return null
   const reasons =
     "reasons" in detail && Array.isArray((detail as { reasons?: unknown }).reasons)
-      ? ((detail as { reasons: unknown[] }).reasons.filter((r) => typeof r === "string") as string[])
+      ? ((detail as { reasons: unknown[] }).reasons.filter(
+          (r) => typeof r === "string",
+        ) as string[])
       : []
   const suggestedWrapper =
     "suggested_wrapper" in detail &&

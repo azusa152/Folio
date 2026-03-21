@@ -18,8 +18,12 @@ function readCoverageCopy(locale: "en" | "ja" | "zh-TW" | "zh-CN"): string {
 
 describe("xray coverage copy", () => {
   it("uses equity-only wording across all supported locales", () => {
-    expect(readCoverageCopy("en")).toBe("Covers {{pct}}% of equity exposure (cash and bonds excluded)")
-    expect(readCoverageCopy("ja")).toBe("株式エクスポージャーの {{pct}}% をカバー（現金・債券を除く）")
+    expect(readCoverageCopy("en")).toBe(
+      "Covers {{pct}}% of equity exposure (cash and bonds excluded)",
+    )
+    expect(readCoverageCopy("ja")).toBe(
+      "株式エクスポージャーの {{pct}}% をカバー（現金・債券を除く）",
+    )
     expect(readCoverageCopy("zh-TW")).toBe("目前覆蓋股票曝險 {{pct}}%（不含現金與債券）")
     expect(readCoverageCopy("zh-CN")).toBe("当前覆盖股票敞口 {{pct}}%（不含现金与债券）")
   })

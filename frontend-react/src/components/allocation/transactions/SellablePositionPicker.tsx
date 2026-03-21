@@ -1,7 +1,14 @@
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -63,7 +70,8 @@ export function SellablePositionPicker({
                   <TooltipTrigger asChild>
                     <span className="min-w-0 flex flex-col leading-tight">
                       <span className="truncate font-medium text-xs">
-                        {selectedSellablePositionForDisplay.fund_name || selectedSellablePositionForDisplay.ticker}
+                        {selectedSellablePositionForDisplay.fund_name ||
+                          selectedSellablePositionForDisplay.ticker}
                       </span>
                       <span className="truncate text-[11px] text-muted-foreground">
                         {selectedSellablePositionForDisplay.ticker} ·{" "}
@@ -139,14 +147,18 @@ export function SellablePositionPicker({
                       <Check
                         className={cn(
                           "h-4 w-4",
-                          ticker.trim().toUpperCase() === item.ticker.toUpperCase() ? "opacity-100" : "opacity-0",
+                          ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                            ? "opacity-100"
+                            : "opacity-0",
                         )}
                       />
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium">{item.fund_name || item.ticker}</p>
+                              <p className="truncate text-xs font-medium">
+                                {item.fund_name || item.ticker}
+                              </p>
                               <p className="truncate text-[11px] text-muted-foreground">
                                 {item.ticker} · {item.quantity.toLocaleString()} ·{" "}
                                 {item.market_value != null
@@ -157,7 +169,9 @@ export function SellablePositionPicker({
                                 <p
                                   className={cn(
                                     "text-[10px] mt-0.5",
-                                    item.value_source === "cost_basis" ? "text-amber-500" : "text-muted-foreground",
+                                    item.value_source === "cost_basis"
+                                      ? "text-amber-500"
+                                      : "text-muted-foreground",
                                   )}
                                 >
                                   {getSellValueSourceLabel(item.value_source)}

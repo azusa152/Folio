@@ -63,7 +63,11 @@ export function AccountSummaryCards({
             }}
             aria-label={`${row.name} ${Math.round(row.sharePct)}%`}
             aria-pressed={activeRowId === row.id}
-            title={isPrivate ? `${row.name}: ***` : `${row.name}: ${row.totalValue.toFixed(2)} ${displayCurrency}`}
+            title={
+              isPrivate
+                ? `${row.name}: ***`
+                : `${row.name}: ${row.totalValue.toFixed(2)} ${displayCurrency}`
+            }
             onPointerEnter={() => setActiveRowId(row.id)}
             onPointerLeave={() => setActiveRowId(null)}
             onFocus={() => setActiveRowId(row.id)}
@@ -88,7 +92,11 @@ export function AccountSummaryCards({
             onBlur={() => setActiveRowId(null)}
             onClick={() => setActiveRowId(activeRowId === row.id ? null : row.id)}
           >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: row.color }}
+              aria-hidden
+            />
             <span className="max-w-28 truncate">{row.name}</span>
             <span className="tabular-nums">{Math.round(row.sharePct)}%</span>
           </button>

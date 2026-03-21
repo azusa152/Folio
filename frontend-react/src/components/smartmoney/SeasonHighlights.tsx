@@ -61,9 +61,7 @@ export function SeasonHighlights({ data }: Props) {
               >
                 <div className="min-w-0">
                   <span className="font-medium">{item.ticker ?? "—"}</span>
-                  <span className="text-muted-foreground ml-1 truncate">
-                    {item.company_name}
-                  </span>
+                  <span className="text-muted-foreground ml-1 truncate">{item.company_name}</span>
                   <span className="block text-muted-foreground">{item.guru_display_name}</span>
                 </div>
                 <div className="text-right shrink-0">
@@ -100,9 +98,7 @@ export function SeasonHighlights({ data }: Props) {
               >
                 <div className="min-w-0">
                   <span className="font-medium">{item.ticker ?? "—"}</span>
-                  <span className="text-muted-foreground ml-1 truncate">
-                    {item.company_name}
-                  </span>
+                  <span className="text-muted-foreground ml-1 truncate">{item.company_name}</span>
                   <span className="block text-muted-foreground">{item.guru_display_name}</span>
                 </div>
                 <div className="text-right shrink-0">

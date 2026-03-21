@@ -173,6 +173,9 @@ class _RequestIdMiddleware(BaseHTTPMiddleware):
     context variables so every log line emitted during a request automatically
     carries those fields — especially useful with ``LOG_FORMAT=json``.
 
+    Access log entries are emitted at INFO level on the ``folio.access`` logger,
+    providing RED metrics (rate, errors, duration) without requiring DEBUG level.
+
     On unhandled exceptions the access log still records status 500 and
     latency.  The ``X-Request-ID`` response header cannot be attached
     when Starlette's internal error handler generates the 500 response,
@@ -192,7 +195,7 @@ class _RequestIdMiddleware(BaseHTTPMiddleware):
             elapsed_ms = (time.perf_counter() - start) * 1000
             http_status_var.set(response.status_code)
             http_latency_ms_var.set(elapsed_ms)
-            _access_logger.debug(
+            _access_logger.info(
                 "%s %s %d %.1fms",
                 request.method,
                 request.url.path,
@@ -205,7 +208,7 @@ class _RequestIdMiddleware(BaseHTTPMiddleware):
             elapsed_ms = (time.perf_counter() - start) * 1000
             http_status_var.set(500)
             http_latency_ms_var.set(elapsed_ms)
-            _access_logger.debug(
+            _access_logger.info(
                 "%s %s 500 %.1fms (unhandled)",
                 request.method,
                 request.url.path,

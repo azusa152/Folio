@@ -7,7 +7,16 @@ import type { AccountRowData } from "../AccountsOverview"
 // Constants
 // ---------------------------------------------------------------------------
 
-const ACCOUNT_COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#DC2626", "#EA580C", "#4F46E5"]
+const ACCOUNT_COLORS = [
+  "#2563EB",
+  "#059669",
+  "#D97706",
+  "#7C3AED",
+  "#0891B2",
+  "#DC2626",
+  "#EA580C",
+  "#4F46E5",
+]
 const DAILY_CHANGE_MIN_COVERAGE_PCT = 70
 const LEGEND_ROW_LIMIT = 4
 const TOP_HOLDINGS_LIMIT = 3
@@ -20,20 +29,16 @@ function toCategoryBucket(category: string | undefined): {
   category: "stocks" | "cash" | "crypto" | "bonds" | "commodities" | "other"
   customLabel?: string
 } {
-  const normalized = (category ?? "").trim().toLowerCase().replace(/[\s_]+/g, "_")
+  const normalized = (category ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "_")
   if (normalized === "cash") return { category: "cash" }
   if (normalized === "crypto") return { category: "crypto" }
   if (normalized === "bond" || normalized === "fixed_income") return { category: "bonds" }
   if (normalized === "commodity" || normalized === "commodities") return { category: "commodities" }
 
-  const stockLike = new Set([
-    "equity",
-    "etf",
-    "growth",
-    "moat",
-    "trend_setter",
-    "trendsetter",
-  ])
+  const stockLike = new Set(["equity", "etf", "growth", "moat", "trend_setter", "trendsetter"])
   if (stockLike.has(normalized)) return { category: "stocks" }
 
   if (category && category.trim().length > 0) {
@@ -54,7 +59,12 @@ export function useAccountsOverviewData(
   accountSummary: AccountSummaryItem[],
   rebalance: RebalanceResponse | null | undefined,
   displayCurrency: string,
-): { rows: AccountRowData[]; total: number; legendRows: AccountRowData[]; hiddenLegendCount: number } {
+): {
+  rows: AccountRowData[]
+  total: number
+  legendRows: AccountRowData[]
+  hiddenLegendCount: number
+} {
   const fxRateByCurrency = useMemo(() => {
     const rates = new Map<string, number>()
     rates.set(displayCurrency, 1)
@@ -115,7 +125,14 @@ export function useAccountsOverviewData(
         let hasDailyData = false
         let dailyCoveredCurrentValue = 0
         let dailyCoveredPreviousValue = 0
-        const categoryByKey = new Map<string, { category: AccountRowData["categoryBreakdown"][number]["category"]; value: number; customLabel?: string }>()
+        const categoryByKey = new Map<
+          string,
+          {
+            category: AccountRowData["categoryBreakdown"][number]["category"]
+            value: number
+            customLabel?: string
+          }
+        >()
         for (const holding of accountHoldings) {
           const bucket = toCategoryBucket(holding.category)
           const bucketKey = bucket.category
@@ -137,14 +154,16 @@ export function useAccountsOverviewData(
           accountGainLoss += (holding.market_value ?? 0) - costTotal
         }
         for (const holding of accountHoldings) {
-          if (!Number.isFinite(holding.change_pct) || !Number.isFinite(holding.market_value)) continue
+          if (!Number.isFinite(holding.change_pct) || !Number.isFinite(holding.market_value))
+            continue
           const changePct = holding.change_pct ?? 0
           const denominator = 100 + changePct
           if (Math.abs(denominator) < 1e-9) continue
           const currentValue = holding.market_value ?? 0
           const previousValue = currentValue / (1 + changePct / 100)
           const deltaValue = currentValue - previousValue
-          if (!Number.isFinite(deltaValue) || !Number.isFinite(previousValue) || previousValue < 0) continue
+          if (!Number.isFinite(deltaValue) || !Number.isFinite(previousValue) || previousValue < 0)
+            continue
           hasDailyData = true
           accountDailyChange += deltaValue
           dailyCoveredCurrentValue += currentValue
@@ -168,14 +187,15 @@ export function useAccountsOverviewData(
             customLabel: entry.customLabel,
           }))
         const previousValue = totalValue - accountDailyChange
-        const dailyCoveragePct = positionValue > 0
-          ? (dailyCoveredCurrentValue / positionValue) * 100
-          : 0
-        const dailyChangePct = hasDailyData && previousValue > 0
-          && dailyCoveredPreviousValue > 0
-          && dailyCoveragePct >= DAILY_CHANGE_MIN_COVERAGE_PCT
-          ? (accountDailyChange / dailyCoveredPreviousValue) * 100
-          : null
+        const dailyCoveragePct =
+          positionValue > 0 ? (dailyCoveredCurrentValue / positionValue) * 100 : 0
+        const dailyChangePct =
+          hasDailyData &&
+          previousValue > 0 &&
+          dailyCoveredPreviousValue > 0 &&
+          dailyCoveragePct >= DAILY_CHANGE_MIN_COVERAGE_PCT
+            ? (accountDailyChange / dailyCoveredPreviousValue) * 100
+            : null
 
         return {
           id: account.id,
@@ -200,7 +220,9 @@ export function useAccountsOverviewData(
         }
       })
 
-    const sorted = mapped.sort((a, b) => b.totalValue - a.totalValue || a.name.localeCompare(b.name))
+    const sorted = mapped.sort(
+      (a, b) => b.totalValue - a.totalValue || a.name.localeCompare(b.name),
+    )
     const grandTotal = sorted.reduce((sum, row) => sum + row.totalValue, 0)
     return sorted.map((row, index) => ({
       ...row,

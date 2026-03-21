@@ -57,10 +57,7 @@ function formatDate(isoDate: string, locale: string): string {
   }).format(new Date(year, month - 1, day))
 }
 
-function getCommentaryKey(
-  portfolioReturn: number,
-  benchmarkReturn: number | null,
-): string {
+function getCommentaryKey(portfolioReturn: number, benchmarkReturn: number | null): string {
   if (benchmarkReturn === null) {
     if (Math.abs(portfolioReturn) < 1) return "performance_commentary_flat_no_benchmark"
     return portfolioReturn >= 0
@@ -157,7 +154,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
     if (filtered.length < 2) return null
     const first = filtered[0].total_value
     const last = filtered[filtered.length - 1].total_value
-    const returnPct = ((last / (first || 1)) - 1) * 100
+    const returnPct = (last / (first || 1) - 1) * 100
     return {
       returnPct,
       from: filtered[0].snapshot_date,
@@ -183,7 +180,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
       .filter((p): p is { d: string; b: number } => p.b != null)
     if (pairs.length < 2) return null
     const base = pairs[0].b || 1
-    return ((pairs[pairs.length - 1].b / base) - 1) * 100
+    return (pairs[pairs.length - 1].b / base - 1) * 100
   }, [filtered, selectedBenchmark])
 
   // ── Oldest snapshot in the loaded window (up to 730 days) ──────────────────
@@ -254,7 +251,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
     }
     chart.subscribeCrosshairMove(crosshairHandler)
     return () => chart.unsubscribeCrosshairMove(crosshairHandler)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // t is stable per react-i18next contract; onInit only runs once on mount
 
   // ── In-place data update when period or benchmark changes ───────────────────
@@ -295,7 +292,10 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
     const benchmarkPairs = filtered
       .map((s) => {
         const bvMap = s.benchmark_values as Record<string, number | null> | undefined
-        const val = bvMap?.[selectedBenchmark] ?? (selectedBenchmark === "^GSPC" ? s.benchmark_value : null) ?? null
+        const val =
+          bvMap?.[selectedBenchmark] ??
+          (selectedBenchmark === "^GSPC" ? s.benchmark_value : null) ??
+          null
         return { d: s.snapshot_date, b: val }
       })
       .filter((p): p is { d: string; b: number } => p.b != null)
@@ -315,7 +315,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
     }
 
     chart.timeScale().fitContent()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, selectedBenchmark]) // t is stable per react-i18next contract
 
   // ── Keep series titles in sync with locale and selected benchmark ───────────
@@ -390,8 +390,10 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
               {crosshair.portfolio.toFixed(2)}%
               {crosshair.benchmark !== undefined && (
                 <span className="text-muted-foreground">
-                  {" "}/ {t(BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "")}:{" "}
-                  {crosshair.benchmark >= 0 ? "+" : ""}
+                  {" "}
+                  / {t(
+                    BENCHMARK_OPTIONS.find((b) => b.key === selectedBenchmark)?.labelKey ?? "",
+                  )}: {crosshair.benchmark >= 0 ? "+" : ""}
                   {crosshair.benchmark.toFixed(2)}%
                 </span>
               )}
@@ -464,7 +466,9 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
               disabled={backfilling}
               className={`text-xs px-2 py-0.5 rounded border ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning} disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
             >
-              {backfilling ? t("dashboard.performance_backfilling") : t("dashboard.performance_backfill_run")}
+              {backfilling
+                ? t("dashboard.performance_backfilling")
+                : t("dashboard.performance_backfill_run")}
             </button>
           </div>
         )}
@@ -483,7 +487,11 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
         {hasSnapshots ? (
           <div className="relative">
             {/* Chart is mounted once — never remounted on period change */}
-            <LightweightChartWrapper height={280} onInit={onInit} ariaLabel={t("accessibility.chart_performance")} />
+            <LightweightChartWrapper
+              height={280}
+              onInit={onInit}
+              ariaLabel={t("accessibility.chart_performance")}
+            />
             {/* Overlay when selected period has no data yet */}
             {!hasPeriodData && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/70 rounded">
@@ -494,9 +502,7 @@ export function PerformanceChart({ snapshots, isLoading = false }: Props) {
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-4">
-            {t("dashboard.performance_no_data")}
-          </p>
+          <p className="text-sm text-muted-foreground py-4">{t("dashboard.performance_no_data")}</p>
         )}
       </CardContent>
     </Card>

@@ -500,6 +500,8 @@ make upgrade
 
 ## 開發與 CI
 
+詳細的貢獻流程、分支命名、提交格式與架構規範請參閱 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ```bash
 # 首次安裝依賴（含 pip-audit 等開發工具）
 make install
@@ -526,6 +528,7 @@ make check-ci            # 驗證 make ci 覆蓋所有 GitHub CI job
 | Lint (ruff) | `backend-lint` |
 | OpenAPI Spec Freshness | `check-api-spec` |
 | Frontend Lint | `frontend-lint` |
+| Frontend Format Check (Prettier) | `frontend-format-check` |
 | Frontend Build | `frontend-build` |
 | Frontend Tests (含 coverage ≥ 4% lines / 60% branches / 25% functions) | `frontend-test` |
 | Frontend Security (npm audit) | `frontend-security` |

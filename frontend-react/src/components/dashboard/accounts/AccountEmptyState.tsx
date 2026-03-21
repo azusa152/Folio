@@ -36,7 +36,9 @@ export function AccountEmptyState({ isLoading, isError, hasRows }: Props) {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm font-semibold">{t("dashboard.accounts_overview.error_title")}</p>
-          <p className="text-sm text-muted-foreground">{t("dashboard.accounts_overview.error_description")}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.accounts_overview.error_description")}
+          </p>
         </CardContent>
       </Card>
     )
@@ -50,7 +52,9 @@ export function AccountEmptyState({ isLoading, isError, hasRows }: Props) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm font-semibold">{t("dashboard.accounts_overview.empty_title")}</p>
-          <p className="text-sm text-muted-foreground">{t("dashboard.accounts_overview.empty_description")}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.accounts_overview.empty_description")}
+          </p>
           <Button asChild size="sm" variant="outline" className="min-h-[36px]">
             <Link to="/allocation?tab=accounts">{t("dashboard.accounts_overview.empty_cta")}</Link>
           </Button>

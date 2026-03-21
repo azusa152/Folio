@@ -70,7 +70,9 @@ vi.mock("@/components/fxwatch/PortfolioImpactSnapshot", () => ({
       <p data-testid="selected-currency">{props.selectedCurrency}</p>
       <button onClick={() => props.onCurrencyChange("JPY")}>change-currency</button>
       {props.showSaveDefault ? <button onClick={props.onSaveDefault}>save-default</button> : null}
-      {props.showResetCurrency ? <button onClick={props.onResetCurrency}>reset-currency</button> : null}
+      {props.showResetCurrency ? (
+        <button onClick={props.onResetCurrency}>reset-currency</button>
+      ) : null}
     </div>
   ),
 }))

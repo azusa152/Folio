@@ -27,12 +27,18 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
   const alertMutation = useXRayAlert()
-  const feedback = alertMutation.isSuccess ? t("common.success") : alertMutation.isError ? t("common.error") : null
+  const feedback = alertMutation.isSuccess
+    ? t("common.success")
+    : alertMutation.isError
+      ? t("common.error")
+      : null
 
   const top15 = [...xray].sort((a, b) => b.total_weight_pct - a.total_weight_pct).slice(0, 15)
   const hasWarning = top15.some((e) => e.total_weight_pct > XRAY_WARNING_THRESHOLD)
   const isLowCoverage = coveragePct < XRAY_LOW_COVERAGE_THRESHOLD
-  const skippedEtfList = skippedEtfs.map((item) => `${item.ticker} (${item.weight_pct.toFixed(1)}%)`).join(", ")
+  const skippedEtfList = skippedEtfs
+    .map((item) => `${item.ticker} (${item.weight_pct.toFixed(1)}%)`)
+    .join(", ")
   const [tableExpanded, setTableExpanded] = useState(false)
   const showTable = !isLowCoverage || tableExpanded
 
@@ -44,7 +50,11 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => alertMutation.mutate(undefined, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
+          onClick={() =>
+            alertMutation.mutate(undefined, {
+              onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+            })
+          }
           disabled={alertMutation.isPending}
         >
           {t("allocation.xray.alert_button")}
@@ -56,7 +66,9 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">{t("allocation.xray.coverage_label")}</span>
-          <span className="font-medium">{t("allocation.xray.coverage", { pct: coveragePct.toFixed(1) })}</span>
+          <span className="font-medium">
+            {t("allocation.xray.coverage", { pct: coveragePct.toFixed(1) })}
+          </span>
         </div>
         <div className="h-2 w-full rounded-full bg-muted">
           <div
@@ -87,7 +99,9 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
         </div>
       )}
 
-      {top15.length === 0 && <p className="text-sm text-muted-foreground">{t("allocation.xray.empty")}</p>}
+      {top15.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("allocation.xray.empty")}</p>
+      )}
 
       {showTable && hasWarning && (
         <div className="rounded-md border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs text-orange-700 dark:text-orange-400">
@@ -116,7 +130,9 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
                             ?
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent sideOffset={6}>{t("allocation.xray.help_direct")}</TooltipContent>
+                        <TooltipContent sideOffset={6}>
+                          {t("allocation.xray.help_direct")}
+                        </TooltipContent>
                       </Tooltip>
                     </span>
                   </th>
@@ -133,7 +149,9 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
                             ?
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent sideOffset={6}>{t("allocation.xray.help_indirect")}</TooltipContent>
+                        <TooltipContent sideOffset={6}>
+                          {t("allocation.xray.help_indirect")}
+                        </TooltipContent>
                       </Tooltip>
                     </span>
                   </th>
@@ -148,10 +166,14 @@ export function XRayOverlap({ xray, coveragePct, skippedEtfs }: Props) {
                   className={`border-b border-border/50 ${e.total_weight_pct > XRAY_WARNING_THRESHOLD ? "text-orange-600 dark:text-orange-400" : ""}`}
                 >
                   <td className="py-0.5 pr-2 font-medium">{e.symbol}</td>
-                  <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">{e.name}</td>
+                  <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
+                    {e.name}
+                  </td>
                   <td className="py-0.5 pr-2 text-right">{e.direct_weight_pct.toFixed(1)}%</td>
                   <td className="py-0.5 pr-2 text-right">{e.indirect_weight_pct.toFixed(1)}%</td>
-                  <td className="py-0.5 text-right font-semibold">{e.total_weight_pct.toFixed(1)}%</td>
+                  <td className="py-0.5 text-right font-semibold">
+                    {e.total_weight_pct.toFixed(1)}%
+                  </td>
                 </tr>
               ))}
             </tbody>

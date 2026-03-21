@@ -180,6 +180,7 @@ class TestRebalancePortfolioChange:
         assert holding_detail["total_gain_value"] == pytest.approx(150.0, rel=0.01)
         assert holding_detail["total_gain_pct"] == pytest.approx(20.0, rel=0.01)
 
+    @pytest.mark.slow
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
@@ -822,6 +823,7 @@ class TestRebalanceCacheRefresh:
 class TestMutualFundHoldingValuation:
     """Mutual_Fund holdings must use cost_basis, never call get_technical_signals."""
 
+    @pytest.mark.slow
     @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")

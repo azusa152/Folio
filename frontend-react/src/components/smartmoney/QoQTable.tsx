@@ -31,9 +31,7 @@ export function QoQTable({ data }: { data: QoQResponse }) {
   const { t } = useTranslation()
 
   if (!data.items.length) {
-    return (
-      <p className="text-sm text-muted-foreground">{t("smart_money.qoq.no_data")}</p>
-    )
+    return <p className="text-sm text-muted-foreground">{t("smart_money.qoq.no_data")}</p>
   }
 
   const quarterHeaders = data.items[0]?.quarters.map((q) => q.report_date) ?? []

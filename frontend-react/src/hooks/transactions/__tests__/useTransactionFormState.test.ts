@@ -4,8 +4,14 @@ import { useTransactionFormState } from "../useTransactionFormState"
 
 const { accountsState } = vi.hoisted(() => ({
   accountsState: {
-    accounts: [{ id: 1, name: "Main", broker: "IB", currency: "USD", tax_wrapper: "tokutei" }] as Array<{
-      id: number; name: string; broker: string; currency: string; tax_wrapper: string
+    accounts: [
+      { id: 1, name: "Main", broker: "IB", currency: "USD", tax_wrapper: "tokutei" },
+    ] as Array<{
+      id: number
+      name: string
+      broker: string
+      currency: string
+      tax_wrapper: string
     }>,
   },
 }))
@@ -134,26 +140,36 @@ describe("useTransactionFormState", () => {
   describe("applyCashMovementDefaults()", () => {
     it("sets ticker to the given currency (uppercased)", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.applyCashMovementDefaults("jpy") })
+      act(() => {
+        result.current.applyCashMovementDefaults("jpy")
+      })
       expect(result.current.ticker).toBe("JPY")
     })
 
     it("sets quantity to 1", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.applyCashMovementDefaults("USD") })
+      act(() => {
+        result.current.applyCashMovementDefaults("USD")
+      })
       expect(result.current.quantity).toBe("1")
     })
 
     it("clears price", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.setPrice("999") })
-      act(() => { result.current.applyCashMovementDefaults("USD") })
+      act(() => {
+        result.current.setPrice("999")
+      })
+      act(() => {
+        result.current.applyCashMovementDefaults("USD")
+      })
       expect(result.current.price).toBe("")
     })
 
     it("sets manualTotal to true", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.applyCashMovementDefaults("USD") })
+      act(() => {
+        result.current.applyCashMovementDefaults("USD")
+      })
       expect(result.current.manualTotal).toBe(true)
     })
   })
@@ -163,15 +179,23 @@ describe("useTransactionFormState", () => {
       const { result } = renderHook(() =>
         useTransactionFormState({ ...defaultProps, defaultTransactionType: "SELL" }),
       )
-      act(() => { result.current.setTransactionType("DEPOSIT") })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.setTransactionType("DEPOSIT")
+      })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.transactionType).toBe("SELL")
     })
 
     it("clears ticker by default", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.setTicker("AAPL") })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.setTicker("AAPL")
+      })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.ticker).toBe("")
     })
 
@@ -179,8 +203,12 @@ describe("useTransactionFormState", () => {
       const { result } = renderHook(() =>
         useTransactionFormState({ ...defaultProps, defaultTicker: "MSFT" }),
       )
-      act(() => { result.current.setTicker("GOOGL") })
-      act(() => { result.current.resetForm({ keepDefaultTicker: true }) })
+      act(() => {
+        result.current.setTicker("GOOGL")
+      })
+      act(() => {
+        result.current.resetForm({ keepDefaultTicker: true })
+      })
       expect(result.current.ticker).toBe("MSFT")
     })
 
@@ -191,7 +219,9 @@ describe("useTransactionFormState", () => {
         result.current.setPrice("100")
         result.current.setTotalAmount("1000")
       })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.quantity).toBe("")
       expect(result.current.price).toBe("")
       expect(result.current.totalAmount).toBe("")
@@ -199,15 +229,23 @@ describe("useTransactionFormState", () => {
 
     it("resets fee to 0", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.setFee("50") })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.setFee("50")
+      })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.fee).toBe("0")
     })
 
     it("resets manualTotal to false", () => {
       const { result } = renderHook(() => useTransactionFormState(defaultProps))
-      act(() => { result.current.setManualTotal(true) })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.setManualTotal(true)
+      })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.manualTotal).toBe(false)
     })
 
@@ -218,7 +256,9 @@ describe("useTransactionFormState", () => {
         result.current.setNisaPickerSearch("fund")
         result.current.setNisaAssetTypeFilter("etf")
       })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.nisaPickerOpen).toBe(false)
       expect(result.current.nisaPickerSearch).toBe("")
       expect(result.current.nisaAssetTypeFilter).toBe("all")
@@ -230,7 +270,9 @@ describe("useTransactionFormState", () => {
         result.current.setSellPickerOpen(true)
         result.current.setSellPickerSearch("aapl")
       })
-      act(() => { result.current.resetForm() })
+      act(() => {
+        result.current.resetForm()
+      })
       expect(result.current.sellPickerOpen).toBe(false)
       expect(result.current.sellPickerSearch).toBe("")
     })
@@ -332,7 +374,13 @@ describe("useTransactionFormState", () => {
     describe("nisaAssetTypeFilter reset when wrapper leaves nisa_growth", () => {
       it("resets nisaAssetTypeFilter to 'all' when switching from nisa_growth to a non-NISA account", () => {
         accountsState.accounts = [
-          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+          {
+            id: 1,
+            name: "NISA Growth",
+            broker: "Rakuten",
+            currency: "JPY",
+            tax_wrapper: "nisa_growth",
+          },
           { id: 2, name: "Tokutei", broker: "Rakuten", currency: "JPY", tax_wrapper: "tokutei" },
         ]
         const { result } = renderHook(() =>
@@ -354,7 +402,13 @@ describe("useTransactionFormState", () => {
 
       it("does not reset nisaAssetTypeFilter when staying on nisa_growth", () => {
         accountsState.accounts = [
-          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+          {
+            id: 1,
+            name: "NISA Growth",
+            broker: "Rakuten",
+            currency: "JPY",
+            tax_wrapper: "nisa_growth",
+          },
         ]
         const { result } = renderHook(() =>
           useTransactionFormState({ ...defaultProps, defaultAccountId: 1 }),
@@ -372,7 +426,13 @@ describe("useTransactionFormState", () => {
       it("clears ticker when nisaFreeTickerInput transitions from true to false", () => {
         // nisa_growth + transactionType=BUY + nisaAssetTypeFilter=stock → nisaStockFreeInput=true → nisaFreeTickerInput=true
         accountsState.accounts = [
-          { id: 1, name: "NISA Growth", broker: "Rakuten", currency: "JPY", tax_wrapper: "nisa_growth" },
+          {
+            id: 1,
+            name: "NISA Growth",
+            broker: "Rakuten",
+            currency: "JPY",
+            tax_wrapper: "nisa_growth",
+          },
           { id: 2, name: "Tokutei", broker: "Rakuten", currency: "JPY", tax_wrapper: "tokutei" },
         ]
         const { result } = renderHook(() =>

@@ -1,0 +1,30 @@
+name: Setup Frontend
+description: Install Node.js and restore/populate the node_modules cache.
+
+inputs:
+  node-version:
+    description: Node.js version to use
+    required: false
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore node_modules cache
+      id: cache-node-modules
+      uses: actions/cache@v4
+      with:
+        path: frontend-react/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('frontend-react/package-lock.json') }}
+        restore-keys: node-modules-${{ runner.os }}-
+
+    - name: Install dependencies
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: frontend-react
+      run: npm ci

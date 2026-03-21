@@ -6,7 +6,9 @@ import { AssetClassDonut } from "../AssetClassDonut"
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PieChart: ({ children }: { children: ReactNode }) => <div data-testid="pie-chart">{children}</div>,
+  PieChart: ({ children }: { children: ReactNode }) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
   Pie: () => <div />,
   Cell: () => <div />,
   Tooltip: () => <div />,
@@ -56,17 +58,13 @@ describe("AssetClassDonut", () => {
   })
 
   it("returns null when all values are zero", () => {
-    const { container } = render(
-      <AssetClassDonut data={{ Equity: 0, Cash: 0 }} />,
-    )
+    const { container } = render(<AssetClassDonut data={{ Equity: 0, Cash: 0 }} />)
 
     expect(container.innerHTML).toBe("")
   })
 
   it("returns null when data is empty", () => {
-    const { container } = render(
-      <AssetClassDonut data={{}} />,
-    )
+    const { container } = render(<AssetClassDonut data={{}} />)
 
     expect(container.innerHTML).toBe("")
   })

@@ -27,7 +27,9 @@ describe("assertEnrichedStocks", () => {
   })
 
   it("throws when first element has non-number current_price", () => {
-    expect(() => assertEnrichedStocks([{ ticker: "AAPL", current_price: "150" }])).toThrow("unexpected element shape")
+    expect(() => assertEnrichedStocks([{ ticker: "AAPL", current_price: "150" }])).toThrow(
+      "unexpected element shape",
+    )
   })
 
   it("does not inspect beyond first element", () => {
@@ -51,11 +53,15 @@ describe("assertRadarEnrichedStocks", () => {
   })
 
   it("throws when first element lacks ticker", () => {
-    expect(() => assertRadarEnrichedStocks([{ category: "Growth" }])).toThrow("unexpected element shape")
+    expect(() => assertRadarEnrichedStocks([{ category: "Growth" }])).toThrow(
+      "unexpected element shape",
+    )
   })
 
   it("throws when first element lacks category", () => {
-    expect(() => assertRadarEnrichedStocks([{ ticker: "AAPL" }])).toThrow("unexpected element shape")
+    expect(() => assertRadarEnrichedStocks([{ ticker: "AAPL" }])).toThrow(
+      "unexpected element shape",
+    )
   })
 })
 
@@ -74,7 +80,9 @@ describe("assertPricePoints", () => {
   })
 
   it("throws when close is not a number", () => {
-    expect(() => assertPricePoints([{ date: "2024-01-01", close: "150" }])).toThrow("unexpected shape")
+    expect(() => assertPricePoints([{ date: "2024-01-01", close: "150" }])).toThrow(
+      "unexpected shape",
+    )
   })
 })
 

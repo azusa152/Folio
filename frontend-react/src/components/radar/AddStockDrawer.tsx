@@ -1,25 +1,22 @@
 import { useState, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   STOCK_CATEGORIES,
   MARKET_TAG_OPTIONS,
   CASH_CURRENCY_OPTIONS,
   MARKET_OPTIONS,
 } from "@/lib/constants"
-import {
-  useAddStock,
-  useTriggerScan,
-  useImportStocks,
-} from "@/api/hooks/useRadar"
+import { useAddStock, useTriggerScan, useImportStocks } from "@/api/hooks/useRadar"
 import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import client from "@/api/client"
 import type { AddStockRequest, StockCategory, StockImportItem } from "@/api/types/radar"
@@ -84,7 +81,7 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
       setAddFeedback(t("radar.form.error_no_thesis"))
       return
     }
-    const fullTicker = (ticker.trim().toUpperCase() + marketInfo.suffix)
+    const fullTicker = ticker.trim().toUpperCase() + marketInfo.suffix
     const tags = [...selectedTags, t(marketInfo.labelKey), marketInfo.currency]
     addStock.mutate(
       { ticker: fullTicker, category, thesis: thesis.trim(), tags, is_etf: false },
@@ -159,8 +156,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
         setCryptoCoinId(null)
       },
       onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
     })
   }
 
@@ -172,14 +169,16 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           setScanFeedback(null)
           toast.success(t("radar.scan.already_running"))
         } else {
-          const msg = t("radar.scan.success", { message: data?.message ?? t("radar.scan.default_success") })
+          const msg = t("radar.scan.success", {
+            message: data?.message ?? t("radar.scan.default_success"),
+          })
           setScanFeedback(null)
           toast.success(msg)
         }
       },
       onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
     })
   }
 
@@ -223,8 +222,8 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
             toast.success(msg)
           },
           onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+            toast.error(getErrorMessage(err) || t("common.error"))
+          },
         })
       } catch {
         setImportFeedback(t("radar.import.error_json"))
@@ -252,13 +251,16 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
   }
 
   const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    )
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose()
+      }}
+    >
       <SheetContent side="right" className="w-80 overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-base">{t("radar.panel_header")}</SheetTitle>
@@ -272,19 +274,28 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
             {/* Asset type toggle */}
             <div className="flex gap-2 mb-3">
               <button
-                onClick={() => { setAssetType("stock"); setAddFeedback(null) }}
+                onClick={() => {
+                  setAssetType("stock")
+                  setAddFeedback(null)
+                }}
                 className={`flex-1 rounded py-1 text-xs font-medium border transition-colors ${assetType === "stock" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
               >
                 {t("radar.form.asset_stock")}
               </button>
               <button
-                onClick={() => { setAssetType("bond"); setAddFeedback(null) }}
+                onClick={() => {
+                  setAssetType("bond")
+                  setAddFeedback(null)
+                }}
                 className={`flex-1 rounded py-1 text-xs font-medium border transition-colors ${assetType === "bond" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
               >
                 {t("radar.form.asset_bond")}
               </button>
               <button
-                onClick={() => { setAssetType("crypto"); setAddFeedback(null) }}
+                onClick={() => {
+                  setAssetType("crypto")
+                  setAddFeedback(null)
+                }}
                 className={`flex-1 rounded py-1 text-xs font-medium border transition-colors ${assetType === "crypto" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
               >
                 {t("radar.form.asset_crypto")}
@@ -296,8 +307,17 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                 {/* Market */}
                 <div>
                   <label className="text-xs text-muted-foreground">{t("radar.form.market")}</label>
-                  <Select value={market} onValueChange={(v) => { setMarket(v); setSelectedTags([]) }}>
-                    <SelectTrigger aria-label={t("radar.form.market")} className="text-xs h-8 mt-0.5">
+                  <Select
+                    value={market}
+                    onValueChange={(v) => {
+                      setMarket(v)
+                      setSelectedTags([])
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label={t("radar.form.market")}
+                      className="text-xs h-8 mt-0.5"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -315,7 +335,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
                 {/* Ticker */}
                 <div>
-                  <label htmlFor="add-stock-ticker" className="text-xs text-muted-foreground">{t("radar.form.ticker")}</label>
+                  <label htmlFor="add-stock-ticker" className="text-xs text-muted-foreground">
+                    {t("radar.form.ticker")}
+                  </label>
                   <input
                     id="add-stock-ticker"
                     className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -327,9 +349,14 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
                 {/* Category */}
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("radar.form.category")}</label>
+                  <label className="text-xs text-muted-foreground">
+                    {t("radar.form.category")}
+                  </label>
                   <Select value={category} onValueChange={(v) => setCategory(v as StockCategory)}>
-                    <SelectTrigger aria-label={t("radar.form.category")} className="text-xs h-8 mt-0.5">
+                    <SelectTrigger
+                      aria-label={t("radar.form.category")}
+                      className="text-xs h-8 mt-0.5"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -347,7 +374,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
                 {/* Thesis */}
                 <div>
-                  <label htmlFor="add-stock-thesis" className="text-xs text-muted-foreground">{t("radar.form.thesis")}</label>
+                  <label htmlFor="add-stock-thesis" className="text-xs text-muted-foreground">
+                    {t("radar.form.thesis")}
+                  </label>
                   <textarea
                     id="add-stock-thesis"
                     className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
@@ -378,7 +407,12 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                   </div>
                 </div>
 
-                <Button size="sm" className="w-full" onClick={handleAddStock} disabled={addStock.isPending}>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleAddStock}
+                  disabled={addStock.isPending}
+                >
                   {t("radar.form.add_button")}
                 </Button>
               </div>
@@ -386,7 +420,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
               <div className="space-y-2">
                 {/* Bond ticker */}
                 <div>
-                  <label htmlFor="add-bond-ticker" className="text-xs text-muted-foreground">{t("radar.form.bond_ticker")}</label>
+                  <label htmlFor="add-bond-ticker" className="text-xs text-muted-foreground">
+                    {t("radar.form.bond_ticker")}
+                  </label>
                   <input
                     id="add-bond-ticker"
                     className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -398,9 +434,14 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
                 {/* Currency */}
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("radar.form.currency", { currency: "" }).replace(": ", "")}</label>
+                  <label className="text-xs text-muted-foreground">
+                    {t("radar.form.currency", { currency: "" }).replace(": ", "")}
+                  </label>
                   <Select value={bondCurrency} onValueChange={setBondCurrency}>
-                    <SelectTrigger aria-label={t("radar.form.currency", { currency: "" }).replace(": ", "")} className="text-xs h-8 mt-0.5">
+                    <SelectTrigger
+                      aria-label={t("radar.form.currency", { currency: "" }).replace(": ", "")}
+                      className="text-xs h-8 mt-0.5"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -415,7 +456,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
 
                 {/* Thesis */}
                 <div>
-                  <label htmlFor="add-bond-thesis" className="text-xs text-muted-foreground">{t("radar.form.thesis")}</label>
+                  <label htmlFor="add-bond-thesis" className="text-xs text-muted-foreground">
+                    {t("radar.form.thesis")}
+                  </label>
                   <textarea
                     id="add-bond-thesis"
                     className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
@@ -446,14 +489,21 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                   </div>
                 </div>
 
-                <Button size="sm" className="w-full" onClick={handleAddBond} disabled={addStock.isPending}>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleAddBond}
+                  disabled={addStock.isPending}
+                >
                   {t("radar.form.add_button")}
                 </Button>
               </div>
             ) : (
               <div className="space-y-2">
                 <div>
-                  <label htmlFor="add-crypto-search" className="text-xs text-muted-foreground">{t("radar.form.crypto_search")}</label>
+                  <label htmlFor="add-crypto-search" className="text-xs text-muted-foreground">
+                    {t("radar.form.crypto_search")}
+                  </label>
                   <input
                     id="add-crypto-search"
                     className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -485,7 +535,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                   </div>
                 )}
                 <div>
-                  <label htmlFor="add-crypto-ticker" className="text-xs text-muted-foreground">{t("radar.form.ticker")}</label>
+                  <label htmlFor="add-crypto-ticker" className="text-xs text-muted-foreground">
+                    {t("radar.form.ticker")}
+                  </label>
                   <input
                     id="add-crypto-ticker"
                     className="mt-0.5 w-full rounded-md border border-input bg-muted/40 px-2 py-1 text-sm"
@@ -494,7 +546,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="add-crypto-thesis" className="text-xs text-muted-foreground">{t("radar.form.thesis")}</label>
+                  <label htmlFor="add-crypto-thesis" className="text-xs text-muted-foreground">
+                    {t("radar.form.thesis")}
+                  </label>
                   <textarea
                     id="add-crypto-thesis"
                     className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
@@ -504,10 +558,17 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
                     onChange={(e) => setThesis(e.target.value)}
                   />
                 </div>
-                <Button size="sm" className="w-full" onClick={handleAddCrypto} disabled={addStock.isPending}>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleAddCrypto}
+                  disabled={addStock.isPending}
+                >
                   {t("radar.form.add_button")}
                 </Button>
-                <p className="text-[11px] text-muted-foreground">{t("allocation.crypto.market_24h")}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("allocation.crypto.market_24h")}
+                </p>
               </div>
             )}
 
@@ -523,7 +584,9 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
             {isScanning && (
               <div className="rounded bg-muted/50 p-2 text-xs mb-2">
                 <p>{t("radar.scan.running")}</p>
-                <p className="text-muted-foreground mt-0.5">{t("radar.scan.running_description")}</p>
+                <p className="text-muted-foreground mt-0.5">
+                  {t("radar.scan.running_description")}
+                </p>
               </div>
             )}
             <Button
@@ -542,7 +605,13 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
           {/* Export */}
           <section>
             <p className="text-sm font-semibold mb-2">{t("radar.panel.export")}</p>
-            <Button size="sm" variant="outline" className="w-full" onClick={handleExport} disabled={exporting}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={handleExport}
+              disabled={exporting}
+            >
               {exporting ? t("common.loading") : t("radar.export.download_button")}
             </Button>
             {exportCount != null && (

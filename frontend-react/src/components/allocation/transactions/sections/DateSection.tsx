@@ -135,7 +135,9 @@ export function DateSection({
                   }}
                   className="text-xs"
                 />
-                {fieldErrors.fxRate ? <p className="text-xs text-destructive">{fieldErrors.fxRate}</p> : null}
+                {fieldErrors.fxRate ? (
+                  <p className="text-xs text-destructive">{fieldErrors.fxRate}</p>
+                ) : null}
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium">{t("transactions.form.fee")}</p>
@@ -150,7 +152,9 @@ export function DateSection({
                   }}
                   className="text-xs"
                 />
-                {fieldErrors.fee ? <p className="text-xs text-destructive">{fieldErrors.fee}</p> : null}
+                {fieldErrors.fee ? (
+                  <p className="text-xs text-destructive">{fieldErrors.fee}</p>
+                ) : null}
               </div>
             </div>
 

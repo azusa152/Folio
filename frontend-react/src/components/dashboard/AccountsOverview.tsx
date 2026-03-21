@@ -90,13 +90,7 @@ export function AccountsOverview({
   }
 
   if (isLoading || isError || rows.length === 0) {
-    return (
-      <AccountEmptyState
-        isLoading={isLoading}
-        isError={isError}
-        hasRows={rows.length > 0}
-      />
-    )
+    return <AccountEmptyState isLoading={isLoading} isError={isError} hasRows={rows.length > 0} />
   }
 
   return (

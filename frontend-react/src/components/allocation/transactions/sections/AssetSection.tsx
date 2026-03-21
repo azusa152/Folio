@@ -1,6 +1,12 @@
 import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { STOCK_CATEGORIES } from "@/lib/constants"
 import { TransactionTypePicker } from "./asset/TransactionTypePicker"
@@ -285,7 +291,9 @@ export function AssetSection({
             </p>
           ) : null}
           {forcedCategory ? (
-            <p className="text-[11px] text-muted-foreground">{t("transactions.form.mutual_fund_category_hint")}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("transactions.form.mutual_fund_category_hint")}
+            </p>
           ) : null}
         </div>
       ) : null}

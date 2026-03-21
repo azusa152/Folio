@@ -1,0 +1,27 @@
+name: Setup Backend
+description: Install uv, set up Python, and sync the backend virtualenv (frozen).
+
+inputs:
+  uv-version:
+    description: uv version to install
+    required: false
+    default: "0.10.6"
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: ${{ inputs.uv-version }}
+        python-version: ${{ inputs.python-version }}
+        enable-cache: true
+
+    - name: Install backend dependencies
+      shell: bash
+      working-directory: backend
+      run: uv sync --frozen

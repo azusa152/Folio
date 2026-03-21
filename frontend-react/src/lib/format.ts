@@ -169,10 +169,7 @@ export function formatSignedPct(value: number, decimals = 1): string {
  *      formatSignedMoney(-50, "JPY") → "-¥50"
  *      formatSignedMoney(0, "USD")   → "$0.00"
  */
-export function formatSignedMoney(
-  value: number | null | undefined,
-  currencyCode: string,
-): string {
+export function formatSignedMoney(value: number | null | undefined, currencyCode: string): string {
   if (value == null) return "—"
   const formatted = formatCurrency(Math.abs(value), currencyCode)
   if (value > 0) return `+${formatted}`
@@ -199,10 +196,7 @@ export function formatMarketCap(value: number | null | undefined): string {
   return COMPACT_FORMATTER.format(value)
 }
 
-export function formatRatio(
-  value: number | null | undefined,
-  decimals = 2,
-): string {
+export function formatRatio(value: number | null | undefined, decimals = 2): string {
   if (value == null || Number.isNaN(value)) return "—"
   return value.toFixed(decimals)
 }
@@ -219,7 +213,10 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
-function getMarketClockParts(marketKey: string, at: Date): { weekday: string; currentMinutes: number } | null {
+function getMarketClockParts(
+  marketKey: string,
+  at: Date,
+): { weekday: string; currentMinutes: number } | null {
   const hours = MARKET_HOURS[marketKey]
   if (!hours) return null
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -255,7 +252,8 @@ export function isMarketOpen(marketKey: string, at: Date = new Date()): boolean 
   if (currentMinutes < openMin || currentMinutes >= closeMin) return false
   if (hours.lunch) {
     const [lunchStart, lunchEnd] = hours.lunch
-    if (currentMinutes >= toMinutes(lunchStart) && currentMinutes < toMinutes(lunchEnd)) return false
+    if (currentMinutes >= toMinutes(lunchStart) && currentMinutes < toMinutes(lunchEnd))
+      return false
   }
   return true
 }

@@ -76,7 +76,9 @@ describe("GrandPortfolioTab", () => {
         ],
         total_value: 2_400_000_000_000,
         unique_tickers: 42,
-        sector_breakdown: [{ sector: "Technology", total_value: 1_000_000, holding_count: 1, weight_pct: 100 }],
+        sector_breakdown: [
+          { sector: "Technology", total_value: 1_000_000, holding_count: 1, weight_pct: 100 },
+        ],
       }),
       isLoading: false,
     })

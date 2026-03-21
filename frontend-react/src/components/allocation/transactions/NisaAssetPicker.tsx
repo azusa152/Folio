@@ -2,7 +2,14 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -64,7 +71,8 @@ export function NisaAssetPicker({
                   <TooltipTrigger asChild>
                     <span className="min-w-0 flex flex-col leading-tight">
                       <span className="truncate font-medium text-xs">
-                        {selectedNisaAssetForDisplay.fund_name || selectedNisaAssetForDisplay.ticker}
+                        {selectedNisaAssetForDisplay.fund_name ||
+                          selectedNisaAssetForDisplay.ticker}
                       </span>
                       <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <span>
@@ -73,9 +81,12 @@ export function NisaAssetPicker({
                             ? ` · ${t("eligibility.nisa_trust_fee_label")}: ${selectedNisaAssetForDisplay.trust_fee_pct.toFixed(3)}%`
                             : ""}
                         </span>
-                        {selectedWrapper === "nisa_growth" && selectedNisaAssetForDisplay.asset_type ? (
+                        {selectedWrapper === "nisa_growth" &&
+                        selectedNisaAssetForDisplay.asset_type ? (
                           <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
-                            {t(`nisa.eligible.asset_type.${selectedNisaAssetForDisplay.asset_type}`)}
+                            {t(
+                              `nisa.eligible.asset_type.${selectedNisaAssetForDisplay.asset_type}`,
+                            )}
                           </Badge>
                         ) : null}
                       </span>
@@ -131,14 +142,18 @@ export function NisaAssetPicker({
                       <Check
                         className={cn(
                           "h-4 w-4",
-                          ticker.trim().toUpperCase() === item.ticker.toUpperCase() ? "opacity-100" : "opacity-0",
+                          ticker.trim().toUpperCase() === item.ticker.toUpperCase()
+                            ? "opacity-100"
+                            : "opacity-0",
                         )}
                       />
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium">{item.fund_name || item.ticker}</p>
+                              <p className="truncate text-xs font-medium">
+                                {item.fund_name || item.ticker}
+                              </p>
                               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                                 <span>
                                   {item.ticker}
@@ -147,7 +162,10 @@ export function NisaAssetPicker({
                                     : ""}
                                 </span>
                                 {selectedWrapper === "nisa_growth" && item.asset_type ? (
-                                  <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                                  <Badge
+                                    variant="outline"
+                                    className="h-4 px-1 text-[10px] font-normal"
+                                  >
                                     {t(`nisa.eligible.asset_type.${item.asset_type}`)}
                                   </Badge>
                                 ) : null}

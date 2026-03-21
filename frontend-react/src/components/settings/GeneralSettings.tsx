@@ -151,10 +151,7 @@ export function GeneralSettings() {
               <Switch checked={isPrivate} onCheckedChange={handlePrivacyToggle} />
             </div>
           </SettingRow>
-          <SettingRow
-            label={t("settings.terminology_label")}
-            hint={t("settings.terminology_hint")}
-          >
+          <SettingRow label={t("settings.terminology_label")} hint={t("settings.terminology_hint")}>
             <Select
               value={prefs?.terminology_mode ?? "simplified"}
               onValueChange={handleTerminologyChange}

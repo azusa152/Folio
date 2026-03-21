@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { FX_CURRENCY_OPTIONS } from "@/lib/constants"
 import { useCreateFxWatch } from "@/api/hooks/useFxWatch"
 import { useCurrencyExposure } from "@/api/hooks/useAllocation"
@@ -89,7 +90,10 @@ export function AddWatchDialog({ open, onClose }: Props) {
       return
     }
     const parsedTargetRate = targetRateInput.trim() ? Number(targetRateInput) : null
-    if (parsedTargetRate !== null && (!Number.isFinite(parsedTargetRate) || parsedTargetRate <= 0)) {
+    if (
+      parsedTargetRate !== null &&
+      (!Number.isFinite(parsedTargetRate) || parsedTargetRate <= 0)
+    ) {
       setError(t("fx_watch.form.error_target_rate"))
       return
     }
@@ -97,8 +101,7 @@ export function AddWatchDialog({ open, onClose }: Props) {
       setError(t("fx_watch.form.error_target_direction"))
       return
     }
-    const normalizedTargetDirection =
-      parsedTargetRate === null ? null : targetDirection || null
+    const normalizedTargetDirection = parsedTargetRate === null ? null : targetDirection || null
     create.mutate(
       {
         base_currency: base,
@@ -124,7 +127,12 @@ export function AddWatchDialog({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose()
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("fx_watch.dialog.title")}</DialogTitle>
@@ -168,27 +176,41 @@ export function AddWatchDialog({ open, onClose }: Props) {
           {/* Currency pair */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground">{t("fx_watch.form.base_currency")}</label>
+              <label className="text-xs text-muted-foreground">
+                {t("fx_watch.form.base_currency")}
+              </label>
               <Select value={base} onValueChange={setBase}>
-                <SelectTrigger aria-label={t("fx_watch.form.base_currency")} className="text-xs h-8 mt-0.5">
+                <SelectTrigger
+                  aria-label={t("fx_watch.form.base_currency")}
+                  className="text-xs h-8 mt-0.5"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {FX_CURRENCY_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                    <SelectItem key={c} value={c} className="text-xs">
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t("fx_watch.form.quote_currency")}</label>
+              <label className="text-xs text-muted-foreground">
+                {t("fx_watch.form.quote_currency")}
+              </label>
               <Select value={quote} onValueChange={setQuote}>
-                <SelectTrigger aria-label={t("fx_watch.form.quote_currency")} className="text-xs h-8 mt-0.5">
+                <SelectTrigger
+                  aria-label={t("fx_watch.form.quote_currency")}
+                  className="text-xs h-8 mt-0.5"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {FX_CURRENCY_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                    <SelectItem key={c} value={c} className="text-xs">
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -212,8 +234,13 @@ export function AddWatchDialog({ open, onClose }: Props) {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t("fx_watch.form.target_direction")}</label>
-              <Select value={targetDirection} onValueChange={(v: "above" | "below") => setTargetDirection(v)}>
+              <label className="text-xs text-muted-foreground">
+                {t("fx_watch.form.target_direction")}
+              </label>
+              <Select
+                value={targetDirection}
+                onValueChange={(v: "above" | "below") => setTargetDirection(v)}
+              >
                 <SelectTrigger className="text-xs h-8 mt-0.5">
                   <SelectValue placeholder={t("fx_watch.form.target_direction_placeholder")} />
                 </SelectTrigger>
@@ -297,7 +324,9 @@ export function AddWatchDialog({ open, onClose }: Props) {
 
           {/* Reminder hours */}
           <div>
-            <label htmlFor="add-watch-reminder-hours" className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+            <label htmlFor="add-watch-reminder-hours" className="text-xs text-muted-foreground">
+              {t("fx_watch.form.reminder_hours")}
+            </label>
             <input
               id="add-watch-reminder-hours"
               type="number"

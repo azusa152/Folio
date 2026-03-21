@@ -35,14 +35,24 @@ export function DriftChart({ categories }: Props) {
     <div className="space-y-1">
       <p className="text-sm font-semibold">{t("allocation.drift.title")}</p>
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 56, left: 8, bottom: 20 }}>
+        <BarChart
+          data={chartData}
+          layout="vertical"
+          margin={{ top: 4, right: 56, left: 8, bottom: 20 }}
+        >
           <XAxis
             type="number"
             tick={{ fontSize: 9, fill: theme.tickColor }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `${v}%`}
-            label={{ value: t("allocation.drift.axis_label"), position: "insideBottom", offset: -10, fontSize: 10, fill: theme.tickColor }}
+            label={{
+              value: t("allocation.drift.axis_label"),
+              position: "insideBottom",
+              offset: -10,
+              fontSize: 10,
+              fill: theme.tickColor,
+            }}
           />
           <YAxis
             type="category"
@@ -54,7 +64,10 @@ export function DriftChart({ categories }: Props) {
           />
           <Tooltip
             contentStyle={theme.tooltipStyle}
-            formatter={(v: number | undefined) => [`${v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : ""}%`, t("allocation.drift.axis_label")]}
+            formatter={(v: number | undefined) => [
+              `${v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : ""}%`,
+              t("allocation.drift.axis_label"),
+            ]}
             labelStyle={{ color: theme.tooltipText }}
             cursor={{ fill: "rgba(128,128,128,0.08)" }}
           />
@@ -69,7 +82,9 @@ export function DriftChart({ categories }: Props) {
             <LabelList
               dataKey="drift"
               position="right"
-              formatter={(v: unknown) => typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : ""}
+              formatter={(v: unknown) =>
+                typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : ""
+              }
               style={{ fontSize: 9, fill: theme.tickColor }}
             />
           </Bar>

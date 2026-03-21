@@ -12,7 +12,11 @@ import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { cn } from "@/lib/utils"
 import type { ScanSignal } from "@/api/types/radar"
 import { DEFAULT_RADAR_FILTERS, FILTER_PRESETS } from "@/hooks/useRadarFilters"
-import type { MarketCapBucket, RadarFilterPresetKey, RadarFilterState } from "@/hooks/useRadarFilters"
+import type {
+  MarketCapBucket,
+  RadarFilterPresetKey,
+  RadarFilterState,
+} from "@/hooks/useRadarFilters"
 
 const SIGNAL_ORDER: ScanSignal[] = [
   "DEEP_VALUE",
@@ -161,11 +165,14 @@ export function RadarFilterPanel({
       if (nextValues.rsiMax !== filters.rsiMax) setFilter("rsiMax", nextValues.rsiMax)
       if (nextValues.biasMin !== filters.biasMin) setFilter("biasMin", nextValues.biasMin)
       if (nextValues.biasMax !== filters.biasMax) setFilter("biasMax", nextValues.biasMax)
-      if (nextValues.volumeRatioMin !== filters.volumeRatioMin) setFilter("volumeRatioMin", nextValues.volumeRatioMin)
-      if (nextValues.volumeRatioMax !== filters.volumeRatioMax) setFilter("volumeRatioMax", nextValues.volumeRatioMax)
+      if (nextValues.volumeRatioMin !== filters.volumeRatioMin)
+        setFilter("volumeRatioMin", nextValues.volumeRatioMin)
+      if (nextValues.volumeRatioMax !== filters.volumeRatioMax)
+        setFilter("volumeRatioMax", nextValues.volumeRatioMax)
       if (nextValues.peMin !== filters.peMin) setFilter("peMin", nextValues.peMin)
       if (nextValues.peMax !== filters.peMax) setFilter("peMax", nextValues.peMax)
-      if (nextValues.dividendYieldMin !== filters.dividendYieldMin) setFilter("dividendYieldMin", nextValues.dividendYieldMin)
+      if (nextValues.dividendYieldMin !== filters.dividendYieldMin)
+        setFilter("dividendYieldMin", nextValues.dividendYieldMin)
     }, 300)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -207,9 +214,18 @@ export function RadarFilterPanel({
       >
         <span className="inline-flex items-center gap-2">
           {t("radar.filter.toggle")}
-          {activeCountLabel && <Badge variant="secondary" className="text-[10px]">{activeCountLabel}</Badge>}
+          {activeCountLabel && (
+            <Badge variant="secondary" className="text-[10px]">
+              {activeCountLabel}
+            </Badge>
+          )}
         </span>
-        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+        />
       </button>
 
       {isOpen && (
@@ -228,11 +244,15 @@ export function RadarFilterPanel({
                       }}
                       className={cn(
                         "text-left text-xs px-2.5 py-1.5 rounded-lg border min-h-[36px] transition-colors",
-                        isPresetActive(filters, preset.key) ? "bg-foreground text-background" : "hover:bg-muted/50",
+                        isPresetActive(filters, preset.key)
+                          ? "bg-foreground text-background"
+                          : "hover:bg-muted/50",
                       )}
                       aria-pressed={isPresetActive(filters, preset.key)}
                     >
-                      <span className="block font-medium">{t(`radar.filter.preset.${preset.key}`)}</span>
+                      <span className="block font-medium">
+                        {t(`radar.filter.preset.${preset.key}`)}
+                      </span>
                       <span className="block text-[10px] opacity-80">
                         {t(`radar.filter.preset.${preset.key}_desc`)}
                       </span>
@@ -281,8 +301,20 @@ export function RadarFilterPanel({
                 tip={t("radar.filter.rsi_tip")}
               />
               <div className="flex gap-2">
-                <Input value={draft.rsiMin} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMin: e.target.value }))} placeholder={t("radar.filter.rsi_min_ph")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.rsiMax} onChange={(e) => setDraft((prev) => ({ ...prev, rsiMax: e.target.value }))} placeholder={t("radar.filter.rsi_max_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input
+                  value={draft.rsiMin}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, rsiMin: e.target.value }))}
+                  placeholder={t("radar.filter.rsi_min_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
+                <Input
+                  value={draft.rsiMax}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, rsiMax: e.target.value }))}
+                  placeholder={t("radar.filter.rsi_max_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -291,18 +323,50 @@ export function RadarFilterPanel({
                 tip={t("radar.filter.bias_tip")}
               />
               <div className="flex gap-2">
-                <Input value={draft.biasMin} onChange={(e) => setDraft((prev) => ({ ...prev, biasMin: e.target.value }))} placeholder={t("radar.filter.bias_min_ph")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.biasMax} onChange={(e) => setDraft((prev) => ({ ...prev, biasMax: e.target.value }))} placeholder={t("radar.filter.bias_max_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input
+                  value={draft.biasMin}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, biasMin: e.target.value }))}
+                  placeholder={t("radar.filter.bias_min_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
+                <Input
+                  value={draft.biasMax}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, biasMax: e.target.value }))}
+                  placeholder={t("radar.filter.bias_max_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
               </div>
             </div>
             <div className="space-y-1">
               <FilterLabel
-                label={<GlossaryTerm termKey="volume_ratio">{t("radar.filter.volume_ratio")}</GlossaryTerm>}
+                label={
+                  <GlossaryTerm termKey="volume_ratio">
+                    {t("radar.filter.volume_ratio")}
+                  </GlossaryTerm>
+                }
                 tip={t("radar.filter.volume_ratio_tip")}
               />
               <div className="flex gap-2">
-                <Input value={draft.volumeRatioMin} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMin: e.target.value }))} placeholder={t("radar.filter.volume_ratio_min_ph")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.volumeRatioMax} onChange={(e) => setDraft((prev) => ({ ...prev, volumeRatioMax: e.target.value }))} placeholder={t("radar.filter.volume_ratio_max_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input
+                  value={draft.volumeRatioMin}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, volumeRatioMin: e.target.value }))
+                  }
+                  placeholder={t("radar.filter.volume_ratio_min_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
+                <Input
+                  value={draft.volumeRatioMax}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, volumeRatioMax: e.target.value }))
+                  }
+                  placeholder={t("radar.filter.volume_ratio_max_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -311,18 +375,44 @@ export function RadarFilterPanel({
                 tip={t("radar.filter.pe_tip")}
               />
               <div className="flex gap-2">
-                <Input value={draft.peMin} onChange={(e) => setDraft((prev) => ({ ...prev, peMin: e.target.value }))} placeholder={t("radar.filter.pe_min_ph")} className="h-8 text-xs" inputMode="decimal" />
-                <Input value={draft.peMax} onChange={(e) => setDraft((prev) => ({ ...prev, peMax: e.target.value }))} placeholder={t("radar.filter.pe_max_ph")} className="h-8 text-xs" inputMode="decimal" />
+                <Input
+                  value={draft.peMin}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, peMin: e.target.value }))}
+                  placeholder={t("radar.filter.pe_min_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
+                <Input
+                  value={draft.peMax}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, peMax: e.target.value }))}
+                  placeholder={t("radar.filter.pe_max_ph")}
+                  className="h-8 text-xs"
+                  inputMode="decimal"
+                />
               </div>
             </div>
             <div className="space-y-1">
-              <FilterLabel label={t("radar.filter.dividend_yield")} tip={t("radar.filter.dividend_yield_tip")} />
-              <Input value={draft.dividendYieldMin} onChange={(e) => setDraft((prev) => ({ ...prev, dividendYieldMin: e.target.value }))} placeholder={t("radar.filter.dividend_yield_min_ph")} className="h-8 text-xs" inputMode="decimal" />
+              <FilterLabel
+                label={t("radar.filter.dividend_yield")}
+                tip={t("radar.filter.dividend_yield_tip")}
+              />
+              <Input
+                value={draft.dividendYieldMin}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, dividendYieldMin: e.target.value }))
+                }
+                placeholder={t("radar.filter.dividend_yield_min_ph")}
+                className="h-8 text-xs"
+                inputMode="decimal"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
-            <FilterLabel label={t("radar.filter.market_cap")} tip={t("radar.filter.market_cap_tip")} />
+            <FilterLabel
+              label={t("radar.filter.market_cap")}
+              tip={t("radar.filter.market_cap_tip")}
+            />
             <div className="flex flex-wrap gap-1.5">
               {MARKET_CAP_BUCKETS.map((bucket) => {
                 const selected = filters.marketCapBuckets.includes(bucket)
@@ -390,7 +480,10 @@ export function RadarFilterPanel({
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
             <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-              <Switch checked={filters.heldOnly} onCheckedChange={(checked) => setFilter("heldOnly", checked)} />
+              <Switch
+                checked={filters.heldOnly}
+                onCheckedChange={(checked) => setFilter("heldOnly", checked)}
+              />
               {t("radar.filter.held_only")}
             </label>
             <Button

@@ -17,7 +17,6 @@ interface Props {
   setShowDetails: (updater: (v: boolean) => boolean) => void
 }
 
-
 export function WatchCardMetrics({
   analysis,
   analysisLoading,
@@ -79,7 +78,9 @@ export function WatchCardMetrics({
                     {t("fx_watch.indicator.near_high", { days: analysis.lookback_days })}
                   </GlossaryTerm>
                 </span>
-                <span className={`font-medium ${analysis.is_recent_high ? FINANCE_TEXT.warning : "text-muted-foreground"}`}>
+                <span
+                  className={`font-medium ${analysis.is_recent_high ? FINANCE_TEXT.warning : "text-muted-foreground"}`}
+                >
                   {analysis.is_recent_high ? t("common.yes") : t("common.unavailable")}
                   {analysis.lookback_high > 0 && ` ${analysis.lookback_high.toFixed(4)}`}
                 </span>
@@ -100,9 +101,7 @@ export function WatchCardMetrics({
               </div>
 
               <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                <span className="text-muted-foreground">
-                  {t("fx_watch.analysis.high_recency")}
-                </span>
+                <span className="text-muted-foreground">{t("fx_watch.analysis.high_recency")}</span>
                 <span>{t("fx_watch.analysis.days_ago", { count: analysis.high_days_ago })}</span>
               </div>
 
@@ -114,13 +113,16 @@ export function WatchCardMetrics({
               </div>
 
               <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5">
-                <span className="text-muted-foreground">{t("fx_watch.analysis.signal_strength")}</span>
+                <span className="text-muted-foreground">
+                  {t("fx_watch.analysis.signal_strength")}
+                </span>
                 <span
                   className={cn(
                     "font-medium",
                     signalStrength === "strong" && FINANCE_TEXT.loss,
                     signalStrength === "moderate" && FINANCE_TEXT.warning,
-                    (signalStrength === "weak" || signalStrength === "none") && "text-muted-foreground",
+                    (signalStrength === "weak" || signalStrength === "none") &&
+                      "text-muted-foreground",
                   )}
                 >
                   {t(`fx_watch.analysis.signal_${signalStrength}`)}

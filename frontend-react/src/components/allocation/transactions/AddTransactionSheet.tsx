@@ -59,7 +59,9 @@ export function AddTransactionSheet({
             </div>
             <div className="space-y-1">
               <p className="text-sm font-semibold">{t("transactions.empty_state.title")}</p>
-              <p className="text-xs text-muted-foreground">{t("transactions.empty_state.description")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("transactions.empty_state.description")}
+              </p>
             </div>
             {onOpenAccounts ? (
               <Button size="sm" onClick={onOpenAccounts}>
@@ -199,7 +201,11 @@ export function AddTransactionSheet({
             <Button
               className="w-full"
               size="sm"
-              disabled={form.splitSubmitting || form.addTransactionMutation.isPending || form.selectedAccountId == null}
+              disabled={
+                form.splitSubmitting ||
+                form.addTransactionMutation.isPending ||
+                form.selectedAccountId == null
+              }
               onClick={form.handleSubmit}
             >
               {t("transactions.form.submit")}

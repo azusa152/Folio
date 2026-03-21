@@ -1,11 +1,7 @@
 import { useMemo, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import {
-  ResponsiveContainer,
-  Tooltip,
-  Treemap,
-} from "recharts"
+import { ResponsiveContainer, Tooltip, Treemap } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useGuruHeatmap } from "@/api/hooks/useSmartMoney"
 import { ACTION_COLORS } from "@/components/smartmoney/formatters"
@@ -41,7 +37,15 @@ type HeatCellProps = {
   weightPct?: number
 }
 
-function HeatCell({ x = 0, y = 0, width = 0, height = 0, name = "", actionColor = "#64748b", weightPct = 0 }: HeatCellProps) {
+function HeatCell({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  name = "",
+  actionColor = "#64748b",
+  weightPct = 0,
+}: HeatCellProps) {
   if (width < 8 || height < 8) return null
 
   // Vary opacity by weight so same-action cells are still distinguishable.
@@ -110,7 +114,10 @@ function HeatmapTooltip({
       <p className="mb-0.5 text-sm font-semibold">{d.ticker}</p>
       <p className="mb-1 text-[11px] text-slate-300">{d.sector}</p>
       <p className="mb-1 flex items-center gap-1.5">
-        <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: actionColor }} />
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-sm"
+          style={{ backgroundColor: actionColor }}
+        />
         <span>{t(`smart_money.action.${d.dominantAction.toLowerCase()}`)}</span>
       </p>
       <p className="mb-1">
@@ -221,8 +228,11 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
 
   return (
     <div className="space-y-4">
-      <div className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
-        {data.filing_delay_note || t("smart_money.heatmap.delay_note", { report_date: data.report_date ?? "-" })}
+      <div
+        className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}
+      >
+        {data.filing_delay_note ||
+          t("smart_money.heatmap.delay_note", { report_date: data.report_date ?? "-" })}
       </div>
       {viewMode === "sector" && dominantActions.length === 1 && (
         <div className="rounded-md border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-200">
@@ -239,7 +249,12 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.heatmap.sop_title")}</span>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -282,7 +297,9 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
 
       <div className="rounded-md border border-border p-2">
         {viewMode === "guru" && treeData.length === 0 ? (
-          <p className="px-2 py-6 text-sm text-muted-foreground">{t("smart_money.heatmap.guru_view_empty")}</p>
+          <p className="px-2 py-6 text-sm text-muted-foreground">
+            {t("smart_money.heatmap.guru_view_empty")}
+          </p>
         ) : (
           <ResponsiveContainer width="100%" height={420}>
             <Treemap data={treeData} dataKey="size" stroke="#111827" content={<HeatCell />}>
@@ -295,7 +312,10 @@ export function HeatmapTab({ style, enabled }: { style?: string | null; enabled?
       <div className="flex flex-wrap gap-4 text-xs">
         {Object.entries(ACTION_COLORS).map(([action, color]) => (
           <div key={action} className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: color }}
+            />
             <span>{t(`smart_money.action.${action.toLowerCase()}`)}</span>
           </div>
         ))}

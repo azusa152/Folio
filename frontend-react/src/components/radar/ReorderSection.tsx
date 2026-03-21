@@ -28,8 +28,9 @@ interface SortableItemProps {
 }
 
 function SortableItem({ id }: SortableItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -117,7 +118,11 @@ export function ReorderSection({ stocks }: Props) {
       {reorderOn && (
         <div className="mt-2 space-y-1">
           <p className="text-xs text-muted-foreground">{t("radar.stock_card.reorder_hint")}</p>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
             <SortableContext items={items} strategy={verticalListSortingStrategy}>
               {items.map((ticker) => (
                 <SortableItem key={ticker} id={ticker} />

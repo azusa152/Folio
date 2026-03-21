@@ -56,12 +56,28 @@ const TYPE_ALIASES: Record<string, TransactionType> = {
 }
 
 const COLUMN_ALIASES: Record<string, string[]> = {
-  transaction_date: ["date", "transaction date", "trade date", "executed date", "executed at", "settled date"],
+  transaction_date: [
+    "date",
+    "transaction date",
+    "trade date",
+    "executed date",
+    "executed at",
+    "settled date",
+  ],
   transaction_type: ["type", "action", "side", "transaction type"],
   ticker: ["ticker", "symbol", "stock"],
   quantity: ["quantity", "shares", "qty", "number of shares", "amount of shares", "units"],
   price: ["price", "unit price"],
-  total_amount: ["total", "amount", "total amount", "total_amount", "total value", "market value", "cost", "proceeds"],
+  total_amount: [
+    "total",
+    "amount",
+    "total amount",
+    "total_amount",
+    "total value",
+    "market value",
+    "cost",
+    "proceeds",
+  ],
   currency: ["currency", "ccy", "currency type", "currency code"],
   fx_rate: ["fx rate", "fx_rate", "exchange rate", "rate"],
   fee: ["fee", "commission"],
@@ -82,7 +98,10 @@ const TEMPLATE_HEADERS = [
 ] as const
 
 function normalizeHeader(value: string): string {
-  return value.trim().toLowerCase().replace(/[_\s-]+/g, " ")
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s-]+/g, " ")
 }
 
 function pickColumn(headers: string[], aliases: string[]): string | undefined {
@@ -147,9 +166,7 @@ function normalizeDate(raw: string | undefined): string {
   return parsed.toISOString().slice(0, 10)
 }
 
-export function autoDetectTransactionColumns(
-  headers: string[],
-): TransactionColumnMapping {
+export function autoDetectTransactionColumns(headers: string[]): TransactionColumnMapping {
   return {
     dateColumn: pickColumn(headers, COLUMN_ALIASES.transaction_date),
     typeColumn: pickColumn(headers, COLUMN_ALIASES.transaction_type),
@@ -175,9 +192,7 @@ export function transformTransactionRow(
     mapping.transactionTypeDefault ?? "BUY",
   )
   const currency = (
-    mapping.currencyColumn
-      ? row[mapping.currencyColumn]
-      : mapping.currencyDefault ?? "USD"
+    mapping.currencyColumn ? row[mapping.currencyColumn] : (mapping.currencyDefault ?? "USD")
   )
     .trim()
     .toUpperCase()
@@ -185,8 +200,7 @@ export function transformTransactionRow(
     mapping.quantityColumn ? row[mapping.quantityColumn] : undefined,
   )
   let quantity =
-    quantityFromCsv ??
-    (transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL" ? 1 : 0)
+    quantityFromCsv ?? (transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL" ? 1 : 0)
   let price = parseNumber(mapping.priceColumn ? row[mapping.priceColumn] : undefined)
   const totalFromCsv = parseNumber(
     mapping.totalAmountColumn ? row[mapping.totalAmountColumn] : undefined,
@@ -220,10 +234,8 @@ export function transformTransactionRow(
     currency: currency || "USD",
     fx_rate: parseNumber(mapping.fxRateColumn ? row[mapping.fxRateColumn] : undefined),
     fee: parseNumber(mapping.feeColumn ? row[mapping.feeColumn] : undefined) ?? 0,
-    note: mapping.noteColumn ? row[mapping.noteColumn]?.trim() ?? "" : "",
-    transaction_date: normalizeDate(
-      mapping.dateColumn ? row[mapping.dateColumn] : undefined,
-    ),
+    note: mapping.noteColumn ? (row[mapping.noteColumn]?.trim() ?? "") : "",
+    transaction_date: normalizeDate(mapping.dateColumn ? row[mapping.dateColumn] : undefined),
   }
 }
 

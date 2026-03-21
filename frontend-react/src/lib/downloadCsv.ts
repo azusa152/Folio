@@ -12,9 +12,7 @@ export async function downloadCsvFromApi(
   params?: Record<string, string>,
   fallbackFilename = "export.csv",
 ): Promise<void> {
-  const url = params
-    ? `${path}?${new URLSearchParams(params).toString()}`
-    : path
+  const url = params ? `${path}?${new URLSearchParams(params).toString()}` : path
 
   const response = await apiFetch(url)
   if (!response.ok) throw new Error(response.statusText)

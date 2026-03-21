@@ -6,7 +6,9 @@ import { GeographicAllocation } from "../GeographicAllocation"
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  BarChart: ({ children }: { children: ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: { children: ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: () => <div />,
   Cell: () => <div />,
   LabelList: () => <div />,
@@ -35,11 +37,7 @@ const mockHolding = (overrides: Partial<HoldingDetail> = {}): HoldingDetail => (
 
 describe("GeographicAllocation", () => {
   it("renders chart when data has values", () => {
-    render(
-      <GeographicAllocation
-        data={{ US: 50000, TW: 20000, JP: 10000 }}
-      />,
-    )
+    render(<GeographicAllocation data={{ US: 50000, TW: 20000, JP: 10000 }} />)
 
     expect(screen.getByText("allocation.geo.title")).toBeInTheDocument()
     expect(screen.getByText("allocation.geo.cash_included_hint")).toBeInTheDocument()
@@ -47,17 +45,13 @@ describe("GeographicAllocation", () => {
   })
 
   it("returns null when all values are zero", () => {
-    const { container } = render(
-      <GeographicAllocation data={{ US: 0, TW: 0 }} />,
-    )
+    const { container } = render(<GeographicAllocation data={{ US: 0, TW: 0 }} />)
 
     expect(container.innerHTML).toBe("")
   })
 
   it("returns null when data is empty", () => {
-    const { container } = render(
-      <GeographicAllocation data={{}} />,
-    )
+    const { container } = render(<GeographicAllocation data={{}} />)
 
     expect(container.innerHTML).toBe("")
   })

@@ -21,7 +21,14 @@ function holdingAssetClass(h: HoldingDetail): string {
   return CATEGORY_TO_ASSET_CLASS[h.category] ?? "Equity"
 }
 
-export function AssetClassDonut({ data, holdings, privacyMode = false, displayCurrency, drillValue, onDrillChange }: Props) {
+export function AssetClassDonut({
+  data,
+  holdings,
+  privacyMode = false,
+  displayCurrency,
+  drillValue,
+  onDrillChange,
+}: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [localDrill, setLocalDrill] = useState<string | null>(null)
@@ -40,9 +47,8 @@ export function AssetClassDonut({ data, holdings, privacyMode = false, displayCu
     fill: ASSET_CLASS_COLOR_MAP[cls] ?? "#6B7280",
   }))
 
-  const filteredHoldings = drillClass && holdings
-    ? holdings.filter((h) => holdingAssetClass(h) === drillClass)
-    : []
+  const filteredHoldings =
+    drillClass && holdings ? holdings.filter((h) => holdingAssetClass(h) === drillClass) : []
 
   return (
     <div className="space-y-2">
@@ -72,7 +78,11 @@ export function AssetClassDonut({ data, holdings, privacyMode = false, displayCu
           </Pie>
           <Tooltip
             contentStyle={theme.tooltipStyle}
-            formatter={(v: number | undefined, _name: unknown, props: { payload?: { name?: string; pct?: string } }) => [
+            formatter={(
+              v: number | undefined,
+              _name: unknown,
+              props: { payload?: { name?: string; pct?: string } },
+            ) => [
               v != null ? maskMoney(v, displayCurrency ?? "USD") : "",
               props.payload?.name ? `${props.payload.name} (${props.payload.pct ?? ""}%)` : "",
             ]}
@@ -94,12 +104,7 @@ export function AssetClassDonut({ data, holdings, privacyMode = false, displayCu
 
       {drillClass && holdings && !onDrillChange && (
         <div className="space-y-2 pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs"
-            onClick={() => setDrillClass(null)}
-          >
+          <Button variant="ghost" size="sm" className="text-xs" onClick={() => setDrillClass(null)}>
             {t("allocation.clear_filter")}
           </Button>
           <HoldingsTable

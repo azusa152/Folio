@@ -18,12 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTransactions } from "@/api/hooks/useTransactions"
 import {
   ACCOUNT_TYPES,
@@ -43,11 +38,7 @@ interface Props {
 
 type AccountDetailView = "positions" | "transactions" | "summary"
 
-export function AccountsTab({
-  enabled,
-  onDepositToAccount,
-  onRecordTransaction,
-}: Props) {
+export function AccountsTab({ enabled, onDepositToAccount, onRecordTransaction }: Props) {
   const { t } = useTranslation()
   const { data: accounts, isLoading } = useAccounts(enabled)
   const { data: accountSummary } = useAccountSummary(enabled)
@@ -76,7 +67,10 @@ export function AccountsTab({
     [accounts],
   )
   const summaryByAccountId = useMemo(() => {
-    const map = new Map<number, { holdings_count: number; cash_balances: Array<{ currency: string; balance: number }> }>()
+    const map = new Map<
+      number,
+      { holdings_count: number; cash_balances: Array<{ currency: string; balance: number }> }
+    >()
     for (const item of accountSummary ?? []) {
       if (item.account?.id == null) continue
       map.set(item.account.id, {
@@ -102,17 +96,16 @@ export function AccountsTab({
     selectedAccount?.id ?? null,
     enabled && selectedAccount != null,
   )
-  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } = useAccountTransactions(
-    selectedAccount?.id ?? null,
-    enabled && selectedAccount != null,
-  )
+  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } =
+    useAccountTransactions(selectedAccount?.id ?? null, enabled && selectedAccount != null)
   const { data: allTransactions } = useTransactions({ enabled, limit: 1 })
-  const effectiveExportScope = exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
+  const effectiveExportScope =
+    exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
   const selectedScopeHasTransactions = (selectedAccountTransactions?.length ?? 0) > 0
   const allScopeHasTransactions = (allTransactions?.length ?? 0) > 0
-  const exportDisabled = exportingCsv || (effectiveExportScope === "selected"
-    ? !selectedScopeHasTransactions
-    : !allScopeHasTransactions)
+  const exportDisabled =
+    exportingCsv ||
+    (effectiveExportScope === "selected" ? !selectedScopeHasTransactions : !allScopeHasTransactions)
 
   const resetForm = () => {
     setEditingId(null)
@@ -150,11 +143,7 @@ export function AccountsTab({
         ? (account.account_type as (typeof ACCOUNT_TYPES)[number])
         : "other",
     )
-    setTaxWrapper(
-      isTaxWrapperType(account.tax_wrapper)
-        ? account.tax_wrapper
-        : null,
-    )
+    setTaxWrapper(isTaxWrapperType(account.tax_wrapper) ? account.tax_wrapper : null)
     setCurrency(account.currency || "USD")
     setMarket(account.market || "")
     setInstitution(account.institution || "")
@@ -188,7 +177,8 @@ export function AccountsTab({
             action: onDepositToAccount
               ? {
                   label: t("accounts.quick_deposit"),
-                  onClick: () => onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
+                  onClick: () =>
+                    onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
                 }
               : undefined,
           })
@@ -303,7 +293,9 @@ export function AccountsTab({
             <select
               aria-label={t("accounts.form.account_type")}
               value={accountType}
-              onChange={(event) => setAccountType(event.target.value as (typeof ACCOUNT_TYPES)[number])}
+              onChange={(event) =>
+                setAccountType(event.target.value as (typeof ACCOUNT_TYPES)[number])
+              }
               className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
             >
               {ACCOUNT_TYPES.map((value) => (
@@ -317,11 +309,7 @@ export function AccountsTab({
               value={taxWrapper ?? ""}
               onChange={(event) => {
                 const value = event.target.value
-                setTaxWrapper(
-                  isTaxWrapperType(value)
-                    ? value
-                    : null,
-                )
+                setTaxWrapper(isTaxWrapperType(value) ? value : null)
               }}
               className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
             >
@@ -397,9 +385,7 @@ export function AccountsTab({
           <div
             key={account.id}
             className={`rounded-md border p-3 transition-colors ${
-              activeAccountId === account.id
-                ? "border-primary bg-primary/5"
-                : "border-border"
+              activeAccountId === account.id ? "border-primary bg-primary/5" : "border-border"
             }`}
           >
             <div className="flex items-center justify-between gap-2">
@@ -412,13 +398,13 @@ export function AccountsTab({
                   <p className="text-sm font-semibold">{account.name}</p>
                   {isTaxWrapperType(account.tax_wrapper) ? (
                     <Badge variant="outline" className="text-[11px]">
-                      {TAX_WRAPPER_ICONS[account.tax_wrapper]}{" "}
-                      {t(`wrapper.${account.tax_wrapper}`)}
+                      {TAX_WRAPPER_ICONS[account.tax_wrapper]} {t(`wrapper.${account.tax_wrapper}`)}
                     </Badge>
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
+                  {account.broker} · {t(`config.account_type.${account.account_type}`)} ·{" "}
+                  {account.currency}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {t("accounts.summary.positions", {
@@ -429,7 +415,10 @@ export function AccountsTab({
                   {t("accounts.summary.cash", {
                     balances:
                       (summaryByAccountId.get(account.id)?.cash_balances ?? [])
-                        .map((item) => `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`)
+                        .map(
+                          (item) =>
+                            `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                        )
                         .join(" / ") || t("accounts.summary.no_cash"),
                   })}
                 </p>
@@ -455,7 +444,12 @@ export function AccountsTab({
                     {t("transactions.record_button")}
                   </Button>
                 ) : null}
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(account)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={() => openEdit(account)}
+                >
                   {t("common.edit")}
                 </Button>
                 <Button
@@ -465,7 +459,8 @@ export function AccountsTab({
                   onClick={() => {
                     deactivateAccount.mutate(account.id, {
                       onSuccess: () => toast.success(t("accounts.toast.deactivated")),
-                      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+                      onError: (err: unknown) =>
+                        toast.error(getErrorMessage(err) || t("common.error")),
                     })
                   }}
                 >
@@ -490,11 +485,15 @@ export function AccountsTab({
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)} · {selectedAccount.currency}
+              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)}{" "}
+              · {selectedAccount.currency}
             </p>
           </div>
 
-          <Tabs value={detailView} onValueChange={(value) => setDetailView(value as AccountDetailView)}>
+          <Tabs
+            value={detailView}
+            onValueChange={(value) => setDetailView(value as AccountDetailView)}
+          >
             <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
               <TabsTrigger value="positions" className="min-h-[44px]">
                 {t("accounts.detail.positions")}
@@ -512,7 +511,9 @@ export function AccountsTab({
                 <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
               ) : (selectedAccountPositions?.length ?? 0) === 0 ? (
                 <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">{t("accounts.detail.empty_positions")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("accounts.detail.empty_positions")}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -521,7 +522,9 @@ export function AccountsTab({
                       <tr className="text-muted-foreground border-b border-border">
                         <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
                         <th className="text-left py-1.5 pr-2">{t("accounts.detail.category")}</th>
-                        <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
+                        <th className="text-right py-1.5 pr-2">
+                          {t("transactions.table.quantity")}
+                        </th>
                         <th className="text-right py-1.5 pr-2">
                           <div className="inline-flex items-center justify-end gap-1">
                             <span>{t("accounts.detail.cost_basis")}</span>
@@ -534,7 +537,9 @@ export function AccountsTab({
                                   />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p className="max-w-[220px]">{t("allocation.col.cost_tooltip")}</p>
+                                  <p className="max-w-[220px]">
+                                    {t("allocation.col.cost_tooltip")}
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -572,7 +577,10 @@ export function AccountsTab({
                             <td className="py-1.5 pr-2 text-right">{quantityText}</td>
                             <td className="py-1.5 pr-2 text-right">
                               {position.cost_basis != null
-                                ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
+                                ? formatPrice(
+                                    position.cost_basis,
+                                    position.currency || selectedAccount.currency,
+                                  )
                                 : "—"}
                             </td>
                             <td className="py-1.5 pr-2">{position.currency}</td>

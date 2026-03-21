@@ -6,6 +6,7 @@ response-shape contract.
 
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 _PROFILE_PAYLOAD = {"config": {"Growth": 100}, "home_currency": "USD"}
@@ -142,6 +143,7 @@ def _mark_etf(client: TestClient, ticker: str):
 class TestXRayCoverageMath:
     """Verify xray_coverage_pct reflects available ETF decomposition data."""
 
+    @pytest.mark.slow
     def test_sector_weights_should_enable_full_coverage_even_if_top_holdings_partial(
         self, client
     ):

@@ -28,20 +28,16 @@ export function EmptyState({
   className,
 }: Props) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3 py-10 text-center", className)}>
+    <div
+      className={cn("flex flex-col items-center justify-center gap-3 py-10 text-center", className)}
+    >
       <p className="text-3xl">{icon}</p>
       {title && <p className="text-base font-semibold">{title}</p>}
-      <p className="text-sm text-muted-foreground max-w-md">
-        {description ?? message}
-      </p>
+      <p className="text-sm text-muted-foreground max-w-md">{description ?? message}</p>
       {(action || secondaryAction) && (
         <div className="flex items-center gap-2 mt-1">
           {action && (
-            <Button
-              size="sm"
-              variant={action.variant ?? "default"}
-              onClick={action.onClick}
-            >
+            <Button size="sm" variant={action.variant ?? "default"} onClick={action.onClick}>
               {action.label}
             </Button>
           )}

@@ -119,7 +119,9 @@ export function PortfolioImpactSnapshot({
     const valueByCurrency = new Map(
       (exposure.breakdown ?? []).map((item) => [item.currency, item.value] as const),
     )
-    const movementByPair = new Map(topMovements.map((movement) => [movement.pair, movement] as const))
+    const movementByPair = new Map(
+      topMovements.map((movement) => [movement.pair, movement] as const),
+    )
     return topMovements.map((movement) => {
       const [baseCurrency] = movement.pair.split("/")
       const sourceMovement = movementByPair.get(movement.pair)
@@ -138,7 +140,8 @@ export function PortfolioImpactSnapshot({
   const netInvestmentImpact = exposure.net_investment_impact ?? 0
   const hasImpactBreakdown = netCashImpact !== 0 || netInvestmentImpact !== 0
   const impactMagnitudeTotal = Math.abs(netCashImpact) + Math.abs(netInvestmentImpact)
-  const cashImpactShare = impactMagnitudeTotal > 0 ? (Math.abs(netCashImpact) / impactMagnitudeTotal) * 100 : 0
+  const cashImpactShare =
+    impactMagnitudeTotal > 0 ? (Math.abs(netCashImpact) / impactMagnitudeTotal) * 100 : 0
   const investmentImpactShare =
     impactMagnitudeTotal > 0 ? (Math.abs(netInvestmentImpact) / impactMagnitudeTotal) * 100 : 0
   const calculatedAtLabel = exposure.calculated_at
@@ -237,7 +240,9 @@ export function PortfolioImpactSnapshot({
         ) : null}
         {!privacyMode && hasImpactBreakdown ? (
           <div className="mt-2 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.impact_breakdown_title")}</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("fx_watch.overview.impact_breakdown_title")}
+            </p>
             <p className="text-xs text-muted-foreground">
               {t("fx_watch.overview.impact_from_cash")}{" "}
               <span className="font-medium text-foreground">
@@ -247,7 +252,11 @@ export function PortfolioImpactSnapshot({
             <p className="text-xs text-muted-foreground">
               {t("fx_watch.overview.impact_from_investments")}{" "}
               <span className="font-medium text-foreground">
-                {formatAmount(netInvestmentImpact, exposure.home_currency, netInvestmentImpact !== 0)}
+                {formatAmount(
+                  netInvestmentImpact,
+                  exposure.home_currency,
+                  netInvestmentImpact !== 0,
+                )}
               </span>
             </p>
             <div className="h-2 w-full overflow-hidden rounded-full bg-background/80">
@@ -271,7 +280,9 @@ export function PortfolioImpactSnapshot({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-2 rounded-md border border-border p-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.risk_title")}</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              {t("fx_watch.overview.risk_title")}
+            </span>
             <span
               className={cn(
                 "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
@@ -289,12 +300,16 @@ export function PortfolioImpactSnapshot({
           <p className="text-xs text-muted-foreground">
             {privacyMode
               ? t("fx_watch.overview.privacy_hidden")
-              : t("fx_watch.overview.cash_non_home", { pct: exposure.cash_non_home_pct.toFixed(1) })}
+              : t("fx_watch.overview.cash_non_home", {
+                  pct: exposure.cash_non_home_pct.toFixed(1),
+                })}
           </p>
         </div>
 
         <div className="space-y-2 rounded-md border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.currency_breakdown")}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("fx_watch.overview.currency_breakdown")}
+          </p>
           {privacyMode ? (
             <div className="h-[180px] rounded border border-border flex items-center justify-center text-xs text-muted-foreground">
               ***
@@ -316,15 +331,19 @@ export function PortfolioImpactSnapshot({
                     labelLine={false}
                   >
                     {breakdownData.map((item, index) => (
-                      <Cell key={item.name} fill={CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length]} />
+                      <Cell
+                        key={item.name}
+                        fill={CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={theme.tooltipStyle}
-                    formatter={(v: number | undefined, _name: unknown, props: { payload?: { name?: string } }) => [
-                      `${v != null ? v.toFixed(1) : ""}%`,
-                      props.payload?.name ?? "",
-                    ]}
+                    formatter={(
+                      v: number | undefined,
+                      _name: unknown,
+                      props: { payload?: { name?: string } },
+                    ) => [`${v != null ? v.toFixed(1) : ""}%`, props.payload?.name ?? ""]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -334,7 +353,9 @@ export function PortfolioImpactSnapshot({
       </div>
 
       <div className="space-y-2 rounded-md border border-border p-3">
-        <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.top_movements")}</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          {t("fx_watch.overview.top_movements")}
+        </p>
         {privacyMode ? (
           <div className="h-[220px] rounded border border-border flex items-center justify-center text-xs text-muted-foreground">
             ***
@@ -342,7 +363,11 @@ export function PortfolioImpactSnapshot({
         ) : topMovements.length > 0 ? (
           <div role="img" aria-label={t("fx_watch.overview.top_movements")}>
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={topMovements} layout="vertical" margin={{ top: 8, right: 72, left: 0, bottom: 8 }}>
+              <BarChart
+                data={topMovements}
+                layout="vertical"
+                margin={{ top: 8, right: 72, left: 0, bottom: 8 }}
+              >
                 <XAxis type="number" hide />
                 <YAxis
                   type="category"
@@ -373,7 +398,9 @@ export function PortfolioImpactSnapshot({
                     position="right"
                     formatter={(v: unknown) => {
                       const numeric = typeof v === "number" ? v : Number(v)
-                      return Number.isFinite(numeric) ? formatAmount(numeric, exposure.home_currency, true) : ""
+                      return Number.isFinite(numeric)
+                        ? formatAmount(numeric, exposure.home_currency, true)
+                        : ""
                     }}
                     style={{ fontSize: 10, fill: theme.tickColor }}
                   />
@@ -386,17 +413,31 @@ export function PortfolioImpactSnapshot({
         )}
         {!privacyMode && attributionRows.length > 0 ? (
           <div className="space-y-1 pt-1">
-            <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.impact_attribution_title")}</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("fx_watch.overview.impact_attribution_title")}
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-muted-foreground">
-                    <th className="py-1 text-left font-medium">{t("fx_watch.overview.col_pair")}</th>
-                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_holdings_value")}</th>
-                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_rate_change")}</th>
-                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_cash_impact")}</th>
-                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_investment_impact")}</th>
-                    <th className="py-1 text-right font-medium">{t("fx_watch.overview.col_impact")}</th>
+                    <th className="py-1 text-left font-medium">
+                      {t("fx_watch.overview.col_pair")}
+                    </th>
+                    <th className="py-1 text-right font-medium">
+                      {t("fx_watch.overview.col_holdings_value")}
+                    </th>
+                    <th className="py-1 text-right font-medium">
+                      {t("fx_watch.overview.col_rate_change")}
+                    </th>
+                    <th className="py-1 text-right font-medium">
+                      {t("fx_watch.overview.col_cash_impact")}
+                    </th>
+                    <th className="py-1 text-right font-medium">
+                      {t("fx_watch.overview.col_investment_impact")}
+                    </th>
+                    <th className="py-1 text-right font-medium">
+                      {t("fx_watch.overview.col_impact")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -404,7 +445,9 @@ export function PortfolioImpactSnapshot({
                     <tr key={row.pair} className="border-t border-border/60">
                       <td className="py-1">{row.pair}</td>
                       <td className="py-1 text-right">
-                        {privacyMode ? "***" : formatAmount(row.holdingsValue, exposure.home_currency, false)}
+                        {privacyMode
+                          ? "***"
+                          : formatAmount(row.holdingsValue, exposure.home_currency, false)}
                       </td>
                       <td className="py-1 text-right">
                         {privacyMode ? "***" : formatSignedPct(row.rateChangePct, 2)}
@@ -430,7 +473,11 @@ export function PortfolioImpactSnapshot({
                       <td className="py-1 text-right">
                         {privacyMode
                           ? "***"
-                          : formatAmount(row.impactHomeValue, exposure.home_currency, row.impactHomeValue !== 0)}
+                          : formatAmount(
+                              row.impactHomeValue,
+                              exposure.home_currency,
+                              row.impactHomeValue !== 0,
+                            )}
                       </td>
                     </tr>
                   ))}
@@ -443,7 +490,9 @@ export function PortfolioImpactSnapshot({
 
       {exposure.advice.length > 0 && (
         <div className="space-y-2 rounded-md border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.advice_title")}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("fx_watch.overview.advice_title")}
+          </p>
           <ul className="space-y-1">
             {adviceRows.map((line) => (
               <li key={line} className="text-xs text-muted-foreground">
@@ -465,7 +514,9 @@ export function PortfolioImpactSnapshot({
 
       {exposure.fx_rate_alerts.length > 0 && (
         <div className="space-y-2 rounded-md border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground">{t("fx_watch.overview.active_alerts")}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {t("fx_watch.overview.active_alerts")}
+          </p>
           <div className="flex flex-wrap gap-2">
             {exposure.fx_rate_alerts.map((alert) => (
               <span

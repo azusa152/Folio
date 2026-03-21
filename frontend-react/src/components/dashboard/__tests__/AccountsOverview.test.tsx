@@ -16,10 +16,18 @@ vi.mock("react-i18next", () => ({
       if (key === "common.quantity_unit.units" && options?.quantity != null) {
         return `${String(options.quantity)} units`
       }
-      if (key === "common.quantity_unit.crypto" && options?.quantity != null && options?.ticker != null) {
+      if (
+        key === "common.quantity_unit.crypto" &&
+        options?.quantity != null &&
+        options?.ticker != null
+      ) {
         return `${String(options.quantity)} ${String(options.ticker)}`
       }
-      if (key === "common.quantity_unit.currency" && options?.quantity != null && options?.ticker != null) {
+      if (
+        key === "common.quantity_unit.currency" &&
+        options?.quantity != null &&
+        options?.ticker != null
+      ) {
         return `${String(options.quantity)} ${String(options.ticker)}`
       }
       return key
@@ -62,7 +70,9 @@ describe("AccountsOverview", () => {
     renderOverview({})
 
     expect(screen.getByText("dashboard.accounts_overview.empty_title")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "dashboard.accounts_overview.empty_cta" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: "dashboard.accounts_overview.empty_cta" }),
+    ).toBeInTheDocument()
   })
 
   it("aggregates per-account totals, sorts by total value, and renders account actions", () => {
@@ -84,9 +94,36 @@ describe("AccountsOverview", () => {
     const rebalance = makeRebalanceResponse({
       display_currency: "USD",
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD" },
-        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 500, weight_pct: 5, quantity: 1, category: "Moat", currency: "USD" },
-        { account_id: 2, account_name: "Wallet B", ticker: "BTC", market_value: 400, weight_pct: 4, quantity: 0.01, category: "Crypto", currency: "USD" },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "AAPL",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+        },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "MSFT",
+          market_value: 500,
+          weight_pct: 5,
+          quantity: 1,
+          category: "Moat",
+          currency: "USD",
+        },
+        {
+          account_id: 2,
+          account_name: "Wallet B",
+          ticker: "BTC",
+          market_value: 400,
+          weight_pct: 4,
+          quantity: 0.01,
+          category: "Crypto",
+          currency: "USD",
+        },
       ],
     })
 
@@ -101,11 +138,22 @@ describe("AccountsOverview", () => {
     expect(screen.getByText(/dashboard\.accounts_overview\.header_total_label/)).toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.distribution_label")).toBeInTheDocument()
 
-    const depositLinks = screen.getAllByRole("link", { name: "dashboard.accounts_overview.deposit" })
-    expect(depositLinks.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1&action=deposit")).toBe(true)
+    const depositLinks = screen.getAllByRole("link", {
+      name: "dashboard.accounts_overview.deposit",
+    })
+    expect(
+      depositLinks.some(
+        (link) =>
+          link.getAttribute("href") === "/allocation?tab=accounts&accountId=1&action=deposit",
+      ),
+    ).toBe(true)
 
     const tradeLinks = screen.getAllByRole("link", { name: "dashboard.accounts_overview.trade" })
-    expect(tradeLinks.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1&action=trade")).toBe(true)
+    expect(
+      tradeLinks.some(
+        (link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1&action=trade",
+      ),
+    ).toBe(true)
   })
 
   it("masks monetary values in privacy mode", () => {
@@ -122,7 +170,16 @@ describe("AccountsOverview", () => {
 
     const rebalance = makeRebalanceResponse({
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD" },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "AAPL",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+        },
       ],
     })
 
@@ -162,7 +219,9 @@ describe("AccountsOverview", () => {
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
     expect(screen.getAllByText("$50.00").length).toBeGreaterThan(0)
-    expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint"),
+    ).not.toBeInTheDocument()
   })
 
   it("shows missing-fx hint when expanded and account has non-display-currency cash without fx source", () => {
@@ -180,14 +239,23 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Global Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Global Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
     expect(screen.getByText("dashboard.accounts_overview.cash_missing_fx_hint")).toBeInTheDocument()
   })
 
   it("shows legend overflow label when there are more than four accounts", () => {
     const accountSummary = Array.from({ length: 5 }, (_, index) =>
       makeAccountSummaryItem({
-        account: { id: index + 1, name: `Account ${index + 1}`, broker: "Broker", account_type: "brokerage" },
+        account: {
+          id: index + 1,
+          name: `Account ${index + 1}`,
+          broker: "Broker",
+          account_type: "brokerage",
+        },
         holdings_count: 1,
         tickers: [`TICK${index + 1}`],
         cash_balances: [{ currency: "USD", balance: 100 - index }],
@@ -227,11 +295,19 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
 
-    expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint"),
+    ).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole("link", { name: "dashboard.accounts_overview.deposit" }))
-    expect(screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("dashboard.accounts_overview.cash_missing_fx_hint"),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: /Global Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Global Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
     expect(screen.getByText("dashboard.accounts_overview.cash_missing_fx_hint")).toBeInTheDocument()
   })
 
@@ -253,9 +329,36 @@ describe("AccountsOverview", () => {
 
     const rebalance = makeRebalanceResponse({
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD" },
-        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 500, weight_pct: 5, quantity: 1, category: "Moat", currency: "USD" },
-        { account_id: 2, account_name: "Wallet B", ticker: "BTC", market_value: 400, weight_pct: 4, quantity: 0.01, category: "Crypto", currency: "USD" },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "AAPL",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+        },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "MSFT",
+          market_value: 500,
+          weight_pct: 5,
+          quantity: 1,
+          category: "Moat",
+          currency: "USD",
+        },
+        {
+          account_id: 2,
+          account_name: "Wallet B",
+          ticker: "BTC",
+          market_value: 400,
+          weight_pct: 4,
+          quantity: 0.01,
+          category: "Crypto",
+          currency: "USD",
+        },
       ],
     })
 
@@ -285,15 +388,49 @@ describe("AccountsOverview", () => {
 
     const rebalance = makeRebalanceResponse({
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "BTC", market_value: 900, weight_pct: 9, quantity: 0.12345678, category: "Crypto", currency: "USD", cost_total: 870 },
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 700, weight_pct: 7, quantity: 3, category: "Growth", currency: "USD", cost_total: 650 },
-        { account_id: 1, account_name: "Broker A", ticker: "MSFT", market_value: 400, weight_pct: 4, quantity: 2, category: "Moat", currency: "USD", cost_total: 390 },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "BTC",
+          market_value: 900,
+          weight_pct: 9,
+          quantity: 0.12345678,
+          category: "Crypto",
+          currency: "USD",
+          cost_total: 870,
+        },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "AAPL",
+          market_value: 700,
+          weight_pct: 7,
+          quantity: 3,
+          category: "Growth",
+          currency: "USD",
+          cost_total: 650,
+        },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "MSFT",
+          market_value: 400,
+          weight_pct: 4,
+          quantity: 2,
+          category: "Moat",
+          currency: "USD",
+          cost_total: 390,
+        },
       ],
     })
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Broker A.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getByText("dashboard.accounts_overview.top_positions_label")).toBeInTheDocument()
     expect(screen.getByText("BTC")).toBeInTheDocument()
@@ -303,12 +440,18 @@ describe("AccountsOverview", () => {
     expect(screen.getByText("MSFT")).toBeInTheDocument()
     expect(screen.queryByText("dashboard.accounts_overview.more_positions")).not.toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.unrealized_pnl")).toBeInTheDocument()
-    expect(screen.getByText("dashboard.accounts_overview.value_breakdown_label")).toBeInTheDocument()
+    expect(
+      screen.getByText("dashboard.accounts_overview.value_breakdown_label"),
+    ).toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.cash_category")).toBeInTheDocument()
     expect(screen.queryByText("dashboard.accounts_overview.cash_label:")).not.toBeInTheDocument()
 
-    const links = screen.getAllByRole("link", { name: "dashboard.accounts_overview.view_positions" })
-    expect(links.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1")).toBe(true)
+    const links = screen.getAllByRole("link", {
+      name: "dashboard.accounts_overview.view_positions",
+    })
+    expect(
+      links.some((link) => link.getAttribute("href") === "/allocation?tab=accounts&accountId=1"),
+    ).toBe(true)
   })
 
   it("renders signed negative unrealized percentage at account level", () => {
@@ -323,13 +466,27 @@ describe("AccountsOverview", () => {
 
     const rebalance = makeRebalanceResponse({
       holdings_detail: [
-        { account_id: 11, account_name: "Loss Account", ticker: "AAPL", market_value: 850, weight_pct: 10, quantity: 1234.56789, category: "Growth", currency: "USD", cost_total: 1000 },
+        {
+          account_id: 11,
+          account_name: "Loss Account",
+          ticker: "AAPL",
+          market_value: 850,
+          weight_pct: 10,
+          quantity: 1234.56789,
+          category: "Growth",
+          currency: "USD",
+          cost_total: 1000,
+        },
       ],
     })
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Loss Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Loss Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getByText("1,234.5679 shares")).toBeInTheDocument()
     expect(screen.getByText("-$150.00 (-15.0%)")).toBeInTheDocument()
@@ -363,7 +520,11 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Daily Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Daily Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
     expect(screen.getByText("+$100.00 (+10.0%)")).toBeInTheDocument()
@@ -396,10 +557,16 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /No Daily Change.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /No Daily Change.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
-    expect(screen.getByText("dashboard.accounts_overview.today_change_unavailable")).toBeInTheDocument()
+    expect(
+      screen.getByText("dashboard.accounts_overview.today_change_unavailable"),
+    ).toBeInTheDocument()
   })
 
   it("shows today amount as estimate when daily coverage is limited", () => {
@@ -440,17 +607,28 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Partial Coverage.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Partial Coverage.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getByText("dashboard.accounts_overview.today_change")).toBeInTheDocument()
     expect(screen.getByText("+$100.00")).toBeInTheDocument()
-    expect(screen.getByText("dashboard.accounts_overview.today_change_estimated")).toBeInTheDocument()
+    expect(
+      screen.getByText("dashboard.accounts_overview.today_change_estimated"),
+    ).toBeInTheDocument()
   })
 
   it("uses localized other category label instead of raw backend category name", () => {
     const accountSummary = [
       makeAccountSummaryItem({
-        account: { id: 15, name: "Other Category Account", broker: "IB", account_type: "brokerage" },
+        account: {
+          id: 15,
+          name: "Other Category Account",
+          broker: "IB",
+          account_type: "brokerage",
+        },
         holdings_count: 1,
         tickers: ["XYZ"],
         cash_balances: [{ currency: "USD", balance: 0 }],
@@ -485,7 +663,11 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Other Category Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Other Category Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
 
     expect(screen.getAllByText("dashboard.accounts_overview.other_category")).toHaveLength(1)
     expect(screen.queryByText("SpecialBucket")).not.toBeInTheDocument()
@@ -545,7 +727,11 @@ describe("AccountsOverview", () => {
 
     renderOverview({ accountSummary, rebalance: null, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Cash Account.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Cash Account.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
     expect(screen.getByText(/dashboard\.accounts_overview\.no_positions/)).toBeInTheDocument()
     expect(screen.getByText("dashboard.accounts_overview.cash_label:")).toBeInTheDocument()
   })
@@ -564,13 +750,27 @@ describe("AccountsOverview", () => {
 
     const rebalance = makeRebalanceResponse({
       holdings_detail: [
-        { account_id: 1, account_name: "Broker A", ticker: "AAPL", market_value: 1000, weight_pct: 10, quantity: 1, category: "Growth", currency: "USD", cost_total: 700 },
+        {
+          account_id: 1,
+          account_name: "Broker A",
+          ticker: "AAPL",
+          market_value: 1000,
+          weight_pct: 10,
+          quantity: 1,
+          category: "Growth",
+          currency: "USD",
+          cost_total: 700,
+        },
       ],
     })
 
     renderOverview({ accountSummary, rebalance, displayCurrency: "USD" })
 
-    fireEvent.click(screen.getByRole("button", { name: /Broker A.*dashboard\.accounts_overview\.toggle_details/ }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Broker A.*dashboard\.accounts_overview\.toggle_details/,
+      }),
+    )
     expect(screen.getAllByText("***").length).toBeGreaterThan(2)
     expect(screen.queryByText("$1,000.00")).not.toBeInTheDocument()
   })

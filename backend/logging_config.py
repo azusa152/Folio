@@ -4,7 +4,7 @@ Folio — 集中式 Logging 設定
 - 同時輸出至 console（讓 Docker logs 仍可使用）
 - 所有模組透過 get_logger(__name__) 取得 logger
 - 設定 LOG_FORMAT=json 環境變數可切換為 JSON 結構化輸出（適用 ELK / Loki / Grafana）
-  JSON 欄位包含：timestamp, level, request_id, method, path, status, latency_ms, logger, message
+  JSON 欄位包含：timestamp（ISO-8601 + UTC 時區）, level, request_id, method, path, status, latency_ms, logger, message
 - 設定 LOG_LEVEL 環境變數可調整 log 等級（預設 INFO）
 """
 
@@ -12,6 +12,7 @@ import contextvars
 import json
 import logging
 import os
+from datetime import UTC, datetime
 from logging.handlers import TimedRotatingFileHandler
 
 LOG_DIR = os.getenv("LOG_DIR", "/app/data/logs")
@@ -75,7 +76,7 @@ class _JsonFormatter(logging.Formatter):
     """Formats log records as single-line JSON for structured log aggregation.
 
     Stable schema (ELK / Loki / Grafana compatible):
-        timestamp    – ISO-style datetime string
+        timestamp    – ISO-8601 datetime with UTC timezone offset (e.g. 2026-03-21T12:34:56.789+00:00)
         level        – log level (INFO, WARNING, ERROR, …)
         request_id   – per-request correlation ID (set by RequestIdMiddleware)
         method       – HTTP method (GET, POST, …) or "-" outside request context
@@ -90,7 +91,7 @@ class _JsonFormatter(logging.Formatter):
         status = getattr(record, "http_status", 0)
         latency = getattr(record, "http_latency_ms", 0.0)
         log_entry: dict = {
-            "timestamp": self.formatTime(record, LOG_DATE_FORMAT),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "request_id": getattr(record, "request_id", "-"),
             "method": getattr(record, "http_method", "-"),

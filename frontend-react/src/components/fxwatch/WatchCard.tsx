@@ -30,15 +30,19 @@ function computeDailyChangePct(data: FxHistoryPoint[]): number | null {
 }
 
 function safeTrendDirection(direction: string | undefined): FxAnalysis["trend_direction"] {
-  if (direction === "rising" || direction === "falling" || direction === "sideways") return direction
+  if (direction === "rising" || direction === "falling" || direction === "sideways")
+    return direction
   return "sideways"
 }
 
 function safeSignalStrength(strength: string | undefined): FxAnalysis["signal_strength"] {
   if (
-    strength === "strong" || strength === "moderate" ||
-    strength === "weak" || strength === "none"
-  ) return strength
+    strength === "strong" ||
+    strength === "moderate" ||
+    strength === "weak" ||
+    strength === "none"
+  )
+    return strength
   return "none"
 }
 
@@ -49,7 +53,11 @@ function getPlainSignalState(
   if (!analysis) return "none"
   if (trendDirection === "falling" && analysis.is_recent_high) return "declining"
   if (analysis.should_alert && analysis.signal_strength === "strong") return "good"
-  if (analysis.should_alert || analysis.signal_strength === "moderate" || analysis.signal_strength === "weak") {
+  if (
+    analysis.should_alert ||
+    analysis.signal_strength === "moderate" ||
+    analysis.signal_strength === "weak"
+  ) {
     return "watch"
   }
   return "none"
@@ -91,7 +99,11 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
       : t("fx_watch.form.target_direction_below")
     : null
 
-  const badgeVariant = !watch.is_active ? "secondary" : plainState === "good" ? "default" : "outline"
+  const badgeVariant = !watch.is_active
+    ? "secondary"
+    : plainState === "good"
+      ? "default"
+      : "outline"
   const badgeLabel = !watch.is_active
     ? t("fx_watch.badge.inactive")
     : analysisLoading && !analysis
@@ -188,10 +200,7 @@ export function WatchCard({ watch, analysis, analysisLoading = false, sparklineD
 
                   <Separator />
 
-                  <WatchCardInsights
-                    watch={watch}
-                    targetDirectionLabel={targetDirectionLabel}
-                  />
+                  <WatchCardInsights watch={watch} targetDirectionLabel={targetDirectionLabel} />
                 </div>
               </div>
             )}

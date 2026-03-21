@@ -12,7 +12,12 @@ import {
 import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { FINANCE_BADGE } from "@/lib/colors"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
+import type {
+  Stock,
+  EnrichedStock,
+  RebalanceResponse,
+  SignalActivityItem,
+} from "@/api/types/dashboard"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatDuration(t: TFunction<any>, days: number): string {
@@ -52,9 +57,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
       ? formatDuration(t, durationDays)
       : null
 
-  const previousSignalLabel = previousSignal
-    ? getSignalLabel(t, previousSignal)
-    : null
+  const previousSignalLabel = previousSignal ? getSignalLabel(t, previousSignal) : null
 
   return (
     <div className="py-1.5">
@@ -68,11 +71,7 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={signalBadgeClass}
-                  aria-label={signalDescription}
-                >
+                <button type="button" className={signalBadgeClass} aria-label={signalDescription}>
                   {signalLabel}
                 </button>
               </TooltipTrigger>
@@ -118,7 +117,12 @@ interface Props {
   signalActivity?: SignalActivityItem[]
 }
 
-export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, signalActivity = [] }: Props) {
+export function SignalAlerts({
+  stocks = [],
+  enrichedStocks = [],
+  rebalance,
+  signalActivity = [],
+}: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
@@ -152,7 +156,8 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
       <CardContent>
         {activeStocks.length > 0 && (
           <p className="sr-only" aria-live="polite">
-            {t("dashboard.signal_buy_title")}: {buyStocks.length}. {t("dashboard.signal_risk_title")}: {riskStocks.length}.
+            {t("dashboard.signal_buy_title")}: {buyStocks.length}.{" "}
+            {t("dashboard.signal_risk_title")}: {riskStocks.length}.
           </p>
         )}
         {activeStocks.length === 0 ? (
@@ -168,7 +173,9 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
             }}
           />
         ) : buyStocks.length === 0 && riskStocks.length === 0 ? (
-          <div className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}>
+          <div
+            className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}
+          >
             {t("dashboard.all_signals_normal")}
           </div>
         ) : (
@@ -189,9 +196,7 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
               </div>
             )}
 
-            {buyStocks.length > 0 && riskStocks.length > 0 && (
-              <hr className="border-border" />
-            )}
+            {buyStocks.length > 0 && riskStocks.length > 0 && <hr className="border-border" />}
 
             {riskStocks.length > 0 && (
               <div>

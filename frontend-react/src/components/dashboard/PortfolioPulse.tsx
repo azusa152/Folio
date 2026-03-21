@@ -21,11 +21,36 @@ import type {
 } from "@/api/types/dashboard"
 
 const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear", emoji: "😱" },
-  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear", emoji: "😨" },
-  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral", emoji: "😐" },
-  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed", emoji: "🤑" },
-  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed", emoji: "🤯" },
+  {
+    range: [0, 25] as [number, number],
+    color: "#dc2626",
+    labelKey: "config.fear_greed.extreme_fear",
+    emoji: "😱",
+  },
+  {
+    range: [25, 45] as [number, number],
+    color: "#f97316",
+    labelKey: "config.fear_greed.fear",
+    emoji: "😨",
+  },
+  {
+    range: [45, 55] as [number, number],
+    color: "#eab308",
+    labelKey: "config.fear_greed.neutral",
+    emoji: "😐",
+  },
+  {
+    range: [55, 75] as [number, number],
+    color: "#86efac",
+    labelKey: "config.fear_greed.greed",
+    emoji: "🤑",
+  },
+  {
+    range: [75, 100] as [number, number],
+    color: "#16a34a",
+    labelKey: "config.fear_greed.extreme_greed",
+    emoji: "🤯",
+  },
 ]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
@@ -140,7 +165,14 @@ function FearGreedGauge({ score, level }: { score: number; level: string }) {
       <circle cx={cx} cy={cy} r={5} fill="currentColor" opacity={0.7} />
 
       {/* Score */}
-      <text x={cx} y={cy - 18} textAnchor="middle" fontSize={22} fontWeight="bold" fill="currentColor">
+      <text
+        x={cx}
+        y={cy - 18}
+        textAnchor="middle"
+        fontSize={22}
+        fontWeight="bold"
+        fill="currentColor"
+      >
         {score}
       </text>
       <text x={cx} y={cy - 4} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.6}>
@@ -317,10 +349,11 @@ export function PortfolioPulse({
     }
   }
 
-  const { pct: healthPct, normal: normalCnt, total: totalCnt } = computeHealthScore(
-    stocks,
-    enrichedSignalMap,
-  )
+  const {
+    pct: healthPct,
+    normal: normalCnt,
+    total: totalCnt,
+  } = computeHealthScore(stocks, enrichedSignalMap)
 
   const stockCount = stocks.filter((s) => s.is_active).length
   const holdingCount = holdings.length
@@ -358,7 +391,11 @@ export function PortfolioPulse({
   const fearGreedTopBottom = (() => {
     const components = fearGreed?.components
     if (!components || components.length === 0) return null
-    const scored = components.filter((c) => c.score != null) as Array<{ name: string; score: number; weight: number }>
+    const scored = components.filter((c) => c.score != null) as Array<{
+      name: string
+      score: number
+      weight: number
+    }>
     if (scored.length === 0) return null
     const sorted = [...scored].sort((a, b) => b.score - a.score)
     const topName = sorted[0].name
@@ -378,9 +415,7 @@ export function PortfolioPulse({
   return (
     <Card>
       {isRefreshing && (
-        <p className="px-6 pt-4 text-xs text-muted-foreground text-right">
-          {t("common.loading")}
-        </p>
+        <p className="px-6 pt-4 text-xs text-muted-foreground text-right">{t("common.loading")}</p>
       )}
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
         {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
@@ -388,26 +423,32 @@ export function PortfolioPulse({
           <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
           {totalVal != null ? (
             <>
-              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal, displayCurrency)}</p>
+              <p className="text-4xl font-extrabold tabular-nums leading-tight">
+                {maskMoney(totalVal, displayCurrency)}
+              </p>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 {changePct != null && changeAmt != null && (
-                  <span className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                  <span
+                    className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                  >
                     {changePct >= 0 ? "▲" : "▼"}
                     {Math.abs(changePct).toFixed(2)}%
                     {!isPrivate && ` (${maskMoney(Math.abs(changeAmt), displayCurrency)})`}
                   </span>
                 )}
                 {ytdTwr != null && (
-                  <span className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{term("twr", t("dashboard.ytd_return"))}</GlossaryTerm>{" "}
+                  <span
+                    className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                  >
+                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>
+                      {term("twr", t("dashboard.ytd_return"))}
+                    </GlossaryTerm>{" "}
                     {ytdTwr >= 0 ? "▲" : "▼"}
                     {Math.abs(ytdTwr).toFixed(2)}%
                   </span>
                 )}
               </div>
-              {snapshots.length >= 2 && !isPrivate && (
-                <SparklineMini snapshots={snapshots} />
-              )}
+              {snapshots.length >= 2 && !isPrivate && <SparklineMini snapshots={snapshots} />}
             </>
           ) : (
             <p className="text-2xl font-bold text-muted-foreground">N/A</p>
@@ -418,7 +459,9 @@ export function PortfolioPulse({
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1">
             <p className="text-xs text-muted-foreground">
-              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>{t("dashboard.fear_greed_title")}</GlossaryTerm>
+              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>
+                {t("dashboard.fear_greed_title")}
+              </GlossaryTerm>
             </p>
             {fearGreed && (
               <InfoPopover align="center">
@@ -456,10 +499,16 @@ export function PortfolioPulse({
               <FearGreedGauge score={fgScore!} level={fgLevel!} />
               <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
                 {FEAR_GREED_BANDS.map((band) => (
-                  <span key={band.labelKey} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span
+                    key={band.labelKey}
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                  >
                     <span className="text-sm leading-none">{band.emoji}</span>
                     <span>{stripLeadingEmoji(t(band.labelKey))}</span>
-                    <span className="h-1 w-4 rounded-full" style={{ backgroundColor: band.color }} />
+                    <span
+                      className="h-1 w-4 rounded-full"
+                      style={{ backgroundColor: band.color }}
+                    />
                   </span>
                 ))}
               </div>
@@ -467,7 +516,8 @@ export function PortfolioPulse({
                 {vixVal != null && (
                   <>
                     VIX={vixVal.toFixed(1)}
-                    {vixChange != null && ` (${vixChange > 0 ? "▲" : "▼"}${Math.abs(vixChange).toFixed(1)})`}
+                    {vixChange != null &&
+                      ` (${vixChange > 0 ? "▲" : "▼"}${Math.abs(vixChange).toFixed(1)})`}
                   </>
                 )}
                 {vixVal != null && " ｜ "}
@@ -487,13 +537,17 @@ export function PortfolioPulse({
           <div>
             <div className="flex items-center gap-1">
               <p className="text-xs text-muted-foreground">
-                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>{t("dashboard.market_sentiment")}</GlossaryTerm>
+                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>
+                  {t("dashboard.market_sentiment")}
+                </GlossaryTerm>
               </p>
               <InfoPopover align="end">
                 {lastScan?.market_status_details ? (
                   <p className="text-xs">{lastScan.market_status_details}</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("dashboard.info.sentiment_no_details")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("dashboard.info.sentiment_no_details")}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground whitespace-pre-line">
                   {t("dashboard.info.sentiment_thresholds")}
@@ -505,7 +559,9 @@ export function PortfolioPulse({
           <div>
             <div className="flex items-center gap-1">
               <p className="text-xs text-muted-foreground">
-                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>{t("dashboard.health_score")}</GlossaryTerm>
+                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>
+                  {t("dashboard.health_score")}
+                </GlossaryTerm>
               </p>
               <InfoPopover align="end">
                 {nonNormalStocks.length > 0 ? (
@@ -515,9 +571,7 @@ export function PortfolioPulse({
                       {nonNormalStocks.map(({ ticker, signal }) => (
                         <li key={ticker} className="text-xs flex gap-1.5">
                           <span className="font-medium">{ticker}</span>
-                          <span className="text-muted-foreground">
-                            {getSignalLabel(t, signal)}
-                          </span>
+                          <span className="text-muted-foreground">{getSignalLabel(t, signal)}</span>
                         </li>
                       ))}
                     </ul>

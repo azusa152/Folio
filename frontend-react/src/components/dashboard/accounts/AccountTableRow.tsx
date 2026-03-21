@@ -7,7 +7,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { isTaxWrapperType, TAX_WRAPPER_ICONS } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatCurrency, formatQuantity, formatSignedMoneyWithPrivacy, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
+import {
+  formatCurrency,
+  formatQuantity,
+  formatSignedMoneyWithPrivacy,
+  formatSignedPct,
+  getQuantityUnitKey,
+} from "@/lib/format"
 import type { AccountRowData } from "../AccountsOverview"
 
 function AccountTypeIcon({ accountType }: { accountType: string }) {
@@ -28,9 +34,7 @@ function formatCashBalances(
   noCashLabel: string,
 ): string {
   if (balances.length === 0) return noCashLabel
-  return balances
-    .map((item) => formatCurrency(item.balance, item.currency))
-    .join(" / ")
+  return balances.map((item) => formatCurrency(item.balance, item.currency)).join(" / ")
 }
 
 function categoryLabel(
@@ -41,7 +45,8 @@ function categoryLabel(
   if (bucket.category === "cash") return t("dashboard.accounts_overview.cash_category")
   if (bucket.category === "crypto") return t("dashboard.accounts_overview.crypto_category")
   if (bucket.category === "bonds") return t("dashboard.accounts_overview.bonds_category")
-  if (bucket.category === "commodities") return t("dashboard.accounts_overview.commodities_category")
+  if (bucket.category === "commodities")
+    return t("dashboard.accounts_overview.commodities_category")
   return t("dashboard.accounts_overview.other_category")
 }
 
@@ -68,9 +73,10 @@ export function AccountTableRow({
     ? "***"
     : formatCashBalances(row.cashBalances, t("dashboard.accounts_overview.no_cash"))
   const rowMeta = `${t("dashboard.accounts_overview.positions_count", { count: row.holdingsCount })} · ${t("dashboard.accounts_overview.cash_label")}: ${cashSummary}`
-  const accountReturnPct = row.accountGainLoss != null && row.accountCostTotal > 0
-    ? (row.accountGainLoss / row.accountCostTotal) * 100
-    : null
+  const accountReturnPct =
+    row.accountGainLoss != null && row.accountCostTotal > 0
+      ? (row.accountGainLoss / row.accountCostTotal) * 100
+      : null
   const showStandaloneCash = row.topHoldings.length === 0 && row.remainingCount === 0
 
   return (
@@ -89,7 +95,11 @@ export function AccountTableRow({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} aria-hidden />
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: row.color }}
+                    aria-hidden
+                  />
                   <AccountTypeIcon accountType={row.accountType} />
                   <span className="truncate text-sm font-semibold">{row.name}</span>
                   {isTaxWrapperType(row.taxWrapper) ? (
@@ -97,14 +107,18 @@ export function AccountTableRow({
                       {TAX_WRAPPER_ICONS[row.taxWrapper]} {t(`wrapper.${row.taxWrapper}`)}
                     </Badge>
                   ) : null}
-                  <span className="hidden truncate text-xs text-muted-foreground sm:inline">{rowMeta}</span>
+                  <span className="hidden truncate text-xs text-muted-foreground sm:inline">
+                    {rowMeta}
+                  </span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground sm:hidden">{rowMeta}</p>
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
                 <div className="text-right">
-                  <p className="text-[11px] text-muted-foreground">{t("dashboard.accounts_overview.total_label")}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("dashboard.accounts_overview.total_label")}
+                  </p>
                   <p className="text-sm font-semibold tabular-nums">
                     {isPrivate ? "***" : maskMoney(row.totalValue, displayCurrency)}
                   </p>
@@ -150,7 +164,10 @@ export function AccountTableRow({
               </p>
               <ul className="space-y-1">
                 {row.categoryBreakdown.map((bucket) => (
-                  <li key={`${row.id}-${bucket.category}-${bucket.customLabel ?? "default"}`} className="space-y-1">
+                  <li
+                    key={`${row.id}-${bucket.category}-${bucket.customLabel ?? "default"}`}
+                    className="space-y-1"
+                  >
                     <div className="flex items-center justify-between gap-2 text-[11px]">
                       <span
                         className="truncate text-muted-foreground"
@@ -180,12 +197,16 @@ export function AccountTableRow({
 
             {row.dailyChange != null && (
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                <span className="text-muted-foreground">
+                  {t("dashboard.accounts_overview.today_change")}
+                </span>
                 <span
                   className={`tabular-nums ${row.dailyChange >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
                 >
                   {formatSignedMoneyWithPrivacy(row.dailyChange, displayCurrency, isPrivate)}
-                  {!isPrivate && row.dailyChangePct != null && ` (${formatSignedPct(row.dailyChangePct, 1)})`}
+                  {!isPrivate &&
+                    row.dailyChangePct != null &&
+                    ` (${formatSignedPct(row.dailyChangePct, 1)})`}
                 </span>
               </div>
             )}
@@ -198,7 +219,9 @@ export function AccountTableRow({
             )}
             {row.dailyChange == null && (
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">{t("dashboard.accounts_overview.today_change")}</span>
+                <span className="text-muted-foreground">
+                  {t("dashboard.accounts_overview.today_change")}
+                </span>
                 <span className="tabular-nums text-muted-foreground">
                   {t("dashboard.accounts_overview.today_change_unavailable")}
                 </span>
@@ -244,17 +267,22 @@ export function AccountTableRow({
             ) : (
               <ul className="space-y-1">
                 {row.topHoldings.map((holding) => {
-                  const returnPct = holding.cost_total && holding.cost_total > 0
-                    ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
-                    : null
+                  const returnPct =
+                    holding.cost_total && holding.cost_total > 0
+                      ? ((holding.market_value - holding.cost_total) / holding.cost_total) * 100
+                      : null
                   const quantityUnit = getQuantityUnitKey(holding.category, holding.ticker)
-                  const returnClass = returnPct == null
-                    ? "text-muted-foreground"
-                    : returnPct >= 0
-                      ? FINANCE_TEXT.gain
-                      : FINANCE_TEXT.loss
+                  const returnClass =
+                    returnPct == null
+                      ? "text-muted-foreground"
+                      : returnPct >= 0
+                        ? FINANCE_TEXT.gain
+                        : FINANCE_TEXT.loss
                   return (
-                    <li key={`${row.id}-${holding.ticker}`} className="flex items-center justify-between gap-2">
+                    <li
+                      key={`${row.id}-${holding.ticker}`}
+                      className="flex items-center justify-between gap-2"
+                    >
                       <div className="min-w-0">
                         <p className="truncate font-medium text-foreground">{holding.ticker}</p>
                         <p className="truncate text-muted-foreground">
@@ -296,9 +324,7 @@ export function AccountTableRow({
               <span className="text-muted-foreground">
                 {t("dashboard.accounts_overview.cash_label")}:
               </span>
-              <span className="tabular-nums text-foreground">
-                {cashSummary}
-              </span>
+              <span className="tabular-nums text-foreground">{cashSummary}</span>
             </div>
           )}
         </CollapsibleContent>

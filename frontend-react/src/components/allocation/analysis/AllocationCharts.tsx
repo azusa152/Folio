@@ -1,13 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Treemap,
-  ResponsiveContainer,
-} from "recharts"
+import { PieChart, Pie, Cell, Tooltip, Treemap, ResponsiveContainer } from "recharts"
 import type { CategoryAllocation, HoldingDetail } from "@/api/types/allocation"
 import { CATEGORY_COLOR_MAP, CATEGORY_COLOR_FALLBACK } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
@@ -28,14 +21,30 @@ function getCategoryColor(name: string): string {
 }
 
 interface TreemapContentProps {
-  x?: number; y?: number; width?: number; height?: number
-  name?: string; value?: number; fill?: string
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  name?: string
+  value?: number
+  fill?: string
   payload?: { fill?: string }
   onCellClick?: (name: string) => void
   drillCategory?: string | null
 }
 
-function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill, payload, onCellClick, drillCategory }: TreemapContentProps) {
+function TreemapContent({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  name,
+  value,
+  fill,
+  payload,
+  onCellClick,
+  drillCategory,
+}: TreemapContentProps) {
   const cellFill = fill || payload?.fill || "#6b7280"
   if (width < 30 || height < 20) return null
   const dimmed = drillCategory != null && name !== drillCategory
@@ -44,14 +53,37 @@ function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill
       style={onCellClick ? { cursor: "pointer" } : undefined}
       onClick={onCellClick && name ? () => onCellClick(name) : undefined}
     >
-      <rect x={x} y={y} width={width} height={height} fill={cellFill} rx={3} opacity={dimmed ? 0.4 : 1} />
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={cellFill}
+        rx={3}
+        opacity={dimmed ? 0.4 : 1}
+      />
       {width > 50 && height > 28 && (
-        <text x={x + width / 2} y={y + height / 2 - 6} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={500} opacity={dimmed ? 0.4 : 1}>
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - 6}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={11}
+          fontWeight={500}
+          opacity={dimmed ? 0.4 : 1}
+        >
           {name}
         </text>
       )}
       {width > 50 && height > 28 && (
-        <text x={x + width / 2} y={y + height / 2 + 8} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={9} opacity={dimmed ? 0.4 : 1}>
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 8}
+          textAnchor="middle"
+          fill="rgba(255,255,255,0.8)"
+          fontSize={9}
+          opacity={dimmed ? 0.4 : 1}
+        >
           {typeof value === "number" ? `${value.toFixed(1)}%` : ""}
         </text>
       )}
@@ -59,7 +91,14 @@ function TreemapContent({ x = 0, y = 0, width = 0, height = 0, name, value, fill
   )
 }
 
-export function AllocationCharts({ categories, holdings, privacyMode = false, displayCurrency, drillValue, onDrillChange }: Props) {
+export function AllocationCharts({
+  categories,
+  holdings,
+  privacyMode = false,
+  displayCurrency,
+  drillValue,
+  onDrillChange,
+}: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [chartType, setChartType] = useState<"pie" | "treemap">("pie")
@@ -96,7 +135,9 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
           <button
             onClick={() => setChartType("pie")}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-              chartType === "pie" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/30"
+              chartType === "pie"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border hover:bg-muted/30"
             }`}
           >
             {t("allocation.charts.toggle_pie")}
@@ -104,7 +145,9 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
           <button
             onClick={() => setChartType("treemap")}
             className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-              chartType === "treemap" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/30"
+              chartType === "treemap"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border hover:bg-muted/30"
             }`}
           >
             {t("allocation.charts.toggle_treemap")}
@@ -115,7 +158,9 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {/* Target */}
         <div>
-          <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.charts.target")}</p>
+          <p className="text-xs text-center text-muted-foreground mb-1">
+            {t("allocation.charts.target")}
+          </p>
           {chartType === "pie" ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -137,20 +182,22 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
                 </Pie>
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.target")]}
+                  formatter={(v: number | undefined) => [
+                    `${v != null ? v.toFixed(1) : ""}%`,
+                    t("allocation.charts.target"),
+                  ]}
                 />
               </PieChart>
             </ResponsiveContainer>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <Treemap
-                data={treemapTargetData}
-                dataKey="size"
-                content={<TreemapContent />}
-              >
+              <Treemap data={treemapTargetData} dataKey="size" content={<TreemapContent />}>
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.target")]}
+                  formatter={(v: number | undefined) => [
+                    `${v != null ? v.toFixed(1) : ""}%`,
+                    t("allocation.charts.target"),
+                  ]}
                 />
               </Treemap>
             </ResponsiveContainer>
@@ -159,7 +206,9 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
 
         {/* Actual */}
         <div>
-          <p className="text-xs text-center text-muted-foreground mb-1">{t("allocation.charts.actual")}</p>
+          <p className="text-xs text-center text-muted-foreground mb-1">
+            {t("allocation.charts.actual")}
+          </p>
           {chartType === "pie" ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -190,7 +239,10 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
                 </Pie>
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.actual")]}
+                  formatter={(v: number | undefined) => [
+                    `${v != null ? v.toFixed(1) : ""}%`,
+                    t("allocation.charts.actual"),
+                  ]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -208,7 +260,10 @@ export function AllocationCharts({ categories, holdings, privacyMode = false, di
               >
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("allocation.charts.actual")]}
+                  formatter={(v: number | undefined) => [
+                    `${v != null ? v.toFixed(1) : ""}%`,
+                    t("allocation.charts.actual"),
+                  ]}
                 />
               </Treemap>
             </ResponsiveContainer>

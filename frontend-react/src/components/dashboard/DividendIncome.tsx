@@ -67,15 +67,25 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
         <div className="flex items-center gap-1">
           <p className="text-xs text-muted-foreground">{t("dashboard.ytd_dividend")}</p>
           <InfoPopover align="start">
-            <p className="text-xs font-medium">{t("dashboard.info.dividend_breakdown", { currency })}</p>
+            <p className="text-xs font-medium">
+              {t("dashboard.info.dividend_breakdown", { currency })}
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-xs">
                 <thead>
                   <tr className="text-muted-foreground">
-                    <th className="text-left font-normal pr-2">{t("dashboard.holdings_table.ticker")}</th>
-                    <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_dps")}</th>
-                    <th className="text-right font-normal pr-2">{t("dashboard.info.dividend_native")}</th>
-                    <th className="text-right font-normal">{t("dashboard.info.dividend_converted")}</th>
+                    <th className="text-left font-normal pr-2">
+                      {t("dashboard.holdings_table.ticker")}
+                    </th>
+                    <th className="text-right font-normal pr-2">
+                      {t("dashboard.info.dividend_dps")}
+                    </th>
+                    <th className="text-right font-normal pr-2">
+                      {t("dashboard.info.dividend_native")}
+                    </th>
+                    <th className="text-right font-normal">
+                      {t("dashboard.info.dividend_converted")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -85,7 +95,9 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
                       <tr key={row.ticker}>
                         <td className="font-medium pr-2">{row.ticker}</td>
                         <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeDps)}</td>
-                        <td className="text-right pr-2 tabular-nums">{fmtNative(row.nativeSubtotal)}</td>
+                        <td className="text-right pr-2 tabular-nums">
+                          {fmtNative(row.nativeSubtotal)}
+                        </td>
                         <td className="text-right tabular-nums">
                           {maskMoney(row.convertedSubtotal, currency)}
                         </td>
@@ -97,9 +109,7 @@ export function DividendIncome({ rebalance, enrichedStocks = [] }: Props) {
             </div>
           </InfoPopover>
         </div>
-        <p className="text-2xl font-bold tabular-nums mt-1">
-          {formatted}
-        </p>
+        <p className="text-2xl font-bold tabular-nums mt-1">{formatted}</p>
         <p className="text-xs text-muted-foreground mt-1">{t("dashboard.ytd_dividend_actual")}</p>
       </CardContent>
     </Card>

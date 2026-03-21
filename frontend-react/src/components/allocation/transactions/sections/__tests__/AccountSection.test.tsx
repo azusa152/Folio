@@ -56,7 +56,9 @@ const defaultProps = {
 }
 
 describe("AccountSection", () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it("renders account select with all options", () => {
     render(<AccountSection {...defaultProps} />)
@@ -75,7 +77,9 @@ describe("AccountSection", () => {
 
   it("calls clearSellablePositionCache when account changes", () => {
     const clearSellablePositionCache = vi.fn()
-    render(<AccountSection {...defaultProps} clearSellablePositionCache={clearSellablePositionCache} />)
+    render(
+      <AccountSection {...defaultProps} clearSellablePositionCache={clearSellablePositionCache} />,
+    )
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } })
     expect(clearSellablePositionCache).toHaveBeenCalled()
   })
@@ -145,7 +149,9 @@ describe("AccountSection", () => {
   })
 
   it("shows BUY no-account banner when BUY and hasNoAccounts", () => {
-    render(<AccountSection {...defaultProps} hasNoAccounts={true} transactionType="BUY" accounts={[]} />)
+    render(
+      <AccountSection {...defaultProps} hasNoAccounts={true} transactionType="BUY" accounts={[]} />,
+    )
     expect(screen.getByText("transactions.form.buy_no_account_banner")).toBeInTheDocument()
   })
 

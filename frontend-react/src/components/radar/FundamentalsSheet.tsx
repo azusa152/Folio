@@ -1,10 +1,5 @@
 import { useTranslation } from "react-i18next"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useFundamentals } from "@/api/hooks/useRadar"
 import type { RadarFundamentals } from "@/api/types/radar"
 import { formatMarketCap, formatPercent, formatRatio } from "@/lib/format"
@@ -58,9 +53,7 @@ function MetricRow({
     <div className="rounded-md border border-border/70 p-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium">{label}</p>
-        {metricKey && metricValue != null && (
-          <HealthBadge metric={metricKey} value={metricValue} />
-        )}
+        {metricKey && metricValue != null && <HealthBadge metric={metricKey} value={metricValue} />}
       </div>
       <p className="text-sm font-semibold mt-0.5">{value}</p>
       <p className="text-xs text-muted-foreground mt-1">{tip}</p>

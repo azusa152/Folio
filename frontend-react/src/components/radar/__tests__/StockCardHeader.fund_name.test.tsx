@@ -94,7 +94,11 @@ describe("StockCardHeader — company/fund name display", () => {
     render(
       <StockCard
         stock={REGULAR_STOCK}
-        enrichment={makeRadarEnrichedStock({ ...REGULAR_ENRICHMENT, fund_name: "some fund", name: undefined })}
+        enrichment={makeRadarEnrichedStock({
+          ...REGULAR_ENRICHMENT,
+          fund_name: "some fund",
+          name: undefined,
+        })}
         index={0}
       />,
     )

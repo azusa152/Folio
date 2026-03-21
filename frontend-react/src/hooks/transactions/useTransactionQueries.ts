@@ -1,6 +1,11 @@
 import { useMemo } from "react"
 import { useAccountCashBalances, useAccountSellablePositions } from "@/api/hooks/useAccounts"
-import { useEligibleAssets, useSuggestRouting, useWrapperEligibility, useWrapperQuota } from "@/api/hooks/useWrappers"
+import {
+  useEligibleAssets,
+  useSuggestRouting,
+  useWrapperEligibility,
+  useWrapperQuota,
+} from "@/api/hooks/useWrappers"
 import type { AccountResponse } from "@/api/types/account"
 import type { NisaAssetTypeFilter, StockCategory, TransactionType } from "./types"
 
@@ -49,14 +54,18 @@ export function useTransactionQueries({
 }: Props) {
   const cashBalancesQuery = useAccountCashBalances(selectedAccountId, open)
   const selectedCurrencyCashBalance =
-    (cashBalancesQuery.data ?? []).find((b) => b.currency.toUpperCase() === currency.toUpperCase())?.balance ?? null
+    (cashBalancesQuery.data ?? []).find((b) => b.currency.toUpperCase() === currency.toUpperCase())
+      ?.balance ?? null
 
-  const nisaEligibleAssetsQuery = useEligibleAssets(shouldShowNisaPicker ? selectedWrapper : undefined, {
-    search: nisaPickerSearch || undefined,
-    assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
-    limit: 50,
-    enabled: shouldShowNisaPicker && !nisaStockFreeInput,
-  })
+  const nisaEligibleAssetsQuery = useEligibleAssets(
+    shouldShowNisaPicker ? selectedWrapper : undefined,
+    {
+      search: nisaPickerSearch || undefined,
+      assetType: nisaAssetTypeFilter === "all" ? undefined : nisaAssetTypeFilter,
+      limit: 50,
+      enabled: shouldShowNisaPicker && !nisaStockFreeInput,
+    },
+  )
   const nisaReitFreeInput =
     shouldShowNisaPicker &&
     selectedWrapper === "nisa_growth" &&
@@ -65,7 +74,10 @@ export function useTransactionQueries({
     (nisaEligibleAssetsQuery.data?.items?.length ?? 0) === 0
   const nisaFreeTickerInput = nisaStockFreeInput || nisaReitFreeInput
 
-  const sellablePositionsQuery = useAccountSellablePositions(selectedAccountId, shouldShowSellPicker)
+  const sellablePositionsQuery = useAccountSellablePositions(
+    selectedAccountId,
+    shouldShowSellPicker,
+  )
 
   const routingSuggestionQuery = useSuggestRouting(
     ticker,
@@ -92,7 +104,8 @@ export function useTransactionQueries({
     if (!suggestedWrapper) return null
     return (accounts ?? []).find((account) => {
       if (account.id == null || account.id === selectedAccountId) return false
-      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      const wrapper =
+        typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
       return wrapper === suggestedWrapper
     })
   }, [accounts, eligibility?.suggested_wrapper, selectedAccountId])
@@ -101,9 +114,13 @@ export function useTransactionQueries({
     const byWrapper = new Map<string, { id: number; currency: string }>()
     for (const account of accounts ?? []) {
       if (account.id == null) continue
-      const wrapper = typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
+      const wrapper =
+        typeof account.tax_wrapper === "string" ? account.tax_wrapper.toLowerCase() : ""
       if (!wrapper || byWrapper.has(wrapper)) continue
-      byWrapper.set(wrapper, { id: account.id, currency: (account.currency || "USD").toUpperCase() })
+      byWrapper.set(wrapper, {
+        id: account.id,
+        currency: (account.currency || "USD").toUpperCase(),
+      })
     }
     return byWrapper
   }, [accounts])
@@ -120,7 +137,9 @@ export function useTransactionQueries({
   }, [routingSuggestionQuery.data?.suggestions, routingSuggestedAccounts])
 
   const wrapperQuotaQuery = useWrapperQuota(shouldShowQuotaSummary)
-  const selectedQuota = shouldShowQuotaSummary ? wrapperQuotaQuery.data?.quotas?.[selectedWrapper] : undefined
+  const selectedQuota = shouldShowQuotaSummary
+    ? wrapperQuotaQuery.data?.quotas?.[selectedWrapper]
+    : undefined
 
   return {
     cashBalancesQuery,

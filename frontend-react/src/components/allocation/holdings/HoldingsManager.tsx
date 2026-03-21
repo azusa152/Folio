@@ -52,13 +52,13 @@ export function HoldingsManager({ privacyMode }: Props) {
                 <tr key={holding.id} className="border-b border-border/50">
                   <td className="py-0.5 pr-2 font-medium">{holding.ticker}</td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{holding.category}</td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {privacyMode ? "***" : quantityText}
-                  </td>
+                  <td className="py-0.5 pr-2 text-right">{privacyMode ? "***" : quantityText}</td>
                   <td className="py-0.5 pr-2 text-right">
                     {privacyMode
                       ? "***"
-                      : (holding.cost_basis != null ? formatPrice(holding.cost_basis, holding.currency) : "—")}
+                      : holding.cost_basis != null
+                        ? formatPrice(holding.cost_basis, holding.currency)
+                        : "—"}
                   </td>
                   <td className="py-0.5 pr-2 text-muted-foreground">{holding.broker ?? "—"}</td>
                 </tr>

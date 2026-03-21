@@ -1,5 +1,14 @@
 import { useTranslation } from "react-i18next"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+} from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { useGrandPortfolio } from "@/api/hooks/useSmartMoney"
@@ -15,9 +24,7 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (!data || data.items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        {t("smart_money.grand_portfolio.no_data")}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("smart_money.grand_portfolio.no_data")}</p>
     )
   }
 
@@ -39,13 +46,17 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
 
       {/* Top-20 bar chart */}
       <section>
-        <p className="text-sm font-semibold mb-2">{t("smart_money.grand_portfolio.top20_header")}</p>
+        <p className="text-sm font-semibold mb-2">
+          {t("smart_money.grand_portfolio.top20_header")}
+        </p>
         <ResponsiveContainer width="100%" height={Math.max(220, top20.length * 22 + 60)}>
           <BarChart
             data={top20.map((item) => ({
               name: item.ticker,
               weight: item.combined_weight_pct,
-              fill: ACTION_COLORS[item.dominant_action as keyof typeof ACTION_COLORS] ?? ACTION_COLORS.UNCHANGED,
+              fill:
+                ACTION_COLORS[item.dominant_action as keyof typeof ACTION_COLORS] ??
+                ACTION_COLORS.UNCHANGED,
             }))}
             layout="vertical"
             margin={{ top: 4, right: 56, left: 8, bottom: 20 }}
@@ -69,7 +80,10 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
               contentStyle={theme.tooltipStyle}
               formatter={(v) => {
                 const numericValue = typeof v === "number" ? v : 0
-                return [`${numericValue.toFixed(2)}%`, t("smart_money.grand_portfolio.combined_weight")]
+                return [
+                  `${numericValue.toFixed(2)}%`,
+                  t("smart_money.grand_portfolio.combined_weight"),
+                ]
               }}
               labelStyle={{ color: theme.tooltipText }}
               cursor={{ fill: "rgba(128,128,128,0.08)" }}
@@ -106,7 +120,9 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
 
       {/* Full holdings table */}
       <section>
-        <p className="text-sm font-semibold mb-2">{t("smart_money.grand_portfolio.table_header")}</p>
+        <p className="text-sm font-semibold mb-2">
+          {t("smart_money.grand_portfolio.table_header")}
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -114,10 +130,14 @@ export function GrandPortfolioTab({ style }: { style?: string | null }) {
                 <th className="text-left py-0.5 pr-2">#</th>
                 <th className="text-left py-0.5 pr-2">{t("smart_money.col.ticker")}</th>
                 <th className="text-left py-0.5 pr-2">{t("smart_money.col.company")}</th>
-                <th className="text-right py-0.5 pr-2">{t("smart_money.grand_portfolio.combined_weight")}</th>
+                <th className="text-right py-0.5 pr-2">
+                  {t("smart_money.grand_portfolio.combined_weight")}
+                </th>
                 <th className="text-right py-0.5 pr-2">{t("smart_money.col.value")}</th>
                 <th className="text-left py-0.5 pr-2">{t("smart_money.col.sector")}</th>
-                <th className="text-left py-0.5 pr-2">{t("smart_money.overview.consensus_gurus")}</th>
+                <th className="text-left py-0.5 pr-2">
+                  {t("smart_money.overview.consensus_gurus")}
+                </th>
                 <th className="text-left py-0.5">{t("smart_money.col.action")}</th>
               </tr>
             </thead>

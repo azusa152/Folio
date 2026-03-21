@@ -49,7 +49,9 @@ export function useTransactionFormState({
   const initialCurrency = defaultCurrency?.toUpperCase() ?? "USD"
 
   const [transactionType, setTransactionType] = useState<TransactionType>(initialTransactionType)
-  const [accountId, setAccountId] = useState(defaultAccountId != null ? String(defaultAccountId) : "")
+  const [accountId, setAccountId] = useState(
+    defaultAccountId != null ? String(defaultAccountId) : "",
+  )
   const [ticker, setTicker] = useState(initialTicker)
   const [holdingId, setHoldingId] = useState<string>(() => {
     if (defaultHoldingId != null) return String(defaultHoldingId)
@@ -72,7 +74,8 @@ export function useTransactionFormState({
   const [nisaPickerOpen, setNisaPickerOpen] = useState(false)
   const [nisaPickerSearch, setNisaPickerSearch] = useState("")
   const [nisaAssetTypeFilter, setNisaAssetTypeFilter] = useState<NisaAssetTypeFilter>("all")
-  const [cachedSelectedNisaAsset, setCachedSelectedNisaAsset] = useState<NisaEligibleAssetItem | null>(null)
+  const [cachedSelectedNisaAsset, setCachedSelectedNisaAsset] =
+    useState<NisaEligibleAssetItem | null>(null)
   const [sellPickerOpen, setSellPickerOpen] = useState(false)
   const [sellPickerSearch, setSellPickerSearch] = useState("")
   const [cachedSelectedSellablePosition, setCachedSelectedSellablePosition] =
@@ -86,7 +89,9 @@ export function useTransactionFormState({
   const selectedAccountId = accountId ? Number(accountId) : null
   const selectedAccount = (accounts ?? []).find((account) => account.id === selectedAccountId)
   const selectedWrapper =
-    typeof selectedAccount?.tax_wrapper === "string" ? selectedAccount.tax_wrapper.trim().toLowerCase() : ""
+    typeof selectedAccount?.tax_wrapper === "string"
+      ? selectedAccount.tax_wrapper.trim().toLowerCase()
+      : ""
   const hasNoAccounts = (accounts ?? []).length === 0
   const isCashMovement = transactionType === "DEPOSIT" || transactionType === "WITHDRAWAL"
 
@@ -182,7 +187,8 @@ export function useTransactionFormState({
       ) ?? null
     )
   }, [ticker, sellablePositionsQuery.data])
-  const selectedSellablePositionForDisplay = selectedSellablePosition ?? cachedSelectedSellablePosition
+  const selectedSellablePositionForDisplay =
+    selectedSellablePosition ?? cachedSelectedSellablePosition
   const selectedNisaAsset = useMemo(() => {
     const normalizedTicker = ticker.trim().toUpperCase()
     if (!normalizedTicker) return null
@@ -195,10 +201,7 @@ export function useTransactionFormState({
   const selectedNisaAssetForDisplay = selectedNisaAsset ?? cachedSelectedNisaAsset
 
   const holdingOptions = useMemo(
-    () =>
-      (holdings ?? [])
-        .filter((h) => h.id != null)
-        .map((h) => ({ id: h.id, ticker: h.ticker })),
+    () => (holdings ?? []).filter((h) => h.id != null).map((h) => ({ id: h.id, ticker: h.ticker })),
     [holdings],
   )
   const inferredHoldingId = useMemo(() => {
@@ -295,7 +298,9 @@ export function useTransactionFormState({
 
   const clearSellablePositionCache = () => setCachedSelectedSellablePosition(null)
 
-  const getSellValueSourceLabel = (valueSource?: SellablePositionItem["value_source"]): string | null => {
+  const getSellValueSourceLabel = (
+    valueSource?: SellablePositionItem["value_source"],
+  ): string | null => {
     if (!valueSource || valueSource === "live_price") return null
     if (valueSource === "cost_basis") return t("transactions.sell_picker.value_source_cost_basis")
     return t("transactions.sell_picker.value_source_unavailable")
@@ -337,7 +342,8 @@ export function useTransactionFormState({
   const computeTotalAmount = (nextQuantity: string, nextPrice: string): string => {
     const quantityNum = Number(nextQuantity)
     const priceNum = Number(nextPrice)
-    if (!nextQuantity || !nextPrice || Number.isNaN(quantityNum) || Number.isNaN(priceNum)) return ""
+    if (!nextQuantity || !nextPrice || Number.isNaN(quantityNum) || Number.isNaN(priceNum))
+      return ""
     const computed = quantityNum * priceNum
     return Number.isFinite(computed) ? String(computed) : ""
   }

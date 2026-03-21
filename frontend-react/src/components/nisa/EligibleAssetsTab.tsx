@@ -128,8 +128,12 @@ function AssetTable({
                     </div>
                     {showNoMatchState ? (
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold">{t("nisa.eligible.filter_no_match_title")}</p>
-                        <p className="text-xs text-muted-foreground">{t("nisa.eligible.filter_no_match")}</p>
+                        <p className="text-sm font-semibold">
+                          {t("nisa.eligible.filter_no_match_title")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("nisa.eligible.filter_no_match")}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -260,7 +264,9 @@ export function EligibleAssetsTab() {
             loading={growthQuery.isLoading}
             assetTypeFilter={assetTypeFilter}
             onAssetTypeChange={handleAssetTypeChange}
-            totalUnfilteredCount={growthMetadataQuery.data?.count ?? growthQuery.data?.total_count ?? 0}
+            totalUnfilteredCount={
+              growthMetadataQuery.data?.count ?? growthQuery.data?.total_count ?? 0
+            }
             hasSearchQuery={search.trim().length > 0}
             onClearSearch={() => {
               setSearch("")

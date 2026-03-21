@@ -138,12 +138,9 @@ export function useRefreshEligibleAssets() {
   return useMutation({
     mutationFn: async (wrapper: string) => {
       const normalizedWrapper = wrapper.trim().toLowerCase()
-      const { data, error } = await client.POST(
-        "/wrappers/{wrapper}/eligible-assets/refresh",
-        {
-          params: { path: { wrapper: normalizedWrapper } },
-        },
-      )
+      const { data, error } = await client.POST("/wrappers/{wrapper}/eligible-assets/refresh", {
+        params: { path: { wrapper: normalizedWrapper } },
+      })
       if (error) throw error
       return data as EligibleAssetsRefreshResponse
     },
@@ -219,9 +216,7 @@ export function useSuggestRouting(
 ) {
   const normalizedTicker = (ticker ?? "").trim().toUpperCase()
   const normalizedAmount =
-    typeof totalAmount === "number" && Number.isFinite(totalAmount)
-      ? totalAmount
-      : 0
+    typeof totalAmount === "number" && Number.isFinite(totalAmount) ? totalAmount : 0
   return useQuery<RoutingSuggestResponse>({
     queryKey: ["wrapper-suggest-routing", normalizedTicker, normalizedAmount],
     queryFn: async () => {

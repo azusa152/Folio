@@ -118,7 +118,11 @@ export function useTransactionSubmit({
     }
     const requiredAmount = Number(totalAmount) + Number(fee || "0")
     const availableAmount = selectedCurrencyCashBalance ?? 0
-    if (transactionType === "BUY" && selectedAccountId != null && requiredAmount > availableAmount) {
+    if (
+      transactionType === "BUY" &&
+      selectedAccountId != null &&
+      requiredAmount > availableAmount
+    ) {
       setInsufficientBalance({ available: availableAmount, required: requiredAmount })
       return
     }

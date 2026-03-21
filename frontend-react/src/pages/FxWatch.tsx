@@ -8,7 +8,13 @@ import { FX_WATCH_REFRESH_COOLDOWN_SECONDS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   useFxWatches,
@@ -69,8 +75,7 @@ function getRetryAfterSeconds(err: unknown): number | null {
     if (typeof response.headers === "object" && response.headers !== null) {
       const headers = response.headers as Record<string, unknown>
       const retryAfter =
-        asPositiveInt(headers["retry-after"]) ??
-        asPositiveInt(headers["Retry-After"])
+        asPositiveInt(headers["retry-after"]) ?? asPositiveInt(headers["Retry-After"])
       if (retryAfter !== null) return retryAfter
     }
   }
@@ -113,7 +118,8 @@ export default function FxWatch() {
   const { data: exposure } = useCurrencyExposure(activeTab !== "watches", effectiveHomeCurrency)
 
   const saveDefaultHomeCurrency = () => {
-    if (!profile || !effectiveHomeCurrency || effectiveHomeCurrency === profile.home_currency) return
+    if (!profile || !effectiveHomeCurrency || effectiveHomeCurrency === profile.home_currency)
+      return
     updateProfileMutation.mutate(
       { id: profile.id, payload: { home_currency: effectiveHomeCurrency } },
       {
@@ -149,7 +155,10 @@ export default function FxWatch() {
   }
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNowEpochSeconds(Math.floor(Date.now() / 1000)), 60_000)
+    const timer = window.setInterval(
+      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
+      60_000,
+    )
     return () => window.clearInterval(timer)
   }, [])
 
@@ -193,11 +202,11 @@ export default function FxWatch() {
       ? formatLocalTime(lastAlertTimes.reduce((a, b) => (parseUtc(a) > parseUtc(b) ? a : b)))
       : null
 
-  const checkedAtEpoch = analysisState?.checked_at ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000) : 0
+  const checkedAtEpoch = analysisState?.checked_at
+    ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000)
+    : 0
   const ratesUpdatedAgo =
-    checkedAtEpoch > 0
-      ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language)
-      : ""
+    checkedAtEpoch > 0 ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language) : ""
 
   const freshnessAgeSeconds = checkedAtEpoch > 0 ? nowEpochSeconds - checkedAtEpoch : null
   const freshnessDotClass =
@@ -209,7 +218,9 @@ export default function FxWatch() {
           ? "bg-amber-500"
           : "bg-muted-foreground/40"
 
-  const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
+  const checkedAtLabel = analysisState?.checked_at
+    ? formatLocalTime(analysisState.checked_at)
+    : null
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
@@ -361,13 +372,21 @@ export default function FxWatch() {
               variant="ghost"
               className="h-7 px-2 text-xs"
               onClick={handleRefreshRates}
-              disabled={refreshMutation.isPending || refreshCooldownRemainingSeconds > 0 || watches.length === 0}
+              disabled={
+                refreshMutation.isPending ||
+                refreshCooldownRemainingSeconds > 0 ||
+                watches.length === 0
+              }
             >
-              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`}
+              />
               {refreshMutation.isPending
                 ? t("fx_watch.action.refreshing")
                 : refreshCooldownRemainingSeconds > 0
-                  ? t("fx_watch.action.refresh_cooldown", { seconds: refreshCooldownRemainingSeconds })
+                  ? t("fx_watch.action.refresh_cooldown", {
+                      seconds: refreshCooldownRemainingSeconds,
+                    })
                   : t("fx_watch.action.refresh")}
             </Button>
           </div>
@@ -399,7 +418,10 @@ export default function FxWatch() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "overview" | "watches" | "exposure")}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "overview" | "watches" | "exposure")}
+      >
         <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
           <TabsTrigger value="overview" className="min-h-[44px]">
             {t("fx_watch.tab.overview")}
@@ -435,9 +457,7 @@ export default function FxWatch() {
               selectedCurrency={effectiveHomeCurrency ?? exposure.home_currency}
               onCurrencyChange={setSelectedCurrencyOverride}
               showSaveDefault={Boolean(
-                profile &&
-                  effectiveHomeCurrency &&
-                  effectiveHomeCurrency !== profile.home_currency,
+                profile && effectiveHomeCurrency && effectiveHomeCurrency !== profile.home_currency,
               )}
               onSaveDefault={saveDefaultHomeCurrency}
               isSavingDefault={updateProfileMutation.isPending}
@@ -524,7 +544,11 @@ export default function FxWatch() {
 
         <TabsContent value="exposure" className="mt-4">
           {profile ? (
-            <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "exposure"} />
+            <CurrencyExposure
+              privacyMode={privacyMode}
+              profile={profile}
+              enabled={activeTab === "exposure"}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           )}

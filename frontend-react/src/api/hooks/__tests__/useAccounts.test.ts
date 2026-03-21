@@ -55,15 +55,12 @@ describe("useAccounts extra hooks", () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(mockClient.GET).toHaveBeenCalledWith(
-      "/accounts/{account_id}/transactions",
-      {
-        params: {
-          path: { account_id: 7 },
-          query: { limit: 50, offset: 10 },
-        },
+    expect(mockClient.GET).toHaveBeenCalledWith("/accounts/{account_id}/transactions", {
+      params: {
+        path: { account_id: 7 },
+        query: { limit: 50, offset: 10 },
       },
-    )
+    })
   })
 
   it("invalidates holdings and rebalance after account deactivation", async () => {
@@ -72,9 +69,7 @@ describe("useAccounts extra hooks", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
-    const invalidateSpy = vi
-      .spyOn(queryClient, "invalidateQueries")
-      .mockResolvedValue(undefined)
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue(undefined)
 
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)

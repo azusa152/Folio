@@ -30,7 +30,14 @@ function holdingRegion(h: HoldingDetail): string {
   return CURRENCY_TO_REGION[h.currency] ?? "Other"
 }
 
-export function GeographicAllocation({ data, holdings, privacyMode = false, displayCurrency, drillValue, onDrillChange }: Props) {
+export function GeographicAllocation({
+  data,
+  holdings,
+  privacyMode = false,
+  displayCurrency,
+  drillValue,
+  onDrillChange,
+}: Props) {
   const { t } = useTranslation()
   const theme = useRechartsTheme()
   const [localDrill, setLocalDrill] = useState<string | null>(null)
@@ -51,9 +58,8 @@ export function GeographicAllocation({ data, holdings, privacyMode = false, disp
 
   const height = Math.max(120, chartData.length * 36 + 20)
 
-  const filteredHoldings = drillRegion && holdings
-    ? holdings.filter((h) => holdingRegion(h) === drillRegion)
-    : []
+  const filteredHoldings =
+    drillRegion && holdings ? holdings.filter((h) => holdingRegion(h) === drillRegion) : []
 
   return (
     <div className="space-y-2">
@@ -78,7 +84,11 @@ export function GeographicAllocation({ data, holdings, privacyMode = false, disp
           />
           <Tooltip
             contentStyle={theme.tooltipStyle}
-            formatter={(v: number | undefined, _name: unknown, props: { payload?: { label?: string } }) => [
+            formatter={(
+              v: number | undefined,
+              _name: unknown,
+              props: { payload?: { label?: string } },
+            ) => [
               v != null ? maskMoney(v, displayCurrency ?? "USD") : "",
               props.payload?.label ?? "",
             ]}

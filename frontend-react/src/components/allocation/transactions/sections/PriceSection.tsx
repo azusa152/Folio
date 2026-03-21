@@ -1,7 +1,11 @@
 import { useTranslation } from "react-i18next"
 import { Input } from "@/components/ui/input"
 import { DISPLAY_CURRENCIES } from "@/lib/constants"
-import type { SellablePositionItem, StockCategory, FieldErrors } from "@/hooks/useAddTransactionForm"
+import type {
+  SellablePositionItem,
+  StockCategory,
+  FieldErrors,
+} from "@/hooks/useAddTransactionForm"
 
 interface PriceSectionProps {
   isCashMovement: boolean
@@ -96,7 +100,9 @@ export function PriceSection({
                 })}
               </p>
             ) : null}
-            {fieldErrors.quantity ? <p className="text-xs text-destructive">{fieldErrors.quantity}</p> : null}
+            {fieldErrors.quantity ? (
+              <p className="text-xs text-destructive">{fieldErrors.quantity}</p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium">{t("transactions.form.price")}</p>
@@ -114,14 +120,18 @@ export function PriceSection({
               className="text-xs"
             />
             <p className="text-[11px] text-muted-foreground">{t("transactions.form.price_hint")}</p>
-            {fieldErrors.price ? <p className="text-xs text-destructive">{fieldErrors.price}</p> : null}
+            {fieldErrors.price ? (
+              <p className="text-xs text-destructive">{fieldErrors.price}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
 
       <div className="space-y-1">
         <p className="text-xs font-medium">
-          {isCashMovement ? t("transactions.form.deposit_amount") : t("transactions.form.total_amount")}
+          {isCashMovement
+            ? t("transactions.form.deposit_amount")
+            : t("transactions.form.total_amount")}
         </p>
         <Input
           type="number"
@@ -138,9 +148,13 @@ export function PriceSection({
         {!isCashMovement ? (
           <div className="flex items-center justify-between gap-2">
             {!manualTotal ? (
-              <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_auto")}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("transactions.form.total_auto")}
+              </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground">{t("transactions.form.total_manual")}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("transactions.form.total_manual")}
+              </p>
             )}
             <button
               type="button"
@@ -154,7 +168,9 @@ export function PriceSection({
             </button>
           </div>
         ) : null}
-        {fieldErrors.totalAmount ? <p className="text-xs text-destructive">{fieldErrors.totalAmount}</p> : null}
+        {fieldErrors.totalAmount ? (
+          <p className="text-xs text-destructive">{fieldErrors.totalAmount}</p>
+        ) : null}
       </div>
 
       {isCashMovement ? (

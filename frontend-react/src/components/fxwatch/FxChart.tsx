@@ -86,7 +86,10 @@ export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: t("fx_watch.chart.high_annotation", { days: recentHighDays, high: recentHigh.toFixed(4) }),
+          title: t("fx_watch.chart.high_annotation", {
+            days: recentHighDays,
+            high: recentHigh.toFixed(4),
+          }),
           lineVisible: true,
           axisLabelColor: "#f59e0b",
           axisLabelTextColor: "#fff",
@@ -196,7 +199,12 @@ export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
           </span>
         )}
       </div>
-      <LightweightChartWrapper key={period} height={220} onInit={onInit} ariaLabel={t("accessibility.chart_fx_rate")} />
+      <LightweightChartWrapper
+        key={period}
+        height={220}
+        onInit={onInit}
+        ariaLabel={t("accessibility.chart_fx_rate")}
+      />
     </div>
   )
 }

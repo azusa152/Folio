@@ -27,13 +27,13 @@ export function TsumitateMigrationCard({ migration, onSetup }: TsumitateMigratio
         <p className="text-xs font-medium">
           {t(migration.reason, {
             amount: Math.round(migration.monthly_amount).toLocaleString(),
-            source: t(`wrapper.${migration.source_wrapper}`, { defaultValue: migration.source_wrapper }),
+            source: t(`wrapper.${migration.source_wrapper}`, {
+              defaultValue: migration.source_wrapper,
+            }),
             defaultValue: t("location.tsumitate_migration"),
           })}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {migration.eligible_tickers.join(", ")}
-        </p>
+        <p className="text-xs text-muted-foreground">{migration.eligible_tickers.join(", ")}</p>
         <Button
           size="sm"
           variant="outline"

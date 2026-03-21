@@ -20,9 +20,12 @@ export function ReloadPrompt() {
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      updateIntervalRef.current = setInterval(() => {
-        registration.update()
-      }, 60 * 60 * 1000)
+      updateIntervalRef.current = setInterval(
+        () => {
+          registration.update()
+        },
+        60 * 60 * 1000,
+      )
     },
   })
 

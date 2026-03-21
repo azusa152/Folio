@@ -3,6 +3,7 @@
 from datetime import date
 from unittest.mock import patch
 
+import pytest
 from sqlmodel import Session
 
 import application.portfolio.nav_sync_service as nav_sync_module
@@ -57,6 +58,7 @@ class TestSyncSingleFundNav:
         )
         assert len(navs) >= 1
 
+    @pytest.mark.slow
     def test_should_return_false_when_no_isin(self, db_session):
         """Fund without ISIN should return False."""
         db_session.add(

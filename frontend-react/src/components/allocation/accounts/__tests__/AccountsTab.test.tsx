@@ -61,7 +61,13 @@ vi.mock("@/api/hooks/useTransactions", () => ({
 }))
 
 let mockAccountsData = [
-  { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+  {
+    id: 1,
+    name: "IB Main",
+    broker: "Interactive Brokers",
+    account_type: "brokerage",
+    currency: "USD",
+  },
 ]
 let mockAccountTransactionsData = [
   {
@@ -89,7 +95,14 @@ vi.mock("@/api/hooks/useAccounts", () => ({
     isLoading: false,
   }),
   useAccountSummary: () => ({
-    data: [{ account: { id: 1 }, holdings_count: 2, tickers: ["AAPL"], cash_balances: [{ currency: "USD", balance: 1200 }] }],
+    data: [
+      {
+        account: { id: 1 },
+        holdings_count: 2,
+        tickers: ["AAPL"],
+        cash_balances: [{ currency: "USD", balance: 1200 }],
+      },
+    ],
   }),
   useAccountPositions: () => ({
     data: [
@@ -128,7 +141,13 @@ describe("AccountsTab", () => {
     vi.clearAllMocks()
     vi.unstubAllGlobals()
     mockAccountsData = [
-      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+      {
+        id: 1,
+        name: "IB Main",
+        broker: "Interactive Brokers",
+        account_type: "brokerage",
+        currency: "USD",
+      },
     ]
     mockAccountTransactionsData = [
       {
@@ -182,7 +201,6 @@ describe("AccountsTab", () => {
     expect(screen.getAllByText("AAPL").length).toBeGreaterThan(0)
   })
 
-
   it("renders positions detail columns", () => {
     render(<AccountsTab enabled />)
     expect(screen.getByText("accounts.detail.category")).toBeInTheDocument()
@@ -218,7 +236,8 @@ describe("AccountsTab", () => {
   it("exports all transactions when scope is all accounts", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      blob: async () => new Blob(["transaction_date,ticker\n2026-03-12,SPY\n"], { type: "text/csv" }),
+      blob: async () =>
+        new Blob(["transaction_date,ticker\n2026-03-12,SPY\n"], { type: "text/csv" }),
       headers: {
         get: () => 'attachment; filename="transactions_20260312.csv"',
       },
@@ -226,7 +245,9 @@ describe("AccountsTab", () => {
     vi.stubGlobal("fetch", fetchMock)
 
     render(<AccountsTab enabled />)
-    fireEvent.change(screen.getByLabelText("transactions.filter.account"), { target: { value: "all" } })
+    fireEvent.change(screen.getByLabelText("transactions.filter.account"), {
+      target: { value: "all" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.export_button" }))
 
     await waitFor(() => {
@@ -240,7 +261,8 @@ describe("AccountsTab", () => {
   it("calls export endpoint for selected account", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      blob: async () => new Blob(["transaction_date,ticker\n2026-03-12,MSFT\n"], { type: "text/csv" }),
+      blob: async () =>
+        new Blob(["transaction_date,ticker\n2026-03-12,MSFT\n"], { type: "text/csv" }),
       headers: {
         get: () => 'attachment; filename="transactions_20260312.csv"',
       },
@@ -273,7 +295,13 @@ describe("AccountsTab", () => {
 
   it("highlights fallback account when selected account is removed", () => {
     mockAccountsData = [
-      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+      {
+        id: 1,
+        name: "IB Main",
+        broker: "Interactive Brokers",
+        account_type: "brokerage",
+        currency: "USD",
+      },
       { id: 2, name: "SBI Sub", broker: "SBI", account_type: "brokerage", currency: "JPY" },
     ]
     const { rerender } = render(<AccountsTab enabled />)
@@ -281,7 +309,13 @@ describe("AccountsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /SBI Sub/i }))
 
     mockAccountsData = [
-      { id: 1, name: "IB Main", broker: "Interactive Brokers", account_type: "brokerage", currency: "USD" },
+      {
+        id: 1,
+        name: "IB Main",
+        broker: "Interactive Brokers",
+        account_type: "brokerage",
+        currency: "USD",
+      },
     ]
     rerender(<AccountsTab enabled />)
 
@@ -294,7 +328,9 @@ describe("AccountsTab", () => {
     render(<AccountsTab enabled />)
 
     fireEvent.click(screen.getByRole("button", { name: "accounts.add" }))
-    fireEvent.change(screen.getByLabelText("accounts.form.name"), { target: { value: "Japan Account" } })
+    fireEvent.change(screen.getByLabelText("accounts.form.name"), {
+      target: { value: "Japan Account" },
+    })
     fireEvent.change(screen.getByLabelText("accounts.form.broker"), { target: { value: "SBI" } })
     fireEvent.change(screen.getByLabelText("accounts.form.currency"), { target: { value: "jpy" } })
     fireEvent.click(screen.getByRole("button", { name: "accounts.form.save" }))

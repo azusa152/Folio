@@ -124,10 +124,9 @@ export function AccountSection({
                   remaining: selectedQuota.wrapper_annual_remaining.toLocaleString(undefined, {
                     maximumFractionDigits: 0,
                   }),
-                  annual: (selectedQuota.wrapper_annual_used + selectedQuota.wrapper_annual_remaining).toLocaleString(
-                    undefined,
-                    { maximumFractionDigits: 0 },
-                  ),
+                  annual: (
+                    selectedQuota.wrapper_annual_used + selectedQuota.wrapper_annual_remaining
+                  ).toLocaleString(undefined, { maximumFractionDigits: 0 }),
                 })
               : t("transactions.form.nisa_quota_unavailable")}
         </p>
@@ -152,21 +151,24 @@ export function AccountSection({
         <div className="text-[11px] text-muted-foreground">
           <p>{t("transactions.form.account_empty_hint")}</p>
           {onOpenAccounts ? (
-            <button
-              type="button"
-              className="text-primary hover:underline"
-              onClick={onOpenAccounts}
-            >
+            <button type="button" className="text-primary hover:underline" onClick={onOpenAccounts}>
               {t("transactions.form.create_account")}
             </button>
           ) : null}
         </div>
       ) : null}
-      {fieldErrors.account ? <p className="text-xs text-destructive">{fieldErrors.account}</p> : null}
-      {transactionType === "BUY" && selectedAccountId != null && (selectedCurrencyCashBalance ?? 0) <= 0 ? (
-        <p className="text-[11px] text-muted-foreground">{t("transactions.form.buy_no_balance_hint")}</p>
+      {fieldErrors.account ? (
+        <p className="text-xs text-destructive">{fieldErrors.account}</p>
       ) : null}
-      {selectedAccountId != null && (transactionType === "SELL" || transactionType === "DIVIDEND") ? (
+      {transactionType === "BUY" &&
+      selectedAccountId != null &&
+      (selectedCurrencyCashBalance ?? 0) <= 0 ? (
+        <p className="text-[11px] text-muted-foreground">
+          {t("transactions.form.buy_no_balance_hint")}
+        </p>
+      ) : null}
+      {selectedAccountId != null &&
+      (transactionType === "SELL" || transactionType === "DIVIDEND") ? (
         <p className="text-[11px] text-muted-foreground">
           {t("transactions.form.proceeds_hint", {
             account: selectedAccount?.name ?? t("transactions.form.account_required"),
@@ -177,8 +179,12 @@ export function AccountSection({
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 space-y-1">
           <p className="text-[11px] text-amber-800 dark:text-amber-300">
             {t("transactions.form.insufficient_balance", {
-              available: insufficientBalance.available.toLocaleString(undefined, { maximumFractionDigits: 2 }),
-              required: insufficientBalance.required.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+              available: insufficientBalance.available.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              }),
+              required: insufficientBalance.required.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              }),
               currency,
             })}
           </p>
@@ -186,7 +192,10 @@ export function AccountSection({
             type="button"
             className="text-[11px] text-primary hover:underline"
             onClick={() => {
-              const shortfall = Math.max(0, insufficientBalance.required - insufficientBalance.available)
+              const shortfall = Math.max(
+                0,
+                insufficientBalance.required - insufficientBalance.available,
+              )
               setTransactionType("DEPOSIT")
               setQuantity("1")
               setPrice("")

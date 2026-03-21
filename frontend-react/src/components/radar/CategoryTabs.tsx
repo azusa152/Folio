@@ -6,7 +6,13 @@ import { inferMarket } from "@/lib/market"
 import { StockCard } from "./StockCard"
 import { ReorderSection } from "./ReorderSection"
 import { ArchiveTab } from "./ArchiveTab"
-import type { RadarStock, RemovedStock, RadarEnrichedStock, ResonanceMap, StockCategory } from "@/api/types/radar"
+import type {
+  RadarStock,
+  RemovedStock,
+  RadarEnrichedStock,
+  ResonanceMap,
+  StockCategory,
+} from "@/api/types/radar"
 
 interface Props {
   stocks: RadarStock[]
@@ -97,13 +103,19 @@ export function CategoryTabs({
         </div>
       )}
 
-      <Tabs value={activeCategory ?? "Trend_Setter"} onValueChange={(value) => onCategoryChange?.(value as StockCategory | "archive")}>
+      <Tabs
+        value={activeCategory ?? "Trend_Setter"}
+        onValueChange={(value) => onCategoryChange?.(value as StockCategory | "archive")}
+      >
         <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
           {RADAR_CATEGORIES.map((cat) => (
             <TabsTrigger key={cat} value={cat} className="text-xs min-h-[44px]">
               {t(tabLabelKey[cat], { count: categoryMap[cat]?.length ?? 0 })}
               {hasActiveFilters && (
-                <> ({categoryMap[cat]?.length ?? 0}/{totalCategoryMap[cat]?.length ?? 0})</>
+                <>
+                  {" "}
+                  ({categoryMap[cat]?.length ?? 0}/{totalCategoryMap[cat]?.length ?? 0})
+                </>
               )}
             </TabsTrigger>
           ))}
@@ -130,7 +142,9 @@ export function CategoryTabs({
               </>
             ) : (
               <p className="text-sm text-muted-foreground py-4">
-                {t("radar.empty_category", { category: `${CATEGORY_ICON_SHORT[cat] ?? ""} ${cat.replace("_", " ")}` })}
+                {t("radar.empty_category", {
+                  category: `${CATEGORY_ICON_SHORT[cat] ?? ""} ${cat.replace("_", " ")}`,
+                })}
               </p>
             )}
           </TabsContent>

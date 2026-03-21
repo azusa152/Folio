@@ -61,7 +61,9 @@ export function AppSidebar() {
   // Use i18n.changeLanguage directly to avoid the write-back API call.
   useEffect(() => {
     if (prefs?.language) {
-      i18n.changeLanguage(prefs.language).catch(() => { /* fail silently */ })
+      i18n.changeLanguage(prefs.language).catch(() => {
+        /* fail silently */
+      })
     }
   }, [prefs?.language])
 
@@ -77,7 +79,11 @@ export function AppSidebar() {
     const next = !isPrivate
     savePreferences.mutate(
       { privacy_mode: next },
-      { onError: () => { /* fail silently — UI already updated optimistically */ } },
+      {
+        onError: () => {
+          /* fail silently — UI already updated optimistically */
+        },
+      },
     )
   }
 
@@ -93,7 +99,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map(({ path, labelKey, icon }) => (
                 <SidebarMenuItem key={path}>
-                  <SidebarMenuButton asChild isActive={location.pathname === path} className="min-h-[44px]">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === path}
+                    className="min-h-[44px]"
+                  >
                     <Link to={path}>
                       <span>{icon}</span>
                       <span>{t(labelKey)}</span>
@@ -102,7 +112,11 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location.pathname === "/settings"} className="min-h-[44px]">
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/settings"}
+                  className="min-h-[44px]"
+                >
                   <Link to="/settings">
                     <Settings className="h-4 w-4" />
                     <span>{t("nav.settings")}</span>

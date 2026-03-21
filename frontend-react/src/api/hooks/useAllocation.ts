@@ -226,9 +226,7 @@ export function useSavePreferences() {
   })
 }
 
-function invalidateStockSplitDerivedQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
+function invalidateStockSplitDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
   ;[
     ["stock-splits", "pending"],
     ["transactions"],
@@ -241,9 +239,7 @@ function invalidateStockSplitDerivedQueries(
   })
 }
 
-function invalidateDividendDerivedQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
+function invalidateDividendDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
   ;[
     ["dividends", "pending"],
     ["transactions"],

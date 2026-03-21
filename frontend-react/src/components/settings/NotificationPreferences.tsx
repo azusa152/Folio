@@ -36,7 +36,7 @@ export function NotificationPreferences() {
   const isPrivate = useIsPrivate()
 
   const [prefs, setPrefs] = useState<Record<string, boolean>>(
-    Object.fromEntries(PREF_KEYS.map((k) => [k, true]))
+    Object.fromEntries(PREF_KEYS.map((k) => [k, true])),
   )
   const [rateLimits, setRateLimits] = useState<RateLimits>({})
   const [prevData, setPrevData] = useState(data)
@@ -87,7 +87,7 @@ export function NotificationPreferences() {
         onError: (err: unknown) => {
           toast.error(getErrorMessage(err) || t("common.error"))
         },
-      }
+      },
     )
   }
 
@@ -113,7 +113,9 @@ export function NotificationPreferences() {
                 />
                 <div>
                   <p className="text-xs font-medium">{t(`allocation.telegram.notif.${key}`)}</p>
-                  <p className="text-xs text-muted-foreground">{t(`allocation.telegram.notif.${key}_help`)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(`allocation.telegram.notif.${key}_help`)}
+                  </p>
                 </div>
               </label>
 
@@ -148,7 +150,11 @@ export function NotificationPreferences() {
                           value={rl.window_hours || ""}
                           onChange={(e) => {
                             const raw = parseInt(e.target.value)
-                            handleRateLimitChange(key, "window_hours", isNaN(raw) ? 0 : Math.max(1, raw))
+                            handleRateLimitChange(
+                              key,
+                              "window_hours",
+                              isNaN(raw) ? 0 : Math.max(1, raw),
+                            )
                           }}
                           className="w-16 h-6 rounded border border-input bg-background px-1.5 text-xs text-center"
                         />

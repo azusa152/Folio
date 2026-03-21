@@ -51,7 +51,11 @@ vi.mock("@/components/nisa/NisaOnboardingBanner", () => ({
 
 vi.mock("@/components/allocation/wrappers/SmartActionCards", () => ({
   SmartActionCards: (props: { forceHideActions?: boolean; emptyHintKey?: string }) =>
-    props.forceHideActions ? <div>{props.emptyHintKey ?? "nisa.actions.empty"}</div> : <div>smart-action-cards-content</div>,
+    props.forceHideActions ? (
+      <div>{props.emptyHintKey ?? "nisa.actions.empty"}</div>
+    ) : (
+      <div>smart-action-cards-content</div>
+    ),
 }))
 
 vi.mock("@/components/allocation/wrappers/AssetLocationViz", () => ({

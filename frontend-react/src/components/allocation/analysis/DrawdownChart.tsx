@@ -1,13 +1,6 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import type { DrawdownPoint } from "@/api/hooks/useAnalytics"

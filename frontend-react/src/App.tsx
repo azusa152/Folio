@@ -37,7 +37,11 @@ export default function App() {
             </a>
             <div className="flex min-h-screen w-full">
               <AppSidebar />
-              <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto min-w-0 focus:outline-none">
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="flex-1 overflow-auto min-w-0 focus:outline-none"
+              >
                 {/* Mobile header with hamburger trigger */}
                 <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border sticky top-0 bg-background z-10">
                   <SidebarTrigger className="min-h-[44px] min-w-[44px]" />
@@ -45,14 +49,70 @@ export default function App() {
                 </div>
                 <OfflineBanner />
                 <Routes>
-                  <Route path="/" element={<PageShell><Dashboard /></PageShell>} />
-                  <Route path="/radar" element={<PageShell><Radar /></PageShell>} />
-                  <Route path="/allocation" element={<PageShell><Allocation /></PageShell>} />
-                  <Route path="/nisa" element={<PageShell><Nisa /></PageShell>} />
-                  <Route path="/fx-watch" element={<PageShell><FxWatch /></PageShell>} />
-                  <Route path="/smart-money" element={<PageShell><SmartMoney /></PageShell>} />
-                  <Route path="/backtest" element={<PageShell><Backtest /></PageShell>} />
-                  <Route path="/settings" element={<PageShell><SettingsPage /></PageShell>} />
+                  <Route
+                    path="/"
+                    element={
+                      <PageShell>
+                        <Dashboard />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/radar"
+                    element={
+                      <PageShell>
+                        <Radar />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/allocation"
+                    element={
+                      <PageShell>
+                        <Allocation />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/nisa"
+                    element={
+                      <PageShell>
+                        <Nisa />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/fx-watch"
+                    element={
+                      <PageShell>
+                        <FxWatch />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/smart-money"
+                    element={
+                      <PageShell>
+                        <SmartMoney />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/backtest"
+                    element={
+                      <PageShell>
+                        <Backtest />
+                      </PageShell>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <PageShell>
+                        <SettingsPage />
+                      </PageShell>
+                    }
+                  />
                 </Routes>
               </main>
             </div>

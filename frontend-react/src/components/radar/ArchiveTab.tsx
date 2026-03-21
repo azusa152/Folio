@@ -3,7 +3,13 @@ import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { CATEGORY_ICON_SHORT, STOCK_CATEGORIES } from "@/lib/constants"
 import { cn, getErrorMessage } from "@/lib/utils"
@@ -27,7 +33,9 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")}
+          />
           {t("radar.removed.history_title", { ticker })}
         </span>
       </button>
@@ -40,7 +48,9 @@ function RemovalHistorySection({ ticker }: RemovalHistoryProps) {
           ) : (
             history.map((entry) => (
               <div key={entry.created_at} className="rounded border border-border p-2 text-xs">
-                <p className="font-semibold text-muted-foreground">{entry.created_at.slice(0, 10)}</p>
+                <p className="font-semibold text-muted-foreground">
+                  {entry.created_at.slice(0, 10)}
+                </p>
                 <p>{entry.reason}</p>
               </div>
             ))
@@ -64,7 +74,9 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")}
+          />
           {t("radar.removed.thesis_history_title", { ticker })}
         </span>
       </button>
@@ -178,7 +190,9 @@ export function ArchiveTab({ removedStocks }: Props) {
   const { t } = useTranslation()
 
   if (!removedStocks.length) {
-    return <p className="text-sm text-muted-foreground py-4">{t("radar.removed.no_removed_stocks")}</p>
+    return (
+      <p className="text-sm text-muted-foreground py-4">{t("radar.removed.no_removed_stocks")}</p>
+    )
   }
 
   return (
@@ -191,20 +205,26 @@ export function ArchiveTab({ removedStocks }: Props) {
                 <p className="font-semibold">📦 {removed.ticker}</p>
                 <p className="text-xs text-muted-foreground">
                   {t("radar.removed.category", { category: removed.category.replace("_", " ") })}
-                  {removed.removed_at ? ` · ${t("radar.removed.date", { date: removed.removed_at.slice(0, 10) })}` : ""}
+                  {removed.removed_at
+                    ? ` · ${t("radar.removed.date", { date: removed.removed_at.slice(0, 10) })}`
+                    : ""}
                 </p>
               </div>
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">{t("radar.removed.reason_title")}</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("radar.removed.reason_title")}
+              </p>
               <p className="text-sm rounded bg-destructive/10 border border-destructive/20 px-2 py-1">
                 {removed.removal_reason || t("radar.removed.unknown")}
               </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">{t("radar.removed.last_thesis_title")}</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {t("radar.removed.last_thesis_title")}
+              </p>
               <p className="text-sm rounded bg-muted/30 px-2 py-1">
                 {removed.current_thesis || t("radar.removed.no_thesis")}
               </p>

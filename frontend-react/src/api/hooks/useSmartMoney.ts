@@ -81,7 +81,10 @@ export function useGuruHoldingChanges(id: number, enabled = true, includePerform
     queryKey: ["guruHoldingChanges", id, includePerformance],
     queryFn: async () => {
       const { data, error } = await client.GET("/gurus/{guru_id}/holdings", {
-        params: { path: { guru_id: id }, query: { limit: 20, include_performance: includePerformance } },
+        params: {
+          path: { guru_id: id },
+          query: { limit: 20, include_performance: includePerformance },
+        },
       })
       if (error) throw error
       return fromApiData<GuruHolding[]>(data)
@@ -96,7 +99,10 @@ export function useGuruTopHoldings(id: number, enabled = true, includePerformanc
     queryKey: ["guruTopHoldings", id, includePerformance],
     queryFn: async () => {
       const { data, error } = await client.GET("/gurus/{guru_id}/top", {
-        params: { path: { guru_id: id }, query: { n: 15, include_performance: includePerformance } },
+        params: {
+          path: { guru_id: id },
+          query: { n: 15, include_performance: includePerformance },
+        },
       })
       if (error) throw error
       return fromApiData<GuruHolding[]>(data)

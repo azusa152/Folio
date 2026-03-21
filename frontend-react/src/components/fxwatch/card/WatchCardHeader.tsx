@@ -23,7 +23,6 @@ interface Props {
   setExpanded: (updater: (v: boolean) => boolean) => void
 }
 
-
 export function WatchCardHeader({
   watch,
   analysis,
@@ -53,9 +52,7 @@ export function WatchCardHeader({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold">{pair}</span>
-            {!isPrivate && (
-              <span className="text-sm tabular-nums text-foreground">{rateStr}</span>
-            )}
+            {!isPrivate && <span className="text-sm tabular-nums text-foreground">{rateStr}</span>}
             {!isPrivate && dailyChangeStr && (
               <span
                 className={`text-xs font-medium tabular-nums ${

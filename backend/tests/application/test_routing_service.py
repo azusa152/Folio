@@ -211,6 +211,7 @@ def test_realized_gains_should_prorate_fee_when_sell_qty_exceeds_position():
     assert realized == pytest.approx(9_800.0)
 
 
+@pytest.mark.slow
 @patch("application.portfolio.routing_service.get_technical_signals")
 def test_detax_should_skip_mutual_fund_holdings(
     mock_get_technical_signals,

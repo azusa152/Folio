@@ -4,9 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { ActivityFeed } from "../ActivityFeed"
 import type { ActivityFeed as ActivityFeedType } from "@/api/types/smartMoney"
 
-function makeActivityFeed(
-  overrides: Partial<ActivityFeedType> = {},
-): ActivityFeedType {
+function makeActivityFeed(overrides: Partial<ActivityFeedType> = {}): ActivityFeedType {
   return {
     most_bought: [],
     most_sold: [],
@@ -76,9 +74,7 @@ describe("ActivityFeed", () => {
       ],
     })
     render(<ActivityFeed data={data} />)
-    expect(
-      screen.queryByText("smart_money.activity.empty_bought"),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText("smart_money.activity.empty_bought")).not.toBeInTheDocument()
   })
 
   it("renders guru_count label for each item", () => {
@@ -95,9 +91,7 @@ describe("ActivityFeed", () => {
     })
     render(<ActivityFeed data={data} />)
     // span contains "{guru_count} {guru_count_label}" as a single text node
-    expect(
-      screen.getByText(/4.*smart_money\.activity\.guru_count_label/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/4.*smart_money\.activity\.guru_count_label/)).toBeInTheDocument()
   })
 
   it("shows guru names when holders trigger is clicked", async () => {
@@ -115,7 +109,9 @@ describe("ActivityFeed", () => {
     })
     render(<ActivityFeed data={data} />)
 
-    await user.click(screen.getByRole("button", { name: /smart_money\.activity\.view_buyers_aria/ }))
+    await user.click(
+      screen.getByRole("button", { name: /smart_money\.activity\.view_buyers_aria/ }),
+    )
 
     expect(screen.getByText("Warren Buffett")).toBeInTheDocument()
     expect(screen.getByText("Ray Dalio")).toBeInTheDocument()
@@ -161,7 +157,9 @@ describe("ActivityFeed", () => {
     })
 
     render(<ActivityFeed data={data} />)
-    await user.click(screen.getByRole("button", { name: /smart_money\.activity\.view_buyers_aria/ }))
+    await user.click(
+      screen.getByRole("button", { name: /smart_money\.activity\.view_buyers_aria/ }),
+    )
 
     expect(screen.getByText("Guru 1")).toBeInTheDocument()
     expect(screen.getByText("Guru 20")).toBeInTheDocument()

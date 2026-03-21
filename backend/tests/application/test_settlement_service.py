@@ -918,6 +918,7 @@ def test_verify_positions_should_detect_discrepancy(db_session: Session):
     assert discrepancies[0]["is_cash"] is True
 
 
+@pytest.mark.slow
 def test_nisa_buy_should_reject_when_quota_exceeded(db_session: Session):
     account = _create_nisa_account(db_session, "nisa_tsumitate")
     _create_cash_holding(db_session, account.id, 2_000_000.0)

@@ -3,6 +3,7 @@
 import csv
 import io
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -308,6 +309,7 @@ def test_create_transaction_should_auto_add_new_stock_with_custom_thesis(
     assert qqq["current_thesis"] == "Core ETF thesis"
 
 
+@pytest.mark.slow
 def test_create_transaction_should_auto_classify_mutual_fund_ticker(
     client: TestClient, db_session
 ):

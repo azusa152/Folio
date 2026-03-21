@@ -159,9 +159,9 @@ backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend
 		uv run pytest -v \
 		--cov --cov-report=term-missing --cov-fail-under=85
 
-backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
+backend-test-quick: .venv-check ## Fast test run — no coverage, skips @pytest.mark.slow tests
 	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		uv run pytest -q
+		uv run pytest -q -m "not slow"
 
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
@@ -172,10 +172,16 @@ backend-typecheck: .venv-check ## pyright static type check (hard gate — mirro
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: frontend-lint frontend-typecheck frontend-dev frontend-build frontend-security
+.PHONY: frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-dev frontend-build frontend-security
 
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-format: .node-check ## Prettier format — rewrite files in place (frontend only)
+	cd $(FRONTEND_DIR) && npm run format
+
+frontend-format-check: .node-check ## Prettier format check — CI gate (frontend only)
+	cd $(FRONTEND_DIR) && npm run format:check
 
 frontend-typecheck: .node-check ## TypeScript type check (frontend only)
 	cd $(FRONTEND_DIR) && npm run typecheck
@@ -210,11 +216,11 @@ frontend-test: .node-check ## Run frontend tests with coverage (Vitest)
 
 test: backend-test frontend-test ## Test entire project (backend + frontend)
 
-format: backend-format ## Format entire project (backend code)
+format: backend-format frontend-format ## Format entire project (backend + frontend)
 
 # Phase group targets for parallel CI execution.
 # Parsed by scripts/check_ci_completeness.py to verify all CI jobs are covered.
-_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-agent-docs check-api-spec
+_ci-fast: backend-lint frontend-lint frontend-format-check check-constants check-i18n check-agent-doc-tokens check-agent-docs check-api-spec
 _ci-heavy: backend-test frontend-test frontend-build backend-typecheck
 _ci-network: frontend-security backend-security
 

@@ -91,13 +91,7 @@ describe("HoldingsTable", () => {
   it("renders translated category key for holdings rows", () => {
     termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
-      <HoldingsTable
-        holdings={[
-          buildHolding({}),
-        ]}
-        privacyMode={false}
-        displayCurrency="USD"
-      />,
+      <HoldingsTable holdings={[buildHolding({})]} privacyMode={false} displayCurrency="USD" />,
     )
 
     expect(screen.getByText("allocation.col.account")).toBeInTheDocument()

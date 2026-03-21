@@ -5,7 +5,12 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn, getErrorMessage } from "@/lib/utils"
-import { useTelegramSettings, useSaveTelegram, useTestTelegram, useTriggerDigest } from "@/api/hooks/useAllocation"
+import {
+  useTelegramSettings,
+  useSaveTelegram,
+  useTestTelegram,
+  useTriggerDigest,
+} from "@/api/hooks/useAllocation"
 
 interface Props {
   privacyMode: boolean
@@ -55,8 +60,8 @@ export function TelegramSettings({ privacyMode }: Props) {
         toast.success(t("common.success"))
       },
       onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
     })
   }
 
@@ -66,8 +71,8 @@ export function TelegramSettings({ privacyMode }: Props) {
         toast.success(t("common.success"))
       },
       onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+        toast.error(getErrorMessage(err) || t("common.error"))
+      },
     })
   }
 
@@ -81,19 +86,23 @@ export function TelegramSettings({ privacyMode }: Props) {
           <div>
             <p className="text-muted-foreground">{t("allocation.telegram.mode")}</p>
             <p className="font-semibold">
-              {data.use_custom_bot ? t("allocation.telegram.mode_custom") : t("allocation.telegram.mode_default")}
+              {data.use_custom_bot
+                ? t("allocation.telegram.mode_custom")
+                : t("allocation.telegram.mode_default")}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">{t("allocation.telegram.chat_id")}</p>
             <p className="font-semibold">
-              {privacyMode ? "***" : (data.telegram_chat_id || t("allocation.telegram.not_set"))}
+              {privacyMode ? "***" : data.telegram_chat_id || t("allocation.telegram.not_set")}
             </p>
           </div>
           {data.use_custom_bot && (
             <div>
               <p className="text-muted-foreground">{t("allocation.telegram.custom_token")}</p>
-              <p className="font-semibold">{data.custom_bot_token_masked || t("allocation.telegram.not_set")}</p>
+              <p className="font-semibold">
+                {data.custom_bot_token_masked || t("allocation.telegram.not_set")}
+              </p>
             </div>
           )}
         </div>
@@ -101,18 +110,22 @@ export function TelegramSettings({ privacyMode }: Props) {
 
       {/* Edit collapsible */}
       <button
-        onClick={() => editOpen ? setEditOpen(false) : handleEditOpen()}
+        onClick={() => (editOpen ? setEditOpen(false) : handleEditOpen())}
         aria-expanded={editOpen}
         className="text-xs text-primary hover:underline flex items-center gap-1"
       >
         {t("allocation.telegram.edit_title")}
-        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", editOpen && "rotate-180")} />
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 transition-transform duration-200", editOpen && "rotate-180")}
+        />
       </button>
 
       {editOpen && (
         <div className="space-y-3 max-w-sm pl-2 border-l border-border">
           <div className="space-y-1">
-            <label htmlFor="tg-chat-id" className="text-xs font-medium">{t("allocation.telegram.chat_id_input")}</label>
+            <label htmlFor="tg-chat-id" className="text-xs font-medium">
+              {t("allocation.telegram.chat_id_input")}
+            </label>
             <Input
               id="tg-chat-id"
               value={chatId}
@@ -122,7 +135,9 @@ export function TelegramSettings({ privacyMode }: Props) {
             />
           </div>
           <div className="space-y-1">
-            <label htmlFor="tg-token" className="text-xs font-medium">{t("allocation.telegram.token_input")}</label>
+            <label htmlFor="tg-token" className="text-xs font-medium">
+              {t("allocation.telegram.token_input")}
+            </label>
             <Input
               id="tg-token"
               value={token}
@@ -150,14 +165,25 @@ export function TelegramSettings({ privacyMode }: Props) {
 
       {/* Action buttons */}
       <div className="flex gap-2 flex-wrap">
-        <Button size="sm" variant="outline" className="text-xs" onClick={handleTest} disabled={testMutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs"
+          onClick={handleTest}
+          disabled={testMutation.isPending}
+        >
           {t("allocation.telegram.test_button")}
         </Button>
-        <Button size="sm" variant="outline" className="text-xs" onClick={handleDigest} disabled={digestMutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs"
+          onClick={handleDigest}
+          disabled={digestMutation.isPending}
+        >
           {t("allocation.telegram.digest_button")}
         </Button>
       </div>
-
     </div>
   )
 }

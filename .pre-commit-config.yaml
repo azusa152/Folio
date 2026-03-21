@@ -65,6 +65,14 @@ repos:
         files: ^backend/
         stages: [pre-push]
 
+      - id: prettier
+        name: prettier format check (frontend)
+        entry: bash -c 'cd frontend-react && npm run format:check'
+        language: system
+        pass_filenames: false
+        files: ^frontend-react/src/.*\.(ts|tsx)$
+        stages: [pre-commit]
+
       - id: eslint
         name: eslint (frontend)
         entry: bash -c 'cd frontend-react && npx eslint .'

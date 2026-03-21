@@ -32,10 +32,7 @@ const timeoutMiddleware: Middleware = {
 client.use(authMiddleware)
 client.use(timeoutMiddleware)
 
-export async function apiFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const controller = new AbortController()
   const timerId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const upstreamSignal = init?.signal

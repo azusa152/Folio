@@ -4,14 +4,14 @@ import { ArrowUpDown, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { formatQuantity, formatSignedMoneyWithPrivacy, formatSignedPct, getQuantityUnitKey } from "@/lib/format"
-import { maskMoney } from "@/hooks/usePrivacyMode"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  formatQuantity,
+  formatSignedMoneyWithPrivacy,
+  formatSignedPct,
+  getQuantityUnitKey,
+} from "@/lib/format"
+import { maskMoney } from "@/hooks/usePrivacyMode"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Props {
   holdings: HoldingDetail[]
@@ -63,8 +63,11 @@ function getValueClass(v: number | null | undefined): string {
   return FINANCE_TEXT.neutral
 }
 
-
-function compareNullableNumber(a: number | null | undefined, b: number | null | undefined, direction: SortDirection): number {
+function compareNullableNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: SortDirection,
+): number {
   const aNull = a == null
   const bNull = b == null
   if (aNull && bNull) return 0
@@ -75,7 +78,10 @@ function compareNullableNumber(a: number | null | undefined, b: number | null | 
 }
 
 /** Compute FX return % given purchase and current FX rate */
-function computeFxReturn(purchaseFx: number | null | undefined, currentFx: number | null | undefined): number | null {
+function computeFxReturn(
+  purchaseFx: number | null | undefined,
+  currentFx: number | null | undefined,
+): number | null {
   if (purchaseFx == null || currentFx == null || purchaseFx === 0) return null
   return (currentFx / purchaseFx - 1) * 100
 }
@@ -99,13 +105,16 @@ export function HoldingsTable({
 
   const groupedHoldings = useMemo<GroupedHolding[]>(() => {
     const rows: GroupedHolding[] = []
-    const nonCashMap = new Map<string, {
-      row: GroupedHolding
-      allHaveCost: boolean
-      hasAnyChangeData: boolean
-      previousMarketValue: number
-      purchaseFxRates: Set<number>
-    }>()
+    const nonCashMap = new Map<
+      string,
+      {
+        row: GroupedHolding
+        allHaveCost: boolean
+        hasAnyChangeData: boolean
+        previousMarketValue: number
+        purchaseFxRates: Set<number>
+      }
+    >()
 
     for (const h of holdings) {
       const accountLabel = h.account_name ?? "—"
@@ -157,19 +166,27 @@ export function HoldingsTable({
       }
       existing.allHaveCost = existing.allHaveCost && h.cost_total != null
 
-      existing.hasAnyChangeData = existing.hasAnyChangeData || h.change_value != null || h.change_pct != null
+      existing.hasAnyChangeData =
+        existing.hasAnyChangeData || h.change_value != null || h.change_pct != null
       existing.previousMarketValue += (h.market_value ?? 0) - (h.change_value ?? 0)
 
       if (h.purchase_fx_rate != null) existing.purchaseFxRates.add(h.purchase_fx_rate)
     }
 
-    for (const { row, allHaveCost, hasAnyChangeData, previousMarketValue, purchaseFxRates } of nonCashMap.values()) {
+    for (const {
+      row,
+      allHaveCost,
+      hasAnyChangeData,
+      previousMarketValue,
+      purchaseFxRates,
+    } of nonCashMap.values()) {
       const currentMarketValue = row.market_value ?? 0
       const recomputedChangeValue = roundTo2(currentMarketValue - previousMarketValue)
       row.change_value = hasAnyChangeData ? recomputedChangeValue : null
-      row.change_pct = hasAnyChangeData && previousMarketValue > 0
-        ? roundTo2((recomputedChangeValue / previousMarketValue) * 100)
-        : null
+      row.change_pct =
+        hasAnyChangeData && previousMarketValue > 0
+          ? roundTo2((recomputedChangeValue / previousMarketValue) * 100)
+          : null
 
       if (allHaveCost && row.cost_total != null) {
         const gain = roundTo2(currentMarketValue - row.cost_total)
@@ -197,7 +214,9 @@ export function HoldingsTable({
     rows.sort((a, b) => {
       switch (sort.key) {
         case "ticker":
-          return sort.dir === "asc" ? a.ticker.localeCompare(b.ticker) : b.ticker.localeCompare(a.ticker)
+          return sort.dir === "asc"
+            ? a.ticker.localeCompare(b.ticker)
+            : b.ticker.localeCompare(a.ticker)
         case "account_name":
           return sort.dir === "asc"
             ? (a.account_name ?? "").localeCompare(b.account_name ?? "")
@@ -249,12 +268,12 @@ export function HoldingsTable({
       }
     }
 
-    const todayChangePct = todayPreviousKnown > 0
-      ? roundTo2((todayCurrentKnown - todayPreviousKnown) / todayPreviousKnown * 100)
-      : null
-    const totalGainPct = allHaveCost && costTotal > 0
-      ? roundTo2((totalGainValue / costTotal) * 100)
-      : null
+    const todayChangePct =
+      todayPreviousKnown > 0
+        ? roundTo2(((todayCurrentKnown - todayPreviousKnown) / todayPreviousKnown) * 100)
+        : null
+    const totalGainPct =
+      allHaveCost && costTotal > 0 ? roundTo2((totalGainValue / costTotal) * 100) : null
 
     return {
       marketValue: roundTo2(marketValue),
@@ -268,18 +287,20 @@ export function HoldingsTable({
   }, [groupedHoldings])
 
   const toggleSort = (key: SortKey): void => {
-    setSort((current) => (
+    setSort((current) =>
       current.key === key
         ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: key === "weight_pct" ? "desc" : "asc" }
-    ))
+        : { key, dir: key === "weight_pct" ? "desc" : "asc" },
+    )
   }
 
   const renderSortIcon = (key: SortKey) => {
     if (sort.key !== key) return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-    return sort.dir === "asc"
-      ? <ChevronUp className="h-3 w-3" />
-      : <ChevronDown className="h-3 w-3" />
+    return sort.dir === "asc" ? (
+      <ChevronUp className="h-3 w-3" />
+    ) : (
+      <ChevronDown className="h-3 w-3" />
+    )
   }
 
   const getAriaSort = (key: SortKey): "ascending" | "descending" | "none" => {
@@ -302,13 +323,21 @@ export function HoldingsTable({
           <thead>
             <tr className="text-muted-foreground border-b border-border">
               <th className="text-left py-0.5 pr-2" aria-sort={getAriaSort("ticker")}>
-                <button type="button" className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort("ticker")}>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                  onClick={() => toggleSort("ticker")}
+                >
                   <span>{t("allocation.col.ticker")}</span>
                   {renderSortIcon("ticker")}
                 </button>
               </th>
               <th className="text-left py-0.5 pr-2" aria-sort={getAriaSort("account_name")}>
-                <button type="button" className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort("account_name")}>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                  onClick={() => toggleSort("account_name")}
+                >
                   <span>{t("allocation.col.account")}</span>
                   {renderSortIcon("account_name")}
                 </button>
@@ -316,26 +345,42 @@ export function HoldingsTable({
               <th className="text-left py-0.5 pr-2">{t("allocation.col.category")}</th>
               <th className="text-right py-0.5 pr-2">{t("allocation.col.qty")}</th>
               <th className="text-right py-0.5 pr-2" aria-sort={getAriaSort("market_value")}>
-                <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("market_value")}>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-end gap-1 hover:text-foreground"
+                  onClick={() => toggleSort("market_value")}
+                >
                   <span>{t("allocation.col.value")}</span>
                   {renderSortIcon("market_value")}
                 </button>
               </th>
               <th className="text-right py-0.5 pr-2" aria-sort={getAriaSort("weight_pct")}>
-                <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("weight_pct")}>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-end gap-1 hover:text-foreground"
+                  onClick={() => toggleSort("weight_pct")}
+                >
                   <span>{t("allocation.col.weight_pct")}</span>
                   {renderSortIcon("weight_pct")}
                 </button>
               </th>
               <th className="text-right py-0.5 pr-2" aria-sort={getAriaSort("cost_total")}>
-                <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("cost_total")}>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-end gap-1 hover:text-foreground"
+                  onClick={() => toggleSort("cost_total")}
+                >
                   <span>{term("cost_basis", t("allocation.col.cost_basis"))}</span>
                   {renderSortIcon("cost_total")}
                 </button>
               </th>
               <th className="text-right py-0.5 pr-2" aria-sort={getAriaSort("change_value")}>
                 <div className="inline-flex items-center justify-end gap-1">
-                  <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("change_value")}>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-end gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("change_value")}
+                  >
                     <span>{t("allocation.col.today")}</span>
                     {renderSortIcon("change_value")}
                   </button>
@@ -356,7 +401,11 @@ export function HoldingsTable({
               </th>
               <th className="text-right py-0.5" aria-sort={getAriaSort("total_gain_value")}>
                 <div className="inline-flex items-center justify-end gap-1">
-                  <button type="button" className="inline-flex items-center justify-end gap-1 hover:text-foreground" onClick={() => toggleSort("total_gain_value")}>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-end gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("total_gain_value")}
+                  >
                     <span>{term("unrealized_pl", t("allocation.col.total_return"))}</span>
                     {renderSortIcon("total_gain_value")}
                   </button>
@@ -398,9 +447,7 @@ export function HoldingsTable({
 
               // Home return = local price return + FX impact (approximate additive)
               const homeReturn =
-                showFxBreakdown && h.change_pct != null
-                  ? h.change_pct + fxReturn
-                  : null
+                showFxBreakdown && h.change_pct != null ? h.change_pct + fxReturn : null
               const quantityUnit = getQuantityUnitKey(h.category, h.ticker)
               const quantityText = t(quantityUnit.key, {
                 quantity: formatQuantity(h.quantity, { category: h.category, ticker: h.ticker }),
@@ -417,31 +464,37 @@ export function HoldingsTable({
                         {accountDisplay.shortLabel}
                       </span>
                     ) : (
-                      h.account_name ?? "—"
+                      (h.account_name ?? "—")
                     )}
                   </td>
                   <td className="py-0.5 pr-2 text-muted-foreground">
                     {t(`config.category.${h.category.toLowerCase()}`)}
                   </td>
+                  <td className="py-0.5 pr-2 text-right">{privacyMode ? "***" : quantityText}</td>
                   <td className="py-0.5 pr-2 text-right">
-                    {privacyMode
-                      ? "***"
-                      : quantityText}
-                  </td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {h.market_value == null ? "—" : maskMoney(h.market_value, displayCurrency ?? h.currency)}
+                    {h.market_value == null
+                      ? "—"
+                      : maskMoney(h.market_value, displayCurrency ?? h.currency)}
                   </td>
                   <td className="py-0.5 pr-2 text-right">
                     {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-0.5 pr-2 text-right">
-                    {h.cost_total == null ? "—" : maskMoney(h.cost_total, displayCurrency ?? h.currency)}
+                    {h.cost_total == null
+                      ? "—"
+                      : maskMoney(h.cost_total, displayCurrency ?? h.currency)}
                   </td>
                   <td className="py-0.5 pr-2 text-right">
                     {!isCash && (h.change_value != null || h.change_pct != null) ? (
                       <>
-                        <div className={`font-medium ${getValueClass(h.change_value ?? h.change_pct)}`}>
-                          {formatSignedMoneyWithPrivacy(h.change_value, displayCurrency ?? h.currency, privacyMode)}
+                        <div
+                          className={`font-medium ${getValueClass(h.change_value ?? h.change_pct)}`}
+                        >
+                          {formatSignedMoneyWithPrivacy(
+                            h.change_value,
+                            displayCurrency ?? h.currency,
+                            privacyMode,
+                          )}
                         </div>
                         <div className={getValueClass(h.change_pct)}>
                           {h.change_pct != null
@@ -486,7 +539,11 @@ export function HoldingsTable({
                     {h.total_gain_value != null || h.total_gain_pct != null ? (
                       <>
                         <div className={`font-medium ${getValueClass(h.total_gain_value)}`}>
-                          {formatSignedMoneyWithPrivacy(h.total_gain_value, displayCurrency ?? h.currency, privacyMode)}
+                          {formatSignedMoneyWithPrivacy(
+                            h.total_gain_value,
+                            displayCurrency ?? h.currency,
+                            privacyMode,
+                          )}
                         </div>
                         <div className={getValueClass(h.total_gain_pct)}>
                           {h.total_gain_pct != null ? fmtPct(h.total_gain_pct) : "—"}
@@ -511,11 +568,19 @@ export function HoldingsTable({
               </td>
               <td className="py-1 pr-2 text-right">{`${totals.weight.toFixed(1)}%`}</td>
               <td className="py-1 pr-2 text-right">
-                {totals.costTotal != null ? maskMoney(totals.costTotal, displayCurrency ?? groupedHoldings[0].currency) : "—"}
+                {totals.costTotal != null
+                  ? maskMoney(totals.costTotal, displayCurrency ?? groupedHoldings[0].currency)
+                  : "—"}
               </td>
               <td className="py-1 pr-2 text-right">
-                <div className={`font-medium ${getValueClass(portfolioTodayChangeValue ?? totals.todayChange)}`}>
-                  {formatSignedMoneyWithPrivacy(portfolioTodayChangeValue ?? totals.todayChange, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
+                <div
+                  className={`font-medium ${getValueClass(portfolioTodayChangeValue ?? totals.todayChange)}`}
+                >
+                  {formatSignedMoneyWithPrivacy(
+                    portfolioTodayChangeValue ?? totals.todayChange,
+                    displayCurrency ?? groupedHoldings[0].currency,
+                    privacyMode,
+                  )}
                 </div>
                 <div className={getValueClass(portfolioTodayChangePct ?? totals.todayChangePct)}>
                   {portfolioTodayChangePct != null || totals.todayChangePct != null
@@ -525,7 +590,11 @@ export function HoldingsTable({
               </td>
               <td className="py-1 text-right">
                 <div className={`font-medium ${getValueClass(totals.totalGainValue)}`}>
-                  {formatSignedMoneyWithPrivacy(totals.totalGainValue, displayCurrency ?? groupedHoldings[0].currency, privacyMode)}
+                  {formatSignedMoneyWithPrivacy(
+                    totals.totalGainValue,
+                    displayCurrency ?? groupedHoldings[0].currency,
+                    privacyMode,
+                  )}
                 </div>
                 <div className={getValueClass(totals.totalGainPct)}>
                   {totals.totalGainPct != null

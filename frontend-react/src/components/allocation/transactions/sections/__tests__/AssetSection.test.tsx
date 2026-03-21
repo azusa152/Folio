@@ -83,7 +83,9 @@ const defaultProps = {
 }
 
 describe("AssetSection", () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   describe("TransactionTypePicker", () => {
     it("renders all 5 transaction type buttons", () => {
@@ -118,10 +120,7 @@ describe("AssetSection", () => {
     it("calls applyCashMovementDefaults when WITHDRAWAL is selected", () => {
       const applyCashMovementDefaults = vi.fn()
       render(
-        <AssetSection
-          {...defaultProps}
-          applyCashMovementDefaults={applyCashMovementDefaults}
-        />,
+        <AssetSection {...defaultProps} applyCashMovementDefaults={applyCashMovementDefaults} />,
       )
       fireEvent.click(screen.getByText("transactions.type.withdrawal"))
       expect(applyCashMovementDefaults).toHaveBeenCalledWith("USD")
@@ -158,22 +157,24 @@ describe("AssetSection", () => {
 
     it("hides ticker input for cash movements", () => {
       render(<AssetSection {...defaultProps} transactionType="DEPOSIT" isCashMovement={true} />)
-      expect(screen.queryByRole("textbox", { name: "transactions.form.ticker" })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole("textbox", { name: "transactions.form.ticker" }),
+      ).not.toBeInTheDocument()
     })
 
     it("shows NISA picker when shouldShowNisaPicker is true", () => {
-      render(<AssetSection {...defaultProps} shouldShowNisaPicker={true} selectedWrapper="nisa_growth" />)
+      render(
+        <AssetSection
+          {...defaultProps}
+          shouldShowNisaPicker={true}
+          selectedWrapper="nisa_growth"
+        />,
+      )
       expect(screen.getByTestId("nisa-picker")).toBeInTheDocument()
     })
 
     it("shows sell picker when shouldShowSellPicker is true", () => {
-      render(
-        <AssetSection
-          {...defaultProps}
-          transactionType="SELL"
-          shouldShowSellPicker={true}
-        />,
-      )
+      render(<AssetSection {...defaultProps} transactionType="SELL" shouldShowSellPicker={true} />)
       expect(screen.getByTestId("sell-picker")).toBeInTheDocument()
     })
   })
@@ -201,7 +202,9 @@ describe("AssetSection", () => {
 
     it("hides thesis when isCashMovement is true", () => {
       render(<AssetSection {...defaultProps} isNewToRadar={true} isCashMovement={true} />)
-      expect(screen.queryByRole("textbox", { name: "transactions.form.thesis" })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole("textbox", { name: "transactions.form.thesis" }),
+      ).not.toBeInTheDocument()
     })
 
     it("updates thesis value", () => {

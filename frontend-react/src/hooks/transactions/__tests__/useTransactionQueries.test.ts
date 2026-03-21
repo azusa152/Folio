@@ -29,7 +29,10 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 }))
 
 vi.mock("@/api/hooks/useWrappers", () => ({
-  useWrapperEligibility: () => ({ data: eligibilityState.data, isLoading: eligibilityState.isLoading }),
+  useWrapperEligibility: () => ({
+    data: eligibilityState.data,
+    isLoading: eligibilityState.isLoading,
+  }),
   useSuggestRouting: () => ({ data: routingState.data, isLoading: routingState.isLoading }),
   useEligibleAssets: () => ({ data: { items: [] }, isLoading: false, isFetched: false }),
   useWrapperQuota: () => ({ data: undefined, isLoading: false }),
@@ -63,7 +66,11 @@ function makeAccount(overrides: {
 
 const TOKUTEI_ACCOUNT = makeAccount({ id: 1, name: "Tokutei", tax_wrapper: "tokutei" })
 const NISA_GROWTH_ACCOUNT = makeAccount({ id: 2, name: "NISA Growth", tax_wrapper: "nisa_growth" })
-const NISA_TSUMITATE_ACCOUNT = makeAccount({ id: 3, name: "NISA Tsumitate", tax_wrapper: "nisa_tsumitate" })
+const NISA_TSUMITATE_ACCOUNT = makeAccount({
+  id: 3,
+  name: "NISA Tsumitate",
+  tax_wrapper: "nisa_tsumitate",
+})
 
 function makeProps(
   overrides: Partial<{
@@ -216,9 +223,7 @@ describe("useTransactionQueries", () => {
 
     it("uppercases currency in the map", () => {
       const lower = makeAccount({ id: 5, name: "X", tax_wrapper: "tokutei", currency: "jpy" })
-      const { result } = renderHook(() =>
-        useTransactionQueries(makeProps({ accounts: [lower] })),
-      )
+      const { result } = renderHook(() => useTransactionQueries(makeProps({ accounts: [lower] })))
       expect(result.current.routingSuggestedAccounts.get("tokutei")?.currency).toBe("JPY")
     })
   })
@@ -232,14 +237,20 @@ describe("useTransactionQueries", () => {
         ],
       }
       const { result } = renderHook(() =>
-        useTransactionQueries(
-          makeProps({ accounts: [TOKUTEI_ACCOUNT, NISA_GROWTH_ACCOUNT] }),
-        ),
+        useTransactionQueries(makeProps({ accounts: [TOKUTEI_ACCOUNT, NISA_GROWTH_ACCOUNT] })),
       )
       const plan = result.current.splitRoutingPlan
       expect(plan).toHaveLength(2)
-      expect(plan[0]).toEqual({ wrapper: "tokutei", amount: 60000, account: { id: 1, currency: "JPY" } })
-      expect(plan[1]).toEqual({ wrapper: "nisa_growth", amount: 40000, account: { id: 2, currency: "JPY" } })
+      expect(plan[0]).toEqual({
+        wrapper: "tokutei",
+        amount: 60000,
+        account: { id: 1, currency: "JPY" },
+      })
+      expect(plan[1]).toEqual({
+        wrapper: "nisa_growth",
+        amount: 40000,
+        account: { id: 2, currency: "JPY" },
+      })
     })
 
     it("filters out 0-amount items", () => {
@@ -326,9 +337,7 @@ describe("useTransactionQueries", () => {
         ],
       }
       const { result } = renderHook(() =>
-        useTransactionQueries(
-          makeProps({ transactionType: "BUY", accounts: [TOKUTEI_ACCOUNT] }),
-        ),
+        useTransactionQueries(makeProps({ transactionType: "BUY", accounts: [TOKUTEI_ACCOUNT] })),
       )
       expect(result.current.canSplitPurchase).toBe(false)
     })

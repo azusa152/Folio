@@ -30,7 +30,11 @@ export function WatchCardInsights({ watch, targetDirectionLabel }: Props) {
           : t("fx_watch.settings.target_none")}
       </p>
       <p>{t("fx_watch.settings.high_alert", { icon: watch.alert_on_recent_high ? "✅" : "❌" })}</p>
-      <p>{t("fx_watch.settings.consec_alert", { icon: watch.alert_on_consecutive_increase ? "✅" : "❌" })}</p>
+      <p>
+        {t("fx_watch.settings.consec_alert", {
+          icon: watch.alert_on_consecutive_increase ? "✅" : "❌",
+        })}
+      </p>
       {watch.last_alerted_at ? (
         <p>
           {t("fx_watch.settings.last_alert_time", {

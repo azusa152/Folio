@@ -65,7 +65,8 @@ export function RoutingSuggestion({
 }: Props) {
   const { t } = useTranslation()
 
-  const showEligibility = transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper)
+  const showEligibility =
+    transactionType === "BUY" && ELIGIBILITY_CHECK_WRAPPERS.has(selectedWrapper)
   const suggestions = routingSuggestionQuery.data?.suggestions
 
   if (!showEligibility && !suggestions?.length) return null

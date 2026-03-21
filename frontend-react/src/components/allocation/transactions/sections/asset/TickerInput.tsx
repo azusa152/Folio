@@ -101,7 +101,9 @@ export function TickerInput({
                   : "border-border text-muted-foreground hover:bg-muted/40",
               )}
             >
-              {type === "all" ? t("nisa.eligible.filter_all") : t(`nisa.eligible.asset_type.${type}`)}
+              {type === "all"
+                ? t("nisa.eligible.filter_all")
+                : t(`nisa.eligible.asset_type.${type}`)}
             </button>
           ))}
         </div>
@@ -123,7 +125,9 @@ export function TickerInput({
             placeholder="e.g. 7203.T"
             className="text-xs"
           />
-          <p className="text-[11px] text-muted-foreground">{t("nisa.eligible.listed_input_hint")}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("nisa.eligible.listed_input_hint")}
+          </p>
           <p className="text-[11px] text-amber-600 dark:text-amber-400">
             {t("nisa.eligible.listed_eligibility_disclaimer")}
           </p>

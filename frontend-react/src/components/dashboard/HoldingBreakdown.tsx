@@ -62,17 +62,18 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
   const hasMore = allRows.length > TOP_LIMIT
   const otherWeight = allRows.slice(TOP_LIMIT).reduce((sum, h) => sum + h.weightPct, 0)
 
-  const collapsedRows: RowItem[] = otherWeight > 0
-    ? [
-        ...allRows.slice(0, TOP_LIMIT),
-        {
-          label: t("dashboard.holding_breakdown.other"),
-          category: "Other",
-          weightPct: otherWeight,
-          color: CATEGORY_COLOR_FALLBACK,
-        },
-      ]
-    : allRows.slice(0, TOP_LIMIT)
+  const collapsedRows: RowItem[] =
+    otherWeight > 0
+      ? [
+          ...allRows.slice(0, TOP_LIMIT),
+          {
+            label: t("dashboard.holding_breakdown.other"),
+            category: "Other",
+            weightPct: otherWeight,
+            color: CATEGORY_COLOR_FALLBACK,
+          },
+        ]
+      : allRows.slice(0, TOP_LIMIT)
 
   const displayRows = expanded ? allRows : collapsedRows
   const totalWeight = allRows.reduce((sum, row) => sum + row.weightPct, 0)
@@ -139,7 +140,9 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
             className="h-auto px-0 text-xs"
             onClick={() => setExpanded((prev) => !prev)}
           >
-            {expanded ? t("dashboard.holding_breakdown.show_less") : t("dashboard.holding_breakdown.show_all")}
+            {expanded
+              ? t("dashboard.holding_breakdown.show_less")
+              : t("dashboard.holding_breakdown.show_all")}
           </Button>
         )}
       </CardContent>

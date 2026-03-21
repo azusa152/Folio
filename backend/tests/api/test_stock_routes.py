@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from domain.entities import Stock
 from domain.enums import StockCategory
 
@@ -323,6 +325,7 @@ class TestGetSummary:
 class TestPriceHistoryRoute:
     """Tests for GET /ticker/{ticker}/price-history."""
 
+    @pytest.mark.slow
     def test_price_history_should_return_nav_data_for_mutual_fund(self, client):
         """Mutual_Fund stocks return NAV history from DB, not yfinance."""
         client.post(
