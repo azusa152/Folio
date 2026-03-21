@@ -6,15 +6,6 @@
 
 Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for watchlists, ledger-driven positions, FX monitoring, and guru 13F analysis.
 
-## Key Documentation
-
-| Document | Contents |
-|---|---|
-| [docs/API.md](docs/API.md) | Full API endpoint reference, curl examples, webhook actions, OpenClaw integration |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, CI, architecture, project structure, testing |
-| [docs/agents/folio/SKILL.md](docs/agents/folio/SKILL.md) | Compact webhook action reference for AI agents |
-| [docs/agents/folio/reference.md](docs/agents/folio/reference.md) | Detailed field specs, thresholds, and signal definitions |
-
 ## Run And Verify
 
 - Full validation: `make ci` (parallelized in 3 phases: fast checks, tests+build, security)
