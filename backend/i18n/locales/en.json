@@ -211,7 +211,8 @@
     "advice_zero": "⚠️ Total portfolio value is zero. Unable to calculate allocation.",
     "advice_over": "{icon} {category} is overweight by {drift}%. Consider trimming.",
     "advice_under": "{icon} {category} is underweight by {drift}%. Consider adding.",
-    "advice_ok": "✅ All categories are within target range. No rebalancing needed."
+    "advice_ok": "✅ All categories are within target range. No rebalancing needed.",
+    "snapshot_fallback_notice": "⏳ Showing last saved portfolio value. Live data is loading in the background."
   },
   "fx_watch": {
     "alert_header": "💱 <b>FX Exchange Timing Alert</b>\n\n",

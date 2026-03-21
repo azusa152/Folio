@@ -65,6 +65,7 @@ const mockRebalance: RebalanceResponse = {
   health_level: "healthy",
   sector_exposure: [],
   calculated_at: "2026-03-07T00:00:00Z",
+  source: "live",
 }
 
 const mockFearGreed: FearGreedResponse = {

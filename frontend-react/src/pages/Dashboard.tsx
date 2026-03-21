@@ -129,7 +129,11 @@ export default function Dashboard() {
 
   const heroLoading = stocksLoading
   const heroError = stocksError
+  // heroRefreshing: background refetch after initial load (rebalance or F&G), used for card-level spinner
   const heroRefreshing = (rebalanceFetching && !rebalanceLoading) || fearGreedFetching
+  // isValueRefreshing: true only when rebalance itself is re-fetching — drives the
+  // "Updating..." badge next to Total Market Value (not F&G refetch which is unrelated).
+  const isValueRefreshing = rebalanceFetching && !rebalanceLoading
   const partialDataWarning = rebalanceError || (showAdvanced && fearGreedError)
 
   if (!heroLoading && heroError) {
@@ -306,6 +310,8 @@ export default function Dashboard() {
         holdings={holdings ?? []}
         isLoading={heroLoading}
         isRefreshing={heroRefreshing}
+        isRebalanceLoading={rebalanceLoading}
+        isValueRefreshing={isValueRefreshing}
       />
 
       <LazySection

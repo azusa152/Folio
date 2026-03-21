@@ -211,7 +211,8 @@
     "advice_zero": "⚠️ 持倉總市值為零，無法計算配置。",
     "advice_over": "{icon} {category} 超配 {drift}%，考慮減碼。",
     "advice_under": "{icon} {category} 低配 {drift}%，考慮加碼。",
-    "advice_ok": "✅ 各分類配置均在目標範圍內，無需調整。"
+    "advice_ok": "✅ 各分類配置均在目標範圍內，無需調整。",
+    "snapshot_fallback_notice": "⏳ 顯示上次儲存的投資組合數值，即時資料正在背景載入中。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外匯換匯時機警報</b>\n\n",

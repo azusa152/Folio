@@ -13123,6 +13123,28 @@
             "type": "string",
             "title": "Calculated At",
             "default": ""
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "live",
+              "snapshot"
+            ],
+            "title": "Source",
+            "description": "Data source: 'live' (full real-time computation) or 'snapshot' (last daily snapshot, returned during cold start)",
+            "default": "live"
+          },
+          "snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot At",
+            "description": "ISO date of the portfolio snapshot when source='snapshot'"
           }
         },
         "type": "object",

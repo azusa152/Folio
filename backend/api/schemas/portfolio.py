@@ -193,6 +193,14 @@ class RebalanceResponse(BaseModel):
         default_factory=dict, description="Market value by asset class"
     )
     calculated_at: str = ""
+    source: Literal["live", "snapshot"] = Field(
+        default="live",
+        description="Data source: 'live' (full real-time computation) or 'snapshot' (last daily snapshot, returned during cold start)",
+    )
+    snapshot_at: str | None = Field(
+        default=None,
+        description="ISO date of the portfolio snapshot when source='snapshot'",
+    )
 
 
 class XRayAlertResponse(BaseModel):

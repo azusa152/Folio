@@ -4,12 +4,13 @@ Application — Rebalance Service：再平衡分析、匯率曝險、X-Ray、FX 
 
 import json as _json
 import threading
+import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal, Protocol
 
-from sqlmodel import Session, select
+from sqlmodel import Session, desc, select
 
 from application.portfolio.alert_ack_service import (
     ACK_TYPE_XRAY,
@@ -41,7 +42,7 @@ from domain.constants import (
     XRAY_SINGLE_STOCK_WARN_PCT,
     XRAY_SKIP_CATEGORIES,
 )
-from domain.entities import Holding, Stock, UserInvestmentProfile
+from domain.entities import Holding, PortfolioSnapshot, Stock, UserInvestmentProfile
 from domain.enums import FX_ALERT_LABEL, StockCategory
 from domain.fx_analysis import (
     FXRateAlert,
@@ -113,11 +114,79 @@ _rebalance_cache_lock = threading.Lock()
 _rebalance_inflight_lock = threading.Lock()
 _rebalance_inflight_events: dict[tuple, threading.Event] = {}
 
+# 等待 in-flight 計算的最長時間；逾時後立即回傳快照降級結果。
+_INFLIGHT_WAIT_TIMEOUT: float = 15.0
+
+# 背景計算失敗保護：避免重複失敗時不斷生成新執行緒。
+# 記錄最後一次背景計算失敗的時間戳（monotonic）。
+_bg_last_failure_at: float = 0.0
+_bg_last_failure_lock = threading.Lock()
+_BG_RETRY_COOLDOWN: float = 30.0
+
+
+def _record_bg_failure() -> None:
+    """背景計算失敗時記錄時間戳，供冷卻期保護使用。"""
+    global _bg_last_failure_at
+    with _bg_last_failure_lock:
+        _bg_last_failure_at = _time.monotonic()
+
 
 def invalidate_rebalance_cache() -> None:
     """主動清除再平衡快取（持倉變動後呼叫）。"""
     with _rebalance_cache_lock:
         _rebalance_cache.clear()
+
+
+def _try_get_snapshot_fallback(
+    session: Session,
+    display_currency: str,
+    lang: str,
+) -> dict | None:
+    """嘗試以最新日快照作為即時降級回傳值。
+
+    快取冷啟動時使用：讓前端立即看到上次已知的總市值，
+    同時背景執行緒繼續計算完整再平衡資料。
+
+    回傳符合 RebalanceResponse 格式的 dict（source='snapshot'），
+    若資料庫中尚無快照則回傳 None。
+    """
+    try:
+        snapshot = session.exec(
+            select(PortfolioSnapshot)
+            .where(PortfolioSnapshot.display_currency == display_currency)
+            .order_by(desc(PortfolioSnapshot.snapshot_date))
+        ).first()
+        if snapshot is None:
+            return None
+
+        raw_categories: dict = _json.loads(snapshot.category_values or "{}")
+        total = snapshot.total_value or 0.0
+        categories: dict[str, dict] = {}
+        for cat, mv in raw_categories.items():
+            pct = (float(mv) / total * 100.0) if total > 0 else 0.0
+            categories[cat] = {
+                "target_pct": 0.0,
+                "current_pct": round(pct, 2),
+                "drift_pct": 0.0,
+                "market_value": float(mv),
+            }
+
+        return {
+            "total_value": total,
+            "previous_total_value": None,
+            "total_value_change": None,
+            "total_value_change_pct": None,
+            "display_currency": snapshot.display_currency,
+            "categories": categories,
+            "advice": [t("rebalance.snapshot_fallback_notice", lang=lang)],
+            "holdings_detail": [],
+            "source": "snapshot",
+            "snapshot_at": snapshot.snapshot_date.isoformat(),
+            "calculated_at": snapshot.created_at.isoformat(),
+        }
+    except Exception as exc:
+        logger.debug("快照降級查詢失敗（非致命）：%s", exc)
+        return None
 
 
 # ===========================================================================
@@ -363,6 +432,7 @@ def calculate_rebalance(
     # In-flight 去重：同一 cache_key 同時只有一個計算在飛行中。
     # 後續請求等待主計算完成；若主計算失敗，由一位等待者晉升為新的主計算，
     # 其餘等待者繼續等候，避免所有等待者同時湧入造成雷鳴群效應。
+    # 等待最多 _INFLIGHT_WAIT_TIMEOUT 秒；逾時後立即回傳快照降級結果（若有）。
     while True:
         with _rebalance_inflight_lock:
             if _cache_key in _rebalance_inflight_events:
@@ -375,12 +445,66 @@ def calculate_rebalance(
 
         if not is_owner:
             logger.debug("再平衡計算去重等待：%s (%s)", display_currency, lang)
-            event.wait()
+            acquired = event.wait(timeout=_INFLIGHT_WAIT_TIMEOUT)
             with _rebalance_cache_lock:
                 cached, state = _rebalance_cache.get(_cache_key)
                 if cached is not None and state != "expired":
                     return {**cached, "calculated_at": datetime.now(UTC).isoformat()}
+            if not acquired:
+                # 等待逾時：優先回傳快照降級結果，讓使用者立即看到上次已知數值
+                fallback = _try_get_snapshot_fallback(session, display_currency, lang)
+                if fallback is not None:
+                    logger.info(
+                        "再平衡計算等待逾時，回傳快照降級結果（%s）", display_currency
+                    )
+                    return fallback
             continue
+
+        # Owner: 若非 force_refresh 且有快照可用，立即回傳快照並在背景計算完整資料
+        if not force_refresh:
+            fallback = _try_get_snapshot_fallback(session, display_currency, lang)
+            if fallback is not None:
+                logger.info(
+                    "再平衡快取冷啟動：回傳快照降級結果，背景計算完整資料（%s）",
+                    display_currency,
+                )
+
+                with _bg_last_failure_lock:
+                    since_last_failure = _time.monotonic() - _bg_last_failure_at
+                    within_cooldown = since_last_failure < _BG_RETRY_COOLDOWN
+
+                if within_cooldown:
+                    logger.info(
+                        "背景計算冷卻中（%.0f s 前失敗），跳過新執行緒（%s）",
+                        since_last_failure,
+                        display_currency,
+                    )
+                    # Clear the inflight entry so the next request can try again
+                    # after the cooldown expires instead of waiting indefinitely.
+                    event.set()
+                    with _rebalance_inflight_lock:
+                        _rebalance_inflight_events.pop(_cache_key, None)
+                    return fallback
+
+                def _bg_compute(
+                    _ck: tuple = _cache_key,
+                    _ev: threading.Event = event,
+                    _dc: str = display_currency,
+                    _lg: str = lang,
+                ) -> None:
+                    try:
+                        with Session(engine) as bg_session:
+                            _do_calculate_rebalance(bg_session, _dc, _lg, _ck)
+                    except Exception as exc:
+                        logger.warning("再平衡背景計算失敗：%s", exc)
+                        _record_bg_failure()
+                    finally:
+                        _ev.set()
+                        with _rebalance_inflight_lock:
+                            _rebalance_inflight_events.pop(_ck, None)
+
+                threading.Thread(target=_bg_compute, daemon=True).start()
+                return fallback
 
         try:
             return _do_calculate_rebalance(session, display_currency, lang, _cache_key)

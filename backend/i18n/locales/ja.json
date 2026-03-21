@@ -211,7 +211,8 @@
     "advice_zero": "⚠️ 保有総額がゼロのため、配分計算ができません。",
     "advice_over": "{icon} {category} は {drift}% 超過配分です。一部売却を検討してください。",
     "advice_under": "{icon} {category} は {drift}% 不足配分です。追加購入を検討してください。",
-    "advice_ok": "✅ 全カテゴリが目標範囲内です。リバランス不要。"
+    "advice_ok": "✅ 全カテゴリが目標範囲内です。リバランス不要。",
+    "snapshot_fallback_notice": "⏳ 最後に保存したポートフォリオの数値を表示しています。リアルタイムデータをバックグラウンドで読み込んでいます。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外貨両替タイミングアラート</b>\n\n",

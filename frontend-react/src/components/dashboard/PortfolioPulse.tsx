@@ -308,6 +308,10 @@ interface Props {
   holdings?: { id: number }[]
   isLoading: boolean
   isRefreshing?: boolean
+  /** True while the rebalance query has no data yet (initial load). */
+  isRebalanceLoading?: boolean
+  /** True while rebalance is background-refreshing — drives the "Updating…" badge on Total Market Value. */
+  isValueRefreshing?: boolean
 }
 
 export function PortfolioPulse({
@@ -321,6 +325,8 @@ export function PortfolioPulse({
   holdings = [],
   isLoading,
   isRefreshing = false,
+  isRebalanceLoading = false,
+  isValueRefreshing = false,
 }: Props) {
   const { t } = useTranslation()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
@@ -371,6 +377,32 @@ export function PortfolioPulse({
   const changeAmt = rebalance?.total_value_change
   const ytdTwr = twr?.twr_pct
 
+  // Staleness: true when showing last-known data while fresh data computes in the background.
+  const isValueStale = rebalance?.source === "snapshot"
+  // When there is no data yet and the query is still in flight, show a skeleton.
+  const isLoadingValue = totalVal == null && isRebalanceLoading
+
+  // "As of" label: prefer snapshot_at (daily date) when available, else calculated_at.
+  const asOfDisplay = (() => {
+    const raw = rebalance?.snapshot_at ?? rebalance?.calculated_at
+    if (!raw) return null
+    try {
+      const d = new Date(raw)
+      // snapshot_at is a date string ("YYYY-MM-DD"); calculated_at is a full ISO datetime.
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      return isDateOnly
+        ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+        : d.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+    } catch {
+      return null
+    }
+  })()
+
   const fgScore = fearGreed?.composite_score ?? lastScan?.fear_greed_score ?? null
   const fgLevel = fearGreed?.composite_level ?? lastScan?.fear_greed_level ?? null
   const hasFearGreed = fgScore != null && fgLevel != null
@@ -420,12 +452,32 @@ export function PortfolioPulse({
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
         {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
         <div className="space-y-1 md:col-span-1">
-          <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
-          {totalVal != null ? (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
+            {(isValueStale || isValueRefreshing) && !isLoadingValue && (
+              <span className="text-xs text-muted-foreground animate-pulse">
+                {t("dashboard.updating")}
+              </span>
+            )}
+          </div>
+          {isLoadingValue ? (
+            /* Skeleton while rebalance data is in flight (no value yet) */
+            <div className="space-y-2 pt-1">
+              <Skeleton className="h-10 w-44" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          ) : totalVal != null ? (
             <>
-              <p className="text-4xl font-extrabold tabular-nums leading-tight">
+              <p
+                className={`text-4xl font-extrabold tabular-nums leading-tight${isValueStale ? " opacity-70" : ""}`}
+              >
                 {maskMoney(totalVal, displayCurrency)}
               </p>
+              {isValueStale && asOfDisplay && (
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.as_of", { datetime: asOfDisplay })}
+                </p>
+              )}
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 {changePct != null && changeAmt != null && (
                   <span
@@ -451,6 +503,7 @@ export function PortfolioPulse({
               {snapshots.length >= 2 && !isPrivate && <SparklineMini snapshots={snapshots} />}
             </>
           ) : (
+            /* No value and not loading: rebalance failed or portfolio is empty */
             <p className="text-2xl font-bold text-muted-foreground">N/A</p>
           )}
         </div>

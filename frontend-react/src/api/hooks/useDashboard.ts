@@ -16,6 +16,75 @@ import type {
   SignalActivityItem,
 } from "@/api/types/dashboard"
 
+// ---------------------------------------------------------------------------
+// Rebalance localStorage cache — shows last known portfolio value on cold load
+// ---------------------------------------------------------------------------
+
+const REBALANCE_LS_KEY = "folio_rebalance_last"
+const REBALANCE_LS_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+type RebalanceCacheEntry = Pick<
+  RebalanceResponse,
+  | "total_value"
+  | "display_currency"
+  | "calculated_at"
+  | "source"
+  | "snapshot_at"
+  | "health_score"
+  | "health_level"
+> & {
+  saved_at: number // epoch ms — used for TTL eviction
+}
+
+function saveRebalanceToLS(data: RebalanceResponse): void {
+  // Only persist full live data, not snapshot fallbacks, to avoid persisting stale estimates.
+  if (data.source === "snapshot") return
+  try {
+    const entry: RebalanceCacheEntry = {
+      total_value: data.total_value,
+      display_currency: data.display_currency,
+      calculated_at: data.calculated_at,
+      source: data.source ?? "live",
+      snapshot_at: data.snapshot_at ?? null,
+      health_score: data.health_score,
+      health_level: data.health_level,
+      saved_at: Date.now(),
+    }
+    localStorage.setItem(REBALANCE_LS_KEY, JSON.stringify(entry))
+  } catch {
+    // Ignore storage errors (private browsing, quota exceeded, etc.)
+  }
+}
+
+function loadRebalanceFromLS(displayCurrency: string): RebalanceResponse | undefined {
+  try {
+    const raw = localStorage.getItem(REBALANCE_LS_KEY)
+    if (!raw) return undefined
+    const entry = JSON.parse(raw) as RebalanceCacheEntry
+    // Discard if older than TTL — stale data from days ago is misleading.
+    if (Date.now() - (entry.saved_at ?? 0) > REBALANCE_LS_TTL_MS) return undefined
+    // Only use cached value if the currency matches what the user is currently viewing.
+    if (entry.display_currency !== displayCurrency) return undefined
+    // Reconstruct a minimal RebalanceResponse compatible shape so the UI can render it.
+    // Preserve source and health fields from the real previous fetch so the UI
+    // shows the correct indicator colour without a flash on data arrival.
+    return {
+      ...entry,
+      categories: {},
+      advice: [],
+      holdings_detail: [],
+      xray: [],
+      xray_coverage_pct: 0,
+      health_score: entry.health_score ?? 100,
+      health_level: entry.health_level ?? "healthy",
+      sector_exposure: [],
+      source: entry.source ?? "snapshot",
+    } as RebalanceResponse
+  } catch {
+    return undefined
+  }
+}
+
 export function useStocks() {
   return useQuery({
     queryKey: ["stocks"],
@@ -71,6 +140,8 @@ export function useHoldings() {
 }
 
 export function useRebalance(displayCurrency: string) {
+  const cached = loadRebalanceFromLS(displayCurrency)
+
   return useQuery({
     queryKey: ["rebalance", displayCurrency],
     queryFn: async () => {
@@ -78,11 +149,25 @@ export function useRebalance(displayCurrency: string) {
         params: { query: { display_currency: displayCurrency } },
       })
       if (error) throw error
-      return fromApiData<RebalanceResponse>(data)
+      const result = fromApiData<RebalanceResponse>(data)
+      // Persist live data to localStorage for the next cold load.
+      saveRebalanceToLS(result)
+      return result
     },
     staleTime: 60 * 1000,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(5_000 * 2 ** attempt, 30_000),
     // Keep previous currency's data visible while switching display currency
     placeholderData: keepPreviousData,
+    // Use localStorage as initialData so the very first render shows a number
+    // instead of N/A. initialDataUpdatedAt: 0 forces it to be treated as
+    // immediately stale, triggering a background fetch for fresh data.
+    initialData: cached,
+    initialDataUpdatedAt: cached ? 0 : undefined,
+    // Poll every 5 s while the backend returned a snapshot fallback so we pick
+    // up the background-computed live result as soon as it's ready, rather than
+    // waiting the full 60 s staleTime window.
+    refetchInterval: (query) => (query.state.data?.source === "snapshot" ? 5_000 : false),
   })
 }
 
