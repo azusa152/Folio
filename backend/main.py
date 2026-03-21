@@ -69,11 +69,11 @@ _SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 if _SENTRY_DSN:
     try:
         import sentry_sdk  # type: ignore[import-not-found]
-        from sentry_sdk.integrations.fastapi import (
-            FastApiIntegration,  # type: ignore[import-not-found]
+        from sentry_sdk.integrations.fastapi import (  # type: ignore[import-not-found]
+            FastApiIntegration,
         )
-        from sentry_sdk.integrations.sqlalchemy import (
-            SqlalchemyIntegration,  # type: ignore[import-not-found]
+        from sentry_sdk.integrations.sqlalchemy import (  # type: ignore[import-not-found]
+            SqlalchemyIntegration,
         )
 
         _trace_rate = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.05"))
