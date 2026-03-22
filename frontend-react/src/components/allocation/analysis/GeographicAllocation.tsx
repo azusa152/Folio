@@ -10,7 +10,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { CURRENCY_TO_REGION, GEOGRAPHIC_COLOR_MAP, GEOGRAPHIC_LABELS } from "@/lib/constants"
+import {
+  ALLOCATION_SMALL_THRESHOLD,
+  CURRENCY_TO_REGION,
+  GEOGRAPHIC_COLOR_MAP,
+  GEOGRAPHIC_LABELS,
+} from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { Button } from "@/components/ui/button"
@@ -47,14 +52,31 @@ export function GeographicAllocation({
   const total = Object.values(data).reduce((a, b) => a + b, 0)
   if (total === 0) return null
 
-  const chartData = Object.entries(data)
-    .map(([region, value]) => ({
-      region,
-      label: t(GEOGRAPHIC_LABELS[region] ?? `allocation.geo.${region.toLowerCase()}`),
-      value,
-      pct: ((value / total) * 100).toFixed(1),
-    }))
-    .sort((a, b) => b.value - a.value)
+  const allEntries = Object.entries(data)
+  const visible = allEntries.filter(([, v]) => (v / total) * 100 >= ALLOCATION_SMALL_THRESHOLD)
+  const hidden = allEntries.filter(([, v]) => (v / total) * 100 < ALLOCATION_SMALL_THRESHOLD)
+  const otherValue = hidden.reduce((s, [, v]) => s + v, 0)
+
+  const chartData = [
+    ...visible
+      .map(([region, value]) => ({
+        region,
+        label: t(GEOGRAPHIC_LABELS[region] ?? `allocation.geo.${region.toLowerCase()}`),
+        value,
+        pct: ((value / total) * 100).toFixed(1),
+      }))
+      .sort((a, b) => b.value - a.value),
+    ...(hidden.length > 0
+      ? [
+          {
+            region: "Other",
+            label: t("allocation.charts.other"),
+            value: otherValue,
+            pct: ((otherValue / total) * 100).toFixed(1),
+          },
+        ]
+      : []),
+  ]
 
   const height = Math.max(120, chartData.length * 36 + 20)
 
@@ -101,7 +123,8 @@ export function GeographicAllocation({
             cursor="pointer"
             onClick={(_data: unknown, index: number) => {
               const entry = chartData[index]
-              if (entry) setDrillRegion(entry.region === drillRegion ? null : entry.region)
+              if (!entry || entry.region === "Other") return
+              setDrillRegion(entry.region === drillRegion ? null : entry.region)
             }}
           >
             {chartData.map((entry) => (

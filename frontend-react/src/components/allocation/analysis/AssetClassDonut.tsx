@@ -1,7 +1,11 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
-import { ASSET_CLASS_COLOR_MAP, CATEGORY_TO_ASSET_CLASS } from "@/lib/constants"
+import {
+  ALLOCATION_SMALL_THRESHOLD,
+  ASSET_CLASS_COLOR_MAP,
+  CATEGORY_TO_ASSET_CLASS,
+} from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { Button } from "@/components/ui/button"
@@ -38,14 +42,31 @@ export function AssetClassDonut({
   const total = Object.values(data).reduce((a, b) => a + b, 0)
   if (total === 0) return null
 
-  const keys = Object.keys(data)
-  const chartData = keys.map((cls) => ({
-    key: cls,
-    name: t(`allocation.asset_class.${cls.toLowerCase().replace(/ /g, "_")}`),
-    value: data[cls],
-    pct: ((data[cls] / total) * 100).toFixed(1),
-    fill: ASSET_CLASS_COLOR_MAP[cls] ?? "#6B7280",
-  }))
+  const allEntries = Object.entries(data)
+  const visible = allEntries.filter(([, v]) => (v / total) * 100 >= ALLOCATION_SMALL_THRESHOLD)
+  const hidden = allEntries.filter(([, v]) => (v / total) * 100 < ALLOCATION_SMALL_THRESHOLD)
+  const otherValue = hidden.reduce((s, [, v]) => s + v, 0)
+
+  const chartData = [
+    ...visible.map(([cls, value]) => ({
+      key: cls,
+      name: t(`allocation.asset_class.${cls.toLowerCase().replace(/ /g, "_")}`),
+      value,
+      pct: ((value / total) * 100).toFixed(1),
+      fill: ASSET_CLASS_COLOR_MAP[cls] ?? "#6B7280",
+    })),
+    ...(hidden.length > 0
+      ? [
+          {
+            key: "Other",
+            name: t("allocation.charts.other"),
+            value: otherValue,
+            pct: ((otherValue / total) * 100).toFixed(1),
+            fill: "#9CA3AF",
+          },
+        ]
+      : []),
+  ]
 
   const filteredHoldings =
     drillClass && holdings ? holdings.filter((h) => holdingAssetClass(h) === drillClass) : []
@@ -65,7 +86,8 @@ export function AssetClassDonut({
             cursor="pointer"
             onClick={(_data: unknown, index: number) => {
               const entry = chartData[index]
-              if (entry) setDrillClass(entry.key === drillClass ? null : entry.key)
+              if (!entry || entry.key === "Other") return
+              setDrillClass(entry.key === drillClass ? null : entry.key)
             }}
           >
             {chartData.map((entry) => (

@@ -954,10 +954,16 @@
     },
     "charts": {
       "title": "目標 vs 実際の配分",
-      "toggle_pie": "円グラフ",
-      "toggle_treemap": "ツリーマップ",
       "target": "目標",
-      "actual": "実際"
+      "actual": "実際",
+      "other": "その他",
+      "category": "カテゴリ",
+      "drift_label": "乖離",
+      "value": "評価額",
+      "on_target": "目標通り",
+      "over": "超過",
+      "under": "不足",
+      "other_tooltip": "ポートフォリオの1%未満のカテゴリ"
     },
     "drift": {
       "title": "配分ドリフト",

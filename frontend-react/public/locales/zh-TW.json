@@ -954,10 +954,16 @@
     },
     "charts": {
       "title": "目標 vs 實際配置",
-      "toggle_pie": "圓餅圖",
-      "toggle_treemap": "樹狀圖",
       "target": "目標",
-      "actual": "實際"
+      "actual": "實際",
+      "other": "其他",
+      "category": "類別",
+      "drift_label": "偏差",
+      "value": "市值",
+      "on_target": "符合目標",
+      "over": "超配",
+      "under": "低配",
+      "other_tooltip": "組合佔比低於1%的類別"
     },
     "drift": {
       "title": "配置偏移",

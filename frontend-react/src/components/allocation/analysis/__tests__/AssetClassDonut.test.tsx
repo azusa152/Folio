@@ -81,4 +81,12 @@ describe("AssetClassDonut", () => {
     expect(screen.queryByText("allocation.clear_filter")).not.toBeInTheDocument()
     expect(screen.queryByText("allocation.holdings.title")).not.toBeInTheDocument()
   })
+
+  it("renders chart without crashing when some asset classes are below 1% threshold", () => {
+    // Equity=99000 (99.99%): visible; Alternatives=10 (0.01%): grouped into Other
+    render(<AssetClassDonut data={{ Equity: 99000, Alternatives: 10 }} />)
+
+    // Chart still renders — Other bucket is added to chartData fed into mocked recharts
+    expect(screen.getByTestId("pie-chart")).toBeInTheDocument()
+  })
 })

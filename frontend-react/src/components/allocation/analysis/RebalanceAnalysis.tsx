@@ -14,7 +14,6 @@ import { AssetClassDonut } from "./AssetClassDonut"
 import { DrawdownChart } from "./DrawdownChart"
 import { RiskMetricsCards } from "./RiskMetricsCards"
 import { ANALYTICS_TIMEFRAMES, type AnalyticsTimeframe } from "./timeframe"
-import { DriftChart } from "./DriftChart"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
 import { SectorHeatmap } from "./SectorHeatmap"
@@ -202,11 +201,6 @@ export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Pro
           <hr className="border-border" />
         </>
       )}
-
-      {/* Drift chart */}
-      <DriftChart categories={data.categories} />
-
-      <hr className="border-border" />
 
       {/* Holdings detail table */}
       <HoldingsTable

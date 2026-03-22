@@ -954,10 +954,16 @@
     },
     "charts": {
       "title": "Target vs Actual Allocation",
-      "toggle_pie": "Pie",
-      "toggle_treemap": "Treemap",
       "target": "Target",
-      "actual": "Actual"
+      "actual": "Actual",
+      "other": "Other",
+      "category": "Category",
+      "drift_label": "Drift",
+      "value": "Value",
+      "on_target": "On target",
+      "over": "Overweight",
+      "under": "Underweight",
+      "other_tooltip": "Categories each < 1% of portfolio"
     },
     "drift": {
       "title": "Allocation Drift",

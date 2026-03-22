@@ -22,6 +22,9 @@ export const CATEGORY_COLOR_MAP: Record<string, string> = {
 
 export const CATEGORY_COLOR_FALLBACK = "#CBD5E1"
 
+/** Minimum portfolio weight (%) below which a category/region/asset-class is grouped into "Other". */
+export const ALLOCATION_SMALL_THRESHOLD = 1.0
+
 /** How old a scan result can be before the UI shows a stale warning. */
 export const SCAN_STALE_SECONDS_MARKET_OPEN = 30 * 60 // 30 min during US market hours
 export const SCAN_STALE_SECONDS_MARKET_CLOSED = 2 * 60 * 60 // 2 h outside market hours

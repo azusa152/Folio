@@ -68,4 +68,12 @@ describe("GeographicAllocation", () => {
     expect(screen.queryByText("allocation.clear_filter")).not.toBeInTheDocument()
     expect(screen.queryByText("allocation.holdings.title")).not.toBeInTheDocument()
   })
+
+  it("renders chart without crashing when some regions are below 1% threshold", () => {
+    // US=98000 (98%), TW=2000 (2%): visible; SG=10 (0.01%): grouped into Other
+    render(<GeographicAllocation data={{ US: 98000, TW: 2000, SG: 10 }} />)
+
+    // Chart still renders — Other bucket is added to chartData fed into mocked recharts
+    expect(screen.getByTestId("bar-chart")).toBeInTheDocument()
+  })
 })
