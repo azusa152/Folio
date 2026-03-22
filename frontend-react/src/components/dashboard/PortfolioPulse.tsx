@@ -7,13 +7,8 @@ import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { InfoPopover } from "./InfoPopover"
 import { getSignalLabel } from "@/lib/signal-label"
 import { FINANCE_TEXT } from "@/lib/colors"
-import {
-  FEAR_GREED_BANDS,
-  FearGreedGauge,
-  FearGreedComponentBars,
-  SparklineMini,
-  stripLeadingEmoji,
-} from "./FearGreedIndicators"
+import { FearGreedGauge, FearGreedComponentBars, SparklineMini } from "./FearGreedIndicators"
+import { FEAR_GREED_BANDS, stripLeadingEmoji } from "./fearGreedUtils"
 import type {
   RebalanceResponse,
   FearGreedResponse,

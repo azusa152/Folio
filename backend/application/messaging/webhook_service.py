@@ -222,6 +222,7 @@ def _handle_signals(
     result, err = _get_signals_or_error(session, ticker, params, lang)
     if err:
         return err
+    assert result is not None
     status_text = "\n".join(result.get("status", []))
     msg = (
         t(
@@ -251,6 +252,7 @@ def _handle_analyze(
     signals, err = _get_signals_or_error(session, ticker, params, lang)
     if err:
         return err
+    assert signals is not None
     moat = get_moat_for_ticker(session, ticker)
     fundamentals = get_fundamentals_for_ticker(session, ticker)
     message = t(
