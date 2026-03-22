@@ -17,18 +17,22 @@ from api.schemas import (
     XRayAlertResponse,
 )
 from application.portfolio import holding_service
-from application.services import (
-    StockNotFoundError,
+from application.portfolio.drift_alert_service import (
     acknowledge_drift_alert,
-    acknowledge_xray_alert,
-    calculate_currency_exposure,
-    calculate_rebalance,
-    calculate_stress_test,
-    calculate_withdrawal,
     send_drift_alerts,
+)
+from application.portfolio.fx_exposure_service import (
+    calculate_currency_exposure,
     send_fx_alerts,
+)
+from application.portfolio.rebalance_service import (
+    acknowledge_xray_alert,
+    calculate_rebalance,
     send_xray_warnings,
 )
+from application.portfolio.stress_test_service import calculate_stress_test
+from application.portfolio.withdrawal_service import calculate_withdrawal
+from application.stock.stock_service import StockNotFoundError
 from domain.constants import (
     ERROR_HOLDING_NOT_FOUND,
     ERROR_INVALID_INPUT,

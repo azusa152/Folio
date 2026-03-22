@@ -53,8 +53,8 @@ class TestFetchFundamentalsFromYf:
 
 
 class TestGetFundamentals:
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_fundamentals_from_yf")
     def test_should_cache_in_l1_and_l2(self, mock_fetch, mock_disk_set, mock_disk_get):
         mock_disk_get.return_value = None
@@ -74,8 +74,8 @@ class TestGetFundamentals:
 
 
 class TestYfDividendData:
-    @patch("infrastructure.market_data.market_data._yf_dividends")
-    @patch("infrastructure.market_data.market_data._yf_info")
+    @patch("infrastructure.market_data._market_data_shared._yf_dividends")
+    @patch("infrastructure.market_data._market_data_shared._yf_info")
     def test_should_reuse_yf_info_and_fetch_dividends(
         self, mock_yf_info, mock_yf_dividends
     ):

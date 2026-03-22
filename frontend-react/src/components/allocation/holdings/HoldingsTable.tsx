@@ -3,15 +3,20 @@ import { useTranslation } from "react-i18next"
 import { ArrowUpDown, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { useTerminology } from "@/hooks/useTerminology"
 import type { HoldingDetail } from "@/api/types/allocation"
-import { FINANCE_TEXT } from "@/lib/colors"
-import {
-  formatQuantity,
-  formatSignedMoneyWithPrivacy,
-  formatSignedPct,
-  getQuantityUnitKey,
-} from "@/lib/format"
+import { formatSignedMoneyWithPrivacy } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  buildNonCashGroupKey,
+  compareNullableNumber,
+  fmtPct,
+  getValueClass,
+  roundTo2,
+  type GroupedHolding,
+  type SortDirection,
+  type SortKey,
+} from "./HoldingsTableUtils"
+import { HoldingRow } from "./HoldingRow"
 
 interface Props {
   holdings: HoldingDetail[]
@@ -19,71 +24,6 @@ interface Props {
   displayCurrency?: string
   portfolioTodayChangeValue?: number | null
   portfolioTodayChangePct?: number | null
-}
-
-type SortDirection = "asc" | "desc"
-type SortKey =
-  | "ticker"
-  | "account_name"
-  | "market_value"
-  | "weight_pct"
-  | "cost_total"
-  | "change_value"
-  | "total_gain_value"
-
-interface GroupedHolding extends HoldingDetail {
-  accounts: string[]
-  row_key: string
-}
-
-function buildNonCashGroupKey(h: HoldingDetail): string {
-  return `${h.ticker}::${h.category}::${h.currency}`
-}
-
-function formatAccountList(accounts: string[]): { shortLabel: string; fullLabel: string } {
-  const sortedAccounts = [...accounts].sort((a, b) => a.localeCompare(b))
-  const fullLabel = sortedAccounts.join(", ")
-  if (sortedAccounts.length <= 2) {
-    return { shortLabel: fullLabel, fullLabel }
-  }
-  return {
-    shortLabel: `${sortedAccounts[0]}, ${sortedAccounts[1]} +${sortedAccounts.length - 2}`,
-    fullLabel,
-  }
-}
-
-function fmtPct(v: number, showSign = true): string {
-  return showSign ? formatSignedPct(v, 2) : `${v.toFixed(2)}%`
-}
-
-function getValueClass(v: number | null | undefined): string {
-  if (v == null) return FINANCE_TEXT.neutral
-  if (v > 0) return FINANCE_TEXT.gain
-  if (v < 0) return FINANCE_TEXT.loss
-  return FINANCE_TEXT.neutral
-}
-
-function compareNullableNumber(
-  a: number | null | undefined,
-  b: number | null | undefined,
-  direction: SortDirection,
-): number {
-  const aNull = a == null
-  const bNull = b == null
-  if (aNull && bNull) return 0
-  if (aNull) return 1
-  if (bNull) return -1
-  const diff = a - b
-  return direction === "asc" ? diff : -diff
-}
-
-/** Compute FX return % given purchase and current FX rate */
-function computeFxReturn(
-  purchaseFx: number | null | undefined,
-  currentFx: number | null | undefined,
-): number | null {
-  if (purchaseFx == null || currentFx == null || purchaseFx === 0) return null
-  return (currentFx / purchaseFx - 1) * 100
 }
 
 export function HoldingsTable({
@@ -427,135 +367,14 @@ export function HoldingsTable({
             </tr>
           </thead>
           <tbody>
-            {sortedHoldings.map((h) => {
-              const isCrypto = h.category === "Crypto"
-              const isCash = h.category === "Cash"
-              const targetCurrency = displayCurrency ?? h.currency
-              const currentFxRate = h.current_fx_rate
-              const fxReturn = computeFxReturn(h.purchase_fx_rate, h.current_fx_rate)
-              const showFxBreakdown =
-                !isCash &&
-                h.purchase_fx_rate != null &&
-                fxReturn != null &&
-                h.currency !== targetCurrency
-
-              const showCashFxInfo =
-                isCash &&
-                currentFxRate != null &&
-                Number.isFinite(currentFxRate) &&
-                h.currency !== targetCurrency
-
-              // Home return = local price return + FX impact (approximate additive)
-              const homeReturn =
-                showFxBreakdown && h.change_pct != null ? h.change_pct + fxReturn : null
-              const quantityUnit = getQuantityUnitKey(h.category, h.ticker)
-              const quantityText = t(quantityUnit.key, {
-                quantity: formatQuantity(h.quantity, { category: h.category, ticker: h.ticker }),
-                ...quantityUnit.params,
-              })
-              const accountDisplay = formatAccountList(h.accounts)
-
-              return (
-                <tr key={h.row_key} className="border-b border-border/50">
-                  <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                  <td className="py-0.5 pr-2 text-muted-foreground">
-                    {h.accounts.length > 1 ? (
-                      <span className="text-[10px] leading-tight" title={accountDisplay.fullLabel}>
-                        {accountDisplay.shortLabel}
-                      </span>
-                    ) : (
-                      (h.account_name ?? "—")
-                    )}
-                  </td>
-                  <td className="py-0.5 pr-2 text-muted-foreground">
-                    {t(`config.category.${h.category.toLowerCase()}`)}
-                  </td>
-                  <td className="py-0.5 pr-2 text-right">{privacyMode ? "***" : quantityText}</td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {h.market_value == null
-                      ? "—"
-                      : maskMoney(h.market_value, displayCurrency ?? h.currency)}
-                  </td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {h.cost_total == null
-                      ? "—"
-                      : maskMoney(h.cost_total, displayCurrency ?? h.currency)}
-                  </td>
-                  <td className="py-0.5 pr-2 text-right">
-                    {!isCash && (h.change_value != null || h.change_pct != null) ? (
-                      <>
-                        <div
-                          className={`font-medium ${getValueClass(h.change_value ?? h.change_pct)}`}
-                        >
-                          {formatSignedMoneyWithPrivacy(
-                            h.change_value,
-                            displayCurrency ?? h.currency,
-                            privacyMode,
-                          )}
-                        </div>
-                        <div className={getValueClass(h.change_pct)}>
-                          {h.change_pct != null
-                            ? `${fmtPct(h.change_pct)}${isCrypto ? ` (${t("allocation.crypto.change_24h_short")})` : ""}`
-                            : "—"}
-                        </div>
-                      </>
-                    ) : (
-                      <div className={FINANCE_TEXT.neutral}>—</div>
-                    )}
-                    {isCrypto && h.change_pct != null && Math.abs(h.change_pct) >= 5 && (
-                      <div className={`text-[10px] leading-tight mt-0.5 ${FINANCE_TEXT.warning}`}>
-                        {t("allocation.crypto.volatility_warning")}
-                      </div>
-                    )}
-                    {showCashFxInfo && (
-                      <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
-                        {t("allocation.col.fx_rate_info", {
-                          from: h.currency,
-                          rate: currentFxRate.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          }),
-                          to: targetCurrency,
-                        })}
-                      </div>
-                    )}
-                    {showFxBreakdown && (
-                      <div className="text-muted-foreground text-[10px] leading-tight mt-0.5">
-                        {homeReturn != null && (
-                          <div className={homeReturn >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}>
-                            {t("allocation.col.home_return", { pct: fmtPct(homeReturn) })}
-                          </div>
-                        )}
-                        <div className={fxReturn >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}>
-                          {t("allocation.col.fx_return", { pct: fmtPct(fxReturn) })}
-                        </div>
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-0.5 text-right">
-                    {h.total_gain_value != null || h.total_gain_pct != null ? (
-                      <>
-                        <div className={`font-medium ${getValueClass(h.total_gain_value)}`}>
-                          {formatSignedMoneyWithPrivacy(
-                            h.total_gain_value,
-                            displayCurrency ?? h.currency,
-                            privacyMode,
-                          )}
-                        </div>
-                        <div className={getValueClass(h.total_gain_pct)}>
-                          {h.total_gain_pct != null ? fmtPct(h.total_gain_pct) : "—"}
-                        </div>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+            {sortedHoldings.map((h) => (
+              <HoldingRow
+                key={h.row_key}
+                holding={h}
+                privacyMode={privacyMode}
+                displayCurrency={displayCurrency}
+              />
+            ))}
           </tbody>
           <tfoot>
             <tr className="border-t border-border font-medium">
@@ -608,8 +427,4 @@ export function HoldingsTable({
       </div>
     </div>
   )
-}
-
-function roundTo2(value: number): number {
-  return Math.round(value * 100) / 100
 }

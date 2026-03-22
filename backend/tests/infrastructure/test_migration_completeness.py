@@ -8,7 +8,6 @@ entity but the corresponding ALTER TABLE migration is forgotten, causing
 production databases (with persistent radar.db) to crash on INSERT.
 """
 
-import inspect
 import re
 
 from sqlalchemy import (
@@ -22,7 +21,7 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel
 
-from infrastructure.database import _run_migrations
+from infrastructure.database import _MIGRATIONS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,15 +32,15 @@ _ALTER_TABLE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_SQL_STRING_PATTERN = re.compile(
-    r'"((?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s[^"]+)"',
+_SQL_INTEREST_PATTERN = re.compile(
+    r"^(?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s",
+    re.IGNORECASE,
 )
 
 
 def _extract_migration_sql() -> list[str]:
-    """Extract SQL statement strings from _run_migrations() source code."""
-    source = inspect.getsource(_run_migrations)
-    sqls = _SQL_STRING_PATTERN.findall(source)
+    """Return SQL strings from the _MIGRATIONS constant."""
+    sqls = [sql for sql in _MIGRATIONS if _SQL_INTEREST_PATTERN.match(sql)]
     assert sqls, (
         "Failed to extract any migration SQL from _run_migrations(). "
         "Has the function format changed?"

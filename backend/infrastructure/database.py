@@ -50,179 +50,180 @@ if IS_SQLITE and not IS_IN_MEMORY_SQLITE:
 logger.info("資料庫連線位置：%s", DATABASE_URL)
 
 
+_MIGRATIONS: list[str] = [
+    "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
+    "ALTER TABLE thesislog ADD COLUMN tags VARCHAR DEFAULT '';",
+    "ALTER TABLE stock ADD COLUMN display_order INTEGER DEFAULT 0;",
+    "ALTER TABLE stock ADD COLUMN last_scan_signal VARCHAR DEFAULT 'NORMAL';",
+    # Phase: ETF -> Trend_Setter 分類遷移（新五類分類系統）
+    "UPDATE stock SET category = 'Trend_Setter' WHERE category = 'ETF';",
+    # Holding: 新增券商欄位
+    "ALTER TABLE holding ADD COLUMN broker VARCHAR;",
+    # Holding: 新增幣別欄位
+    "ALTER TABLE holding ADD COLUMN currency VARCHAR DEFAULT 'USD';",
+    # Holding: 一次性正規化 ticker（避免查詢大小寫回退掃描）
+    "UPDATE holding SET ticker = UPPER(TRIM(ticker)) WHERE ticker IS NOT NULL;",
+    # Holding: 根據 ticker 後綴回填幣別
+    "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
+    "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
+    "UPDATE holding SET currency = 'HKD' WHERE ticker LIKE '%.HK' AND currency = 'USD';",
+    # Holding: 新增現金標記欄位
+    "ALTER TABLE holding ADD COLUMN is_cash BOOLEAN DEFAULT 0;",
+    # Holding: 現金持倉以 ticker 作為幣別
+    "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
+    # Holding: 新增帳戶類型欄位
+    "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
+    # Holding: 新增帳戶 ID 欄位
+    "ALTER TABLE holding ADD COLUMN account_id INTEGER;",
+    # Transaction: 新增帳戶 ID 欄位（用於券商現金結算）
+    'ALTER TABLE "transaction" ADD COLUMN account_id INTEGER;',
+    # ScanLog: 新增市場情緒原因說明欄位
+    "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
+    # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
+    "ALTER TABLE userinvestmentprofile ADD COLUMN home_currency VARCHAR DEFAULT 'TWD';",
+    # UserPreferences: 新增通知偏好 JSON 欄位
+    "ALTER TABLE userpreferences ADD COLUMN notification_preferences VARCHAR DEFAULT '{}';",
+    # UserPreferences: 新增語言偏好欄位 (i18n support)
+    "ALTER TABLE userpreferences ADD COLUMN language VARCHAR DEFAULT 'zh-TW';",
+    # FX Watch: 新增獨立切換開關與欄位重命名
+    "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_recent_high BOOLEAN DEFAULT 1;",
+    "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_consecutive_increase BOOLEAN DEFAULT 1;",
+    "ALTER TABLE fxwatchconfig ADD COLUMN recent_high_days INTEGER DEFAULT 30;",
+    "UPDATE fxwatchconfig SET recent_high_days = lookback_days WHERE recent_high_days = 30;",
+    # Stock: 新增 is_etf 欄位（ETF 不參與市場情緒計算）
+    "ALTER TABLE stock ADD COLUMN is_etf BOOLEAN DEFAULT 0;",
+    # 回填已知 ETF
+    "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
+    # GuruHolding: 新增 sector 欄位（GICS 行業板塊）
+    "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
+    # Holding: 新增購入時匯率欄位（Phase 6 FX return tracking）
+    "ALTER TABLE holding ADD COLUMN purchase_fx_rate REAL;",
+    # Holding: 新增加密貨幣對應 CoinGecko ID 欄位
+    "ALTER TABLE holding ADD COLUMN coingecko_id VARCHAR;",
+    # Stock: 新增加密貨幣對應 CoinGecko ID 欄位（Radar 追蹤用）
+    "ALTER TABLE stock ADD COLUMN coingecko_id VARCHAR;",
+    # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
+    "ALTER TABLE guru ADD COLUMN style VARCHAR;",
+    "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
+    # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
+    "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
+    # PortfolioSnapshot: 新增個股市值 JSON 欄位
+    "ALTER TABLE portfoliosnapshot ADD COLUMN holding_values TEXT DEFAULT '{}';",
+    # PortfolioSnapshot: 新增總成本基礎欄位
+    "ALTER TABLE portfoliosnapshot ADD COLUMN cost_basis_total REAL;",
+    # PortfolioSnapshot: 新增地理區域市值 JSON 欄位
+    "ALTER TABLE portfoliosnapshot ADD COLUMN geographic_values TEXT DEFAULT '{}';",
+    # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
+    "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
+    # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
+    "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
+    # UserPreferences: terminology display mode (Phase 7)
+    "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
+    # FX Watch: target-rate alert support
+    "ALTER TABLE fxwatchconfig ADD COLUMN target_rate REAL;",
+    "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
+    # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
+    "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
+    # Account: 新增市場欄位（US / JP / TW / HK ...）
+    "ALTER TABLE account ADD COLUMN market VARCHAR;",
+    # Account: 依帳戶幣別回填市場（既有資料遷移）
+    (
+        "UPDATE account SET market = CASE UPPER(COALESCE(currency, 'USD')) "
+        "WHEN 'JPY' THEN 'JP' "
+        "WHEN 'TWD' THEN 'TW' "
+        "WHEN 'HKD' THEN 'HK' "
+        "WHEN 'EUR' THEN 'EU' "
+        "WHEN 'GBP' THEN 'UK' "
+        "WHEN 'CNY' THEN 'CN' "
+        "WHEN 'SGD' THEN 'SG' "
+        "WHEN 'THB' THEN 'TH' "
+        "ELSE 'US' END "
+        "WHERE market IS NULL OR TRIM(market) = '';"
+    ),
+    # Contribution ledger: append-only quota accounting for NISA/iDeCo
+    (
+        "CREATE TABLE IF NOT EXISTS contributionledgerentry ("
+        "id INTEGER PRIMARY KEY, "
+        "user_id VARCHAR NOT NULL DEFAULT 'default', "
+        "tax_wrapper VARCHAR NOT NULL, "
+        "entry_type VARCHAR NOT NULL, "
+        "fiscal_year INTEGER NOT NULL, "
+        "amount REAL NOT NULL, "
+        "transaction_id INTEGER, "
+        "effective_date DATE NOT NULL, "
+        "note VARCHAR NOT NULL DEFAULT '', "
+        "created_at DATETIME NOT NULL, "
+        'FOREIGN KEY(transaction_id) REFERENCES "transaction"(id)'
+        ");"
+    ),
+    "CREATE INDEX IF NOT EXISTS ix_contrib_user_wrapper_year ON contributionledgerentry (user_id, tax_wrapper, fiscal_year);",
+    "CREATE INDEX IF NOT EXISTS ix_contrib_transaction ON contributionledgerentry (transaction_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_contrib_transaction_entry_type ON contributionledgerentry (transaction_id, entry_type) WHERE transaction_id IS NOT NULL;",
+    # Eligible asset master for wrapper placement validation.
+    (
+        "CREATE TABLE IF NOT EXISTS eligibleasset ("
+        "id INTEGER PRIMARY KEY, "
+        "tax_wrapper VARCHAR NOT NULL, "
+        "ticker VARCHAR NOT NULL, "
+        "fund_name VARCHAR NOT NULL DEFAULT '', "
+        "asset_type VARCHAR NOT NULL DEFAULT 'mutual_fund', "
+        "broker VARCHAR, "
+        "trust_fee_pct REAL, "
+        "is_active BOOLEAN NOT NULL DEFAULT 1, "
+        "updated_at DATETIME NOT NULL"
+        ");"
+    ),
+    "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_ticker ON eligibleasset (tax_wrapper, ticker);",
+    "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
+    # Add isin_code to eligible asset (for toushin-lib NAV lookup).
+    "ALTER TABLE eligibleasset ADD COLUMN isin_code VARCHAR;",
+    # One-time canonicalization: ensure asset_type is lowercase-trimmed.
+    # Rows already canonical are untouched; runs as a cheap SQL scan.
+    (
+        "UPDATE eligibleasset SET asset_type = "
+        "CASE WHEN LOWER(TRIM(COALESCE(asset_type, ''))) = '' THEN 'mutual_fund' "
+        "ELSE LOWER(TRIM(asset_type)) END "
+        "WHERE asset_type IS NULL OR TRIM(asset_type) = '' "
+        "OR asset_type != LOWER(TRIM(asset_type));"
+    ),
+    # Eligible asset sync metadata.
+    (
+        "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("
+        "tax_wrapper VARCHAR PRIMARY KEY, "
+        "source VARCHAR NOT NULL DEFAULT 'unknown', "
+        "last_refreshed_at DATETIME NOT NULL, "
+        "updated_at DATETIME NOT NULL"
+        ");"
+    ),
+    # Mutual fund NAV cache for daily toushin-lib sync.
+    (
+        "CREATE TABLE IF NOT EXISTS mutualfundnav ("
+        "id INTEGER PRIMARY KEY, "
+        "fund_code VARCHAR NOT NULL, "
+        "isin_code VARCHAR NOT NULL, "
+        "nav REAL NOT NULL, "
+        "nav_previous REAL, "
+        "nav_date DATE NOT NULL, "
+        "net_assets REAL, "
+        "fetched_at DATETIME NOT NULL"
+        ");"
+    ),
+    "CREATE INDEX IF NOT EXISTS ix_mfnav_fund_code ON mutualfundnav (fund_code);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_mfnav_fund_code_date ON mutualfundnav (fund_code, nav_date);",
+    # UserPreferences: 新增預設顯示貨幣欄位（Centralized Settings Page）
+    "ALTER TABLE userpreferences ADD COLUMN default_display_currency VARCHAR DEFAULT 'USD';",
+]
+
+
 def _run_migrations() -> None:
     """執行資料庫遷移：為既有資料表新增缺少的欄位。"""
     from sqlalchemy import text
     from sqlalchemy.exc import OperationalError
 
-    migrations = [
-        "ALTER TABLE stock ADD COLUMN current_tags VARCHAR DEFAULT '';",
-        "ALTER TABLE thesislog ADD COLUMN tags VARCHAR DEFAULT '';",
-        "ALTER TABLE stock ADD COLUMN display_order INTEGER DEFAULT 0;",
-        "ALTER TABLE stock ADD COLUMN last_scan_signal VARCHAR DEFAULT 'NORMAL';",
-        # Phase: ETF -> Trend_Setter 分類遷移（新五類分類系統）
-        "UPDATE stock SET category = 'Trend_Setter' WHERE category = 'ETF';",
-        # Holding: 新增券商欄位
-        "ALTER TABLE holding ADD COLUMN broker VARCHAR;",
-        # Holding: 新增幣別欄位
-        "ALTER TABLE holding ADD COLUMN currency VARCHAR DEFAULT 'USD';",
-        # Holding: 一次性正規化 ticker（避免查詢大小寫回退掃描）
-        "UPDATE holding SET ticker = UPPER(TRIM(ticker)) WHERE ticker IS NOT NULL;",
-        # Holding: 根據 ticker 後綴回填幣別
-        "UPDATE holding SET currency = 'TWD' WHERE ticker LIKE '%.TW' AND currency = 'USD';",
-        "UPDATE holding SET currency = 'JPY' WHERE ticker LIKE '%.T' AND currency = 'USD';",
-        "UPDATE holding SET currency = 'HKD' WHERE ticker LIKE '%.HK' AND currency = 'USD';",
-        # Holding: 新增現金標記欄位
-        "ALTER TABLE holding ADD COLUMN is_cash BOOLEAN DEFAULT 0;",
-        # Holding: 現金持倉以 ticker 作為幣別
-        "UPDATE holding SET currency = ticker WHERE is_cash = 1 AND currency = 'USD';",
-        # Holding: 新增帳戶類型欄位
-        "ALTER TABLE holding ADD COLUMN account_type VARCHAR;",
-        # Holding: 新增帳戶 ID 欄位
-        "ALTER TABLE holding ADD COLUMN account_id INTEGER;",
-        # Transaction: 新增帳戶 ID 欄位（用於券商現金結算）
-        'ALTER TABLE "transaction" ADD COLUMN account_id INTEGER;',
-        # ScanLog: 新增市場情緒原因說明欄位
-        "ALTER TABLE scanlog ADD COLUMN market_status_details VARCHAR DEFAULT '';",
-        # UserInvestmentProfile: 新增本幣欄位（用於匯率曝險計算）
-        "ALTER TABLE userinvestmentprofile ADD COLUMN home_currency VARCHAR DEFAULT 'TWD';",
-        # UserPreferences: 新增通知偏好 JSON 欄位
-        "ALTER TABLE userpreferences ADD COLUMN notification_preferences VARCHAR DEFAULT '{}';",
-        # UserPreferences: 新增語言偏好欄位 (i18n support)
-        "ALTER TABLE userpreferences ADD COLUMN language VARCHAR DEFAULT 'zh-TW';",
-        # FX Watch: 新增獨立切換開關與欄位重命名
-        "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_recent_high BOOLEAN DEFAULT 1;",
-        "ALTER TABLE fxwatchconfig ADD COLUMN alert_on_consecutive_increase BOOLEAN DEFAULT 1;",
-        "ALTER TABLE fxwatchconfig ADD COLUMN recent_high_days INTEGER DEFAULT 30;",
-        "UPDATE fxwatchconfig SET recent_high_days = lookback_days WHERE recent_high_days = 30;",
-        # Stock: 新增 is_etf 欄位（ETF 不參與市場情緒計算）
-        "ALTER TABLE stock ADD COLUMN is_etf BOOLEAN DEFAULT 0;",
-        # 回填已知 ETF
-        "UPDATE stock SET is_etf = 1 WHERE ticker IN ('VTI', 'VT', 'SOXX');",
-        # GuruHolding: 新增 sector 欄位（GICS 行業板塊）
-        "ALTER TABLE guruholding ADD COLUMN sector VARCHAR;",
-        # Holding: 新增購入時匯率欄位（Phase 6 FX return tracking）
-        "ALTER TABLE holding ADD COLUMN purchase_fx_rate REAL;",
-        # Holding: 新增加密貨幣對應 CoinGecko ID 欄位
-        "ALTER TABLE holding ADD COLUMN coingecko_id VARCHAR;",
-        # Stock: 新增加密貨幣對應 CoinGecko ID 欄位（Radar 追蹤用）
-        "ALTER TABLE stock ADD COLUMN coingecko_id VARCHAR;",
-        # Guru: 新增投資風格與級別欄位（Smart Money Phase 1）
-        "ALTER TABLE guru ADD COLUMN style VARCHAR;",
-        "ALTER TABLE guru ADD COLUMN tier VARCHAR;",
-        # PortfolioSnapshot: 新增多基準指數 JSON 欄位（Portfolio Enhancement）
-        "ALTER TABLE portfoliosnapshot ADD COLUMN benchmark_values TEXT DEFAULT '{}';",
-        # PortfolioSnapshot: 新增個股市值 JSON 欄位
-        "ALTER TABLE portfoliosnapshot ADD COLUMN holding_values TEXT DEFAULT '{}';",
-        # PortfolioSnapshot: 新增總成本基礎欄位
-        "ALTER TABLE portfoliosnapshot ADD COLUMN cost_basis_total REAL;",
-        # PortfolioSnapshot: 新增地理區域市值 JSON 欄位
-        "ALTER TABLE portfoliosnapshot ADD COLUMN geographic_values TEXT DEFAULT '{}';",
-        # Stock: 新增訊號起始時間欄位（Signal Duration Tracking）
-        "ALTER TABLE stock ADD COLUMN signal_since DATETIME;",
-        # UserPreferences: 新增通知頻率限制 JSON 欄位（Rate Limiting）
-        "ALTER TABLE userpreferences ADD COLUMN notification_rate_limits VARCHAR DEFAULT '{}';",
-        # UserPreferences: terminology display mode (Phase 7)
-        "ALTER TABLE userpreferences ADD COLUMN terminology_mode VARCHAR DEFAULT 'simplified';",
-        # FX Watch: target-rate alert support
-        "ALTER TABLE fxwatchconfig ADD COLUMN target_rate REAL;",
-        "ALTER TABLE fxwatchconfig ADD COLUMN target_direction VARCHAR;",
-        # Account: 新增税制口座ラッパー欄位（NISA / iDeCo / Tokutei）
-        "ALTER TABLE account ADD COLUMN tax_wrapper TEXT;",
-        # Account: 新增市場欄位（US / JP / TW / HK ...）
-        "ALTER TABLE account ADD COLUMN market VARCHAR;",
-        # Account: 依帳戶幣別回填市場（既有資料遷移）
-        (
-            "UPDATE account SET market = CASE UPPER(COALESCE(currency, 'USD')) "
-            "WHEN 'JPY' THEN 'JP' "
-            "WHEN 'TWD' THEN 'TW' "
-            "WHEN 'HKD' THEN 'HK' "
-            "WHEN 'EUR' THEN 'EU' "
-            "WHEN 'GBP' THEN 'UK' "
-            "WHEN 'CNY' THEN 'CN' "
-            "WHEN 'SGD' THEN 'SG' "
-            "WHEN 'THB' THEN 'TH' "
-            "ELSE 'US' END "
-            "WHERE market IS NULL OR TRIM(market) = '';"
-        ),
-        # Contribution ledger: append-only quota accounting for NISA/iDeCo
-        (
-            "CREATE TABLE IF NOT EXISTS contributionledgerentry ("
-            "id INTEGER PRIMARY KEY, "
-            "user_id VARCHAR NOT NULL DEFAULT 'default', "
-            "tax_wrapper VARCHAR NOT NULL, "
-            "entry_type VARCHAR NOT NULL, "
-            "fiscal_year INTEGER NOT NULL, "
-            "amount REAL NOT NULL, "
-            "transaction_id INTEGER, "
-            "effective_date DATE NOT NULL, "
-            "note VARCHAR NOT NULL DEFAULT '', "
-            "created_at DATETIME NOT NULL, "
-            'FOREIGN KEY(transaction_id) REFERENCES "transaction"(id)'
-            ");"
-        ),
-        "CREATE INDEX IF NOT EXISTS ix_contrib_user_wrapper_year ON contributionledgerentry (user_id, tax_wrapper, fiscal_year);",
-        "CREATE INDEX IF NOT EXISTS ix_contrib_transaction ON contributionledgerentry (transaction_id);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_contrib_transaction_entry_type ON contributionledgerentry (transaction_id, entry_type) WHERE transaction_id IS NOT NULL;",
-        # Eligible asset master for wrapper placement validation.
-        (
-            "CREATE TABLE IF NOT EXISTS eligibleasset ("
-            "id INTEGER PRIMARY KEY, "
-            "tax_wrapper VARCHAR NOT NULL, "
-            "ticker VARCHAR NOT NULL, "
-            "fund_name VARCHAR NOT NULL DEFAULT '', "
-            "asset_type VARCHAR NOT NULL DEFAULT 'mutual_fund', "
-            "broker VARCHAR, "
-            "trust_fee_pct REAL, "
-            "is_active BOOLEAN NOT NULL DEFAULT 1, "
-            "updated_at DATETIME NOT NULL"
-            ");"
-        ),
-        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_ticker ON eligibleasset (tax_wrapper, ticker);",
-        "CREATE INDEX IF NOT EXISTS ix_eligible_wrapper_broker ON eligibleasset (tax_wrapper, broker);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_broker ON eligibleasset (tax_wrapper, ticker, broker);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_eligible_wrapper_ticker_null_broker ON eligibleasset (tax_wrapper, ticker) WHERE broker IS NULL;",
-        # Add isin_code to eligible asset (for toushin-lib NAV lookup).
-        "ALTER TABLE eligibleasset ADD COLUMN isin_code VARCHAR;",
-        # One-time canonicalization: ensure asset_type is lowercase-trimmed.
-        # Rows already canonical are untouched; runs as a cheap SQL scan.
-        (
-            "UPDATE eligibleasset SET asset_type = "
-            "CASE WHEN LOWER(TRIM(COALESCE(asset_type, ''))) = '' THEN 'mutual_fund' "
-            "ELSE LOWER(TRIM(asset_type)) END "
-            "WHERE asset_type IS NULL OR TRIM(asset_type) = '' "
-            "OR asset_type != LOWER(TRIM(asset_type));"
-        ),
-        # Eligible asset sync metadata.
-        (
-            "CREATE TABLE IF NOT EXISTS eligibleassetsyncstate ("
-            "tax_wrapper VARCHAR PRIMARY KEY, "
-            "source VARCHAR NOT NULL DEFAULT 'unknown', "
-            "last_refreshed_at DATETIME NOT NULL, "
-            "updated_at DATETIME NOT NULL"
-            ");"
-        ),
-        # Mutual fund NAV cache for daily toushin-lib sync.
-        (
-            "CREATE TABLE IF NOT EXISTS mutualfundnav ("
-            "id INTEGER PRIMARY KEY, "
-            "fund_code VARCHAR NOT NULL, "
-            "isin_code VARCHAR NOT NULL, "
-            "nav REAL NOT NULL, "
-            "nav_previous REAL, "
-            "nav_date DATE NOT NULL, "
-            "net_assets REAL, "
-            "fetched_at DATETIME NOT NULL"
-            ");"
-        ),
-        "CREATE INDEX IF NOT EXISTS ix_mfnav_fund_code ON mutualfundnav (fund_code);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_mfnav_fund_code_date ON mutualfundnav (fund_code, nav_date);",
-        # UserPreferences: 新增預設顯示貨幣欄位（Centralized Settings Page）
-        "ALTER TABLE userpreferences ADD COLUMN default_display_currency VARCHAR DEFAULT 'USD';",
-    ]
-
     with engine.connect() as conn:
-        for sql in migrations:
+        for sql in _MIGRATIONS:
             try:
                 conn.execute(text(sql))
                 conn.commit()

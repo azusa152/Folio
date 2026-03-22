@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-MODULE = "application.portfolio.rebalance_service"
+MODULE = "application.portfolio.fx_exposure_service"
 
 
 class TestSendFxAlertsRateLimit:

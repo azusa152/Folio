@@ -14,7 +14,8 @@ from api.schemas import (
     ProfileUpdateRequest,
 )
 from application.errors import ApplicationError
-from application.services import invalidate_insight_cache, invalidate_rebalance_cache
+from application.portfolio.insight_service import invalidate_insight_cache
+from application.portfolio.rebalance_service import invalidate_rebalance_cache
 from application.settings import persona_service
 from i18n import get_user_language, t
 from infrastructure.database import get_session

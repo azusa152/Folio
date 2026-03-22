@@ -192,6 +192,167 @@ def _compute_post_sell_drifts(
 
 
 # ---------------------------------------------------------------------------
+# Liquidity Waterfall — priority phase helpers
+# ---------------------------------------------------------------------------
+
+
+def _apply_rebalance_phase(
+    holdings_data: list[HoldingData],
+    category_drifts: dict[str, float],
+    total_portfolio_value: float,
+    recommendations: list[SellRecommendation],
+    already_sold: dict[str, float],
+    sell_by_category: dict[str, float],
+    remaining: float,
+) -> float:
+    """Priority 1: sell overweight categories (rebalancing), most overweight first.
+
+    Mutates *recommendations*, *already_sold*, and *sell_by_category* in place.
+    Returns the updated remaining amount.
+    """
+    overweight_cats = sorted(
+        [(cat, drift) for cat, drift in category_drifts.items() if drift > 0],
+        key=lambda x: -x[1],
+    )
+    for cat, drift_pct in overweight_cats:
+        if remaining <= 0:
+            break
+        max_rebalance_value = (drift_pct / 100.0) * total_portfolio_value
+        sellable_value = min(max_rebalance_value, remaining)
+        cat_holdings = sorted(
+            [h for h in holdings_data if h.category == cat],
+            key=lambda h: -h.market_value,
+        )
+        for h in cat_holdings:
+            if remaining <= 0 or sellable_value <= 0:
+                break
+            icon = CATEGORY_ICON.get(cat, "📊")
+            rec = _sell_from_holding(
+                h,
+                min(remaining, sellable_value),
+                reason_key=I18nKey("withdrawal.rebalance_reason"),
+                reason_vars={
+                    "icon": icon,
+                    "category": cat,
+                    "drift": f"{drift_pct:+.1f}",
+                },
+                priority=1,
+                already_sold=already_sold,
+            )
+            if rec:
+                recommendations.append(rec)
+                already_sold[h.ticker] = (
+                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+                )
+                remaining -= rec.sell_value
+                sellable_value -= rec.sell_value
+                sell_by_category[cat] = sell_by_category.get(cat, 0.0) + rec.sell_value
+    return remaining
+
+
+def _apply_tax_loss_phase(
+    holdings_data: list[HoldingData],
+    recommendations: list[SellRecommendation],
+    already_sold: dict[str, float],
+    sell_by_category: dict[str, float],
+    remaining: float,
+) -> float:
+    """Priority 2: sell loss-making positions first (Tax-Loss Harvesting).
+
+    Mutates *recommendations*, *already_sold*, and *sell_by_category* in place.
+    Returns the updated remaining amount.
+    """
+    if remaining <= 0:
+        return remaining
+    loss_holdings = []
+    for h in holdings_data:
+        avail = h.quantity - already_sold.get(h.ticker, 0.0)
+        if avail <= 0:
+            continue
+        if (
+            h.cost_basis is not None
+            and h.current_price is not None
+            and h.current_price < h.cost_basis
+        ):
+            total_loss = (h.cost_basis - h.current_price) * avail * h.fx_rate
+            loss_holdings.append((h, total_loss))
+    loss_holdings.sort(key=lambda x: -x[1])
+    for h, _loss in loss_holdings:
+        if remaining <= 0:
+            break
+        rec = _sell_from_holding(
+            h,
+            remaining,
+            reason_key=I18nKey("withdrawal.tax_reason"),
+            reason_vars={},
+            priority=2,
+            already_sold=already_sold,
+        )
+        if rec:
+            recommendations.append(rec)
+            already_sold[h.ticker] = (
+                already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+            )
+            remaining -= rec.sell_value
+            sell_by_category[h.category] = (
+                sell_by_category.get(h.category, 0.0) + rec.sell_value
+            )
+    return remaining
+
+
+def _apply_liquidity_phase(
+    holdings_data: list[HoldingData],
+    recommendations: list[SellRecommendation],
+    already_sold: dict[str, float],
+    sell_by_category: dict[str, float],
+    remaining: float,
+) -> float:
+    """Priority 3: sell by category liquidity order (Cash → Bond → Growth → ...).
+
+    Mutates *recommendations*, *already_sold*, and *sell_by_category* in place.
+    Returns the updated remaining amount.
+    """
+    if remaining <= 0:
+        return remaining
+    liquidity_rank = {cat: i for i, cat in enumerate(CATEGORY_LIQUIDITY_ORDER)}
+    remaining_holdings = [
+        h for h in holdings_data if h.quantity - already_sold.get(h.ticker, 0.0) > 0
+    ]
+    remaining_holdings.sort(
+        key=lambda h: (liquidity_rank.get(h.category, 999), -h.market_value),
+    )
+    for h in remaining_holdings:
+        if remaining <= 0:
+            break
+        cat = h.category
+        rank = liquidity_rank.get(cat, 999)
+        icon = CATEGORY_ICON.get(cat, "📊")
+        reason_key = (
+            I18nKey("withdrawal.liquidity_high_reason")
+            if rank <= 1  # Cash, Bond
+            else I18nKey("withdrawal.liquidity_default_reason")
+        )
+        rec = _sell_from_holding(
+            h,
+            remaining,
+            reason_key=reason_key,
+            reason_vars={"icon": icon, "category": cat},
+            priority=3,
+            already_sold=already_sold,
+        )
+        if rec:
+            recommendations.append(rec)
+            already_sold[h.ticker] = (
+                already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
+            )
+            remaining -= rec.sell_value
+            sell_by_category[h.category] = (
+                sell_by_category.get(h.category, 0.0) + rec.sell_value
+            )
+    return remaining
+
+
+# ---------------------------------------------------------------------------
 # Main Algorithm — Liquidity Waterfall
 # ---------------------------------------------------------------------------
 
@@ -257,138 +418,30 @@ def plan_withdrawal(
         )
     sell_by_category: dict[str, float] = {}
 
-    # === Priority 1: 再平衡 — 賣出超配分類 ===
-    overweight_cats = sorted(
-        [(cat, drift) for cat, drift in category_drifts.items() if drift > 0],
-        key=lambda x: -x[1],  # 最超配的先賣
+    remaining = _apply_rebalance_phase(
+        holdings_data,
+        category_drifts,
+        total_portfolio_value,
+        recommendations,
+        already_sold,
+        sell_by_category,
+        remaining,
+    )
+    remaining = _apply_tax_loss_phase(
+        holdings_data,
+        recommendations,
+        already_sold,
+        sell_by_category,
+        remaining,
+    )
+    _apply_liquidity_phase(
+        holdings_data,
+        recommendations,
+        already_sold,
+        sell_by_category,
+        remaining,
     )
 
-    for cat, drift_pct in overweight_cats:
-        if remaining <= 0:
-            break
-
-        # 此分類超配的金額上限 = drift% * total_value / 100
-        max_rebalance_value = (drift_pct / 100.0) * total_portfolio_value
-        sellable_value = min(max_rebalance_value, remaining)
-
-        # 找出此分類的持倉，按市值降序
-        cat_holdings = sorted(
-            [h for h in holdings_data if h.category == cat],
-            key=lambda h: -h.market_value,
-        )
-
-        for h in cat_holdings:
-            if remaining <= 0 or sellable_value <= 0:
-                break
-
-            icon = CATEGORY_ICON.get(cat, "📊")
-            rec = _sell_from_holding(
-                h,
-                min(remaining, sellable_value),
-                reason_key=I18nKey("withdrawal.rebalance_reason"),
-                reason_vars={
-                    "icon": icon,
-                    "category": cat,
-                    "drift": f"{drift_pct:+.1f}",
-                },
-                priority=1,
-                already_sold=already_sold,
-            )
-            if rec:
-                recommendations.append(rec)
-                already_sold[h.ticker] = (
-                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
-                )
-                remaining -= rec.sell_value
-                sellable_value -= rec.sell_value
-                sell_by_category[cat] = sell_by_category.get(cat, 0.0) + rec.sell_value
-
-    # === Priority 2: 節稅 — 賣出帳面虧損持倉 (Tax-Loss Harvesting) ===
-    if remaining > 0:
-        loss_holdings = []
-        for h in holdings_data:
-            avail = h.quantity - already_sold.get(h.ticker, 0.0)
-            if avail <= 0:
-                continue
-            if (
-                h.cost_basis is not None
-                and h.current_price is not None
-                and h.current_price < h.cost_basis
-            ):
-                total_loss = (h.cost_basis - h.current_price) * avail * h.fx_rate
-                loss_holdings.append((h, total_loss))
-
-        # 按虧損金額降序（最大虧損先賣）
-        loss_holdings.sort(key=lambda x: -x[1])
-
-        for h, _loss in loss_holdings:
-            if remaining <= 0:
-                break
-
-            rec = _sell_from_holding(
-                h,
-                remaining,
-                reason_key=I18nKey("withdrawal.tax_reason"),
-                reason_vars={},
-                priority=2,
-                already_sold=already_sold,
-            )
-            if rec:
-                recommendations.append(rec)
-                already_sold[h.ticker] = (
-                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
-                )
-                remaining -= rec.sell_value
-                sell_by_category[h.category] = (
-                    sell_by_category.get(h.category, 0.0) + rec.sell_value
-                )
-
-    # === Priority 3: 流動性 — 按類別流動性順序賣出 ===
-    if remaining > 0:
-        liquidity_rank = {cat: i for i, cat in enumerate(CATEGORY_LIQUIDITY_ORDER)}
-
-        remaining_holdings = []
-        for h in holdings_data:
-            avail = h.quantity - already_sold.get(h.ticker, 0.0)
-            if avail > 0:
-                remaining_holdings.append(h)
-
-        # 按流動性排序（Cash 最先），同類別則按市值降序
-        remaining_holdings.sort(
-            key=lambda h: (liquidity_rank.get(h.category, 999), -h.market_value),
-        )
-
-        for h in remaining_holdings:
-            if remaining <= 0:
-                break
-
-            cat = h.category
-            rank = liquidity_rank.get(cat, 999)
-            icon = CATEGORY_ICON.get(cat, "📊")
-            if rank <= 1:  # Cash, Bond
-                reason_key = I18nKey("withdrawal.liquidity_high_reason")
-            else:
-                reason_key = I18nKey("withdrawal.liquidity_default_reason")
-
-            rec = _sell_from_holding(
-                h,
-                remaining,
-                reason_key=reason_key,
-                reason_vars={"icon": icon, "category": cat},
-                priority=3,
-                already_sold=already_sold,
-            )
-            if rec:
-                recommendations.append(rec)
-                already_sold[h.ticker] = (
-                    already_sold.get(h.ticker, 0.0) + rec.quantity_to_sell
-                )
-                remaining -= rec.sell_value
-                sell_by_category[h.category] = (
-                    sell_by_category.get(h.category, 0.0) + rec.sell_value
-                )
-
-    # === 彙總結果 ===
     total_sell = sum(r.sell_value for r in recommendations)
     shortfall = max(0.0, target_amount - total_sell)
     post_sell = _compute_post_sell_drifts(

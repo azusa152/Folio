@@ -20,6 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 BACKEND_CONSTANTS = ROOT / "backend" / "domain" / "core" / "constants.py"
+BACKEND_PORTFOLIO_CONSTANTS = ROOT / "backend" / "domain" / "core" / "_constants_portfolio.py"
+BACKEND_MARKET_CONSTANTS = ROOT / "backend" / "domain" / "core" / "_constants_market.py"
 FRONTEND_CONSTANTS = ROOT / "frontend-react" / "src" / "lib" / "constants.ts"
 
 
@@ -121,7 +123,7 @@ def extract_ts_record(filepath: Path, var_name: str) -> dict[str, str]:
 def check_categories() -> list[str]:
     """Verify backend STOCK_CATEGORIES matches frontend STOCK_CATEGORIES."""
     errors = []
-    backend = extract_python_list(BACKEND_CONSTANTS, "STOCK_CATEGORIES")
+    backend = extract_python_list(BACKEND_PORTFOLIO_CONSTANTS, "STOCK_CATEGORIES")
     frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "STOCK_CATEGORIES"))
     if backend != frontend:
         errors.append(
@@ -135,7 +137,7 @@ def check_categories() -> list[str]:
 def check_radar_categories() -> list[str]:
     """Verify backend RADAR_CATEGORIES matches frontend RADAR_CATEGORIES."""
     errors = []
-    backend_radar = extract_python_list(BACKEND_CONSTANTS, "RADAR_CATEGORIES")
+    backend_radar = extract_python_list(BACKEND_PORTFOLIO_CONSTANTS, "RADAR_CATEGORIES")
     frontend = list(extract_ts_array(FRONTEND_CONSTANTS, "RADAR_CATEGORIES"))
     if backend_radar != frontend:
         errors.append(
@@ -149,7 +151,7 @@ def check_radar_categories() -> list[str]:
 def check_category_icons() -> list[str]:
     """Verify CATEGORY_ICON matches CATEGORY_ICON_SHORT."""
     errors = []
-    backend = extract_python_dict(BACKEND_CONSTANTS, "CATEGORY_ICON")
+    backend = extract_python_dict(BACKEND_PORTFOLIO_CONSTANTS, "CATEGORY_ICON")
     frontend = extract_ts_record(FRONTEND_CONSTANTS, "CATEGORY_ICON_SHORT")
     if backend != frontend:
         only_backend = {k: v for k, v in backend.items() if frontend.get(k) != v}
@@ -165,9 +167,9 @@ def check_category_icons() -> list[str]:
 def check_currencies() -> list[str]:
     """Verify currency constants stay aligned across backend/frontend surfaces."""
     errors = []
-    backend = extract_python_list(BACKEND_CONSTANTS, "SUPPORTED_CURRENCIES")
+    backend = extract_python_list(BACKEND_MARKET_CONSTANTS, "SUPPORTED_CURRENCIES")
     backend_set = set(backend)
-    backend_currency_region = extract_python_dict(BACKEND_CONSTANTS, "CURRENCY_REGION_MAP")
+    backend_currency_region = extract_python_dict(BACKEND_MARKET_CONSTANTS, "CURRENCY_REGION_MAP")
 
     frontend_fx = list(extract_ts_array(FRONTEND_CONSTANTS, "FX_CURRENCY_OPTIONS"))
     frontend_cash = list(extract_ts_array(FRONTEND_CONSTANTS, "CASH_CURRENCY_OPTIONS"))
@@ -268,20 +270,16 @@ def check_currencies() -> list[str]:
 
 
 def preflight() -> None:
-    """Assert both constant files exist and the backend file is not a shim."""
-    for path in (BACKEND_CONSTANTS, FRONTEND_CONSTANTS):
+    """Assert all constant files exist."""
+    for path in (
+        BACKEND_CONSTANTS,
+        BACKEND_PORTFOLIO_CONSTANTS,
+        BACKEND_MARKET_CONSTANTS,
+        FRONTEND_CONSTANTS,
+    ):
         if not path.exists():
             print(f"ERROR: constant file not found: {path}")
             sys.exit(1)
-
-    source = BACKEND_CONSTANTS.read_text()
-    if "import *" in source and len(source.strip().splitlines()) <= 5:
-        print(
-            f"ERROR: BACKEND_CONSTANTS points to a re-export shim, not the actual "
-            f"constants file: {BACKEND_CONSTANTS}\n"
-            f"  Update BACKEND_CONSTANTS to the file that defines the constants directly."
-        )
-        sys.exit(1)
 
 
 def main() -> None:

@@ -147,6 +147,21 @@ def _internal_error_response(params: dict, lang: str, message: str) -> dict:
     )
 
 
+def _get_signals_or_error(
+    session: Session, ticker: str, params: dict, lang: str
+) -> tuple[dict, None] | tuple[None, dict]:
+    """Fetch signals for ticker; return (signals, None) on success or (None, error_response)."""
+    result = get_signals_for_ticker(session, ticker)
+    if not result or "error" in result:
+        message = (
+            result.get("error", t("webhook.signals_unavailable", lang=lang))
+            if result
+            else t("webhook.signals_unavailable", lang=lang)
+        )
+        return None, _internal_error_response(params, lang, message)
+    return result, None
+
+
 def _handle_help(session: Session, ticker: str | None, params: dict, lang: str) -> dict:
     return _wrap_response(
         success=True,
@@ -204,14 +219,9 @@ def _handle_signals(
 ) -> dict:
     if not ticker:
         return _missing_ticker_response(params, lang)
-    result = get_signals_for_ticker(session, ticker)
-    if not result or "error" in result:
-        message = (
-            result.get("error", t("webhook.signals_unavailable", lang=lang))
-            if result
-            else t("webhook.signals_unavailable", lang=lang)
-        )
-        return _internal_error_response(params, lang, message)
+    result, err = _get_signals_or_error(session, ticker, params, lang)
+    if err:
+        return err
     status_text = "\n".join(result.get("status", []))
     msg = (
         t(
@@ -238,14 +248,9 @@ def _handle_analyze(
 ) -> dict:
     if not ticker:
         return _missing_ticker_response(params, lang)
-    signals = get_signals_for_ticker(session, ticker)
-    if not signals or "error" in signals:
-        message = (
-            signals.get("error", t("webhook.signals_unavailable", lang=lang))
-            if signals
-            else t("webhook.signals_unavailable", lang=lang)
-        )
-        return _internal_error_response(params, lang, message)
+    signals, err = _get_signals_or_error(session, ticker, params, lang)
+    if err:
+        return err
     moat = get_moat_for_ticker(session, ticker)
     fundamentals = get_fundamentals_for_ticker(session, ticker)
     message = t(

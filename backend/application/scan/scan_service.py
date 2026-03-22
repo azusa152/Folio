@@ -197,97 +197,63 @@ def _prepare_scan_context(session: Session) -> _ScanContext:
     )
 
 
-def _analyze_single_stock(
+def _fetch_stock_signals(
     stock: Stock,
-    mkt_status: str,
-    lang: str,
     nav_cache: dict[str, dict],
-) -> dict:
-    """Layer 2 & 3 analysis for one stock (runs inside a thread pool)."""
+) -> dict | None:
+    """Return raw technical signals for *stock* based on its category."""
     ticker = stock.ticker
-    alerts: list[str] = []
-
-    if stock.category.value in SKIP_MOAT_CATEGORIES or stock.is_etf:
-        moat_not_applicable = t(
-            "scan.moat_not_applicable", lang=lang, category=stock.category.value
-        )
-        moat_result = {
-            "ticker": ticker,
-            "moat": MoatStatus.NOT_AVAILABLE.value,
-            "details": moat_not_applicable,
-        }
-    else:
-        moat_result = analyze_moat_trend(ticker)
-    moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
-    moat_details = moat_result.get("details", "")
-
     if stock.category == StockCategory.MUTUAL_FUND:
-        signals = nav_cache.get(ticker)
-    elif stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
-        signals = None
-    elif stock.category == StockCategory.CRYPTO:
+        return nav_cache.get(ticker)
+    if stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
+        return None
+    if stock.category == StockCategory.CRYPTO:
         crypto_data = get_crypto_price(stock.coingecko_id, ticker)
         crypto_price = (
             crypto_data.get("price_usd")
             if crypto_data and isinstance(crypto_data.get("price_usd"), (int, float))
             else None
         )
-        signals = {
+        return {
             "price": crypto_price,
             "rsi": None,
             "bias": None,
             "bias_200": None,
             "volume_ratio": None,
         }
-    else:
-        signals = get_technical_signals(ticker)
+    return get_technical_signals(ticker)
 
-    rsi: float | None = None
-    bias: float | None = None
-    bias_200: float | None = None
-    volume_ratio: float | None = None
-    price: float | None = None
-    if signals and "error" not in signals:
-        rsi = signals.get("rsi")
-        bias = signals.get("bias")
-        bias_200 = signals.get("bias_200")
-        volume_ratio = signals.get("volume_ratio")
-        price = signals.get("price")
-    elif signals and "error" in signals:
-        alerts.append(signals["error"])
 
-    signal = determine_scan_signal(
-        moat_value,
-        rsi,
-        bias,
-        bias_200,
-        stock.category.value,
-        volume_ratio=volume_ratio,
-        market_status=mkt_status,
-    )
+def _build_scan_alerts(
+    ticker: str,
+    lang: str,
+    signal: "ScanSignal",
+    moat_value: str,
+    moat_details: str,
+    rsi: float | None,
+    bias: float | None,
+    bias_200: float | None,
+    volume_ratio: float | None,
+    bias_percentile: float | None,
+    is_rogue_wave: bool,
+    initial_alerts: list[str],
+) -> list[str]:
+    """Assemble the human-readable alert lines for a single stock scan result."""
+    alerts = list(initial_alerts)
 
-    bias_percentile: float | None = None
-    is_rogue_wave = False
-    if bias is not None and stock.category.value not in SKIP_RSI_CATEGORIES:
-        dist = get_bias_distribution(ticker)
-        if dist:
-            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
-        is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
-        if is_rogue_wave:
-            alerts.append(
-                t(
-                    "scan.rogue_wave_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    percentile=round(bias_percentile)
-                    if bias_percentile is not None
-                    else "N/A",
-                    vol_ratio=round(volume_ratio, 1)
-                    if volume_ratio is not None
-                    else "N/A",
-                )
+    if is_rogue_wave:
+        alerts.append(
+            t(
+                "scan.rogue_wave_alert",
+                lang=lang,
+                ticker=ticker,
+                bias=round(bias, 1),  # type: ignore[arg-type]
+                percentile=round(bias_percentile)
+                if bias_percentile is not None
+                else "N/A",
+                vol_ratio=round(volume_ratio, 1) if volume_ratio is not None else "N/A",
             )
+        )
 
     alert_key = _SIGNAL_ALERT_KEYS.get(signal)
     if alert_key:
@@ -303,12 +269,15 @@ def _analyze_single_stock(
             )
         )
 
-    # Volume confidence qualifier: insert on the metrics line (line 1) of the last
-    # signal alert. Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal).
+    # Volume confidence qualifier on last alert (not for NORMAL / THESIS_BROKEN).
     if (
         alerts
         and volume_ratio is not None
-        and signal not in (ScanSignal.NORMAL, ScanSignal.THESIS_BROKEN)
+        and signal
+        not in (
+            ScanSignal.NORMAL,
+            ScanSignal.THESIS_BROKEN,
+        )
     ):
         qualifier: str | None = None
         if volume_ratio >= VOLUME_SURGE_THRESHOLD:
@@ -331,6 +300,80 @@ def _analyze_single_stock(
                 details=moat_details,
             )
         )
+    return alerts
+
+
+def _analyze_single_stock(
+    stock: Stock,
+    mkt_status: str,
+    lang: str,
+    nav_cache: dict[str, dict],
+) -> dict:
+    """Layer 2 & 3 analysis for one stock (runs inside a thread pool)."""
+    ticker = stock.ticker
+
+    if stock.category.value in SKIP_MOAT_CATEGORIES or stock.is_etf:
+        moat_result = {
+            "ticker": ticker,
+            "moat": MoatStatus.NOT_AVAILABLE.value,
+            "details": t(
+                "scan.moat_not_applicable", lang=lang, category=stock.category.value
+            ),
+        }
+    else:
+        moat_result = analyze_moat_trend(ticker)
+    moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
+    moat_details = moat_result.get("details", "")
+
+    signals = _fetch_stock_signals(stock, nav_cache)
+
+    rsi: float | None = None
+    bias: float | None = None
+    bias_200: float | None = None
+    volume_ratio: float | None = None
+    price: float | None = None
+    initial_alerts: list[str] = []
+    if signals and "error" not in signals:
+        rsi = signals.get("rsi")
+        bias = signals.get("bias")
+        bias_200 = signals.get("bias_200")
+        volume_ratio = signals.get("volume_ratio")
+        price = signals.get("price")
+    elif signals and "error" in signals:
+        initial_alerts.append(signals["error"])
+
+    signal = determine_scan_signal(
+        moat_value,
+        rsi,
+        bias,
+        bias_200,
+        stock.category.value,
+        volume_ratio=volume_ratio,
+        market_status=mkt_status,
+    )
+
+    bias_percentile: float | None = None
+    is_rogue_wave = False
+    if bias is not None and stock.category.value not in SKIP_RSI_CATEGORIES:
+        dist = get_bias_distribution(ticker)
+        if dist:
+            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
+        is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
+
+    alerts = _build_scan_alerts(
+        ticker=ticker,
+        lang=lang,
+        signal=signal,
+        moat_value=moat_value,
+        moat_details=moat_details,
+        rsi=rsi,
+        bias=bias,
+        bias_200=bias_200,
+        volume_ratio=volume_ratio,
+        bias_percentile=bias_percentile,
+        is_rogue_wave=is_rogue_wave,
+        initial_alerts=initial_alerts,
+    )
 
     logger.info(
         "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",

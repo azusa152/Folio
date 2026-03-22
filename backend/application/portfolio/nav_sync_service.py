@@ -82,7 +82,8 @@ def _resolve_isin_fallback(session: Session, ticker: str) -> tuple[str, str] | N
 
     try:
         isin = lookup_isin(fund_code)
-    except Exception:
+    except Exception as exc:
+        logger.warning("toushin-lib ISIN lookup 失敗（%s）：%s", fund_code, exc)
         return None
     if not isin:
         return None

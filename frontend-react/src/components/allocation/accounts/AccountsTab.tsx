@@ -16,7 +16,6 @@ import { TransactionList } from "@/components/allocation/transactions/Transactio
 import { TransactionCsvImportDialog } from "@/components/allocation/transactions/TransactionCsvImportDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTransactions } from "@/api/hooks/useTransactions"
@@ -24,11 +23,11 @@ import {
   ACCOUNT_TYPES,
   isTaxWrapperType,
   TAX_WRAPPER_ICONS,
-  TAX_WRAPPER_TYPES,
   type TaxWrapperType,
 } from "@/lib/constants"
 import { formatPrice, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
+import { AccountFormPanel } from "./AccountFormPanel"
 
 interface Props {
   enabled: boolean
@@ -271,104 +270,31 @@ export function AccountsTab({ enabled, onDepositToAccount, onRecordTransaction }
       </div>
 
       {formOpen ? (
-        <div className="rounded-md border border-border p-3 space-y-3">
-          <p className="text-xs font-semibold">
-            {editingId == null ? t("accounts.form.create_title") : t("accounts.form.edit_title")}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Input
-              aria-label={t("accounts.form.name")}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("accounts.form.name")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.broker")}
-              value={broker}
-              onChange={(event) => setBroker(event.target.value)}
-              placeholder={t("accounts.form.broker")}
-              className="text-xs"
-            />
-            <select
-              aria-label={t("accounts.form.account_type")}
-              value={accountType}
-              onChange={(event) =>
-                setAccountType(event.target.value as (typeof ACCOUNT_TYPES)[number])
-              }
-              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-            >
-              {ACCOUNT_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {t(`config.account_type.${value}`)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("wrapper.select_wrapper")}
-              value={taxWrapper ?? ""}
-              onChange={(event) => {
-                const value = event.target.value
-                setTaxWrapper(isTaxWrapperType(value) ? value : null)
-              }}
-              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-            >
-              <option value="">{t("wrapper.no_wrapper")}</option>
-              {TAX_WRAPPER_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {TAX_WRAPPER_ICONS[value]} {t(`wrapper.${value}`)}
-                </option>
-              ))}
-            </select>
-            <Input
-              aria-label={t("accounts.form.currency")}
-              value={currency}
-              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-              placeholder={t("accounts.form.currency")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.market")}
-              value={market}
-              onChange={(event) => setMarket(event.target.value.toUpperCase())}
-              placeholder={t("accounts.form.market")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.institution")}
-              value={institution}
-              onChange={(event) => setInstitution(event.target.value)}
-              placeholder={t("accounts.form.institution")}
-              className="text-xs sm:col-span-2"
-            />
-            <Input
-              aria-label={t("accounts.form.note")}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={t("accounts.form.note")}
-              className="text-xs sm:col-span-2"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={submit}
-              disabled={createAccount.isPending || updateAccount.isPending}
-            >
-              {t("accounts.form.save")}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFormOpen(false)
-                resetForm()
-              }}
-            >
-              {t("common.cancel")}
-            </Button>
-          </div>
-        </div>
+        <AccountFormPanel
+          editingId={editingId}
+          name={name}
+          broker={broker}
+          accountType={accountType}
+          taxWrapper={taxWrapper}
+          currency={currency}
+          market={market}
+          institution={institution}
+          note={note}
+          isSaving={createAccount.isPending || updateAccount.isPending}
+          onNameChange={setName}
+          onBrokerChange={setBroker}
+          onAccountTypeChange={setAccountType}
+          onTaxWrapperChange={setTaxWrapper}
+          onCurrencyChange={setCurrency}
+          onMarketChange={setMarket}
+          onInstitutionChange={setInstitution}
+          onNoteChange={setNote}
+          onSubmit={submit}
+          onCancel={() => {
+            setFormOpen(false)
+            resetForm()
+          }}
+        />
       ) : null}
 
       {isLoading ? <p className="text-xs text-muted-foreground">{t("common.loading")}</p> : null}

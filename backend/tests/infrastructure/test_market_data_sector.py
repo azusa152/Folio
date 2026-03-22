@@ -63,8 +63,8 @@ class TestGetEtfSectorWeights:
         """Clear L1 cache before each test to prevent cross-test contamination."""
         _etf_sector_weights_cache.clear()
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_return_normalized_gics_names_for_dict_format(
         self, _mock_rl, mock_ticker
     ):
@@ -79,8 +79,8 @@ class TestGetEtfSectorWeights:
             "Real Estate": 0.05,
         }
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_handle_list_of_dicts_format(self, _mock_rl, mock_ticker):
         """list[dict] format (older yfinance) merges correctly into a single dict."""
         mock_ticker.return_value = _make_funds_data(
@@ -91,16 +91,16 @@ class TestGetEtfSectorWeights:
         assert result["Technology"] == 0.28
         assert result["Financial Services"] == 0.14
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_fall_back_to_title_for_unmapped_key(self, _mock_rl, mock_ticker):
         """Keys not in _ETF_SECTOR_KEY_MAP fall back to str.title()."""
         mock_ticker.return_value = _make_funds_data({"other": 0.03})
         result = get_etf_sector_weights("VTI_UNKNOWN_KEY_TEST")
         assert result == {"Other": 0.03}
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_return_none_when_sector_weightings_is_none(
         self, _mock_rl, mock_ticker
     ):
@@ -109,8 +109,8 @@ class TestGetEtfSectorWeights:
         result = get_etf_sector_weights("NON_ETF_NONE_TEST")
         assert result is None
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_return_none_when_sector_weightings_is_empty(
         self, _mock_rl, mock_ticker
     ):
@@ -119,8 +119,8 @@ class TestGetEtfSectorWeights:
         result = get_etf_sector_weights("NON_ETF_EMPTY_TEST")
         assert result is None
 
-    @patch("infrastructure.market_data.market_data._yf_ticker_obj")
-    @patch("infrastructure.market_data.market_data._rate_limiter")
+    @patch("infrastructure.market_data.etf._yf_ticker_obj")
+    @patch("infrastructure.market_data.etf._rate_limiter")
     def test_should_return_none_when_funds_data_is_none(self, _mock_rl, mock_ticker):
         """funds_data is None (non-ETF stock) → returns None."""
         ticker_obj = MagicMock()
@@ -129,7 +129,7 @@ class TestGetEtfSectorWeights:
         result = get_etf_sector_weights("AAPL_STOCK_TEST")
         assert result is None
 
-    @patch("infrastructure.market_data.market_data._fetch_etf_sector_weights")
+    @patch("infrastructure.market_data.etf._fetch_etf_sector_weights")
     def test_should_not_call_yfinance_on_second_call_for_non_etf(self, mock_fetch):
         """Sentinel caching: non-ETF returns None on first call, then no yfinance on repeat."""
         mock_fetch.return_value = None  # non-ETF sentinel path

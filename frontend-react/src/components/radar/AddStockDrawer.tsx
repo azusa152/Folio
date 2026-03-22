@@ -3,24 +3,15 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  STOCK_CATEGORIES,
-  MARKET_TAG_OPTIONS,
-  CASH_CURRENCY_OPTIONS,
-  MARKET_OPTIONS,
-} from "@/lib/constants"
+import { MARKET_TAG_OPTIONS, MARKET_OPTIONS } from "@/lib/constants"
 import { useAddStock, useTriggerScan, useImportStocks } from "@/api/hooks/useRadar"
 import { useCryptoSearch } from "@/api/hooks/useCrypto"
 import client from "@/api/client"
 import type { AddStockRequest, StockCategory, StockImportItem } from "@/api/types/radar"
 import { getErrorMessage } from "@/lib/utils"
+import { AddStockForm } from "./AddStockForm"
+import { AddBondForm } from "./AddBondForm"
+import { AddCryptoForm } from "./AddCryptoForm"
 
 interface Props {
   open: boolean
@@ -303,273 +294,59 @@ export function AddStockDrawer({ open, onClose, isScanning }: Props) {
             </div>
 
             {assetType === "stock" ? (
-              <div className="space-y-2">
-                {/* Market */}
-                <div>
-                  <label className="text-xs text-muted-foreground">{t("radar.form.market")}</label>
-                  <Select
-                    value={market}
-                    onValueChange={(v) => {
-                      setMarket(v)
-                      setSelectedTags([])
-                    }}
-                  >
-                    <SelectTrigger
-                      aria-label={t("radar.form.market")}
-                      className="text-xs h-8 mt-0.5"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MARKET_OPTIONS.map((m) => (
-                        <SelectItem key={m.key} value={m.key} className="text-xs">
-                          {t(m.labelKey)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("radar.form.currency", { currency: marketInfo.currency })}
-                  </p>
-                </div>
-
-                {/* Ticker */}
-                <div>
-                  <label htmlFor="add-stock-ticker" className="text-xs text-muted-foreground">
-                    {t("radar.form.ticker")}
-                  </label>
-                  <input
-                    id="add-stock-ticker"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-                    placeholder={market === "TW" ? "2330" : market === "JP" ? "7203" : "AAPL"}
-                    value={ticker}
-                    onChange={(e) => setTicker(e.target.value)}
-                  />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="text-xs text-muted-foreground">
-                    {t("radar.form.category")}
-                  </label>
-                  <Select value={category} onValueChange={(v) => setCategory(v as StockCategory)}>
-                    <SelectTrigger
-                      aria-label={t("radar.form.category")}
-                      className="text-xs h-8 mt-0.5"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STOCK_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c} className="text-xs">
-                          {t(`config.category.${c.toLowerCase()}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    {t(`config.category_desc.${category.toLowerCase()}`)}
-                  </p>
-                </div>
-
-                {/* Thesis */}
-                <div>
-                  <label htmlFor="add-stock-thesis" className="text-xs text-muted-foreground">
-                    {t("radar.form.thesis")}
-                  </label>
-                  <textarea
-                    id="add-stock-thesis"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
-                    rows={3}
-                    placeholder={t("radar.form.thesis_placeholder")}
-                    value={thesis}
-                    onChange={(e) => setThesis(e.target.value)}
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="text-xs text-muted-foreground">{t("radar.form.tags")}</label>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {tagOptions.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag)}
-                        className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                          selectedTags.includes(tag)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={handleAddStock}
-                  disabled={addStock.isPending}
-                >
-                  {t("radar.form.add_button")}
-                </Button>
-              </div>
+              <AddStockForm
+                market={market}
+                ticker={ticker}
+                category={category}
+                thesis={thesis}
+                selectedTags={selectedTags}
+                tagOptions={tagOptions}
+                marketInfo={marketInfo}
+                isPending={addStock.isPending}
+                onMarketChange={(v) => {
+                  setMarket(v)
+                  setSelectedTags([])
+                }}
+                onTickerChange={setTicker}
+                onCategoryChange={setCategory}
+                onThesisChange={setThesis}
+                onToggleTag={toggleTag}
+                onSubmit={handleAddStock}
+              />
             ) : assetType === "bond" ? (
-              <div className="space-y-2">
-                {/* Bond ticker */}
-                <div>
-                  <label htmlFor="add-bond-ticker" className="text-xs text-muted-foreground">
-                    {t("radar.form.bond_ticker")}
-                  </label>
-                  <input
-                    id="add-bond-ticker"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-                    placeholder="TLT, BND, SGOV"
-                    value={ticker}
-                    onChange={(e) => setTicker(e.target.value)}
-                  />
-                </div>
-
-                {/* Currency */}
-                <div>
-                  <label className="text-xs text-muted-foreground">
-                    {t("radar.form.currency", { currency: "" }).replace(": ", "")}
-                  </label>
-                  <Select value={bondCurrency} onValueChange={setBondCurrency}>
-                    <SelectTrigger
-                      aria-label={t("radar.form.currency", { currency: "" }).replace(": ", "")}
-                      className="text-xs h-8 mt-0.5"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CASH_CURRENCY_OPTIONS.map((c) => (
-                        <SelectItem key={c} value={c} className="text-xs">
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Thesis */}
-                <div>
-                  <label htmlFor="add-bond-thesis" className="text-xs text-muted-foreground">
-                    {t("radar.form.thesis")}
-                  </label>
-                  <textarea
-                    id="add-bond-thesis"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
-                    rows={3}
-                    placeholder={t("radar.form.bond_thesis_placeholder")}
-                    value={thesis}
-                    onChange={(e) => setThesis(e.target.value)}
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="text-xs text-muted-foreground">{t("radar.form.tags")}</label>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {tagOptions.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag)}
-                        className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                          selectedTags.includes(tag)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={handleAddBond}
-                  disabled={addStock.isPending}
-                >
-                  {t("radar.form.add_button")}
-                </Button>
-              </div>
+              <AddBondForm
+                ticker={ticker}
+                bondCurrency={bondCurrency}
+                thesis={thesis}
+                selectedTags={selectedTags}
+                market={market}
+                isPending={addStock.isPending}
+                onTickerChange={setTicker}
+                onCurrencyChange={setBondCurrency}
+                onThesisChange={setThesis}
+                onToggleTag={toggleTag}
+                onSubmit={handleAddBond}
+              />
             ) : (
-              <div className="space-y-2">
-                <div>
-                  <label htmlFor="add-crypto-search" className="text-xs text-muted-foreground">
-                    {t("radar.form.crypto_search")}
-                  </label>
-                  <input
-                    id="add-crypto-search"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-                    placeholder={t("radar.form.crypto_search_placeholder")}
-                    value={cryptoQuery}
-                    onChange={(e) => {
-                      setCryptoQuery(e.target.value)
-                      setTicker("")
-                      setCryptoCoinId(null)
-                    }}
-                  />
-                </div>
-                {cryptoSearchResults && cryptoSearchResults.length > 0 && (
-                  <div className="max-h-36 overflow-y-auto rounded border border-border p-1 space-y-1">
-                    {cryptoSearchResults.map((coin) => (
-                      <button
-                        type="button"
-                        key={`${coin.id}-${coin.symbol}`}
-                        className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted/40"
-                        onClick={() => {
-                          setTicker(coin.ticker)
-                          setCryptoCoinId(coin.id)
-                          setCryptoQuery(`${coin.name} (${coin.symbol})`)
-                        }}
-                      >
-                        {coin.name} ({coin.symbol}) - {coin.ticker}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div>
-                  <label htmlFor="add-crypto-ticker" className="text-xs text-muted-foreground">
-                    {t("radar.form.ticker")}
-                  </label>
-                  <input
-                    id="add-crypto-ticker"
-                    className="mt-0.5 w-full rounded-md border border-input bg-muted/40 px-2 py-1 text-sm"
-                    value={ticker}
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <label htmlFor="add-crypto-thesis" className="text-xs text-muted-foreground">
-                    {t("radar.form.thesis")}
-                  </label>
-                  <textarea
-                    id="add-crypto-thesis"
-                    className="mt-0.5 w-full rounded-md border border-input bg-background p-2 text-sm resize-none"
-                    rows={3}
-                    placeholder={t("radar.form.thesis_placeholder")}
-                    value={thesis}
-                    onChange={(e) => setThesis(e.target.value)}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={handleAddCrypto}
-                  disabled={addStock.isPending}
-                >
-                  {t("radar.form.add_button")}
-                </Button>
-                <p className="text-[11px] text-muted-foreground">
-                  {t("allocation.crypto.market_24h")}
-                </p>
-              </div>
+              <AddCryptoForm
+                ticker={ticker}
+                thesis={thesis}
+                cryptoQuery={cryptoQuery}
+                searchResults={cryptoSearchResults}
+                isPending={addStock.isPending}
+                onQueryChange={(q) => {
+                  setCryptoQuery(q)
+                  setTicker("")
+                  setCryptoCoinId(null)
+                }}
+                onSelectCoin={(t, id, display) => {
+                  setTicker(t)
+                  setCryptoCoinId(id)
+                  setCryptoQuery(display)
+                }}
+                onThesisChange={setThesis}
+                onSubmit={handleAddCrypto}
+              />
             )}
 
             {addFeedback && <p className="text-xs text-destructive mt-1">{addFeedback}</p>}

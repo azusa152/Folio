@@ -17,6 +17,7 @@ from domain.entities import Account, Holding
 from domain.enums import StockCategory
 
 REBALANCE_MODULE = "application.portfolio.rebalance_service"
+FX_MODULE = "application.portfolio.fx_exposure_service"
 
 
 def _make_holding(
@@ -77,14 +78,14 @@ class TestCalculateCurrencyExposure:
         )
 
         with (
-            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
+            patch(f"{FX_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
             patch(
                 "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 150.0},
             ),
-            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
-            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
-            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+            patch(f"{FX_MODULE}.prewarm_signals_batch"),
+            patch(f"{FX_MODULE}.get_forex_history", return_value=[]),
+            patch(f"{FX_MODULE}.get_forex_history_long", return_value=[]),
         ):
             result = calculate_currency_exposure(db_session, home_currency="TWD")
 
@@ -103,14 +104,14 @@ class TestCalculateCurrencyExposure:
         )
 
         with (
-            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
+            patch(f"{FX_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
             patch(
                 "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 200.0},
             ),
-            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
-            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
-            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+            patch(f"{FX_MODULE}.prewarm_signals_batch"),
+            patch(f"{FX_MODULE}.get_forex_history", return_value=[]),
+            patch(f"{FX_MODULE}.get_forex_history_long", return_value=[]),
         ):
             result = calculate_currency_exposure(db_session)  # home_currency=None
 
@@ -125,14 +126,14 @@ class TestCalculateCurrencyExposure:
         short_history = [{"close": 30.0}, {"close": 31.5}]
 
         with (
-            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 31.5}),
+            patch(f"{FX_MODULE}.get_exchange_rates", return_value={"USD": 31.5}),
             patch(
                 "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 100.0},
             ),
-            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
-            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=short_history),
-            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+            patch(f"{FX_MODULE}.prewarm_signals_batch"),
+            patch(f"{FX_MODULE}.get_forex_history", return_value=short_history),
+            patch(f"{FX_MODULE}.get_forex_history_long", return_value=[]),
         ):
             result = calculate_currency_exposure(db_session, home_currency="TWD")
 
@@ -153,14 +154,14 @@ class TestCalculateCurrencyExposure:
         )
 
         with (
-            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
+            patch(f"{FX_MODULE}.get_exchange_rates", return_value={"USD": 32.0}),
             patch(
                 "application.portfolio.pricing_service.get_technical_signals",
                 return_value=None,
             ),
-            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
-            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
-            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+            patch(f"{FX_MODULE}.prewarm_signals_batch"),
+            patch(f"{FX_MODULE}.get_forex_history", return_value=[]),
+            patch(f"{FX_MODULE}.get_forex_history_long", return_value=[]),
         ):
             result = calculate_currency_exposure(db_session, home_currency="TWD")
 
@@ -242,14 +243,14 @@ class TestCalculateCurrencyExposure:
         db_session.commit()
 
         with (
-            patch(f"{REBALANCE_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
+            patch(f"{FX_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(
                 "application.portfolio.pricing_service.get_technical_signals",
                 return_value={"price": 100.0},
             ),
-            patch(f"{REBALANCE_MODULE}.prewarm_signals_batch"),
-            patch(f"{REBALANCE_MODULE}.get_forex_history", return_value=[]),
-            patch(f"{REBALANCE_MODULE}.get_forex_history_long", return_value=[]),
+            patch(f"{FX_MODULE}.prewarm_signals_batch"),
+            patch(f"{FX_MODULE}.get_forex_history", return_value=[]),
+            patch(f"{FX_MODULE}.get_forex_history_long", return_value=[]),
         ):
             result = calculate_currency_exposure(db_session, home_currency="USD")
 

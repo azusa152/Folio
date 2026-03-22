@@ -344,6 +344,218 @@ def count_consecutive_increases(history: list[dict]) -> int:
     return count
 
 
+@dataclass
+class _FXTimingMetrics:
+    """Intermediate computed metrics used by assess_exchange_timing."""
+
+    current_rate: float
+    near_high: bool
+    high: float
+    high_days_ago: int
+    distance_from_high_pct: float
+    consec: int
+    trend_direction: str
+    trend_strength: float
+    valid_target_rate: float | None
+    normalized_target_direction: str | None
+    target_hit: bool
+    target_distance_pct: float | None
+    actionable_high: bool
+    common_vars: dict
+
+
+def _compute_fx_timing_metrics(
+    base_currency: str,
+    quote_currency: str,
+    history: list[dict],
+    recent_high_days: int,
+    consecutive_threshold: int,
+    target_rate: float | None,
+    target_direction: str | None,
+) -> _FXTimingMetrics:
+    """Compute all intermediate metrics needed for FX timing assessment."""
+    current_rate = history[-1].get("close") or 0.0
+    recent_high = analyze_recent_high(current_rate, history, recent_high_days)
+    near_high = recent_high.is_recent_high
+    high = recent_high.lookback_high
+    consec = count_consecutive_increases(history)
+    trend_direction, trend_strength = detect_trend_direction(history)
+
+    normalized_target_direction = (
+        target_direction if target_direction in {"above", "below"} else None
+    )
+    valid_target_rate = (
+        round(float(target_rate), 6)
+        if isinstance(target_rate, (int, float)) and target_rate > 0
+        else None
+    )
+    target_hit = False
+    target_distance_pct: float | None = None
+    if valid_target_rate is not None and normalized_target_direction is not None:
+        if normalized_target_direction == "above":
+            target_hit = current_rate >= valid_target_rate
+        else:
+            target_hit = current_rate <= valid_target_rate
+        if not target_hit and valid_target_rate > 0:
+            target_distance_pct = round(
+                abs((valid_target_rate - current_rate) / valid_target_rate) * 100, 2
+            )
+
+    actionable_high = near_high and (
+        trend_direction != "falling"
+        or recent_high.high_days_ago <= FX_WATCH_HIGH_RECENCY_THRESHOLD
+        or consec >= 1
+    )
+    common_vars: dict = {
+        "base": base_currency,
+        "quote": quote_currency,
+        "pair": f"{base_currency}/{quote_currency}",
+        "high_days": recent_high_days,
+        "high": high,
+        "high_days_ago": recent_high.high_days_ago,
+        "distance_pct": recent_high.distance_from_high_pct,
+        "consec": consec,
+        "consec_threshold": consecutive_threshold,
+        "trend_direction": trend_direction,
+        "trend_strength_pct": trend_strength,
+        "target_rate": valid_target_rate or 0.0,
+        "target_direction": normalized_target_direction or "",
+        "target_hit": target_hit,
+        "target_distance_pct": target_distance_pct or 0.0,
+    }
+    return _FXTimingMetrics(
+        current_rate=current_rate,
+        near_high=near_high,
+        high=high,
+        high_days_ago=recent_high.high_days_ago,
+        distance_from_high_pct=recent_high.distance_from_high_pct,
+        consec=consec,
+        trend_direction=trend_direction,
+        trend_strength=trend_strength,
+        valid_target_rate=valid_target_rate,
+        normalized_target_direction=normalized_target_direction,
+        target_hit=target_hit,
+        target_distance_pct=target_distance_pct,
+        actionable_high=actionable_high,
+        common_vars=common_vars,
+    )
+
+
+def _determine_fx_alert_scenario(
+    base_currency: str,
+    quote_currency: str,
+    metrics: _FXTimingMetrics,
+    recent_high_days: int,
+    consecutive_threshold: int,
+    alert_on_recent_high: bool,
+    alert_on_consecutive_increase: bool,
+) -> tuple[bool, str, str, str]:
+    """Determine alert decision and scenario label from computed FX metrics.
+
+    Returns (should_alert, recommendation_zh, reasoning_zh, scenario).
+    """
+    m = metrics
+    target_condition = m.target_hit and m.valid_target_rate is not None
+
+    if (
+        not alert_on_recent_high
+        and not alert_on_consecutive_increase
+        and m.valid_target_rate is None
+    ):
+        return (
+            False,
+            "監控已停用：兩項條件皆關閉",
+            "請啟用至少一項警報條件（近期高點或連續上漲）",
+            "disabled",
+        )
+
+    high_condition = alert_on_recent_high and m.actionable_high
+    consec_condition = (
+        alert_on_consecutive_increase and m.consec >= consecutive_threshold
+    )
+    should_alert = high_condition or consec_condition or target_condition
+
+    if should_alert:
+        triggers = []
+        if target_condition:
+            triggers.append("目標匯率")
+        if high_condition and consec_condition:
+            triggers.append("近期高點 + 連續上漲")
+            scenario = (
+                "should_alert_target_combo" if target_condition else "should_alert_both"
+            )
+        elif high_condition:
+            triggers.append("近期高點")
+            is_at_high = m.high_days_ago == 0 and m.distance_from_high_pct == 0.0
+            if target_condition:
+                scenario = "at_high_target" if is_at_high else "approaching_high_target"
+            else:
+                scenario = "at_high" if is_at_high else "approaching_high"
+        elif consec_condition and target_condition:
+            triggers.append("連續上漲")
+            scenario = "should_alert_target_combo"
+        else:
+            triggers.append("連續上漲")
+            scenario = (
+                "should_alert_target_combo"
+                if target_condition
+                else "should_alert_consec"
+            )
+
+        if target_condition and not high_condition and not consec_condition:
+            scenario = "should_alert_target"
+
+        recommendation_zh = (
+            f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
+        )
+        parts = []
+        if target_condition and m.valid_target_rate is not None:
+            parts.append(
+                f"已達目標匯率 {m.valid_target_rate:.4f}"
+                f"（條件：{m.normalized_target_direction}）"
+            )
+        if high_condition:
+            parts.append(
+                f"接近 {recent_high_days} 日高點 ({m.high:.4f})，"
+                f"距高點 {m.distance_from_high_pct:.2f}%"
+            )
+        if consec_condition:
+            parts.append(f"連續上漲 {m.consec} 日")
+        if m.trend_direction != "sideways":
+            parts.append(f"短期趨勢為{m.trend_direction}")
+        reasoning_zh = (
+            f"{base_currency}/{quote_currency} "
+            f"{'，且'.join(parts)}，現在可能是換匯好時機。"
+        )
+    elif m.near_high and alert_on_recent_high:
+        recommendation_zh = "接近高點但正在回落，暫不建議追價"
+        reasoning_zh = (
+            f"匯率雖接近 {recent_high_days} 日高點，但高點已是 "
+            f"{m.high_days_ago} 天前、短期趨勢偏弱，建議觀察。"
+        )
+        scenario = "declining_from_high"
+    elif m.near_high:
+        recommendation_zh = "接近高點但上漲動能不足，可再觀察"
+        reasoning_zh = (
+            f"匯率接近 {recent_high_days} 日高點，但連續上漲僅 {m.consec} 日 "
+            f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
+        )
+        scenario = "near_high_disabled"
+    elif m.consec >= consecutive_threshold:
+        recommendation_zh = "持續上漲但未達高點，可再等待"
+        reasoning_zh = (
+            f"連續上漲 {m.consec} 日但匯率尚未達 {recent_high_days} 日高點附近，"
+            f"可能還有上漲空間。"
+        )
+        scenario = "consec_disabled"
+    else:
+        recommendation_zh = "暫無換匯訊號"
+        reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {m.consec} 日。"
+        scenario = "no_signal"
+
+    return should_alert, recommendation_zh, reasoning_zh, scenario
+
+
 def assess_exchange_timing(
     base_currency: str,
     quote_currency: str,
@@ -361,7 +573,7 @@ def assess_exchange_timing(
     Args:
         base_currency: 基礎貨幣（例如 USD）
         quote_currency: 報價貨幣（例如 TWD）
-        history: 歷史匯率資料 [{\"date\": \"...\", \"close\": float}, ...]
+        history: 歷史匯率資料 [{"date": "...", "close": float}, ...]
         recent_high_days: 回溯天數（近期高點判定）
         consecutive_threshold: 連續上漲天數門檻
         alert_on_recent_high: 是否啟用近期高點警報（預設 True）
@@ -402,169 +614,32 @@ def assess_exchange_timing(
             },
         )
 
-    current_rate = history[-1].get("close") or 0.0
-    recent_high = analyze_recent_high(current_rate, history, recent_high_days)
-    near_high = recent_high.is_recent_high
-    high = recent_high.lookback_high
-    consec = count_consecutive_increases(history)
-    trend_direction, trend_strength = detect_trend_direction(history)
-    normalized_target_direction = (
-        target_direction if target_direction in {"above", "below"} else None
+    metrics = _compute_fx_timing_metrics(
+        base_currency,
+        quote_currency,
+        history,
+        recent_high_days,
+        consecutive_threshold,
+        target_rate,
+        target_direction,
     )
-    valid_target_rate = (
-        round(float(target_rate), 6)
-        if isinstance(target_rate, (int, float)) and target_rate > 0
-        else None
-    )
-    target_hit = False
-    target_distance_pct: float | None = None
-    if valid_target_rate is not None and normalized_target_direction is not None:
-        if normalized_target_direction == "above":
-            target_hit = current_rate >= valid_target_rate
-        else:
-            target_hit = current_rate <= valid_target_rate
-        if not target_hit and valid_target_rate > 0:
-            target_distance_pct = round(
-                abs((valid_target_rate - current_rate) / valid_target_rate) * 100,
-                2,
-            )
-
-    actionable_high = near_high and (
-        trend_direction != "falling"
-        or recent_high.high_days_ago <= FX_WATCH_HIGH_RECENCY_THRESHOLD
-        or consec >= 1
-    )
-
-    # Common vars available to all scenario templates
-    common_vars: dict = {
-        "base": base_currency,
-        "quote": quote_currency,
-        "pair": f"{base_currency}/{quote_currency}",
-        "high_days": recent_high_days,
-        "high": high,
-        "high_days_ago": recent_high.high_days_ago,
-        "distance_pct": recent_high.distance_from_high_pct,
-        "consec": consec,
-        "consec_threshold": consecutive_threshold,
-        "trend_direction": trend_direction,
-        "trend_strength_pct": trend_strength,
-        "target_rate": valid_target_rate or 0.0,
-        "target_direction": normalized_target_direction or "",
-        "target_hit": target_hit,
-        "target_distance_pct": target_distance_pct or 0.0,
-    }
-
-    # 判斷是否應發出警報：根據啟用的條件使用 OR 邏輯
-    target_condition = target_hit and valid_target_rate is not None
-    if (
-        not alert_on_recent_high
-        and not alert_on_consecutive_increase
-        and valid_target_rate is None
-    ):
-        # 兩項條件皆關閉
-        should_alert = False
-        recommendation_zh = "監控已停用：兩項條件皆關閉"
-        reasoning_zh = "請啟用至少一項警報條件（近期高點或連續上漲）"
-        scenario = "disabled"
-    else:
-        # 評估啟用的條件
-        high_condition = alert_on_recent_high and actionable_high
-        consec_condition = (
-            alert_on_consecutive_increase and consec >= consecutive_threshold
+    should_alert, recommendation_zh, reasoning_zh, scenario = (
+        _determine_fx_alert_scenario(
+            base_currency,
+            quote_currency,
+            metrics,
+            recent_high_days,
+            consecutive_threshold,
+            alert_on_recent_high,
+            alert_on_consecutive_increase,
         )
-        should_alert = high_condition or consec_condition or target_condition
-
-        if should_alert:
-            # 產生觸發條件說明
-            triggers = []
-            if target_condition:
-                triggers.append("目標匯率")
-            if high_condition and consec_condition:
-                triggers.append("近期高點 + 連續上漲")
-                scenario = (
-                    "should_alert_target_combo"
-                    if target_condition
-                    else "should_alert_both"
-                )
-            elif high_condition:
-                triggers.append("近期高點")
-                is_at_high = (
-                    recent_high.high_days_ago == 0
-                    and recent_high.distance_from_high_pct == 0.0
-                )
-                if target_condition:
-                    scenario = (
-                        "at_high_target" if is_at_high else "approaching_high_target"
-                    )
-                else:
-                    scenario = "at_high" if is_at_high else "approaching_high"
-            elif consec_condition and target_condition:
-                triggers.append("連續上漲")
-                scenario = "should_alert_target_combo"
-            else:
-                triggers.append("連續上漲")
-                scenario = (
-                    "should_alert_target_combo"
-                    if target_condition
-                    else "should_alert_consec"
-                )
-
-            if target_condition and not high_condition and not consec_condition:
-                scenario = "should_alert_target"
-
-            recommendation_zh = f"建議考慮換匯：{base_currency} → {quote_currency}（{'、'.join(triggers)}）"
-            parts = []
-            if target_condition and valid_target_rate is not None:
-                parts.append(
-                    f"已達目標匯率 {valid_target_rate:.4f}"
-                    f"（條件：{normalized_target_direction}）"
-                )
-            if high_condition:
-                parts.append(
-                    f"接近 {recent_high_days} 日高點 ({high:.4f})，"
-                    f"距高點 {recent_high.distance_from_high_pct:.2f}%"
-                )
-            if consec_condition:
-                parts.append(f"連續上漲 {consec} 日")
-            if trend_direction != "sideways":
-                parts.append(f"短期趨勢為{trend_direction}")
-            reasoning_zh = (
-                f"{base_currency}/{quote_currency} "
-                f"{'，且'.join(parts)}，現在可能是換匯好時機。"
-            )
-        elif near_high and alert_on_recent_high:
-            recommendation_zh = "接近高點但正在回落，暫不建議追價"
-            reasoning_zh = (
-                f"匯率雖接近 {recent_high_days} 日高點，但高點已是 "
-                f"{recent_high.high_days_ago} 天前、短期趨勢偏弱，建議觀察。"
-            )
-            scenario = "declining_from_high"
-        elif near_high:
-            # 接近高點但連續上漲未達標（alert_on_recent_high 必為 False，否則 should_alert=True）
-            recommendation_zh = "接近高點但上漲動能不足，可再觀察"
-            reasoning_zh = (
-                f"匯率接近 {recent_high_days} 日高點，但連續上漲僅 {consec} 日 "
-                f"(門檻 {consecutive_threshold} 日)，建議再觀察。"
-            )
-            scenario = "near_high_disabled"
-        elif consec >= consecutive_threshold:
-            # 連續上漲達標但未達高點（alert_on_consecutive_increase 必為 False，否則 should_alert=True）
-            recommendation_zh = "持續上漲但未達高點，可再等待"
-            reasoning_zh = (
-                f"連續上漲 {consec} 日但匯率尚未達 {recent_high_days} 日高點附近，"
-                f"可能還有上漲空間。"
-            )
-            scenario = "consec_disabled"
-        else:
-            recommendation_zh = "暫無換匯訊號"
-            reasoning_zh = f"匯率未達近期高點，且連續上漲僅 {consec} 日。"
-            scenario = "no_signal"
+    )
 
     if should_alert and scenario in {"should_alert_both", "at_high"}:
         signal_strength = "strong"
     elif should_alert:
         signal_strength = "moderate"
-    elif near_high or consec > 0:
+    elif metrics.near_high or metrics.consec > 0:
         signal_strength = "weak"
     else:
         signal_strength = "none"
@@ -572,26 +647,26 @@ def assess_exchange_timing(
     return FXTimingResult(
         base_currency=base_currency,
         quote_currency=quote_currency,
-        current_rate=current_rate,
-        is_recent_high=near_high,
-        lookback_high=high,
+        current_rate=metrics.current_rate,
+        is_recent_high=metrics.near_high,
+        lookback_high=metrics.high,
         lookback_days=recent_high_days,
-        high_days_ago=recent_high.high_days_ago,
-        distance_from_high_pct=recent_high.distance_from_high_pct,
-        consecutive_increases=consec,
+        high_days_ago=metrics.high_days_ago,
+        distance_from_high_pct=metrics.distance_from_high_pct,
+        consecutive_increases=metrics.consec,
         consecutive_threshold=consecutive_threshold,
-        trend_direction=trend_direction,
-        trend_strength_pct=trend_strength,
+        trend_direction=metrics.trend_direction,
+        trend_strength_pct=metrics.trend_strength,
         signal_strength=signal_strength,
         alert_on_recent_high=alert_on_recent_high,
         alert_on_consecutive_increase=alert_on_consecutive_increase,
-        target_rate=valid_target_rate,
-        target_direction=normalized_target_direction,
-        target_hit=target_hit,
-        target_distance_pct=target_distance_pct,
+        target_rate=metrics.valid_target_rate,
+        target_direction=metrics.normalized_target_direction,
+        target_hit=metrics.target_hit,
+        target_distance_pct=metrics.target_distance_pct,
         should_alert=should_alert,
         recommendation_zh=recommendation_zh,
         reasoning_zh=reasoning_zh,
         scenario=scenario,
-        scenario_vars=common_vars,
+        scenario_vars=metrics.common_vars,
     )

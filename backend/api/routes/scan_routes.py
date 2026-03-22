@@ -22,9 +22,10 @@ from api.schemas import (
     VIXData,
 )
 from application.formatters import format_fear_greed_label
+from application.messaging.notification_service import send_weekly_digest
 from application.scan import scan_service
 from application.scan.prewarm_service import is_prewarm_ready
-from application.services import get_signal_activity, run_scan, send_weekly_digest
+from application.scan.scan_service import get_signal_activity, run_scan
 from domain.constants import (
     ERROR_DIGEST_IN_PROGRESS,
     ERROR_SCAN_IN_PROGRESS,

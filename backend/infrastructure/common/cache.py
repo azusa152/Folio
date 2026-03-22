@@ -4,7 +4,6 @@ Reusable stale-while-revalidate cache for application services.
 
 from __future__ import annotations
 
-import logging
 import threading
 import time
 from collections import OrderedDict
@@ -14,8 +13,10 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+from logging_config import get_logger
+
 CacheState = Literal["miss", "fresh", "stale", "expired"]
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

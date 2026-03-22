@@ -232,7 +232,8 @@ def _extract_close_series(history_df: Any, ticker: str) -> list[dict]:
         frame = history_df[ticker]
     except (KeyError, TypeError):
         frame = history_df
-    except Exception:
+    except Exception as exc:
+        logger.debug("無法從 history_df 取得 %s 的資料，回傳空串列：%s", ticker, exc)
         return []
 
     if frame is None or getattr(frame, "empty", True):
@@ -256,7 +257,10 @@ def _extract_close_series(history_df: Any, ticker: str) -> list[dict]:
                     "close": round(float(value), 6),
                 }
             )
-        except Exception:
+        except Exception as exc:
+            logger.debug(
+                "略過無效的歷史資料列（idx=%s, value=%s）：%s", idx, value, exc
+            )
             continue
     rows.sort(key=lambda row: row["date"])
     return rows

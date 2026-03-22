@@ -17,7 +17,7 @@ def _make_hist(prices: list[float]) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_returns_value_and_level(mock_hist):
     """Returns a dict with value, level, and source for valid history."""
     # Use a flat price series with slight noise to produce a known vol (≥15 prices)
@@ -50,7 +50,7 @@ def test_returns_value_and_level(mock_hist):
     assert result["value"] > 0
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_vol_calculation_matches_formula(mock_hist):
     """Annualized vol matches std(log_returns) * sqrt(252) * 100."""
     prices = [
@@ -88,7 +88,7 @@ def test_vol_calculation_matches_formula(mock_hist):
 # ---------------------------------------------------------------------------
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_extreme_fear_level(mock_hist):
     """Annualized vol > 30% → EXTREME_FEAR."""
     # Large daily swings → high vol
@@ -100,7 +100,7 @@ def test_extreme_fear_level(mock_hist):
     assert result["level"] == "EXTREME_FEAR"
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_extreme_greed_level(mock_hist):
     """Annualized vol < 10% → EXTREME_GREED."""
     # Tiny daily changes → very low vol
@@ -117,7 +117,7 @@ def test_extreme_greed_level(mock_hist):
 # ---------------------------------------------------------------------------
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_returns_none_when_empty(mock_hist):
     """Returns None when history is empty."""
     mock_hist.return_value = pd.DataFrame()
@@ -126,7 +126,7 @@ def test_returns_none_when_empty(mock_hist):
     assert result is None
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_returns_none_when_insufficient_data(mock_hist):
     """Returns None when fewer than 15 closes are available."""
     mock_hist.return_value = _make_hist([100.0, 101.0, 99.0, 100.5])
@@ -135,7 +135,7 @@ def test_returns_none_when_insufficient_data(mock_hist):
     assert result is None
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_returns_none_when_history_is_none(mock_hist):
     """Returns None gracefully when _yf_history_short returns None."""
     mock_hist.return_value = None
@@ -144,7 +144,7 @@ def test_returns_none_when_history_is_none(mock_hist):
     assert result is None
 
 
-@patch("infrastructure.market_data.market_data._yf_history_short")
+@patch("infrastructure.market_data.sentiment._yf_history_short")
 def test_returns_none_on_exception(mock_hist):
     """Returns None and does not raise when an unexpected error occurs."""
     mock_hist.side_effect = RuntimeError("network error")

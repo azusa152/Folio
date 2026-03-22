@@ -26,8 +26,18 @@ from api.schemas import (
     WebhookResponse,
 )
 from application.guru.resonance_service import invalidate_resonance_cache
+from application.messaging.notification_service import get_portfolio_summary
+from application.messaging.webhook_service import handle_webhook
 from application.portfolio.nav_sync_service import sync_single_fund_nav
-from application.services import (
+from application.scan.scan_service import (
+    create_price_alert,
+    delete_price_alert,
+    get_latest_scan_logs,
+    get_scan_history,
+    list_price_alerts,
+)
+from application.stock import stock_service
+from application.stock.stock_service import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
     StockAlreadyExistsError,
@@ -36,21 +46,16 @@ from application.services import (
     create_stock,
     deactivate_stock,
     export_stocks,
+    get_enriched_stocks,
     get_moat_for_ticker,
-    get_portfolio_summary,
     get_removal_history,
-    handle_webhook,
     import_stocks,
+    invalidate_enriched_cache,
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,
     update_display_order,
     update_stock_category,
-)
-from application.stock import stock_service
-from application.stock.stock_service import (
-    get_enriched_stocks,
-    invalidate_enriched_cache,
 )
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
@@ -344,8 +349,6 @@ def get_scan_history_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得指定股票的掃描歷史。"""
-    from application.services import get_scan_history
-
     try:
         return get_scan_history(session, ticker, limit)
     except StockNotFoundError as e:
@@ -361,8 +364,6 @@ def get_all_scan_history_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得最近掃描紀錄。"""
-    from application.services import get_latest_scan_logs
-
     return get_latest_scan_logs(session, limit)
 
 
@@ -377,8 +378,6 @@ def create_price_alert_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """建立價格警報。"""
-    from application.services import create_price_alert
-
     try:
         return create_price_alert(
             session,
@@ -400,8 +399,6 @@ def get_price_alerts_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得指定股票的價格警報列表。"""
-    from application.services import list_price_alerts
-
     return list_price_alerts(session, ticker)
 
 
@@ -413,8 +410,6 @@ def delete_price_alert_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """刪除價格警報。"""
-    from application.services import delete_price_alert
-
     return delete_price_alert(session, alert_id)
 
 

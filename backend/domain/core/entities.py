@@ -4,7 +4,6 @@ Domain — 資料庫實體 (SQLModel Tables)。
 """
 
 import json as _json
-import logging
 from datetime import UTC, date, datetime
 
 from pydantic import field_validator
@@ -20,8 +19,9 @@ from domain.constants import (
     DEFAULT_USER_ID,
 )
 from domain.enums import HoldingAction, ScanSignal, StockCategory, TransactionType
+from logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _normalize_stock_category(value: object) -> StockCategory:

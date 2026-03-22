@@ -12,7 +12,7 @@ import threading
 
 import pytest
 
-from infrastructure.market_data.market_data import (
+from infrastructure.market_data._market_data_shared import (
     _deduped_fetch,
     _inflight_events,
 )

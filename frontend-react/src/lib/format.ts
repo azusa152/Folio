@@ -169,7 +169,7 @@ export function formatSignedPct(value: number, decimals = 1): string {
  *      formatSignedMoney(-50, "JPY") → "-¥50"
  *      formatSignedMoney(0, "USD")   → "$0.00"
  */
-export function formatSignedMoney(value: number | null | undefined, currencyCode: string): string {
+function formatSignedMoney(value: number | null | undefined, currencyCode: string): string {
   if (value == null) return "—"
   const formatted = formatCurrency(Math.abs(value), currencyCode)
   if (value > 0) return `+${formatted}`

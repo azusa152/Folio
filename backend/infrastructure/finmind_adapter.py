@@ -1,9 +1,0 @@
-"""Backward-compatibility shim — re-exports infrastructure.market_data.finmind_adapter.
-
-Consumers using ``import infrastructure.finmind_adapter`` continue to work unchanged.
-"""
-
-from infrastructure.market_data.finmind_adapter import (  # noqa: F401
-    get_financials,
-    is_available,
-)

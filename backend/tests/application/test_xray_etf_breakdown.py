@@ -20,6 +20,7 @@ from domain.entities import Account, Holding, Stock, UserInvestmentProfile
 from domain.enums import StockCategory
 
 _MODULE = "application.portfolio.rebalance_service"
+_FX_EXPOSURE_MODULE = "application.portfolio.fx_exposure_service"
 _PRICING_MODULE = "application.portfolio.pricing_service"
 
 _MOCK_SIGNALS_BASE = {
@@ -38,8 +39,8 @@ _BASE_PATCHES = [
     f"{_MODULE}.prewarm_signals_batch",
     f"{_MODULE}.prewarm_etf_holdings_batch",
     f"{_MODULE}.prewarm_etf_sector_weights_batch",
-    f"{_MODULE}.get_forex_history",
-    f"{_MODULE}.get_forex_history_long",
+    f"{_FX_EXPOSURE_MODULE}.get_forex_history",
+    f"{_FX_EXPOSURE_MODULE}.get_forex_history_long",
     f"{_MODULE}.get_etf_sector_weights",
 ]
 
@@ -262,8 +263,8 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
             patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
             patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_etf_sector_weights", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(
@@ -439,8 +440,8 @@ class TestXRayEtfBreakdown:
 
         with (
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(
                 f"{_PRICING_MODULE}.get_technical_signals",
@@ -500,8 +501,8 @@ class TestXRayEtfBreakdown:
 
         with (
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
             patch(
                 f"{_PRICING_MODULE}.get_technical_signals",
@@ -542,7 +543,7 @@ class TestEtfHoldingsSentinelCaching:
         _disk_cache.delete(f"{DISK_KEY_ETF_HOLDINGS}:TEST_SENTINEL_TICKER")
 
         mock_fetch = patch(
-            "infrastructure.market_data.market_data._fetch_etf_top_holdings",
+            "infrastructure.market_data.etf._fetch_etf_top_holdings",
             return_value=None,
         )
         with mock_fetch as m:

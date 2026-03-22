@@ -22,10 +22,11 @@ Makefile shortcut:
 from __future__ import annotations
 
 import argparse
-import logging
 from datetime import UTC, date, datetime
 
-logger = logging.getLogger(__name__)
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Demo data fixtures

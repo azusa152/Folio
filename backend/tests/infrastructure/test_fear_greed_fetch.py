@@ -2,14 +2,14 @@ from unittest.mock import patch
 
 import domain.constants
 from domain.enums import FearGreedLevel
-from infrastructure.market_data import market_data
+from infrastructure.market_data import sentiment
 
 
-@patch("infrastructure.market_data.market_data.compute_composite_fear_greed")
-@patch("infrastructure.market_data.market_data.compute_weighted_fear_greed")
-@patch("infrastructure.market_data.market_data._fetch_fg_component_history_safe")
-@patch("infrastructure.market_data.market_data.get_cnn_fear_greed")
-@patch("infrastructure.market_data.market_data.get_vix_data")
+@patch("infrastructure.market_data.sentiment.compute_composite_fear_greed")
+@patch("infrastructure.market_data.sentiment.compute_weighted_fear_greed")
+@patch("infrastructure.market_data.sentiment._fetch_fg_component_history_safe")
+@patch("infrastructure.market_data.sentiment.get_cnn_fear_greed")
+@patch("infrastructure.market_data.sentiment.get_vix_data")
 def test_fetch_fear_greed_should_fetch_all_components_in_parallel_path(
     mock_vix,
     mock_cnn,
@@ -22,12 +22,12 @@ def test_fetch_fear_greed_should_fetch_all_components_in_parallel_path(
     mock_fetch_component.return_value = [100.0, 101.0, 102.0]
     mock_weighted.return_value = (FearGreedLevel.GREED, 55)
     mock_composite.return_value = (FearGreedLevel.GREED, 58)
-    real_pool_cls = market_data.ThreadPoolExecutor
+    real_pool_cls = sentiment.ThreadPoolExecutor
     with patch(
-        "infrastructure.market_data.market_data.ThreadPoolExecutor",
+        "infrastructure.market_data.sentiment.ThreadPoolExecutor",
         wraps=real_pool_cls,
     ) as mock_pool_cls:
-        result = market_data._fetch_fear_greed("composite")
+        result = sentiment._fetch_fear_greed("composite")
 
     assert result["composite_score"] == 58
     assert result["composite_level"] == FearGreedLevel.GREED.value

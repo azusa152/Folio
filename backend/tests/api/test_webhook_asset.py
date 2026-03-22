@@ -302,9 +302,12 @@ class TestWebhookErrorCodeAlwaysPresent:
                 f"Expected error_code={expected_code!r}, got {body['error_code']!r}"
             )
 
-    def test_unsupported_action_has_error_code(self, client):
+    def test_unsupported_action_returns_422(self, client):
+        # Unknown actions are now caught at schema validation and return 422
         resp = client.post("/webhook", json={"action": "nonexistent_action_xyz"})
-        self._assert_failure_has_error_code(resp, expected_code="INVALID_INPUT")
+        assert resp.status_code == 422
+        body = resp.json()
+        assert "detail" in body
 
     def test_signals_missing_ticker_has_error_code(self, client):
         resp = client.post("/webhook", json={"action": "signals"})

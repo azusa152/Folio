@@ -148,7 +148,7 @@ class TestFetchBiasDistributionFromYf:
 class TestGetBiasDistribution:
     """Verify get_bias_distribution uses _cached_fetch correctly."""
 
-    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
@@ -163,8 +163,8 @@ class TestGetBiasDistribution:
         mock_fetch.assert_not_called()
         mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_promote_l2_to_l1_without_fetching(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -183,8 +183,8 @@ class TestGetBiasDistribution:
         mock_fetch.assert_not_called()
         mock_disk_set.assert_not_called()  # already in L2, no re-write needed
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_write_l1_and_l2_on_cache_miss(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -212,8 +212,8 @@ class TestGetBiasDistribution:
         disk_key_arg = mock_disk_set.call_args[0][0]
         assert "rogue_wave" in disk_key_arg
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_not_write_l2_when_fetcher_returns_empty(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -232,8 +232,8 @@ class TestGetBiasDistribution:
         # is_error guard: empty result must NOT be persisted to L2
         mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_cache_error_result_in_l1(
         self, mock_fetch, mock_disk_set, mock_disk_get

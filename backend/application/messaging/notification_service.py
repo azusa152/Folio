@@ -87,72 +87,20 @@ def _format_health_line(score: float, normal: int, total: int, lang: str) -> str
 # ===========================================================================
 
 
-def send_weekly_digest(session: Session) -> dict:
+def _collect_portfolio_wow(
+    session: Session, lang: str
+) -> tuple[str | None, list[dict], dict]:
+    """Fetch rebalance data, compute WoW delta, persist state.
+
+    Returns (portfolio_value_line, holdings_detail, categories).
     """
-    發送每週 Telegram 摘要（僅限持有部位）：
-    - 投資組合總值 + 週漲跌幅（WoW）
-    - 投資組合健康分數
-    - 恐懼貪婪指數
-    - 本週漲跌幅前三名
-    - 持有股票的非 NORMAL 訊號
-    - 過去 7 天持有股票的訊號變化
-    - 配置偏移
-    """
-    logger.info("開始生成每週摘要...")
-    lang = get_user_language(session)
-
-    all_stocks = repo.find_active_stocks(session)
-    total = len(all_stocks)
-    if total == 0:
-        message = (
-            t("notification.weekly_digest_title", lang=lang)
-            + "\n"
-            + t("notification.no_stocks", lang=lang)
-        )
-        send_telegram_message_dual(message, session)
-        return {"message": t("notification.no_stocks", lang=lang)}
-
-    # --- 目前非 NORMAL 股票 ---
-    non_normal_stocks = [
-        s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value
-    ]
-    normal_count = total - len(non_normal_stocks)
-    health_score = round(normal_count / total * 100, 1)
-
-    # --- 過去 7 天的訊號變化（含轉換方向）---
-    now_ts = datetime.now(UTC)
-    seven_days_ago = now_ts - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
-    recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
-    signal_changes: dict[str, int] = {}
-    signal_transitions: dict[str, tuple[str, str]] = {}  # ticker → (earliest, latest)
-    prev_signals: dict[str, str] = {}
-    for log in reversed(recent_logs):
-        tk = log.stock_ticker
-        if tk in prev_signals and prev_signals[tk] != log.signal:
-            signal_changes[tk] = signal_changes.get(tk, 0) + 1
-            if tk not in signal_transitions:
-                signal_transitions[tk] = (prev_signals[tk], log.signal)
-            else:
-                signal_transitions[tk] = (signal_transitions[tk][0], log.signal)
-        prev_signals[tk] = log.signal
-
-    # --- 恐懼貪婪指數 ---
-    fg = get_fear_greed_index()
-    fg_label = format_fear_greed_label(
-        fg.get("composite_level", "N/A"), fg.get("composite_score", 50), lang=lang
-    )
-    vix_val = fg.get("vix", {}).get("value")
-    vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
-
-    # --- 投資組合總值 + WoW ---
-    # Lazy import to avoid circular dependency: notification_service ↔ rebalance_service.
     portfolio_value_line: str | None = None
-    current_total: float | None = None
-    prev_total: float | None = None
-    display_currency = "USD"
     holdings_detail: list[dict] = []
     categories: dict = {}
+    display_currency = "USD"
+    current_total: float | None = None
     try:
+        # Lazy import to avoid circular dependency: notification_service ↔ rebalance_service.
         from application.portfolio.rebalance_service import calculate_rebalance
 
         rebalance = calculate_rebalance(session)
@@ -189,6 +137,110 @@ def send_weekly_digest(session: Session) -> dict:
         wow_state["last_total_value"] = current_total
         _save_wow_state(wow_state)
 
+    return portfolio_value_line, holdings_detail, categories
+
+
+def _build_top_movers_lines(holdings_detail: list[dict]) -> list[str]:
+    """Return formatted top-3 gainer / loser lines from holdings detail."""
+    if not holdings_detail:
+        return []
+    valid = [h for h in holdings_detail if h.get("change_pct") is not None]
+    gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
+    losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
+    lines: list[str] = []
+    gainer_parts = [
+        f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%"
+        for h in gainers
+        if h["change_pct"] > 0
+    ]
+    loser_parts = [
+        f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%"
+        for h in losers
+        if h["change_pct"] < 0
+    ]
+    if gainer_parts:
+        lines.append("  ".join(gainer_parts))
+    if loser_parts:
+        lines.append("  ".join(loser_parts))
+    return lines
+
+
+def _build_drift_lines(categories: dict, lang: str) -> list[str]:
+    """Return formatted allocation-drift lines for categories exceeding the threshold."""
+    lines: list[str] = []
+    for cat, data in categories.items():
+        drift = data.get("drift_pct", 0.0)
+        if abs(drift) >= DRIFT_THRESHOLD_PCT:
+            cat_label = CATEGORY_LABEL.get(cat, cat)
+            key = (
+                "notification.drift_item_over"
+                if drift > 0
+                else "notification.drift_item_under"
+            )
+            lines.append(t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}"))
+    return lines
+
+
+def send_weekly_digest(session: Session) -> dict:
+    """
+    發送每週 Telegram 摘要（僅限持有部位）：
+    - 投資組合總值 + 週漲跌幅（WoW）
+    - 投資組合健康分數
+    - 恐懼貪婪指數
+    - 本週漲跌幅前三名
+    - 持有股票的非 NORMAL 訊號
+    - 過去 7 天持有股票的訊號變化
+    - 配置偏移
+    """
+    logger.info("開始生成每週摘要...")
+    lang = get_user_language(session)
+
+    all_stocks = repo.find_active_stocks(session)
+    total = len(all_stocks)
+    if total == 0:
+        message = (
+            t("notification.weekly_digest_title", lang=lang)
+            + "\n"
+            + t("notification.no_stocks", lang=lang)
+        )
+        send_telegram_message_dual(message, session)
+        return {"message": t("notification.no_stocks", lang=lang)}
+
+    non_normal_stocks = [
+        s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value
+    ]
+    normal_count = total - len(non_normal_stocks)
+    health_score = round(normal_count / total * 100, 1)
+
+    # --- 過去 7 天的訊號變化（含轉換方向）---
+    now_ts = datetime.now(UTC)
+    seven_days_ago = now_ts - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
+    recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
+    signal_changes: dict[str, int] = {}
+    signal_transitions: dict[str, tuple[str, str]] = {}
+    prev_signals: dict[str, str] = {}
+    for log in reversed(recent_logs):
+        tk = log.stock_ticker
+        if tk in prev_signals and prev_signals[tk] != log.signal:
+            signal_changes[tk] = signal_changes.get(tk, 0) + 1
+            if tk not in signal_transitions:
+                signal_transitions[tk] = (prev_signals[tk], log.signal)
+            else:
+                signal_transitions[tk] = (signal_transitions[tk][0], log.signal)
+        prev_signals[tk] = log.signal
+
+    # --- 恐懼貪婪指數 ---
+    fg = get_fear_greed_index()
+    fg_label = format_fear_greed_label(
+        fg.get("composite_level", "N/A"), fg.get("composite_score", 50), lang=lang
+    )
+    vix_val = fg.get("vix", {}).get("value")
+    vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
+
+    portfolio_value_line, holdings_detail, categories = _collect_portfolio_wow(
+        session, lang
+    )
+
     # --- Scope signals to owned stocks only ---
     # When rebalance is unavailable, holdings_detail is empty and owned_tickers
     # will be an empty set — the filter is skipped and the digest falls back to
@@ -210,43 +262,6 @@ def send_weekly_digest(session: Session) -> dict:
             normal_count = owned_normal
             total = owned_total
 
-    # --- 本週漲跌幅前三名 ---
-    top_movers_lines: list[str] = []
-    if holdings_detail:
-        valid = [h for h in holdings_detail if h.get("change_pct") is not None]
-        gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
-        losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
-        gainer_parts = [
-            f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%"
-            for h in gainers
-            if h["change_pct"] > 0
-        ]
-        loser_parts = [
-            f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%"
-            for h in losers
-            if h["change_pct"] < 0
-        ]
-        if gainer_parts:
-            top_movers_lines.append("  ".join(gainer_parts))
-        if loser_parts:
-            top_movers_lines.append("  ".join(loser_parts))
-
-    # --- 配置偏移 ---
-    drift_lines: list[str] = []
-    for cat, data in categories.items():
-        drift = data.get("drift_pct", 0.0)
-        if abs(drift) >= DRIFT_THRESHOLD_PCT:
-            cat_label = CATEGORY_LABEL.get(cat, cat)
-            key = (
-                "notification.drift_item_over"
-                if drift > 0
-                else "notification.drift_item_under"
-            )
-            drift_lines.append(
-                t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}")
-            )
-
-    # --- 組合訊息 ---
     non_normal_dicts: list[dict] = []
     for s in non_normal_stocks:
         duration_days, is_new = compute_signal_duration(s.signal_since, now_ts)
@@ -267,11 +282,11 @@ def send_weekly_digest(session: Session) -> dict:
         fear_greed_line=t(
             "notification.fear_greed", lang=lang, label=fg_label, vix=vix_text
         ),
-        top_movers_lines=top_movers_lines,
+        top_movers_lines=_build_top_movers_lines(holdings_detail),
         non_normal=non_normal_dicts,
         signal_changes=signal_changes,
         signal_transitions=signal_transitions,
-        drift_lines=drift_lines,
+        drift_lines=_build_drift_lines(categories, lang),
         all_normal_line=t("notification.all_normal", lang=lang),
     )
 

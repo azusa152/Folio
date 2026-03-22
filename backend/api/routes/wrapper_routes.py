@@ -1,6 +1,8 @@
 """Tax wrapper quota routes."""
 
+import contextlib
 import tempfile
+from collections.abc import Generator
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -63,6 +65,37 @@ _CONTRIBUTION_WRAPPERS = {"nisa_tsumitate", "nisa_growth"}
 
 def _error_detail(error_code: str, message_key: str) -> dict[str, str]:
     return {"error_code": error_code, "detail": t(message_key, lang=DEFAULT_LANGUAGE)}
+
+
+@contextlib.contextmanager
+def _eligibility_error_guard(
+    error_code: str,
+    i18n_key: str,
+    wrapper: str,
+    action: str,
+) -> Generator[None, None, None]:
+    """Translate httpx/ValueError/Exception into structured HTTPException responses."""
+    try:
+        yield
+    except httpx.HTTPError as exc:
+        logger.exception("Eligible-asset %s failed for wrapper=%r", action, wrapper)
+        raise HTTPException(
+            status_code=502, detail=_error_detail(error_code, i18n_key)
+        ) from exc
+    except ValueError as exc:
+        logger.exception(
+            "Eligible-asset %s validation failed for wrapper=%r", action, wrapper
+        )
+        raise HTTPException(
+            status_code=422, detail=_error_detail(error_code, i18n_key)
+        ) from exc
+    except Exception as exc:
+        logger.exception(
+            "Unexpected error during eligible-asset %s for wrapper=%r", action, wrapper
+        )
+        raise HTTPException(
+            status_code=500, detail=_error_detail(error_code, i18n_key)
+        ) from exc
 
 
 @router.get("/wrappers/quota", response_model=AllQuotasResponse)
@@ -270,40 +303,13 @@ def refresh_eligible_assets_endpoint(
     # sync_wrapper_from_official_source raises ApplicationError instead of bare
     # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
     #     raise to_http_exception(exc, lang=lang) from exc
-    try:
+    with _eligibility_error_guard(
+        "ELIGIBILITY_REFRESH_FAILED",
+        "eligibility.refresh_failed",
+        normalized_wrapper,
+        "refresh",
+    ):
         stats = sync_wrapper_from_official_source(session, normalized_wrapper)
-    except httpx.HTTPError as exc:
-        logger.exception(
-            "Eligible-asset refresh failed for wrapper=%r", normalized_wrapper
-        )
-        raise HTTPException(
-            status_code=502,
-            detail=_error_detail(
-                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
-            ),
-        ) from exc
-    except ValueError as exc:
-        logger.exception(
-            "Eligible-asset refresh validation failed for wrapper=%r",
-            normalized_wrapper,
-        )
-        raise HTTPException(
-            status_code=422,
-            detail=_error_detail(
-                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
-            ),
-        ) from exc
-    except Exception as exc:
-        logger.exception(
-            "Unexpected error during eligible-asset refresh for wrapper=%r",
-            normalized_wrapper,
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=_error_detail(
-                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
-            ),
-        ) from exc
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)
     return {
         "wrapper": normalized_wrapper,
@@ -354,7 +360,12 @@ async def upload_eligible_assets(
     # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
     #     raise to_http_exception(exc, lang=lang) from exc
     try:
-        try:
+        with _eligibility_error_guard(
+            "ELIGIBILITY_UPLOAD_FAILED",
+            "eligibility.upload_failed",
+            normalized_wrapper,
+            "upload",
+        ):
             stats = refresh_eligible_assets(
                 session=session,
                 wrapper=normalized_wrapper,
@@ -362,38 +373,6 @@ async def upload_eligible_assets(
                 source="manual_upload",
                 autocommit=True,
             )
-        except httpx.HTTPError as exc:
-            logger.exception(
-                "Eligible-asset upload failed for wrapper=%r", normalized_wrapper
-            )
-            raise HTTPException(
-                status_code=502,
-                detail=_error_detail(
-                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
-                ),
-            ) from exc
-        except ValueError as exc:
-            logger.exception(
-                "Eligible-asset upload validation failed for wrapper=%r",
-                normalized_wrapper,
-            )
-            raise HTTPException(
-                status_code=422,
-                detail=_error_detail(
-                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
-                ),
-            ) from exc
-        except Exception as exc:
-            logger.exception(
-                "Unexpected error during eligible-asset upload for wrapper=%r",
-                normalized_wrapper,
-            )
-            raise HTTPException(
-                status_code=500,
-                detail=_error_detail(
-                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
-                ),
-            ) from exc
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)

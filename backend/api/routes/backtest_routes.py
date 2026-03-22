@@ -15,8 +15,8 @@ from api.schemas import (
     BacktestDetailResponse,
     BacktestSummaryResponse,
 )
-from application.services import (
-    get_backfill_status,
+from application.scan.backfill_service import get_backfill_status
+from application.scan.backtest_service import (
     get_backtest_all_occurrences,
     get_backtest_detail,
     get_backtest_summary,

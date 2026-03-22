@@ -337,7 +337,9 @@ class TestPriceHistoryRoute:
             },
         )
 
-        with patch("application.stock.stock_service._get_price_history") as mock_ph:
+        with patch(
+            "application.stock.stock_enrichment_service._get_price_history"
+        ) as mock_ph:
             resp = client.get("/ticker/01311143/price-history")
 
         assert resp.status_code == 200
@@ -444,7 +446,9 @@ class TestSignalsRoute:
             )
             s.commit()
 
-        with patch("application.stock.stock_service.get_technical_signals") as mock_yf:
+        with patch(
+            "application.stock.stock_enrichment_service.get_technical_signals"
+        ) as mock_yf:
             resp = client.get("/ticker/0131310B/signals")
 
         assert resp.status_code == 200
@@ -492,7 +496,9 @@ class TestFundamentalsRoute:
             },
         )
 
-        with patch("application.stock.stock_service.get_fundamentals") as mock_yf:
+        with patch(
+            "application.stock.stock_enrichment_service.get_fundamentals"
+        ) as mock_yf:
             resp = client.get("/ticker/01313139/fundamentals")
 
         assert resp.status_code == 200
