@@ -245,7 +245,7 @@ def test_health_endpoint_not_affected_by_exceptions(client):
 
 def test_no_stack_trace_in_production_errors(client):
     """Production errors should not include stack traces in response."""
-    with patch("application.services.handle_webhook") as mock_handle:
+    with patch("application.messaging.webhook_service.handle_webhook") as mock_handle:
         # Simulate a deep exception with multiple layers
         mock_handle.side_effect = RuntimeError("Database connection failed at line 123")
 
