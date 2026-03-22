@@ -59,6 +59,8 @@ export interface EarningsInfo {
 // GET /stocks/enriched returns list[dict] — no Pydantic response_model
 export interface EnrichedStock {
   ticker: string
+  name?: string | null
+  fund_name?: string | null
   category?: StockCategory
   last_scan_signal?: ScanSignal
   computed_signal?: ScanSignal
