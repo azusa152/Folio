@@ -20,7 +20,7 @@ from domain.constants import DEFAULT_USER_ID
 from domain.entities import UserInvestmentProfile
 from domain.rebalance import calculate_rebalance as _pure_rebalance
 from i18n import get_user_language, t
-from infrastructure.market_data import get_exchange_rates
+from infrastructure.market_data import get_exchange_rates, get_ticker_name_cached
 from infrastructure.notification import (
     is_notification_enabled,
     send_telegram_message_dual,
@@ -163,6 +163,7 @@ def calculate_withdrawal(
     recs = [
         {
             "ticker": r.ticker,
+            "name": get_ticker_name_cached(r.ticker),
             "category": r.category,
             "quantity_to_sell": r.quantity_to_sell,
             "sell_value": r.sell_value,
@@ -199,8 +200,9 @@ def calculate_withdrawal(
         if is_notification_enabled(session, "withdrawal"):
             try:
                 withdrawal_lang = get_user_language(session)
+                rec_names = {r["ticker"]: r["name"] for r in recs if r.get("name")}
                 tg_msg = format_withdrawal_telegram(
-                    plan, display_currency, lang=withdrawal_lang
+                    plan, display_currency, lang=withdrawal_lang, rec_names=rec_names
                 )
                 send_telegram_message_dual(tg_msg, session)
                 logger.info("聰明提款建議已發送至 Telegram。")

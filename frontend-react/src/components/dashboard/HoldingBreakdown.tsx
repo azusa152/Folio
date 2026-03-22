@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CATEGORY_COLOR_FALLBACK, CATEGORY_COLOR_MAP, CATEGORY_ICON_SHORT } from "@/lib/constants"
+import { getDisplayName } from "@/lib/stock-display"
 import type { RebalanceResponse } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 8
@@ -15,6 +17,7 @@ interface Props {
 
 interface RowItem {
   label: string
+  name: string | null
   category: string
   weightPct: number
   color: string
@@ -50,6 +53,7 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
 
       grouped.set(key, {
         label: holding.ticker,
+        name: getDisplayName(holding.name),
         category: holding.category,
         weightPct,
         color: getCategoryColor(holding.category),
@@ -68,6 +72,7 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
           ...allRows.slice(0, TOP_LIMIT),
           {
             label: t("dashboard.holding_breakdown.other"),
+            name: null,
             category: "Other",
             weightPct: otherWeight,
             color: CATEGORY_COLOR_FALLBACK,
@@ -125,8 +130,28 @@ export function HoldingBreakdown({ rebalance, isLoading = false }: Props) {
                 style={{ backgroundColor: row.color }}
                 aria-hidden="true"
               />
-              <span className="truncate text-muted-foreground">
-                {CATEGORY_ICON_SHORT[row.category] ?? ""} {row.label}
+              <span className="min-w-0 flex flex-col leading-tight">
+                {row.name ? (
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate text-foreground text-xs font-medium">
+                            {CATEGORY_ICON_SHORT[row.category] ?? ""} {row.name}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={4} className="max-w-60 text-xs">
+                          {row.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <span className="truncate text-[10px] text-muted-foreground">{row.label}</span>
+                  </>
+                ) : (
+                  <span className="truncate text-muted-foreground">
+                    {CATEGORY_ICON_SHORT[row.category] ?? ""} {row.label}
+                  </span>
+                )}
               </span>
               <span className="ml-auto font-medium tabular-nums">{row.weightPct.toFixed(1)}%</span>
             </div>

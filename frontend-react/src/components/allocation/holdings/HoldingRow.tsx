@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import { FINANCE_TEXT } from "@/lib/colors"
 import { formatQuantity, formatSignedMoneyWithPrivacy, getQuantityUnitKey } from "@/lib/format"
 import { maskMoney } from "@/hooks/usePrivacyMode"
+import { getDisplayName } from "@/lib/stock-display"
 import type { GroupedHolding } from "./HoldingsTableUtils"
 import { computeFxReturn, fmtPct, formatAccountList, getValueClass } from "./HoldingsTableUtils"
 
@@ -36,10 +37,22 @@ export function HoldingRow({ holding: h, privacyMode, displayCurrency }: Holding
     ...quantityUnit.params,
   })
   const accountDisplay = formatAccountList(h.accounts)
+  const displayName = getDisplayName(h.name)
 
   return (
     <tr key={h.row_key} className="border-b border-border/50">
-      <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
+      <td className="py-0.5 pr-2">
+        {displayName ? (
+          <div className="flex flex-col leading-tight">
+            <span className="font-medium truncate max-w-[160px]" title={displayName}>
+              {displayName}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{h.ticker}</span>
+          </div>
+        ) : (
+          <span className="font-medium">{h.ticker}</span>
+        )}
+      </td>
       <td className="py-0.5 pr-2 text-muted-foreground">
         {h.accounts.length > 1 ? (
           <span className="text-[10px] leading-tight" title={accountDisplay.fullLabel}>

@@ -11823,6 +11823,17 @@
             "type": "string",
             "title": "Ticker"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "category": {
             "type": "string",
             "title": "Category"
@@ -13687,6 +13698,17 @@
             "type": "string",
             "title": "Ticker"
           },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
           "category": {
             "type": "string",
             "title": "Category"
@@ -14399,6 +14421,17 @@
           "ticker": {
             "type": "string",
             "title": "Ticker"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "category": {
             "type": "string",

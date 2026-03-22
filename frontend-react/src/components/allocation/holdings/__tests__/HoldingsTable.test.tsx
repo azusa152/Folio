@@ -196,9 +196,9 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    const tickerButtons = screen.getAllByRole("button", { name: "allocation.col.ticker" })
+    const tickerButtons = screen.getAllByRole("button", { name: "allocation.col.holding" })
     await user.click(tickerButtons[0])
-    const tickerHeader = screen.getByRole("columnheader", { name: "allocation.col.ticker" })
+    const tickerHeader = screen.getByRole("columnheader", { name: "allocation.col.holding" })
     expect(tickerHeader).toHaveAttribute("aria-sort", "ascending")
 
     const tickerCells = screen

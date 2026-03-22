@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useStressTest } from "@/api/hooks/useAllocation"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
 import { maskMoney } from "@/hooks/usePrivacyMode"
+import { getDisplayName } from "@/lib/stock-display"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -136,7 +137,7 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left py-0.5 pr-2">{t("allocation.col.ticker")}</th>
+                    <th className="text-left py-0.5 pr-2">{t("allocation.col.holding")}</th>
                     <th className="text-left py-0.5 pr-2">{t("allocation.col.category")}</th>
                     <th className="text-right py-0.5 pr-2">{t("allocation.stress.col_beta")}</th>
                     <th className="text-right py-0.5 pr-2">{t("allocation.stress.col_drop")}</th>
@@ -144,19 +145,38 @@ export function StressTest({ displayCurrency, privacyMode, enabled }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.holdings_breakdown.map((h, i) => (
-                    <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
-                      <td className="py-0.5 pr-2 font-medium">{h.ticker}</td>
-                      <td className="py-0.5 pr-2 text-muted-foreground">{h.category}</td>
-                      <td className="py-0.5 pr-2 text-right">{h.beta.toFixed(2)}</td>
-                      <td className={`py-0.5 pr-2 text-right ${FINANCE_TEXT.loss}`}>
-                        -{h.expected_drop_pct.toFixed(1)}%
-                      </td>
-                      <td className={`py-0.5 text-right ${FINANCE_TEXT.loss}`}>
-                        {fmtValue(h.expected_loss, data.display_currency)}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.holdings_breakdown.map((h, i) => {
+                    const displayName = getDisplayName(h.name)
+                    return (
+                      <tr key={`${h.ticker}-${i}`} className="border-b border-border/50">
+                        <td className="py-0.5 pr-2">
+                          {displayName ? (
+                            <div className="flex flex-col leading-tight">
+                              <span
+                                className="font-medium truncate max-w-[140px]"
+                                title={displayName}
+                              >
+                                {displayName}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">{h.ticker}</span>
+                            </div>
+                          ) : (
+                            <span className="font-medium">{h.ticker}</span>
+                          )}
+                        </td>
+                        <td className="py-0.5 pr-2 text-muted-foreground">
+                          {t(`config.category.${h.category.toLowerCase()}`)}
+                        </td>
+                        <td className="py-0.5 pr-2 text-right">{h.beta.toFixed(2)}</td>
+                        <td className={`py-0.5 pr-2 text-right ${FINANCE_TEXT.loss}`}>
+                          -{h.expected_drop_pct.toFixed(1)}%
+                        </td>
+                        <td className={`py-0.5 text-right ${FINANCE_TEXT.loss}`}>
+                          {fmtValue(h.expected_loss, data.display_currency)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

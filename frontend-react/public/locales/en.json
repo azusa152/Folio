@@ -90,11 +90,10 @@
       "moat": "🏰 Moat",
       "growth": "🚀 Growth",
       "etf": "📈 ETF",
-      "mutual_fund": "📚 Mutual Fund",
+      "mutual_fund": "🧺 Mutual Fund",
       "bond": "🛡️ Bond",
       "crypto": "₿ Crypto",
-      "cash": "💵 Cash",
-      "mutual_fund": "🧺 Mutual Fund"
+      "cash": "💵 Cash"
     },
     "category_desc": {
       "trend_setter": "Large-cap ETFs and mega-caps that track capital flow and spending trends.",
@@ -968,6 +967,7 @@
     },
     "col": {
       "ticker": "Ticker",
+      "holding": "Stock / Fund",
       "account": "Account",
       "category": "Category",
       "qty": "Qty",

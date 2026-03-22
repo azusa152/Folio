@@ -64,6 +64,7 @@ from infrastructure.market_data import (
     get_etf_sector_weights,
     get_etf_top_holdings,
     get_exchange_rates,
+    get_ticker_name_cached,
     get_ticker_sector,
     prewarm_crypto_prices,
     prewarm_etf_holdings_batch,
@@ -80,6 +81,7 @@ from infrastructure.repositories import (
     delete_drift_acknowledgment,
     find_all_accounts,
     find_all_drift_acknowledgments,
+    find_fund_names_by_tickers,
     find_holdings_for_active_accounts,
     log_notification_sent,
 )
@@ -578,8 +580,10 @@ def _load_rebalance_inputs(
 def _build_holdings_detail_list(
     account_ticker_agg: dict[tuple, dict],
     total_value: float,
+    fund_name_by_ticker: dict[str, str] | None = None,
 ) -> list[dict]:
     """個股明細（account+ticker，含佔比、損益、日漲跌）列表，依權重降序排列。"""
+    fund_names = fund_name_by_ticker or {}
     holdings_detail = []
     for agg in account_ticker_agg.values():
         avg_cost = (
@@ -611,12 +615,19 @@ def _build_holdings_detail_list(
             else None
         )
 
+        ticker = agg["ticker"]
+        category = agg["category"]
+        display_name = fund_names.get(ticker.strip().upper()) or get_ticker_name_cached(
+            ticker
+        )
+
         holdings_detail.append(
             {
                 "account_id": agg["account_id"],
                 "account_name": agg.get("account_name"),
-                "ticker": agg["ticker"],
-                "category": agg["category"],
+                "ticker": ticker,
+                "name": display_name,
+                "category": category,
                 "currency": agg["currency"],
                 "quantity": round(
                     agg["qty"],
@@ -1210,9 +1221,17 @@ def _do_calculate_rebalance(
     result["total_value_change"] = round(total_value_change, 2)
     result["total_value_change_pct"] = total_value_change_pct
 
-    # 7) 個股明細
+    # 7) 個股明細（含公司名稱，供前端顯示）
+    mf_tickers = [
+        t_ticker
+        for t_ticker, agg in ticker_agg.items()
+        if agg["category"] == StockCategory.MUTUAL_FUND.value
+    ]
+    fund_name_by_ticker: dict[str, str] = {}
+    if mf_tickers:
+        fund_name_by_ticker = find_fund_names_by_tickers(session, mf_tickers)
     result["holdings_detail"] = _build_holdings_detail_list(
-        account_ticker_agg, total_value
+        account_ticker_agg, total_value, fund_name_by_ticker
     )
     result["display_currency"] = display_currency
 

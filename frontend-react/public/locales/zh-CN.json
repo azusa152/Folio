@@ -90,11 +90,10 @@
       "moat": "🏰 护城河 (Moat)",
       "growth": "🚀 成长梦想 (Growth)",
       "etf": "📈 ETF",
-      "mutual_fund": "📚 共同基金 (Mutual Fund)",
+      "mutual_fund": "🧺 公募基金",
       "bond": "🛡️ 债券 (Bond)",
       "crypto": "₿ 加密货币 (Crypto)",
-      "cash": "💵 现金 (Cash)",
-      "mutual_fund": "🧺 公募基金"
+      "cash": "💵 现金 (Cash)"
     },
     "category_desc": {
       "trend_setter": "以大型 ETF 与龙头股为主，跟踪资金流与消费趋势。",
@@ -968,6 +967,7 @@
     },
     "col": {
       "ticker": "代号",
+      "holding": "名称",
       "account": "账户",
       "category": "类别",
       "qty": "数量",

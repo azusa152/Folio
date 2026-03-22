@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from application.formatters import format_fear_greed_label
+from application.formatters import format_fear_greed_label, format_stock_display
 from application.scan.backtest_service import invalidate_backtest_cache
 from application.stock.stock_service import _get_stock_or_raise, build_nav_signals
 from domain.analysis import (
@@ -54,6 +54,7 @@ from infrastructure.market_data import (
     get_crypto_price,
     get_fear_greed_index,
     get_technical_signals,
+    get_ticker_name_cached,
     prime_signals_cache_batch,
 )
 from infrastructure.notification import (
@@ -237,8 +238,10 @@ def _build_scan_alerts(
     bias_percentile: float | None,
     is_rogue_wave: bool,
     initial_alerts: list[str],
+    name: str | None = None,
 ) -> list[str]:
     """Assemble the human-readable alert lines for a single stock scan result."""
+    display = format_stock_display(name, ticker)
     alerts = list(initial_alerts)
 
     if is_rogue_wave:
@@ -246,7 +249,7 @@ def _build_scan_alerts(
             t(
                 "scan.rogue_wave_alert",
                 lang=lang,
-                ticker=ticker,
+                ticker=display,
                 bias=round(bias, 1),  # type: ignore[arg-type]
                 percentile=round(bias_percentile)
                 if bias_percentile is not None
@@ -261,7 +264,7 @@ def _build_scan_alerts(
             t(
                 alert_key,
                 lang=lang,
-                ticker=ticker,
+                ticker=display,
                 details=moat_details,
                 bias=round(bias, 1) if bias is not None else "N/A",
                 rsi=round(rsi, 1) if rsi is not None else "N/A",
@@ -289,14 +292,14 @@ def _build_scan_alerts(
 
     if moat_value == MoatStatus.STABLE.value and moat_details:
         alerts.append(
-            t("scan.moat_stable_alert", lang=lang, ticker=ticker, details=moat_details)
+            t("scan.moat_stable_alert", lang=lang, ticker=display, details=moat_details)
         )
     if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
         alerts.append(
             t(
                 "scan.moat_unavailable_alert",
                 lang=lang,
-                ticker=ticker,
+                ticker=display,
                 details=moat_details,
             )
         )
@@ -360,6 +363,7 @@ def _analyze_single_stock(
             bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
         is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
 
+    stock_name = get_ticker_name_cached(ticker)
     alerts = _build_scan_alerts(
         ticker=ticker,
         lang=lang,
@@ -373,6 +377,7 @@ def _analyze_single_stock(
         bias_percentile=bias_percentile,
         is_rogue_wave=is_rogue_wave,
         initial_alerts=initial_alerts,
+        name=stock_name,
     )
 
     logger.info(
@@ -387,6 +392,7 @@ def _analyze_single_stock(
 
     return {
         "ticker": ticker,
+        "name": stock_name,
         "category": stock.category,
         "signal": signal.value,
         "alerts": alerts,
@@ -535,6 +541,7 @@ def _evaluate_and_notify(
         resolved_parts: list[str] = []
         for r in resolved:
             ticker_r = r["ticker"]
+            display_r = format_stock_display(r.get("name"), ticker_r)
             prev = r.get("_prev_signal", "NORMAL")
             prev_since: datetime | None = r.get("_prev_since")
             if prev_since is not None:
@@ -543,13 +550,20 @@ def _evaluate_and_notify(
                     t(
                         "scan.resolved_detail",
                         lang=ctx.lang,
-                        ticker=ticker_r,
+                        ticker=display_r,
                         signal=prev,
                         days=days,
                     )
                 )
             else:
-                resolved_parts.append(ticker_r)
+                resolved_parts.append(
+                    t(
+                        "scan.resolved_detail_no_duration",
+                        lang=ctx.lang,
+                        ticker=display_r,
+                        signal=prev,
+                    )
+                )
         body_parts.append(
             f"\n{t('scan.resolved_section', lang=ctx.lang, tickers=', '.join(resolved_parts))}"
         )
@@ -637,8 +651,9 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
         alert.last_triggered_at = now
         session.add(alert)
         op_label = "<" if alert.operator == "lt" else ">"
+        display_alert = format_stock_display(r.get("name"), alert.stock_ticker)
         triggered_msgs.append(
-            f"🔔 {alert.stock_ticker} {alert.metric}={metric_value} "
+            f"🔔 {display_alert} {alert.metric}={metric_value} "
             f"{op_label} {alert.threshold}"
         )
 

@@ -90,11 +90,10 @@
       "moat": "🏰 モート",
       "growth": "🚀 グロース",
       "etf": "📈 ETF",
-      "mutual_fund": "📚 投資信託",
+      "mutual_fund": "🧺 投資信託",
       "bond": "🛡️ 債券",
       "crypto": "₿ 暗号資産",
-      "cash": "💵 現金",
-      "mutual_fund": "🧺 投資信託"
+      "cash": "💵 現金"
     },
     "category_desc": {
       "trend_setter": "大型ETFやメガキャップ中心で、資金フローと消費トレンドを追うカテゴリ。",
@@ -968,6 +967,7 @@
     },
     "col": {
       "ticker": "ティッカー",
+      "holding": "銘柄名",
       "account": "口座",
       "category": "カテゴリ",
       "qty": "数量",

@@ -84,6 +84,7 @@ class HoldingDetail(BaseModel):
     account_id: int | None = None
     account_name: str | None = None
     ticker: str
+    name: str | None = None
     category: str
     currency: str = "USD"
     quantity: float
@@ -283,6 +284,7 @@ class SellRecommendationResponse(BaseModel):
     """單筆賣出建議。"""
 
     ticker: str
+    name: str | None = None
     category: str
     quantity_to_sell: float
     sell_value: float
@@ -311,6 +313,7 @@ class StressTestHoldingBreakdown(BaseModel):
     """壓力測試：單檔持倉損失細項。"""
 
     ticker: str
+    name: str | None = None
     category: str
     beta: float
     market_value: float

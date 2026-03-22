@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { isTaxWrapperType, TAX_WRAPPER_ICONS } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
@@ -14,6 +15,7 @@ import {
   formatSignedPct,
   getQuantityUnitKey,
 } from "@/lib/format"
+import { getDisplayName } from "@/lib/stock-display"
 import type { AccountRowData } from "../AccountsOverview"
 
 function AccountTypeIcon({ accountType }: { accountType: string }) {
@@ -284,7 +286,27 @@ export function AccountTableRow({
                       className="flex items-center justify-between gap-2"
                     >
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{holding.ticker}</p>
+                        {getDisplayName(holding.name) ? (
+                          <>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="truncate font-medium text-foreground">
+                                    {getDisplayName(holding.name)}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent sideOffset={4} className="max-w-60 text-xs">
+                                  {getDisplayName(holding.name)}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <p className="truncate text-[10px] text-muted-foreground">
+                              {holding.ticker}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="truncate font-medium text-foreground">{holding.ticker}</p>
+                        )}
                         <p className="truncate text-muted-foreground">
                           {t(quantityUnit.key, {
                             quantity: formatQuantity(holding.quantity, {

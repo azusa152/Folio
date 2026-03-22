@@ -10,6 +10,7 @@ import { DISPLAY_CURRENCIES, CHART_COLOR_PALETTE } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { maskMoney } from "@/hooks/usePrivacyMode"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { getDisplayName } from "@/lib/stock-display"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -129,7 +130,7 @@ export function SmartWithdrawal({ privacyMode }: Props) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left py-0.5 pr-2">{t("allocation.col.ticker")}</th>
+                    <th className="text-left py-0.5 pr-2">{t("allocation.col.holding")}</th>
                     <th className="text-left py-0.5 pr-2">{t("allocation.col.category")}</th>
                     <th className="text-right py-0.5 pr-2">{t("allocation.withdraw.col_qty")}</th>
                     <th className="text-right py-0.5 pr-2">{t("allocation.withdraw.col_value")}</th>
@@ -137,19 +138,38 @@ export function SmartWithdrawal({ privacyMode }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.recommendations.map((r) => (
-                    <tr key={r.ticker} className="border-b border-border/50">
-                      <td className="py-0.5 pr-2 font-medium">{r.ticker}</td>
-                      <td className="py-0.5 pr-2 text-muted-foreground">{r.category}</td>
-                      <td className="py-0.5 pr-2 text-right">
-                        {privacyMode ? "***" : r.quantity_to_sell.toFixed(2)}
-                      </td>
-                      <td className="py-0.5 pr-2 text-right">
-                        {maskMoney(r.sell_value, currency)}
-                      </td>
-                      <td className="py-0.5 text-muted-foreground">{r.reason}</td>
-                    </tr>
-                  ))}
+                  {result.recommendations.map((r) => {
+                    const displayName = getDisplayName(r.name)
+                    return (
+                      <tr key={r.ticker} className="border-b border-border/50">
+                        <td className="py-0.5 pr-2">
+                          {displayName ? (
+                            <div className="flex flex-col leading-tight">
+                              <span
+                                className="font-medium truncate max-w-[140px]"
+                                title={displayName}
+                              >
+                                {displayName}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">{r.ticker}</span>
+                            </div>
+                          ) : (
+                            <span className="font-medium">{r.ticker}</span>
+                          )}
+                        </td>
+                        <td className="py-0.5 pr-2 text-muted-foreground">
+                          {t(`config.category.${r.category.toLowerCase()}`)}
+                        </td>
+                        <td className="py-0.5 pr-2 text-right">
+                          {privacyMode ? "***" : r.quantity_to_sell.toFixed(2)}
+                        </td>
+                        <td className="py-0.5 pr-2 text-right">
+                          {maskMoney(r.sell_value, currency)}
+                        </td>
+                        <td className="py-0.5 text-muted-foreground">{r.reason}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

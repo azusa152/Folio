@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  急落警報  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 株価が急変動 — 落ち着くまで様子見",
     "signal_new_badge": "[NEW]",
     "signal_transition": "前シグナル：{from_signal} → {to_signal}",
-    "resolved_detail": "{ticker}（前 {signal}、{days}日間）"
+    "resolved_detail": "{ticker}（前 {signal}、{days}日間）",
+    "resolved_detail_no_duration": "{ticker}（前 {signal}）"
   },
   "notification": {
     "change_label": "変化",

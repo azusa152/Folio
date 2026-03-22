@@ -268,7 +268,7 @@ export function HoldingsTable({
                   className="inline-flex items-center gap-1 hover:text-foreground"
                   onClick={() => toggleSort("ticker")}
                 >
-                  <span>{t("allocation.col.ticker")}</span>
+                  <span>{t("allocation.col.holding")}</span>
                   {renderSortIcon("ticker")}
                 </button>
               </th>

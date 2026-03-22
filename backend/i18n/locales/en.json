@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  SUDDEN CRASH  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Extreme price swing — stay away until calm",
     "signal_new_badge": "[NEW]",
     "signal_transition": "was: {from_signal} → {to_signal}",
-    "resolved_detail": "{ticker} (was {signal}, {days}d)"
+    "resolved_detail": "{ticker} (was {signal}, {days}d)",
+    "resolved_detail_no_duration": "{ticker} (was {signal})"
   },
   "notification": {
     "change_label": "changes",

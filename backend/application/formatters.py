@@ -26,6 +26,21 @@ _FEAR_GREED_ICON: dict[str, str] = {
 }
 
 
+def format_stock_display(name: str | None, ticker: str) -> str:
+    """Return a human-readable stock identifier.
+
+    When a company or fund name is available, returns "Name (TICKER)".
+    Falls back to the bare ticker when no name is available.
+
+    Examples:
+        format_stock_display("Apple Inc.", "AAPL")  → "Apple Inc. (AAPL)"
+        format_stock_display(None, "AAPL")           → "AAPL"
+    """
+    if name and name.strip():
+        return f"{name.strip()} ({ticker})"
+    return ticker
+
+
 def format_fear_greed_label(level: str, score: int, lang: str = "zh-TW") -> str:
     """
     格式化恐懼與貪婪等級為標籤（含 icon 與分數）。
@@ -53,7 +68,10 @@ def format_fear_greed_short(level: str, lang: str = "zh-TW") -> str:
 
 
 def format_withdrawal_telegram(
-    plan: WithdrawalPlan, display_currency: str = "USD", lang: str = "zh-TW"
+    plan: WithdrawalPlan,
+    display_currency: str = "USD",
+    lang: str = "zh-TW",
+    rec_names: dict[str, str] | None = None,
 ) -> str:
     """
     將 WithdrawalPlan 格式化為 Telegram HTML 訊息。
@@ -62,6 +80,7 @@ def format_withdrawal_telegram(
         plan: domain.withdrawal.WithdrawalPlan 實例
         display_currency: 顯示幣別
         lang: 語言代碼
+        rec_names: optional ticker → display name map for stock lines
 
     Returns:
         Telegram HTML 格式訊息字串
@@ -81,6 +100,7 @@ def format_withdrawal_telegram(
         parts.append(t("formatter.withdrawal_no_holdings", lang=lang))
         return "\n".join(parts)
 
+    names = rec_names or {}
     parts.append(t("formatter.withdrawal_recommendations", lang=lang))
     for i, rec in enumerate(plan.recommendations, 1):
         icon = CATEGORY_ICON.get(rec.category, "📊")
@@ -98,8 +118,9 @@ def format_withdrawal_telegram(
             f"formatter.priority_{['rebalance', 'tax', 'liquidity'][rec.priority - 1]}",
             lang=lang,
         )
+        stock_display = format_stock_display(names.get(rec.ticker), rec.ticker)
         parts.append(
-            f"\n{i}. {icon} <b>{rec.ticker}</b> ({rec.category})"
+            f"\n{i}. {icon} <b>{stock_display}</b> ({rec.category})"
             f" — {t('formatter.sell', lang=lang)} {rec.quantity_to_sell:,.4g} "
             f"{t('formatter.shares', lang=lang)}"
             f"（{rec.sell_value:,.2f} {display_currency}）"

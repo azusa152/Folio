@@ -14,6 +14,7 @@ from i18n import get_user_language, t
 from infrastructure.market_data import (
     get_exchange_rates,
     get_stock_beta,
+    get_ticker_name_cached,
     prewarm_beta_batch,
 )
 from infrastructure.repositories import find_holdings_for_active_accounts
@@ -120,6 +121,7 @@ def calculate_stress_test(
         holdings_with_beta.append(
             {
                 "ticker": ticker,
+                "name": get_ticker_name_cached(ticker),
                 "category": category,
                 "market_value": market_value,
                 "beta": beta,

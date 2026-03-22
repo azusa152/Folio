@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  突然暴跌  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 價格劇烈波動 — 等市場冷靜再說",
     "signal_new_badge": "[NEW]",
     "signal_transition": "原訊號：{from_signal} → {to_signal}",
-    "resolved_detail": "{ticker}（原 {signal}，持續 {days} 天）"
+    "resolved_detail": "{ticker}（原 {signal}，持續 {days} 天）",
+    "resolved_detail_no_duration": "{ticker}（原 {signal}）"
   },
   "notification": {
     "change_label": "變化",

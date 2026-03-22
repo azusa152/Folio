@@ -13,6 +13,7 @@ from application.formatters import (
     format_fear_greed_short,
     format_guru_filing_digest,
     format_resonance_alert,
+    format_stock_display,
     format_weekly_digest_html,
 )
 from domain.analysis import compute_signal_duration
@@ -149,12 +150,12 @@ def _build_top_movers_lines(holdings_detail: list[dict]) -> list[str]:
     losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
     lines: list[str] = []
     gainer_parts = [
-        f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%"
+        f"  ▲ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
         for h in gainers
         if h["change_pct"] > 0
     ]
     loser_parts = [
-        f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%"
+        f"  ▼ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
         for h in losers
         if h["change_pct"] < 0
     ]
@@ -405,12 +406,12 @@ def get_portfolio_summary(session: Session) -> str:
         gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
         losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
         gainer_parts = [
-            f"▲ {h['ticker']} {h['change_pct']:+.1f}%"
+            f"▲ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
             for h in gainers
             if h["change_pct"] > 0
         ]
         loser_parts = [
-            f"▼ {h['ticker']} {h['change_pct']:+.1f}%"
+            f"▼ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
             for h in losers
             if h["change_pct"] < 0
         ]

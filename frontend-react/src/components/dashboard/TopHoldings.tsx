@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { useTerminology } from "@/hooks/useTerminology"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { getDisplayName } from "@/lib/stock-display"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -182,29 +184,52 @@ export function TopHoldings({ rebalance }: Props) {
               </tr>
             </thead>
             <tbody>
-              {top.map((h) => (
-                <tr key={h.ticker} className="border-t border-border/50 hover:bg-muted/30">
-                  <td className="px-3 py-2 font-semibold">{h.ticker}</td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {CATEGORY_ICON_SHORT[h.category] ?? ""}{" "}
-                    {t(`config.category.${h.category.toLowerCase()}`, h.category)}
-                  </td>
-                  <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
-                  <td className="text-right px-3 py-2">
-                    {maskMoney(h.market_value, displayCurrency)}
-                  </td>
-                  <ChangeCell
-                    value={h.change_pct}
-                    category={h.category}
-                    change24hLabel={t("allocation.crypto.change_24h_short")}
-                  />
-                  <ReturnCells
-                    holding={h}
-                    isPrivate={isPrivate}
-                    displayCurrency={displayCurrency}
-                  />
-                </tr>
-              ))}
+              {top.map((h) => {
+                const displayName = getDisplayName(h.name)
+                return (
+                  <tr key={h.ticker} className="border-t border-border/50 hover:bg-muted/30">
+                    <td className="px-3 py-2">
+                      {displayName ? (
+                        <div className="flex flex-col leading-tight min-w-0">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate font-semibold text-sm max-w-[140px] block">
+                                  {displayName}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent sideOffset={4} className="max-w-60 text-xs">
+                                {displayName}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span className="text-[10px] text-muted-foreground">{h.ticker}</span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold">{h.ticker}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {CATEGORY_ICON_SHORT[h.category] ?? ""}{" "}
+                      {t(`config.category.${h.category.toLowerCase()}`, h.category)}
+                    </td>
+                    <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
+                    <td className="text-right px-3 py-2">
+                      {maskMoney(h.market_value, displayCurrency)}
+                    </td>
+                    <ChangeCell
+                      value={h.change_pct}
+                      category={h.category}
+                      change24hLabel={t("allocation.crypto.change_24h_short")}
+                    />
+                    <ReturnCells
+                      holding={h}
+                      isPrivate={isPrivate}
+                      displayCurrency={displayCurrency}
+                    />
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
