@@ -30,7 +30,7 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
       docs_agents: ${{ steps.filter.outputs.docs_agents }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -67,7 +67,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-backend
         with:
@@ -98,7 +98,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-backend
         with:
@@ -123,7 +123,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-backend
         with:
@@ -141,7 +141,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -174,7 +174,7 @@ jobs:
         working-directory: frontend-react
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-frontend
         with:
@@ -195,7 +195,7 @@ jobs:
         working-directory: frontend-react
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-frontend
         with:
@@ -216,7 +216,7 @@ jobs:
         working-directory: frontend-react
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-frontend
         with:
@@ -237,7 +237,7 @@ jobs:
         working-directory: frontend-react
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-frontend
         with:
@@ -258,7 +258,7 @@ jobs:
         working-directory: frontend-react
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-frontend
         with:
@@ -275,7 +275,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -294,7 +294,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -313,7 +313,7 @@ jobs:
     if: needs.changes.outputs.docs_agents == 'true' || needs.changes.outputs.shared == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -332,7 +332,7 @@ jobs:
     if: needs.changes.outputs.docs_agents == 'true' || needs.changes.outputs.shared == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check AGENTS.md cross-references
         run: bash scripts/check_agent_docs.sh
@@ -345,7 +345,7 @@ jobs:
     if: needs.changes.outputs.shared == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -368,7 +368,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-backend
         with:
@@ -417,7 +417,7 @@ jobs:
       || needs.changes.outputs.shared == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
