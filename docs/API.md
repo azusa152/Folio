@@ -189,6 +189,36 @@ All endpoints require the `X-API-Key` header when `FOLIO_API_KEY` is set in the 
 </details>
 
 <details>
+<summary>Fund Sector Weights</summary>
+
+Manage explicit sector weight overrides for mutual funds. These overrides fix the "Unknown" sector in Sector Exposure for Japanese mutual funds (e.g. NISA tsumitate funds) that yfinance cannot classify.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/funds/{fund_code}/sector-weights` | Get stored sector weights for a fund |
+| `PUT` | `/funds/{fund_code}/sector-weights` | Set sector weights (replaces existing) |
+| `DELETE` | `/funds/{fund_code}/sector-weights` | Remove all sector weight overrides |
+
+**PUT request body:**
+```json
+{
+  "weights": [
+    { "sector": "Technology", "weight": 0.176 },
+    { "sector": "Industrials", "weight": 0.202 }
+  ],
+  "source": "seed"
+}
+```
+
+Weight values are 0.0–1.0 (proportion of fund NAV). For balanced funds, only the equity portion is included; weights may sum to less than 1.0. Use the seed script to pre-populate standard funds:
+
+```bash
+docker compose exec backend uv run --frozen --no-dev python -m scripts.seed_fund_sector_weights
+```
+
+</details>
+
+<details>
 <summary>Analytics</summary>
 
 | Method | Path | Description |

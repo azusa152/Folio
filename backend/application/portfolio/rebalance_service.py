@@ -84,6 +84,7 @@ from infrastructure.repositories import (
     find_all_drift_acknowledgments,
     find_fund_names_by_tickers,
     find_holdings_for_active_accounts,
+    get_sector_weights_for_funds,
     log_notification_sent,
 )
 from logging_config import get_logger
@@ -843,11 +844,14 @@ def _compute_sector_exposure(
     known_etf_tickers: set[str],
     etf_constituents_cache: dict[str, list[dict]],
     total_value: float,
+    fund_sector_weights_cache: dict[str, dict[str, float]] | None = None,
 ) -> list[dict]:
     """行業板塊曝險（僅股票持倉）。
 
     ETF 穿透：Approach B（板塊權重）優先，A（成分股查詢）後備，兜底歸 ETF。
+    Mutual_Fund 穿透：DB 覆寫權重優先，後備單名 sector 查詢。
     """
+    _fund_weights = fund_sector_weights_cache or {}
     sector_values: dict[str, float] = {}
     for ticker, aggregate in ticker_agg.items():
         if aggregate["category"] not in EQUITY_CATEGORIES or aggregate["mv"] <= 0:
@@ -913,6 +917,17 @@ def _compute_sector_exposure(
                 len(constituents),
                 covered_weight * 100,
             )
+            continue
+
+        # Fund sector weight overrides (Mutual_Fund / manual seed data).
+        # Checked before detect_is_etf to avoid an unnecessary yfinance network call.
+        if ticker in _fund_weights:
+            fw = _fund_weights[ticker]
+            for sector_name, weight in fw.items():
+                sector_values[sector_name] = (
+                    sector_values.get(sector_name, 0.0) + market_value * weight
+                )
+            logger.debug("%s 使用基金行業板塊覆寫（%d 板塊）", ticker, len(fw))
             continue
 
         if ticker in known_etf_tickers or detect_is_etf(ticker):
@@ -1124,6 +1139,7 @@ def _build_spatial_allocation(
     known_etf_tickers: set[str],
     total_value: float,
     categories: dict,
+    session: Session,
 ) -> dict:
     """Phases 10-12: Sector exposure, geographic allocation, asset class allocation.
 
@@ -1151,6 +1167,21 @@ def _build_spatial_allocation(
         logger.info("並行預熱 %d 個 ticker 的 sector 快取...", len(all_sector_tickers))
         prewarm_ticker_sector_batch(all_sector_tickers)
 
+    # 載入 Mutual_Fund 行業板塊權重覆寫（DB 手動 / seed 資料）
+    mf_tickers = [
+        ticker
+        for ticker, agg in ticker_agg.items()
+        if agg["category"] == StockCategory.MUTUAL_FUND.value and agg["mv"] > 0
+    ]
+    fund_sector_weights_cache: dict[str, dict[str, float]] = (
+        get_sector_weights_for_funds(session, mf_tickers) if mf_tickers else {}
+    )
+    if fund_sector_weights_cache:
+        logger.info(
+            "已載入 %d 個基金的行業板塊覆寫資料。",
+            len(fund_sector_weights_cache),
+        )
+
     # 11) 地理區域配置（股票按 ticker 後綴，現金按幣別）
     holding_market_data: list[dict] = []
     for ticker, agg in ticker_agg.items():
@@ -1168,7 +1199,11 @@ def _build_spatial_allocation(
 
     return {
         "sector_exposure": _compute_sector_exposure(
-            ticker_agg, known_etf_tickers, etf_constituents_cache, total_value
+            ticker_agg,
+            known_etf_tickers,
+            etf_constituents_cache,
+            total_value,
+            fund_sector_weights_cache,
         ),
         "geographic_allocation": compute_geographic_allocation(holding_market_data),
         # 12) 資產類別配置（Folio 分類 → 標準資產類別）
@@ -1271,7 +1306,7 @@ def _do_calculate_rebalance(
     # 10-12) Sector exposure, geographic allocation, asset class allocation
     result.update(
         _build_spatial_allocation(
-            ticker_agg, known_etf_tickers, total_value, result["categories"]
+            ticker_agg, known_etf_tickers, total_value, result["categories"], session
         )
     )
 

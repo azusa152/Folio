@@ -8127,6 +8127,191 @@
           }
         }
       }
+    },
+    "/funds/{fund_code}/sector-weights": {
+      "get": {
+        "tags": [
+          "funds"
+        ],
+        "summary": "Get sector weight overrides for a fund",
+        "description": "Return stored sector weight overrides for a fund code.",
+        "operationId": "get_fund_sector_weights_funds__fund_code__sector_weights_get",
+        "parameters": [
+          {
+            "name": "fund_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fund Code"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundSectorWeightsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "funds"
+        ],
+        "summary": "Set sector weight overrides for a fund",
+        "description": "Replace all sector weight overrides for a fund (delete-then-insert).",
+        "operationId": "set_fund_sector_weights_funds__fund_code__sector_weights_put",
+        "parameters": [
+          {
+            "name": "fund_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fund Code"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundSectorWeightsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundSectorWeightsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "funds"
+        ],
+        "summary": "Remove sector weight overrides for a fund",
+        "description": "Delete all stored sector weight overrides for a fund.",
+        "operationId": "delete_fund_sector_weights_funds__fund_code__sector_weights_delete",
+        "parameters": [
+          {
+            "name": "fund_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Fund Code"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Fund Sector Weights Funds  Fund Code  Sector Weights Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10816,6 +11001,85 @@
         ],
         "title": "ForexHistoryPoint",
         "description": "Single daily FX rate data point returned by GET /forex/{base}/{quote}/history-long."
+      },
+      "FundSectorWeightItem": {
+        "properties": {
+          "sector": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sector"
+          },
+          "weight": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sector",
+          "weight"
+        ],
+        "title": "FundSectorWeightItem",
+        "description": "Shared read/write item. Weight uses ge=0.0 so stored rows never cause a 500 on GET."
+      },
+      "FundSectorWeightsRequest": {
+        "properties": {
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/FundSectorWeightItem"
+            },
+            "type": "array",
+            "title": "Weights"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "proxy_etf",
+              "seed"
+            ],
+            "title": "Source",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weights"
+        ],
+        "title": "FundSectorWeightsRequest"
+      },
+      "FundSectorWeightsResponse": {
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "title": "Fund Code"
+          },
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/FundSectorWeightItem"
+            },
+            "type": "array",
+            "title": "Weights"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "total_weight": {
+            "type": "number",
+            "title": "Total Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fund_code",
+          "weights",
+          "source",
+          "total_weight"
+        ],
+        "title": "FundSectorWeightsResponse"
       },
       "FundamentalsResponse": {
         "properties": {

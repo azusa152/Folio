@@ -475,6 +475,27 @@ class EligibleAsset(SQLModel, table=True):
     )
 
 
+class FundSectorWeight(SQLModel, table=True):
+    """投資信託・ファンドの行業板塊権重（手動・シード・プロキシ ETF 由来）。"""
+
+    __table_args__ = (
+        Index("uq_fund_sector_weight", "fund_code", "sector", unique=True),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    fund_code: str = Field(index=True, description="ファンドコード（= ticker）")
+    sector: str = Field(description="GICS セクター名（例: Technology）")
+    weight: float = Field(description="比重（0.0〜1.0）")
+    source: str = Field(
+        default="manual",
+        description="データソース（manual / proxy_etf / seed）",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
+
+
 class MutualFundNav(SQLModel, table=True):
     """投資信託の日次基準価額（NAV）キャッシュ。"""
 

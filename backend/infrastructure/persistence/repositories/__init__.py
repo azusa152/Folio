@@ -12,6 +12,7 @@ Each sub-module owns one aggregate group:
                    StockSplitEvent, DividendEvent, DriftAcknowledgment
   settings_repo  — UserPreferences, UserTelegramSettings, UserInvestmentProfile
   stock_repo     — Stock, ThesisLog, RemovalLog
+  fund_sector_repo — FundSectorWeight
   transaction_repo — Transaction, ContributionLedgerEntry
 
 Private helpers (prefix ``_``) remain in their own sub-module and are not
@@ -37,6 +38,12 @@ from .eligible_repo import (
     get_eligible_assets_metadata,
     is_active_eligible_mutual_fund,
     upsert_eligible_assets,
+)
+from .fund_sector_repo import (
+    delete_sector_weights,
+    find_all_fund_sector_weights,
+    get_sector_weights_for_funds,
+    upsert_sector_weights,
 )
 from .guru_repo import (
     deactivate_guru,
@@ -187,6 +194,7 @@ __all__ = [
     "delete_holdings_by_account",
     "delete_ledger_entries_by_transaction",
     "delete_price_alert",
+    "delete_sector_weights",
     "delete_transaction",
     "delete_transactions_by_account",
     "find_account_by_id",
@@ -201,6 +209,7 @@ __all__ = [
     "find_all_active_gurus",
     "find_all_alerts_for_stock",
     "find_all_drift_acknowledgments",
+    "find_all_fund_sector_weights",
     "find_all_fx_watches",
     "find_all_guru_summaries",
     "find_all_holdings",
@@ -264,6 +273,7 @@ __all__ = [
     "get_latest_nav",
     "get_max_thesis_version",
     "get_nav_history",
+    "get_sector_weights_for_funds",
     "is_active_eligible_mutual_fund",
     "log_notification_sent",
     "save_account",
@@ -287,4 +297,5 @@ __all__ = [
     "upsert_drift_acknowledgment",
     "upsert_eligible_assets",
     "upsert_nav",
+    "upsert_sector_weights",
 ]

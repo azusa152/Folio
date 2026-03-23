@@ -42,6 +42,11 @@ from api.schemas.dividend import (  # noqa: F401
     DividendEventResponse,
     DividendHoldingPreview,
 )
+from api.schemas.fund_sector import (  # noqa: F401
+    FundSectorWeightItem,
+    FundSectorWeightsRequest,
+    FundSectorWeightsResponse,
+)
 from api.schemas.fx_watch import (  # noqa: F401
     ForexHistoryPoint,
     FXTimingResultResponse,
