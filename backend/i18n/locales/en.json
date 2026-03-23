@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  SUDDEN CRASH  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → Extreme price swing — stay away until calm",
     "signal_new_badge": "[NEW]",
     "signal_transition": "was: {from_signal} → {to_signal}",
-    "resolved_detail": "{ticker} (was {signal}, {days}d)"
+    "resolved_detail": "{ticker} (was {signal}, {days}d)",
+    "resolved_detail_no_duration": "{ticker} (was {signal})"
   },
   "notification": {
     "change_label": "changes",
@@ -211,7 +212,8 @@
     "advice_zero": "⚠️ Total portfolio value is zero. Unable to calculate allocation.",
     "advice_over": "{icon} {category} is overweight by {drift}%. Consider trimming.",
     "advice_under": "{icon} {category} is underweight by {drift}%. Consider adding.",
-    "advice_ok": "✅ All categories are within target range. No rebalancing needed."
+    "advice_ok": "✅ All categories are within target range. No rebalancing needed.",
+    "snapshot_fallback_notice": "⏳ Showing last saved portfolio value. Live data is loading in the background."
   },
   "fx_watch": {
     "alert_header": "💱 <b>FX Exchange Timing Alert</b>\n\n",
@@ -246,7 +248,10 @@
     "rea_consec_disabled": "📊 {consec} consecutive days but not near {high_days}-day high — may still rise",
     "rea_no_signal": "📊 Not near recent high, only {consec} consecutive rising days",
     "rea_disabled": "📊 Enable near-high or consecutive-rise alerts to receive notifications",
-    "rea_no_data": "📊 Not enough historical data for this pair"
+    "rea_no_data": "📊 Not enough historical data for this pair",
+    "error": {
+      "refresh_cooldown": "Force refresh is cooling down. Please retry in {retry_after_seconds} seconds."
+    }
   },
   "stress_test": {
     "no_holdings": "No holdings",
@@ -390,7 +395,9 @@
     "heatmap_filing_delay_note": "⚠️ 13F holdings snapshot as of {report_date}. Data is published with at least a 45-day delay and may not reflect current positions.",
     "backtest_disclaimer": "This is a hypothetical simulation, not actual investment performance. It assumes buying at filing-date close with zero trading costs and no intraperiod position changes. 13F filings cover long U.S. equity positions only; shorts, options, and non-U.S. holdings are excluded. Past performance does not guarantee future results.",
     "backtest_not_enough_filings": "At least 2 filings are required for backtesting. Please sync or backfill guru filings first.",
-    "backtest_benchmark_data_missing": "Benchmark price data is temporarily unavailable. Please retry later."
+    "backtest_benchmark_data_missing": "Benchmark price data is temporarily unavailable. Please retry later.",
+    "error_not_found": "Guru {guru_id} not found",
+    "deactivated": "Guru {guru_id} deactivated"
   },
   "fx": {
     "period_1d": "1-day",
@@ -417,6 +424,10 @@
   "analytics": {
     "date_range_both_required": "start and end must both be provided",
     "date_range_invalid_order": "start must not be later than end"
+  },
+  "snapshot": {
+    "date_range_required": "start and end must both be provided",
+    "date_range_start_after_end": "start must not be later than end"
   },
   "wrapper": {
     "tokutei": "Tokutei (Taxable)",

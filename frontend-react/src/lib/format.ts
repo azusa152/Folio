@@ -152,15 +152,51 @@ export function getTransactionQuantityUnitKey(opts: {
   return getQuantityUnitKey(opts.category ?? undefined, opts.ticker ?? undefined)
 }
 
+/**
+ * Format a signed percentage with an explicit "+" prefix for positive values.
+ * e.g. 1.5 → "+1.5%", -0.3 → "-0.3%"
+ */
+export function formatSignedPct(value: number, decimals = 1): string {
+  const sign = value >= 0 ? "+" : ""
+  return `${sign}${value.toFixed(decimals)}%`
+}
+
+/**
+ * Format a signed absolute money amount with an explicit "+" or "−" prefix.
+ * Handles null/undefined (returns "—") but does NOT apply privacy masking;
+ * callers that need privacy masking should use formatSignedMoneyWithPrivacy.
+ * e.g. formatSignedMoney(1234, "USD") → "+$1,234.00"
+ *      formatSignedMoney(-50, "JPY") → "-¥50"
+ *      formatSignedMoney(0, "USD")   → "$0.00"
+ */
+function formatSignedMoney(value: number | null | undefined, currencyCode: string): string {
+  if (value == null) return "—"
+  const formatted = formatCurrency(Math.abs(value), currencyCode)
+  if (value > 0) return `+${formatted}`
+  if (value < 0) return `-${formatted}`
+  return formatted
+}
+
+/**
+ * Privacy-aware variant of formatSignedMoney.
+ * Returns "***" when isPrivate is true, "—" for null/undefined, otherwise
+ * a signed formatted amount.
+ */
+export function formatSignedMoneyWithPrivacy(
+  value: number | null | undefined,
+  currencyCode: string,
+  isPrivate: boolean,
+): string {
+  if (isPrivate) return "***"
+  return formatSignedMoney(value, currencyCode)
+}
+
 export function formatMarketCap(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—"
   return COMPACT_FORMATTER.format(value)
 }
 
-export function formatRatio(
-  value: number | null | undefined,
-  decimals = 2,
-): string {
+export function formatRatio(value: number | null | undefined, decimals = 2): string {
   if (value == null || Number.isNaN(value)) return "—"
   return value.toFixed(decimals)
 }
@@ -177,7 +213,10 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
-function getMarketClockParts(marketKey: string, at: Date): { weekday: string; currentMinutes: number } | null {
+function getMarketClockParts(
+  marketKey: string,
+  at: Date,
+): { weekday: string; currentMinutes: number } | null {
   const hours = MARKET_HOURS[marketKey]
   if (!hours) return null
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -213,7 +252,8 @@ export function isMarketOpen(marketKey: string, at: Date = new Date()): boolean 
   if (currentMinutes < openMin || currentMinutes >= closeMin) return false
   if (hours.lunch) {
     const [lunchStart, lunchEnd] = hours.lunch
-    if (currentMinutes >= toMinutes(lunchStart) && currentMinutes < toMinutes(lunchEnd)) return false
+    if (currentMinutes >= toMinutes(lunchStart) && currentMinutes < toMinutes(lunchEnd))
+      return false
   }
   return true
 }

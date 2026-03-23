@@ -14,9 +14,9 @@ import time
 
 from sqlmodel import Session
 
-from config import settings
 from domain.enums import StockCategory
 from infrastructure import repositories as repo
+from infrastructure.common import config as settings
 from infrastructure.database import engine
 from infrastructure.market_data.toushin_adapter import fetch_fund_nav_csv
 from infrastructure.market_data.toushin_lib_adapter import (
@@ -82,7 +82,8 @@ def _resolve_isin_fallback(session: Session, ticker: str) -> tuple[str, str] | N
 
     try:
         isin = lookup_isin(fund_code)
-    except Exception:
+    except Exception as exc:
+        logger.warning("toushin-lib ISIN lookup 失敗（%s）：%s", fund_code, exc)
         return None
     if not isin:
         return None

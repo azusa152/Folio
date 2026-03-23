@@ -27,18 +27,18 @@ For local-only execution (e.g. debugging against a local DB), set:
 from __future__ import annotations
 
 import argparse
-import logging
 from typing import Any
 
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
+from logging_config import get_logger
 from scripts import assert_docker_runtime
 
 LEGACY_TABLES = ["networthitem", "networthsnapshot"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 engine = None
 
 

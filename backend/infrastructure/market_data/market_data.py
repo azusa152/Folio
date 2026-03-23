@@ -1,89 +1,49 @@
-# pyright: reportAttributeAccessIssue=false, reportOptionalSubscript=false
-# pyright: reportOptionalMemberAccess=false, reportReturnType=false
-# pyright: reportCallIssue=false, reportIndexIssue=false, reportGeneralTypeIssues=false
 """
 Infrastructure — 市場資料適配器 (yfinance)。
 負責外部 API 呼叫、快取管理、速率限制。
 所有呼叫皆以 try/except 包裹，失敗時回傳結構化降級結果。
-含 tenacity 重試機制，針對暫時性網路 / DNS 錯誤自動指數退避重試。
+
+Submodule layout (shared infrastructure in _market_data_shared.py):
+  forex.py     — 外匯匯率 + 匯率歷史
+  etf.py       — ETF 成分股 + 行業板塊權重
+  sentiment.py — VIX + Fear & Greed 指數 + JP/TW 波動率
 """
 
 import contextlib
 import math
 import threading
-import time
-from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
-from typing import TypeVar
 
-import diskcache
+import pandas as pd
 import yfinance as yf
 from cachetools import TTLCache
-from curl_cffi import requests as cffi_requests
-from curl_cffi.curl import CurlError
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from domain.analysis import (
-    classify_cnn_fear_greed,
-    classify_vix,
     compute_beta,
     compute_bias,
-    compute_composite_fear_greed,
     compute_daily_change_pct,
     compute_moving_average,
     compute_rsi,
     compute_volume_ratio,
-    compute_weighted_fear_greed,
     determine_market_sentiment,
     determine_moat_status,
-    score_breadth,
-    score_junk_bond_demand,
-    score_momentum_composite,
-    score_nikkei_vi_linear,
-    score_price_strength,
-    score_safe_haven,
-    score_sector_rotation,
-    score_tw_vol_linear,
-    score_vix_linear,
 )
 from domain.constants import (
     BACKFILL_MIN_HISTORY_DAYS,
     BETA_CACHE_MAXSIZE,
     BETA_CACHE_TTL,
-    CNN_FG_API_URL,
-    CNN_FG_REQUEST_TIMEOUT,
-    CURL_CFFI_IMPERSONATE,
     DEFAULT_LANGUAGE,
     DISK_BETA_TTL,
-    DISK_CACHE_DIR,
-    DISK_CACHE_SIZE_LIMIT,
     DISK_DIVIDEND_TTL,
     DISK_EARNINGS_TTL,
-    DISK_ETF_HOLDINGS_TTL,
-    DISK_ETF_SECTOR_WEIGHTS_TTL,
     DISK_EXCHANGE_TTL,
-    DISK_FEAR_GREED_TTL,
-    DISK_FOREX_HISTORY_LONG_TTL,
-    DISK_FOREX_HISTORY_TTL,
-    DISK_FOREX_TTL,
     DISK_FUNDAMENTALS_TTL,
     DISK_KEY_BETA,
     DISK_KEY_DIVIDEND,
     DISK_KEY_DIVIDEND_EVENTS,
     DISK_KEY_EARNINGS,
-    DISK_KEY_ETF_HOLDINGS,
-    DISK_KEY_ETF_SECTOR_WEIGHTS,
+    DISK_KEY_ETF_HOLDINGS,  # noqa: F401 — re-exported for backward compat
     DISK_KEY_EXCHANGE,
-    DISK_KEY_FEAR_GREED,
-    DISK_KEY_FOREX,
-    DISK_KEY_FOREX_HISTORY,
-    DISK_KEY_FOREX_HISTORY_LONG,
     DISK_KEY_FUNDAMENTALS,
     DISK_KEY_MOAT,
     DISK_KEY_NAME,
@@ -93,7 +53,6 @@ from domain.constants import (
     DISK_KEY_SECTOR,
     DISK_KEY_SIGNALS,
     DISK_KEY_STOCK_SPLIT,
-    DISK_KEY_YF_INFO,
     DISK_MOAT_FAILURE_TTL,
     DISK_MOAT_PERSISTENT_TTL,
     DISK_MOAT_TTL,
@@ -103,36 +62,14 @@ from domain.constants import (
     DISK_ROGUE_WAVE_TTL,
     DISK_SECTOR_TTL,
     DISK_SIGNALS_TTL,
-    DISK_YF_INFO_TTL,
     DIVIDEND_CACHE_MAXSIZE,
     DIVIDEND_CACHE_TTL,
     DIVIDEND_LOOKBACK_DAYS,
     EARNINGS_CACHE_MAXSIZE,
     EARNINGS_CACHE_TTL,
-    ETF_HOLDINGS_CACHE_MAXSIZE,
-    ETF_HOLDINGS_CACHE_TTL,
-    ETF_TOP_N,
-    FEAR_GREED_CACHE_MAXSIZE,
-    FEAR_GREED_CACHE_TTL,
-    FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
-    FG_HYG_TICKER,
-    FG_LOOKBACK_DAYS,
-    FG_MA_WINDOW,
-    FG_QQQ_TICKER,
-    FG_RSP_TICKER,
     FG_SPY_TICKER,
-    FG_TLT_TICKER,
-    FG_XLP_TICKER,
-    FOREX_CACHE_MAXSIZE,
-    FOREX_CACHE_TTL,
-    FOREX_HISTORY_CACHE_MAXSIZE,
-    FOREX_HISTORY_CACHE_TTL,
-    FOREX_HISTORY_LONG_CACHE_MAXSIZE,
-    FOREX_HISTORY_LONG_CACHE_TTL,
     FUNDAMENTALS_CACHE_MAXSIZE,
     FUNDAMENTALS_CACHE_TTL,
-    FX_HISTORY_PERIOD,
-    FX_LONG_TERM_PERIOD,
     INSTITUTIONAL_HOLDERS_TOP_N,
     MA60_WINDOW,
     MA200_WINDOW,
@@ -142,8 +79,6 @@ from domain.constants import (
     MOAT_CACHE_MAXSIZE,
     MOAT_CACHE_TTL,
     MOAT_PERSISTENT_FAILURE_THRESHOLD,
-    NIKKEI_VI_TICKER,
-    PREWARM_BATCH_TIMEOUT,
     PRICE_HISTORY_CACHE_MAXSIZE,
     PRICE_HISTORY_CACHE_TTL,
     ROGUE_WAVE_CACHE_MAXSIZE,
@@ -156,35 +91,73 @@ from domain.constants import (
     STOCK_SPLIT_CACHE_MAXSIZE,
     STOCK_SPLIT_CACHE_TTL,
     STOCK_SPLIT_LOOKBACK_DAYS,
-    TWII_TICKER,
-    VIX_HISTORY_PERIOD,
-    VIX_TICKER,
-    YF_CONNECT_TIMEOUT,
-    YF_INFO_CACHE_MAXSIZE,
-    YF_INFO_CACHE_TTL,
-    YF_READ_TIMEOUT,
     YFINANCE_HISTORY_PERIOD,
-    YFINANCE_RATE_LIMIT_CPS,
-    YFINANCE_RETRY_ATTEMPTS,
-    YFINANCE_RETRY_WAIT_MAX,
-    YFINANCE_RETRY_WAIT_MIN,
 )
-from domain.enums import FearGreedLevel, MarketSentiment, MoatStatus
-from domain.formatters import build_moat_details, build_signal_status
+from domain.enums import MarketSentiment, MoatStatus
 from i18n import t
+from infrastructure.market_data._market_data_shared import (
+    _cached_fetch,
+    _disk_cache,
+    _disk_get,
+    _disk_set,
+    _FastShutdownExecutor,
+    _fg_component_failures,
+    _fg_component_failures_lock,
+    _get_session,
+    _is_dividend_error,
+    _is_error_dict,
+    _is_transient_yf_error,
+    _rate_limiter,
+    _run_batch_with_timeout,
+    _yf_calendar,
+    _yf_dividend_data,
+    _yf_dividends,
+    _yf_download,
+    _yf_history,
+    _yf_info,
+    _yf_info_cache,
+    _yf_quarterly_financials,
+    _yf_splits,
+)
+from infrastructure.market_data.etf import (  # noqa: F401
+    _ETF_NOT_FOUND_SENTINEL,
+    _ETF_SECTOR_KEY_MAP,
+    _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+    _etf_holdings_cache,
+    _etf_sector_weights_cache,
+    _fetch_etf_top_holdings,
+    detect_is_etf,
+    get_etf_sector_weights,
+    get_etf_top_holdings,
+    prewarm_etf_holdings_batch,
+    prewarm_etf_sector_weights_batch,
+)
+from infrastructure.market_data.forex import (  # noqa: F401
+    _forex_cache,
+    _forex_history_cache,
+    _forex_history_long_cache,
+    clear_forex_caches,
+    get_exchange_rate,
+    get_exchange_rates,
+    get_forex_history,
+    get_forex_history_long,
+)
+from infrastructure.market_data.formatters import (
+    build_moat_details,
+    build_signal_status,
+)
+from infrastructure.market_data.sentiment import (  # noqa: F401
+    _fear_greed_cache,
+    _fetch_fg_component_history_safe,
+    get_cnn_fear_greed,
+    get_fear_greed_index,
+    get_jp_volatility_index,
+    get_tw_volatility_index,
+    get_vix_data,
+)
 from logging_config import get_logger
 
-T = TypeVar("T")
-
 logger = get_logger(__name__)
-
-
-class _FastShutdownExecutor(ThreadPoolExecutor):
-    """ThreadPoolExecutor that shuts down without blocking on context exit."""
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        self.shutdown(wait=False, cancel_futures=True)
-        return False
 
 
 _BEARISH_TIERS: frozenset = frozenset(
@@ -193,158 +166,8 @@ _BEARISH_TIERS: frozenset = frozenset(
 
 
 # ---------------------------------------------------------------------------
-# Retry Decorator：針對暫時性網路/DNS 錯誤自動指數退避重試
-# ---------------------------------------------------------------------------
-_RETRYABLE_EXCEPTIONS = (CurlError, ConnectionError, OSError, TimeoutError)
-_TRANSIENT_YF_ERROR_MARKERS: tuple[str, ...] = (
-    "ssl_error_syscall",
-    "failed to perform",
-    "curl: (35)",
-    "timed out",
-    "connection reset",
-    "connection aborted",
-    "temporarily unavailable",
-    "could not resolve host",
-    "max retries exceeded",
-)
-
-_yf_retry = retry(
-    stop=stop_after_attempt(YFINANCE_RETRY_ATTEMPTS),
-    wait=wait_exponential(min=YFINANCE_RETRY_WAIT_MIN, max=YFINANCE_RETRY_WAIT_MAX),
-    retry=retry_if_exception_type(_RETRYABLE_EXCEPTIONS),
-    reraise=True,
-)
-
-
-def _is_error_dict(result) -> bool:
-    """判斷 fetcher 結果是否為錯誤回應（含 'error' 鍵的 dict）。"""
-    return isinstance(result, dict) and "error" in result
-
-
-def _is_yf_info_error(result) -> bool:
-    """判斷 yfinance info 是否為不適合寫入 L2 的不完整結果。"""
-    if not isinstance(result, dict) or not result:
-        return True
-    # quoteType 缺失時常見於暫時性/局部失敗，避免 24h 汙染 L2。
-    return "quoteType" not in result
-
-
-def _is_dividend_error(result) -> bool:
-    """判斷股息 fetcher 結果是否為錯誤。
-    ytd_dividend_per_share 為 None 表示 yfinance 呼叫異常（非股息股的合法回應為 0.0）。
-    """
-    return isinstance(result, dict) and result.get("ytd_dividend_per_share") is None
-
-
-# ---------------------------------------------------------------------------
-# Rate Limiter：限制 yfinance (Yahoo Finance) 呼叫頻率，避免被封鎖
-# ---------------------------------------------------------------------------
-
-
-class RateLimiter:
-    """Thread-safe rate limiter，確保呼叫間隔不低於 min_interval。"""
-
-    def __init__(self, calls_per_second: float = YFINANCE_RATE_LIMIT_CPS):
-        self._min_interval = 1.0 / calls_per_second
-        self._lock = threading.Lock()
-        self._last_call = 0.0
-
-    def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_call
-            if elapsed < self._min_interval:
-                time.sleep(self._min_interval - elapsed)
-            self._last_call = time.monotonic()
-
-
-_rate_limiter = RateLimiter(calls_per_second=YFINANCE_RATE_LIMIT_CPS)
-
-
-# ---------------------------------------------------------------------------
-# In-flight 重複請求去重：避免同一 key 並發觸發多次 yfinance 呼叫
-# ---------------------------------------------------------------------------
-_inflight_lock = threading.Lock()
-_inflight_events: dict[str, threading.Event] = {}
-_fg_component_failures: dict[str, float] = {}
-_fg_component_failures_lock = threading.Lock()
-
-
-def _is_transient_yf_error(exc: Exception) -> bool:
-    """Classify transient Yahoo/yfinance transport errors by exception type/message."""
-    if isinstance(exc, (CurlError, ConnectionError, TimeoutError, OSError)):
-        return True
-    msg = str(exc).lower()
-    return any(marker in msg for marker in _TRANSIENT_YF_ERROR_MARKERS)
-
-
-def _is_fg_component_in_cooldown(ticker: str, *, now: float | None = None) -> bool:
-    """Return True when ticker is inside short failure cooldown window."""
-    current = time.monotonic() if now is None else now
-    with _fg_component_failures_lock:
-        last_failed = _fg_component_failures.get(ticker)
-    return (
-        last_failed is not None
-        and current - last_failed < FG_COMPONENT_FAILURE_COOLDOWN_SECONDS
-    )
-
-
-def _mark_fg_component_failure(ticker: str, *, now: float | None = None) -> None:
-    """Record latest component fetch failure timestamp."""
-    current = time.monotonic() if now is None else now
-    with _fg_component_failures_lock:
-        _fg_component_failures[ticker] = current
-
-
-def _clear_fg_component_failure(ticker: str) -> None:
-    """Clear failure marker after successful fetch."""
-    with _fg_component_failures_lock:
-        _fg_component_failures.pop(ticker, None)
-
-
-def _deduped_fetch(
-    key: str, fetcher: Callable[[], T], result_getter: Callable[[], T]
-) -> T:
-    """確保同一 key 的 yfinance 呼叫在任意時刻只有一個在飛行中。
-
-    若已有相同 key 的請求進行中，等待其完成後透過 result_getter 取用結果（例如讀 L1 快取）。
-
-    Args:
-        key: 唯一識別此請求的字串（通常為 disk_prefix:ticker）。
-        fetcher: 實際執行 yfinance 呼叫並寫入快取的函式。
-        result_getter: 等待完成後用來讀取快取結果的函式（fetcher 寫入後呼叫）。
-
-    Note: 同一 ticker 在 debug 日誌中出現兩筆「L1+L2 皆未命中」是正常現象。
-    兩個並發請求都在進入 _deduped_fetch 之前就已記錄 cache miss；
-    但 _inflight_lock 確保只有第一個執行緒實際呼叫 yfinance，
-    第二個執行緒透過 result_getter() 取得第一個執行緒寫入的快取結果。
-    """
-    with _inflight_lock:
-        if key in _inflight_events:
-            event = _inflight_events[key]
-            should_wait = True
-        else:
-            event = threading.Event()
-            _inflight_events[key] = event
-            should_wait = False
-
-    if should_wait:
-        event.wait()
-        # fetcher 已將結果寫入快取；透過 result_getter 取得
-        return result_getter()
-
-    try:
-        return fetcher()
-    finally:
-        # set() before pop(): any late-arriving thread that finds this event already set
-        # calls result_getter() and reads L1 — no redundant yfinance call.
-        event.set()
-        with _inflight_lock:
-            _inflight_events.pop(key, None)
-
-
-# ---------------------------------------------------------------------------
-# L1 快取（記憶體）：避免每次頁面載入都重複呼叫 yfinance
+# L1 快取（記憶體）：domain-specific caches owned by this module
+# (forex/etf/sentiment/yf_info caches are imported from their submodules above)
 # ---------------------------------------------------------------------------
 _signals_cache: TTLCache = TTLCache(
     maxsize=SIGNALS_CACHE_MAXSIZE, ttl=SIGNALS_CACHE_TTL
@@ -365,27 +188,8 @@ _stock_split_cache: TTLCache = TTLCache(
 _fundamentals_cache: TTLCache = TTLCache(
     maxsize=FUNDAMENTALS_CACHE_MAXSIZE, ttl=FUNDAMENTALS_CACHE_TTL
 )
-_yf_info_cache: TTLCache = TTLCache(
-    maxsize=YF_INFO_CACHE_MAXSIZE, ttl=YF_INFO_CACHE_TTL
-)
 _price_history_cache: TTLCache = TTLCache(
     maxsize=PRICE_HISTORY_CACHE_MAXSIZE, ttl=PRICE_HISTORY_CACHE_TTL
-)
-_forex_cache: TTLCache = TTLCache(maxsize=FOREX_CACHE_MAXSIZE, ttl=FOREX_CACHE_TTL)
-_etf_holdings_cache: TTLCache = TTLCache(
-    maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
-)
-_etf_sector_weights_cache: TTLCache = TTLCache(
-    maxsize=ETF_HOLDINGS_CACHE_MAXSIZE, ttl=ETF_HOLDINGS_CACHE_TTL
-)
-_forex_history_cache: TTLCache = TTLCache(
-    maxsize=FOREX_HISTORY_CACHE_MAXSIZE, ttl=FOREX_HISTORY_CACHE_TTL
-)
-_forex_history_long_cache: TTLCache = TTLCache(
-    maxsize=FOREX_HISTORY_LONG_CACHE_MAXSIZE, ttl=FOREX_HISTORY_LONG_CACHE_TTL
-)
-_fear_greed_cache: TTLCache = TTLCache(
-    maxsize=FEAR_GREED_CACHE_MAXSIZE, ttl=FEAR_GREED_CACHE_TTL
 )
 _beta_cache: TTLCache = TTLCache(maxsize=BETA_CACHE_MAXSIZE, ttl=BETA_CACHE_TTL)
 _rogue_wave_cache: TTLCache = TTLCache(
@@ -393,28 +197,8 @@ _rogue_wave_cache: TTLCache = TTLCache(
 )
 
 
-# ---------------------------------------------------------------------------
-# L2 快取（磁碟）：容器重啟後仍可使用，避免冷啟動時大量呼叫 yfinance
-# ---------------------------------------------------------------------------
-_disk_cache = diskcache.Cache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
-
-
-def _disk_get(key: str):
-    """從磁碟快取 (L2) 讀取。失敗時回傳 None（非致命）。"""
-    try:
-        return _disk_cache.get(key)
-    except Exception:
-        return None
-
-
-def _disk_set(key: str, value, ttl: int) -> None:
-    """寫入磁碟快取 (L2)。失敗時靜默跳過（非致命）。"""
-    with contextlib.suppress(Exception):
-        _disk_cache.set(key, value, expire=ttl)
-
-
 def clear_all_caches() -> dict:
-    """清除所有 L1 記憶體快取與 L2 磁碟快取。"""
+    """清除所有 L1 記憶體快取與 L2 磁碟快取（包含所有子模組的快取）。"""
     l1_caches = [
         _signals_cache,
         _moat_cache,
@@ -444,293 +228,6 @@ def clear_all_caches() -> dict:
     _disk_cache.clear()
     logger.info("已清除所有快取（L1×%d + L2 磁碟）。", len(l1_caches))
     return {"l1_cleared": len(l1_caches), "l2_cleared": True}
-
-
-def clear_forex_caches() -> dict:
-    """清除 FX 相關 L1 記憶體快取與對應 L2 磁碟快取。"""
-    l1_caches = [
-        _forex_cache,
-        _forex_history_cache,
-        _forex_history_long_cache,
-    ]
-    for cache in l1_caches:
-        cache.clear()
-
-    deleted_disk_entries = 0
-    for disk_prefix in [
-        DISK_KEY_FOREX,
-        DISK_KEY_FOREX_HISTORY,
-        DISK_KEY_FOREX_HISTORY_LONG,
-    ]:
-        try:
-            to_delete = [
-                key
-                for key in _disk_cache.iterkeys()
-                if isinstance(key, str) and key.startswith(f"{disk_prefix}:")
-            ]
-            for key in to_delete:
-                del _disk_cache[key]
-            deleted_disk_entries += len(to_delete)
-        except Exception:
-            # 非致命：若某一類 key 清除失敗，仍繼續清除其他 key。
-            logger.warning("清除 FX 磁碟快取失敗：prefix=%s", disk_prefix)
-
-    logger.info(
-        "已清除 FX 快取（L1×%d + L2 entries=%d）。",
-        len(l1_caches),
-        deleted_disk_entries,
-    )
-    return {"l1_cleared": len(l1_caches), "l2_entries_cleared": deleted_disk_entries}
-
-
-def _cached_fetch(
-    l1_cache: TTLCache,
-    ticker: str,
-    disk_prefix: str,
-    disk_ttl: int,
-    fetcher: Callable[[str], T],
-    is_error: Callable[[T], bool] | None = None,
-) -> T:
-    """
-    通用二層快取取得函式。
-    L1 (記憶體) → L2 (磁碟) → fetcher (yfinance)，並回寫兩層快取。
-
-    is_error — 可選回呼函式，判斷 fetcher 結果是否為錯誤。
-    若為錯誤，仍寫入 L1（短暫快取避免瞬間重複呼叫），但略過 L2/磁碟寫入，
-    讓下次 L1 過期後可重新嘗試取得正確結果。
-    """
-    l1_error_cached = None
-    cached = l1_cache.get(ticker)
-    if cached is not None:
-        # If L1 has an error entry but L2 may have recovered valid data, fall through.
-        if is_error is None or not is_error(cached):
-            logger.debug("%s 命中 L1 快取（prefix=%s）。", ticker, disk_prefix)
-            return cached
-        l1_error_cached = cached
-        logger.debug(
-            "%s L1 為錯誤結果，繼續嘗試 L2（prefix=%s）。", ticker, disk_prefix
-        )
-
-    disk_key = f"{disk_prefix}:{ticker}"
-    disk_cached = _disk_get(disk_key)
-    if disk_cached is not None:
-        if is_error is not None and is_error(disk_cached):
-            # Stale error entry on disk (written before is_error was added).
-            # Purge it so the fetcher gets a chance to retrieve fresh data.
-            with contextlib.suppress(Exception):
-                _disk_cache.delete(disk_key)
-            logger.debug(
-                "%s L2 磁碟快取為舊錯誤結果，已清除（prefix=%s）。",
-                ticker,
-                disk_prefix,
-            )
-        else:
-            logger.debug("%s 命中 L2 磁碟快取（prefix=%s）。", ticker, disk_prefix)
-            l1_cache[ticker] = disk_cached
-            return disk_cached
-    if l1_error_cached is not None:
-        # Keep L1 error result for short-term dedup and avoid repeated immediate fetches.
-        return l1_error_cached
-
-    logger.debug("%s L1+L2 皆未命中（prefix=%s），呼叫 fetcher...", ticker, disk_prefix)
-
-    def _do_fetch() -> T:
-        res = fetcher(ticker)
-        l1_cache[ticker] = res
-        if is_error is not None and is_error(res):
-            logger.debug("%s 結果含錯誤，略過寫入 L2 磁碟快取。", ticker)
-        else:
-            _disk_set(disk_key, res, disk_ttl)
-        return res
-
-    def _get_cached() -> T:
-        # fetcher 已寫入 L1（成功路徑）；直接讀取即可。
-        # 注意：接受 is_error 結果 — fetcher 可能寫了一個錯誤哨兵，這也是合法快取。
-        cached = l1_cache.get(ticker)
-        if cached is not None:
-            return cached  # type: ignore[return-value]
-        disk_val = _disk_get(disk_key)
-        if disk_val is not None:
-            l1_cache[ticker] = disk_val
-            return disk_val  # type: ignore[return-value]
-        # fetcher 拋出例外（非錯誤哨兵）— 每個等待者各自重試一次（已由速率限制器節流）
-        return fetcher(ticker)
-
-    return _deduped_fetch(disk_key, _do_fetch, _get_cached)
-
-
-def _get_session() -> cffi_requests.Session:
-    """建立模擬 Chrome 瀏覽器的 Session，以繞過 Yahoo Finance 的 bot 防護。
-
-    Timeout defence layers:
-      1. Session-level timeout (here) — makes individual HTTP calls fail-fast.
-      2. Batch-level timeout (_run_batch_with_timeout) — caps total wall time
-         for parallel prewarm/batch operations.
-    Python cannot forcibly kill a running thread, so (1) is the primary guard.
-    (2) is defence-in-depth for any edge case where curl_cffi ignores (1).
-    """
-    return cffi_requests.Session(
-        impersonate=CURL_CFFI_IMPERSONATE,
-        timeout=(YF_CONNECT_TIMEOUT, YF_READ_TIMEOUT),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Batch execution with timeout — avoids blocking ThreadPoolExecutor teardown
-# ---------------------------------------------------------------------------
-
-
-def _run_batch_with_timeout(
-    futures: dict[Future, str],
-    executor: ThreadPoolExecutor,
-    *,
-    timeout: float | None = None,
-    label: str = "batch",
-) -> tuple[dict[Future, str], list[str]]:
-    """Collect completed futures within *timeout* seconds, then abandon stragglers.
-
-    Returns (completed_futures_subset, timed_out_keys).
-    On timeout, calls ``executor.shutdown(wait=False, cancel_futures=True)``
-    so the caller returns immediately — running worker threads are detached
-    (they will finish in the background and be garbage-collected).
-    """
-    if timeout is None:
-        timeout = PREWARM_BATCH_TIMEOUT
-    completed: dict[Future, str] = {}
-    timed_out_keys: list[str] = []
-    try:
-        for future in as_completed(futures, timeout=timeout):
-            completed[future] = futures[future]
-    except TimeoutError:
-        timed_out_keys = [futures[f] for f in futures if not f.done()]
-        executor.shutdown(wait=False, cancel_futures=True)
-        logger.warning(
-            "%s 批次逾時（%ds），%d 個任務未完成已放棄。",
-            label,
-            timeout,
-            len(timed_out_keys),
-        )
-    return completed, timed_out_keys
-
-
-# ---------------------------------------------------------------------------
-# Retryable yfinance network helpers
-# ---------------------------------------------------------------------------
-
-
-@_yf_retry
-def _yf_history(ticker: str, period: str):
-    """
-    取得 yfinance 歷史資料（含重試）。
-    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
-    空結果也視為可重試：yfinance 有時會吞掉 CurlError/SSL 錯誤，
-    僅回傳空 DataFrame 而不拋出例外，導致 @_yf_retry 無法觸發。
-    """
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    hist = stock.history(period=period)
-    if hist.empty:
-        raise OSError(
-            f"{ticker}: yfinance returned empty history, possibly due to a swallowed network error"
-        )
-    return stock, hist
-
-
-@_yf_retry
-def _yf_quarterly_financials(ticker: str):
-    """取得 yfinance 季度財報（含重試）。
-    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
-    """
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    return stock.quarterly_financials
-
-
-@_yf_retry
-def _yf_calendar(ticker: str):
-    """取得 yfinance 財報日曆（含重試）。
-    yf.Ticker() 僅建立本地物件（無 HTTP），屬性存取才觸發網路請求。
-    """
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    return stock.calendar
-
-
-@_yf_retry
-def _fetch_yf_info_from_yf(ticker: str) -> dict:
-    """實際從 yfinance 取得股票 info（供 _cached_fetch 使用）。"""
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    return stock.info or {}
-
-
-def _yf_info(ticker: str) -> dict:
-    """取得 yfinance 股票 info（L1 + L2 快取，含重試）。"""
-    return _cached_fetch(
-        _yf_info_cache,
-        ticker,
-        DISK_KEY_YF_INFO,
-        DISK_YF_INFO_TTL,
-        _fetch_yf_info_from_yf,
-        is_error=_is_yf_info_error,
-    )
-
-
-def detect_is_etf(ticker: str) -> bool:
-    """透過 yfinance quoteType 偵測是否為 ETF。失敗時回傳 False。"""
-    try:
-        info = _yf_info(ticker)
-        return info.get("quoteType", "") == "ETF"
-    except Exception:
-        return False
-
-
-@_yf_retry
-def _yf_history_short(ticker: str, period: str = "5d"):
-    """取得 yfinance 短期歷史（匯率等，含重試）。
-    空結果視為可重試（與 _yf_history 相同理由）。
-    """
-    _rate_limiter.wait()
-    session = _get_session()
-    ticker_obj = yf.Ticker(ticker, session=session)
-    hist = ticker_obj.history(period=period)
-    if hist.empty:
-        raise OSError(
-            f"{ticker}: yfinance returned empty short history, possibly due to a swallowed network error"
-        )
-    return hist
-
-
-@_yf_retry
-def _yf_ticker_obj(ticker: str):
-    """建立 yfinance Ticker 物件（含重試）。用於 ETF funds_data 等屬性存取。"""
-    _rate_limiter.wait()
-    return yf.Ticker(ticker, session=_get_session())
-
-
-def _yf_dividend_data(ticker: str) -> tuple[dict, object]:
-    """從單一 Ticker 物件取得 info 與股息歷史（含重試）。
-    info 走 _yf_info（含短 TTL 快取）以共享給 fundamentals 路徑，降低重複呼叫。
-    """
-    info = _yf_info(ticker)
-    dividends = _yf_dividends(ticker)
-    return info, dividends
-
-
-@_yf_retry
-def _yf_dividends(ticker: str):
-    """取得股息歷史（含重試）。"""
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    return stock.get_dividends()
-
-
-@_yf_retry
-def _yf_splits(ticker: str):
-    """取得股票分割歷史（含重試）。"""
-    stock = yf.Ticker(ticker, session=_get_session())
-    _rate_limiter.wait()
-    return stock.get_splits()
 
 
 # ===========================================================================
@@ -822,7 +319,7 @@ def _fetch_signals_from_yf(ticker: str, pre_fetched_hist=None) -> dict:
                             val = row[col]
                             # 將 Timestamp / NaT 等轉為字串
                             if hasattr(val, "isoformat"):
-                                holder_entry[col] = val.isoformat()[:10]
+                                holder_entry[col] = val.isoformat()[:10]  # type: ignore[union-attr]
                             elif val is None or (
                                 hasattr(val, "item") and str(val) == "NaT"
                             ):
@@ -898,7 +395,7 @@ def batch_download_history(
         return {}
     try:
         _rate_limiter.wait()
-        data = yf.download(
+        data = _yf_download(
             tickers,
             period=period,
             group_by="ticker",
@@ -920,7 +417,7 @@ def batch_download_history(
                         ticker,
                         len(df),
                     )
-            except (KeyError, Exception) as e:
+            except Exception as e:
                 logger.debug("批次下載 %s 資料擷取失敗（已略過）：%s", ticker, e)
         logger.info("批次下載完成：%d/%d 檔股票有效。", len(result), len(tickers))
         return result
@@ -944,7 +441,7 @@ def batch_download_history_extended(
         return {}
     try:
         _rate_limiter.wait()
-        data = yf.download(
+        data = _yf_download(
             tickers,
             period=period,
             group_by="ticker",
@@ -970,7 +467,7 @@ def batch_download_history_extended(
                     )
                     continue
                 result[ticker] = prices
-            except (KeyError, Exception) as exc:
+            except Exception as exc:
                 logger.debug("回填擷取 %s 歷史資料失敗（略過）：%s", ticker, exc)
         logger.info("回填批次下載完成：%d/%d 檔有效。", len(result), len(tickers))
         return result
@@ -1397,8 +894,7 @@ def prewarm_moat_batch(
             results[ticker] = result
             if result is not None and _is_moat_error(result):
                 fail_key = f"{DISK_KEY_MOAT}:fail:{ticker}"
-                with contextlib.suppress(Exception):
-                    _disk_cache.set(fail_key, result, expire=DISK_MOAT_FAILURE_TTL)
+                _disk_set(fail_key, result, DISK_MOAT_FAILURE_TTL)
         except Exception as exc:
             logger.error("預熱 %s 護城河失敗：%s", ticker, exc, exc_info=True)
             results[ticker] = None
@@ -1564,7 +1060,7 @@ def _fetch_stock_splits_from_yf(cache_key: str) -> list[dict]:
 
         split_date: date | None = None
         if hasattr(raw_date, "date"):
-            split_date = raw_date.date()
+            split_date = raw_date.date()  # type: ignore[attr-defined]
         elif isinstance(raw_date, date):
             split_date = raw_date
         else:
@@ -1632,7 +1128,7 @@ def _fetch_dividend_events_from_yf(
 
         ex_date: date | None = None
         if hasattr(raw_date, "date"):
-            ex_date = raw_date.date()
+            ex_date = raw_date.date()  # type: ignore[attr-defined]
         elif isinstance(raw_date, date):
             ex_date = raw_date
         else:
@@ -1701,7 +1197,8 @@ def _fetch_dividend_from_yf(ticker: str) -> dict:
         try:
             if dividends is not None and not dividends.empty:
                 current_year = datetime.now(tz=UTC).year
-                ytd_divs = dividends[dividends.index.year == current_year]
+                dtidx = pd.DatetimeIndex(dividends.index)
+                ytd_divs: pd.Series = dividends[dtidx.year == current_year]  # type: ignore[index,assignment]
                 ytd_dividend_per_share = (
                     round(float(ytd_divs.sum()), 6) if not ytd_divs.empty else 0.0
                 )
@@ -1801,879 +1298,13 @@ def get_fundamentals(ticker: str) -> dict:
     )
 
 
-# ===========================================================================
-# 外匯匯率（Forex Rates）
-# ===========================================================================
-
-
-def _fetch_forex_rate(pair_key: str) -> float:
-    """
-    從 yfinance 取得單一匯率（供 _cached_fetch 使用）。
-    pair_key 格式為 "DISPLAY_CURRENCY:HOLDING_CURRENCY"，例如 "USD:TWD"。
-    回傳值為：1 單位 holding_currency = ? 單位 display_currency 的匯率。
-    """
-    try:
-        display_cur, holding_cur = pair_key.split(":")
-        if display_cur == holding_cur:
-            return 1.0
-
-        # yfinance 使用 {FROM}{TO}=X 格式，回傳 1 FROM = ? TO
-        # 我們要的是 1 holding_cur = ? display_cur
-        # 所以用 {HOLDING}{DISPLAY}=X
-        yf_ticker = f"{holding_cur}{display_cur}=X"
-        hist = _yf_history_short(yf_ticker, "5d")
-
-        if hist is not None and not hist.empty:
-            rate = float(hist["Close"].dropna().iloc[-1])
-            logger.info("匯率 %s → %s = %.4f", holding_cur, display_cur, rate)
-            return rate
-
-        # 嘗試反向查詢
-        yf_ticker_rev = f"{display_cur}{holding_cur}=X"
-        hist_rev = _yf_history_short(yf_ticker_rev, "5d")
-
-        if hist_rev is not None and not hist_rev.empty:
-            rev_rate = float(hist_rev["Close"].dropna().iloc[-1])
-            rate = 1.0 / rev_rate if rev_rate > 0 else 1.0
-            logger.info(
-                "匯率 %s → %s = %.4f（反向查詢）", holding_cur, display_cur, rate
-            )
-            return rate
-
-        logger.warning("無法取得匯率 %s → %s，使用 1.0", holding_cur, display_cur)
-        return 1.0
-
-    except Exception as e:
-        logger.warning("取得匯率失敗（%s）：%s，使用 1.0", pair_key, e)
-        return 1.0
-
-
-def get_exchange_rate(display_currency: str, holding_currency: str) -> float:
-    """
-    取得匯率：1 單位 holding_currency = ? 單位 display_currency。
-    結果透過 L1 + L2 快取。
-    """
-    if display_currency == holding_currency:
-        return 1.0
-    pair_key = f"{display_currency}:{holding_currency}"
-    return _cached_fetch(
-        _forex_cache, pair_key, DISK_KEY_FOREX, DISK_FOREX_TTL, _fetch_forex_rate
-    )
-
-
-def get_exchange_rates(
-    display_currency: str, holding_currencies: list[str]
-) -> dict[str, float]:
-    """
-    批次取得匯率：各 holding_currency → display_currency。
-    回傳 dict[holding_currency, rate]，rate 表示 1 單位 holding = ? 單位 display。
-    快取命中時直接回傳；快取未命中時並行發起 yfinance 請求，縮短多幣別場景的等待時間。
-    """
-    # Exclude display_currency itself — its rate is always 1.0
-    foreign = set(holding_currencies) - {display_currency}
-    rates: dict[str, float] = {display_currency: 1.0}
-    if not foreign:
-        return rates
-
-    with _FastShutdownExecutor(max_workers=len(foreign)) as executor:
-        futures = {
-            executor.submit(get_exchange_rate, display_currency, cur): cur
-            for cur in foreign
-        }
-        completed, timed_out = _run_batch_with_timeout(
-            futures, executor, label="匯率取得"
-        )
-    for future in completed:
-        cur = completed[future]
-        try:
-            rates[cur] = future.result()
-        except Exception as exc:
-            logger.warning("並行取得匯率失敗（%s）：%s，使用 1.0", cur, exc)
-            rates[cur] = 1.0
-    for cur in timed_out:
-        rates[cur] = 1.0
-    return rates
-
-
-# ---------------------------------------------------------------------------
-# Forex History (for Currency Exposure Monitor)
-# ---------------------------------------------------------------------------
-
-
-def _fetch_forex_history(pair_key: str) -> list[dict]:
-    """
-    從 yfinance 取得匯率歷史（供 _cached_fetch 使用）。
-    pair_key 格式為 "BASE:QUOTE"，例如 "USD:TWD"。
-    回傳 [{"date": "2026-02-05", "close": 32.15}, ...] 按日期升序。
-    """
-    try:
-        base, quote = pair_key.split(":")
-        if base == quote:
-            return []
-
-        yf_ticker = f"{base}{quote}=X"
-        hist = _yf_history_short(yf_ticker, FX_HISTORY_PERIOD)
-
-        if hist is not None and not hist.empty:
-            return [
-                {
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "close": round(float(row["Close"]), 4),
-                }
-                for idx, row in hist.iterrows()
-                if not _is_nan(row.get("Close"))
-            ]
-
-        # 嘗試反向查詢
-        yf_ticker_rev = f"{quote}{base}=X"
-        hist_rev = _yf_history_short(yf_ticker_rev, FX_HISTORY_PERIOD)
-
-        if hist_rev is not None and not hist_rev.empty:
-            return [
-                {
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "close": round(1.0 / float(row["Close"]), 4),
-                }
-                for idx, row in hist_rev.iterrows()
-                if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
-            ]
-
-        logger.warning("無法取得匯率歷史 %s/%s", base, quote)
-        return []
-
-    except Exception as e:
-        logger.warning("取得匯率歷史失敗（%s）：%s", pair_key, e)
-        return []
-
-
-def get_forex_history(base: str, quote: str) -> list[dict]:
-    """
-    取得匯率歷史：1 base = ? quote 的每日收盤價。
-    回傳 [{"date": "2026-02-05", "close": 32.15}, ...]。
-    結果透過 L1 + L2 快取。
-    """
-    if base == quote:
-        return []
-    pair_key = f"{base}:{quote}"
-    result = _cached_fetch(
-        _forex_history_cache,
-        pair_key,
-        DISK_KEY_FOREX_HISTORY,
-        DISK_FOREX_HISTORY_TTL,
-        _fetch_forex_history,
-    )
-    return result if result else []
-
-
-def _fetch_forex_history_long(pair_key: str) -> list[dict]:
-    """
-    從 yfinance 取得 3 個月匯率歷史（供 _cached_fetch 使用）。
-    pair_key 格式同 _fetch_forex_history。
-    """
-    try:
-        base, quote = pair_key.split(":")
-        if base == quote:
-            return []
-
-        yf_ticker = f"{base}{quote}=X"
-        hist = _yf_history_short(yf_ticker, FX_LONG_TERM_PERIOD)
-
-        if hist is not None and not hist.empty:
-            return [
-                {
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "close": round(float(row["Close"]), 4),
-                }
-                for idx, row in hist.iterrows()
-                if not _is_nan(row.get("Close"))
-            ]
-
-        # 嘗試反向查詢
-        yf_ticker_rev = f"{quote}{base}=X"
-        hist_rev = _yf_history_short(yf_ticker_rev, FX_LONG_TERM_PERIOD)
-
-        if hist_rev is not None and not hist_rev.empty:
-            return [
-                {
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "close": round(1.0 / float(row["Close"]), 4),
-                }
-                for idx, row in hist_rev.iterrows()
-                if not _is_nan(row.get("Close")) and float(row["Close"]) > 0
-            ]
-
-        logger.warning("無法取得長期匯率歷史 %s/%s", base, quote)
-        return []
-
-    except Exception as e:
-        logger.warning("取得長期匯率歷史失敗（%s）：%s", pair_key, e)
-        return []
-
-
-def get_forex_history_long(base: str, quote: str) -> list[dict]:
-    """
-    取得 3 個月匯率歷史：1 base = ? quote 的每日收盤價。
-    回傳 [{"date": "2025-11-15", "close": 31.80}, ...]。
-    結果透過 L1 + L2 快取（L1: 2hr, L2: 4hr）。
-    """
-    if base == quote:
-        return []
-    pair_key = f"{base}:{quote}"
-    result = _cached_fetch(
-        _forex_history_long_cache,
-        pair_key,
-        DISK_KEY_FOREX_HISTORY_LONG,
-        DISK_FOREX_HISTORY_LONG_TTL,
-        _fetch_forex_history_long,
-    )
-    return result if result else []
-
-
-def _is_nan(val) -> bool:
-    """安全判斷 NaN（支援 None / float）。"""
-    if val is None:
-        return True
-    try:
-        import math
-
-        return math.isnan(float(val))
-    except (TypeError, ValueError):
-        return True
-
-
-# ---------------------------------------------------------------------------
-# ETF Holdings (for X-Ray portfolio overlap analysis)
-# ---------------------------------------------------------------------------
-
-
-@_yf_retry
-def _fetch_etf_top_holdings(ticker: str) -> list[dict] | None:
-    """
-    從 yfinance 取得 ETF 前 N 大成分股。
-    回傳 [{"symbol": "AAPL", "name": "Apple Inc.", "weight": 0.072}, ...] 或 None。
-    非 ETF 標的會回傳 None。
-    """
-    try:
-        t = _yf_ticker_obj(ticker)
-        fd = t.funds_data
-        if fd is None:
-            return None
-        top = fd.top_holdings
-        if top is None or top.empty:
-            # yfinance occasionally returns empty top_holdings on transient failures.
-            # Raise to trigger tenacity retry and avoid false negative caching.
-            logger.debug("%s ETF top_holdings 為空，將重試抓取。", ticker)
-            raise OSError(f"{ticker}: yfinance returned empty ETF top_holdings")
-
-        cols = list(top.columns)
-        logger.debug(
-            "%s top_holdings columns=%s, index=%s", ticker, cols, top.index.name
-        )
-
-        result = []
-        for symbol, row in top.head(ETF_TOP_N).iterrows():
-            # yfinance 欄位名稱可能隨版本不同：
-            # "Holding Percent" (常見) / "% Assets" (舊版)
-            weight = row.get("Holding Percent", row.get("% Assets"))
-            if weight is None or weight == 0:
-                continue
-            name = row.get("Name", row.get("Holding Name", ""))
-            result.append(
-                {
-                    "symbol": str(symbol).strip().upper(),
-                    "name": str(name) if name else "",
-                    "weight": float(weight),
-                }
-            )
-        logger.info("%s ETF 成分股取得 %d 筆（前 %d）", ticker, len(result), ETF_TOP_N)
-        return result if result else None
-    except _RETRYABLE_EXCEPTIONS as e:
-        logger.debug("%s 取得 ETF 成分股遇到暫時性錯誤，將重試：%s", ticker, e)
-        raise
-    except Exception as e:
-        logger.debug("%s 非 ETF 或取得成分股失敗：%s", ticker, e)
-        return None
-
-
-_ETF_NOT_FOUND_SENTINEL: list[dict] = []  # 空 list 作為「非 ETF」的快取標記
-_BETA_NOT_AVAILABLE: float = -999.0  # 哨兵值：yfinance 無提供 Beta 時的快取標記
-
-
-def get_etf_top_holdings(
-    ticker: str, *, is_known_etf: bool | None = None
-) -> list[dict] | None:
-    """
-    取得 ETF 前 N 大成分股（含 L1 + L2 快取）。
-    非 ETF 標的回傳 None。使用空 list 哨兵避免反覆呼叫 yfinance。
-    """
-
-    def _fetch_with_sentinel(t: str) -> list[dict]:
-        result = _fetch_etf_top_holdings(t)
-        return result if result else _ETF_NOT_FOUND_SENTINEL
-
-    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
-    # skip ETF holdings fetch entirely to avoid unnecessary retries/calls.
-    cached_info = _yf_info_cache.get(ticker)
-    if (
-        is_known_etf is not True
-        and cached_info
-        and cached_info.get("quoteType", "") != "ETF"
-    ):
-        return None
-
-    try:
-        data = _cached_fetch(
-            _etf_holdings_cache,
-            ticker,
-            DISK_KEY_ETF_HOLDINGS,
-            DISK_ETF_HOLDINGS_TTL,
-            _fetch_with_sentinel,
-            is_error=lambda d: d == _ETF_NOT_FOUND_SENTINEL,
-        )
-    except _RETRYABLE_EXCEPTIONS as e:
-        # Graceful degradation: external API failures should never crash callers.
-        logger.warning("%s ETF 成分股抓取重試後仍失敗，回傳空結果：%s", ticker, e)
-        return None
-    # One-time cleanup for stale negative cache entries:
-    # if this ticker is known ETF, do not keep an empty-sentinel cached.
-    if data == _ETF_NOT_FOUND_SENTINEL and is_known_etf:
-        disk_key = f"{DISK_KEY_ETF_HOLDINGS}:{ticker}"
-        with contextlib.suppress(Exception):
-            _disk_cache.delete(disk_key)
-        _etf_holdings_cache.pop(ticker, None)
-        logger.warning(
-            "%s 為 ETF 但成分股快取為空，已清除負向快取以便下次重新抓取。",
-            ticker,
-        )
-    return data if data else None
-
-
-def prewarm_etf_holdings_batch(
-    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
-) -> dict[str, list[dict] | None]:
-    """
-    並行預熱多檔 ETF 的成分股快取。
-    回傳 {ticker: holdings_list_or_None} 對照表。
-    """
-
-    results: dict[str, list[dict] | None] = {}
-    with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_etf_top_holdings, t): t for t in tickers}
-        completed, timed_out = _run_batch_with_timeout(
-            futures, executor, label="ETF 成分股預熱"
-        )
-    for future in completed:
-        ticker = completed[future]
-        try:
-            results[ticker] = future.result()
-        except Exception as exc:
-            logger.error("預熱 %s ETF 成分股失敗：%s", ticker, exc, exc_info=True)
-            results[ticker] = None
-    for ticker in timed_out:
-        results[ticker] = None
-    return results
-
-
-# ===========================================================================
-# ETF 行業板塊權重（Sector Weightings）
-# ===========================================================================
-
-_ETF_SECTOR_WEIGHTS_NOT_FOUND: dict = {}  # 空 dict 哨兵值：非 ETF 或無資料時的快取標記
-
-# yfinance funds_data.sector_weightings 使用 snake_case 鍵；此對照表轉換為 GICS 標準名稱。
-# 未收錄的鍵直接用 .title() 處理（如 "other" → "Other"）。
-_ETF_SECTOR_KEY_MAP: dict[str, str] = {
-    "technology": "Technology",
-    "consumer_cyclical": "Consumer Cyclical",
-    "financial_services": "Financial Services",
-    "realestate": "Real Estate",
-    "consumer_defensive": "Consumer Defensive",
-    "healthcare": "Healthcare",
-    "utilities": "Utilities",
-    "communication_services": "Communication Services",
-    "energy": "Energy",
-    "industrials": "Industrials",
-    "basic_materials": "Basic Materials",
-}
-
-
-def _fetch_etf_sector_weights(ticker: str) -> dict[str, float] | None:
-    """
-    從 yfinance funds_data.sector_weightings 取得 ETF 的行業板塊權重分佈。
-    回傳 {"Technology": 0.32, "Healthcare": 0.14, ...} 或 None。
-    涵蓋 100% ETF 資產，比分析成分股更準確。
-    非 ETF 標的或無資料時回傳 None。
-    """
-    _rate_limiter.wait()
-    try:
-        t = _yf_ticker_obj(ticker)
-        fd = t.funds_data
-        if fd is None:
-            return None
-        weights = fd.sector_weightings
-        if not weights:
-            return None
-        # yfinance 回傳 list[dict] 或 dict，視版本而定
-        # list[dict] 格式：[{"realestate": 0.01, "consumer_cyclical": 0.13, ...}]
-        # dict 格式：{"realestate": 0.01, ...}
-        if isinstance(weights, list):
-            if not weights:
-                return None
-            merged: dict[str, float] = {}
-            for item in weights:
-                if isinstance(item, dict):
-                    merged.update(item)
-            weights = merged
-        if not isinstance(weights, dict) or not weights:
-            return None
-
-        result: dict[str, float] = {}
-        for raw_key, weight in weights.items():
-            if not isinstance(weight, (int, float)) or weight <= 0:
-                continue
-            normalized = _ETF_SECTOR_KEY_MAP.get(
-                str(raw_key).lower(), str(raw_key).title()
-            )
-            result[normalized] = result.get(normalized, 0.0) + float(weight)
-
-        if not result:
-            return None
-        logger.info("%s ETF 行業板塊權重取得 %d 個板塊", ticker, len(result))
-        return result
-    except Exception as e:
-        logger.debug("%s 非 ETF 或取得行業板塊權重失敗：%s", ticker, e)
-        return None
-
-
-def get_etf_sector_weights(
-    ticker: str, *, is_known_etf: bool | None = None
-) -> dict[str, float] | None:
-    """
-    取得 ETF 行業板塊權重分佈（含 L1 + L2 快取）。
-    回傳 {"Technology": 0.32, ...} 或 None（非 ETF 或無資料）。
-    使用空 dict 哨兵避免反覆呼叫 yfinance。
-    """
-
-    def _fetch_with_sentinel(t: str) -> dict[str, float]:
-        result = _fetch_etf_sector_weights(t)
-        return result if result else _ETF_SECTOR_WEIGHTS_NOT_FOUND
-
-    # Fast-path guard: if quoteType is already cached and confirms non-ETF,
-    # skip ETF sector fetch entirely to avoid unnecessary retries/calls.
-    cached_info = _yf_info_cache.get(ticker)
-    if (
-        is_known_etf is not True
-        and cached_info
-        and cached_info.get("quoteType", "") != "ETF"
-    ):
-        return None
-
-    try:
-        data = _cached_fetch(
-            _etf_sector_weights_cache,
-            ticker,
-            DISK_KEY_ETF_SECTOR_WEIGHTS,
-            DISK_ETF_SECTOR_WEIGHTS_TTL,
-            _fetch_with_sentinel,
-            is_error=lambda d: d == _ETF_SECTOR_WEIGHTS_NOT_FOUND,
-        )
-    except _RETRYABLE_EXCEPTIONS as e:
-        logger.warning("%s ETF 板塊權重抓取重試後仍失敗，回傳空結果：%s", ticker, e)
-        return None
-    if data == _ETF_SECTOR_WEIGHTS_NOT_FOUND and is_known_etf:
-        disk_key = f"{DISK_KEY_ETF_SECTOR_WEIGHTS}:{ticker}"
-        with contextlib.suppress(Exception):
-            _disk_cache.delete(disk_key)
-        _etf_sector_weights_cache.pop(ticker, None)
-        logger.warning(
-            "%s 為 ETF 但板塊權重快取為空，已清除負向快取以便下次重新抓取。",
-            ticker,
-        )
-    return data if data else None
-
-
-def prewarm_etf_sector_weights_batch(
-    tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
-) -> dict[str, dict[str, float] | None]:
-    """
-    並行預熱多檔 ETF 的行業板塊權重快取。
-    非 ETF 標的會快速命中哨兵快取，不造成額外 yfinance 呼叫。
-    回傳 {ticker: weights_or_None} 對照表。
-    """
-
-    results: dict[str, dict[str, float] | None] = {}
-    with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_etf_sector_weights, t): t for t in tickers}
-        completed, timed_out = _run_batch_with_timeout(
-            futures, executor, label="ETF 板塊權重預熱"
-        )
-    for future in completed:
-        ticker = completed[future]
-        try:
-            results[ticker] = future.result()
-        except Exception as exc:
-            logger.error("預熱 %s ETF 行業板塊權重失敗：%s", ticker, exc, exc_info=True)
-            results[ticker] = None
-    for ticker in timed_out:
-        results[ticker] = None
-    return results
-
-
-# ===========================================================================
-# 恐懼與貪婪指數 (Fear & Greed Index)
-# ===========================================================================
-
-
-def get_vix_data() -> dict:
-    """
-    從 yfinance 取得 VIX 指數資料。
-    回傳 {"value": float, "change_1d": float, "level": str, "fetched_at": str}。
-    失敗時回傳 {"value": None, "level": "N/A", ...}。
-    """
-    try:
-        hist = _yf_history_short(VIX_TICKER, VIX_HISTORY_PERIOD)
-
-        if hist is None or hist.empty:
-            logger.warning("VIX 資料為空。")
-            return {
-                "value": None,
-                "change_1d": None,
-                "level": FearGreedLevel.NOT_AVAILABLE.value,
-                "fetched_at": datetime.now(UTC).isoformat(),
-            }
-
-        closes = hist["Close"].dropna().tolist()
-        if not closes:
-            return {
-                "value": None,
-                "change_1d": None,
-                "level": FearGreedLevel.NOT_AVAILABLE.value,
-                "fetched_at": datetime.now(UTC).isoformat(),
-            }
-
-        current_vix = round(float(closes[-1]), 2)
-        change_1d = (
-            round(float(closes[-1] - closes[-2]), 2) if len(closes) >= 2 else None
-        )
-
-        vix_level = classify_vix(current_vix)
-
-        logger.info(
-            "VIX = %.2f（等級：%s，日變動：%s）",
-            current_vix,
-            vix_level.value,
-            change_1d,
-        )
-
-        return {
-            "value": current_vix,
-            "change_1d": change_1d,
-            "level": vix_level.value,
-            "fetched_at": datetime.now(UTC).isoformat(),
-        }
-
-    except Exception as e:
-        if _is_transient_yf_error(e):
-            logger.info("取得 VIX 資料暫時失敗（非致命）：%s", e)
-        else:
-            logger.warning("取得 VIX 資料失敗（非致命）：%s", e, exc_info=True)
-        return {
-            "value": None,
-            "change_1d": None,
-            "level": FearGreedLevel.NOT_AVAILABLE.value,
-            "fetched_at": datetime.now(UTC).isoformat(),
-        }
-
-
-def get_cnn_fear_greed() -> dict | None:
-    """
-    從 CNN Fear & Greed Index API 取得市場恐懼貪婪分數。
-    回傳 {"score": int, "label": str, "level": str, "fetched_at": str} 或 None。
-    此為非官方 API，失敗時靜默回傳 None（graceful degradation）。
-    """
-    try:
-        session = _get_session()
-        resp = session.get(CNN_FG_API_URL, timeout=CNN_FG_REQUEST_TIMEOUT)
-        resp.raise_for_status()
-
-        data = resp.json()
-
-        # CNN API 回傳結構：{"fear_and_greed": {"score": 42, "rating": "Fear", ...}}
-        fg_data = data.get("fear_and_greed", {})
-        score_raw = fg_data.get("score")
-        label = fg_data.get("rating", "")
-
-        if score_raw is None:
-            logger.warning("CNN Fear & Greed API 回傳無 score 欄位。")
-            return None
-
-        score = round(float(score_raw))
-        from domain.analysis import classify_cnn_fear_greed
-
-        level = classify_cnn_fear_greed(score)
-
-        logger.info("CNN Fear & Greed = %d（%s，等級：%s）", score, label, level.value)
-
-        return {
-            "score": score,
-            "label": label,
-            "level": level.value,
-            "fetched_at": datetime.now(UTC).isoformat(),
-        }
-
-    except Exception as e:
-        logger.warning("CNN Fear & Greed API 取得失敗（非致命）：%s", e)
-        return None
-
-
-@_yf_retry
-def _fetch_fg_component_history(ticker: str) -> list[float] | None:
-    """
-    Fetch recent close prices for a Fear & Greed component ticker.
-    Returns a list of floats (ascending date order) or None on failure.
-    Needs enough history for the lookback period + MA window.
-    Decorated with @_yf_retry for resilience against transient network errors.
-    """
-    hist = _yf_history_short(ticker, "3mo")
-    if hist is None or hist.empty:
-        raise OSError(f"FG component {ticker}: yfinance returned empty history")
-    closes = hist["Close"].dropna().tolist()
-    if not closes:
-        raise OSError(f"FG component {ticker}: no usable close prices")
-    return [float(c) for c in closes]
-
-
-def _fetch_fg_component_history_safe(ticker: str) -> list[float] | None:
-    """Wrapper that catches all errors from _fetch_fg_component_history."""
-    if _is_fg_component_in_cooldown(ticker):
-        logger.debug(
-            "FG 組件 %s 於失敗冷卻期內，略過本次抓取（%ds）。",
-            ticker,
-            FG_COMPONENT_FAILURE_COOLDOWN_SECONDS,
-        )
-        return None
-    try:
-        prices = _fetch_fg_component_history(ticker)
-        _clear_fg_component_failure(ticker)
-        return prices
-    except Exception as e:
-        _mark_fg_component_failure(ticker)
-        if _is_transient_yf_error(e):
-            logger.info("FG 組件 %s 暫時性網路錯誤，將短暫降級：%s", ticker, e)
-        else:
-            logger.warning("FG 組件 %s 取得失敗（非致命）：%s", ticker, e)
-        return None
-
-
-def _fetch_fear_greed(_key: str) -> dict:
-    """
-    綜合 VIX、CNN Fear & Greed 及 7 項自計算指標（供 _cached_fetch 使用）。
-    _key 固定為 "composite"。
-
-    計算流程：
-    1. 並行取得 VIX、CNN、及 6 個 ETF 的近期收盤價（8 個任務同時執行）
-    2. 計算 7 項組件分數（各 0–100）
-    3. 加權平均得自計算分數
-    4. 最終合成：CNN 優先 → 自計算備援 → VIX 單一備援
-    """
-    _fg_tickers = [
-        FG_SPY_TICKER,
-        FG_TLT_TICKER,
-        FG_HYG_TICKER,
-        FG_RSP_TICKER,
-        FG_QQQ_TICKER,
-        FG_XLP_TICKER,
-    ]
-
-    # Fetch VIX, CNN, and all 6 ETF histories fully in parallel (8 tasks)
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        vix_future = pool.submit(get_vix_data)
-        cnn_future = pool.submit(get_cnn_fear_greed)
-        etf_futures = {
-            ticker: pool.submit(_fetch_fg_component_history_safe, ticker)
-            for ticker in _fg_tickers
-        }
-        vix_data = vix_future.result()
-        cnn_data = cnn_future.result()
-        results = {ticker: f.result() for ticker, f in etf_futures.items()}
-
-    vix_value = vix_data.get("value")
-    cnn_score = cnn_data.get("score") if cnn_data else None
-
-    spy_prices = results[FG_SPY_TICKER]
-    tlt_prices = results[FG_TLT_TICKER]
-    hyg_prices = results[FG_HYG_TICKER]
-    rsp_prices = results[FG_RSP_TICKER]
-    qqq_prices = results[FG_QQQ_TICKER]
-    xlp_prices = results[FG_XLP_TICKER]
-
-    # Score each component (None = data unavailable)
-    comp_vix = score_vix_linear(vix_value) if vix_value is not None else None
-    comp_price_strength = (
-        score_price_strength(spy_prices, FG_LOOKBACK_DAYS) if spy_prices else None
-    )
-    comp_momentum = (
-        score_momentum_composite(spy_prices, ma_window=FG_MA_WINDOW)
-        if spy_prices
-        else None
-    )
-    comp_breadth = (
-        score_breadth(rsp_prices, spy_prices, FG_LOOKBACK_DAYS)
-        if rsp_prices and spy_prices
-        else None
-    )
-    comp_junk_bond = (
-        score_junk_bond_demand(hyg_prices, tlt_prices, FG_LOOKBACK_DAYS)
-        if hyg_prices and tlt_prices
-        else None
-    )
-    comp_safe_haven = (
-        score_safe_haven(tlt_prices, FG_LOOKBACK_DAYS) if tlt_prices else None
-    )
-    comp_sector = (
-        score_sector_rotation(qqq_prices, xlp_prices, FG_LOOKBACK_DAYS)
-        if qqq_prices and xlp_prices
-        else None
-    )
-
-    components = {
-        "price_strength": comp_price_strength,
-        "vix": comp_vix,
-        "momentum": comp_momentum,
-        "breadth": comp_breadth,
-        "junk_bond": comp_junk_bond,
-        "safe_haven": comp_safe_haven,
-        "sector_rotation": comp_sector,
-    }
-
-    _level, self_calculated_score_val = compute_weighted_fear_greed(components)
-    self_calc = (
-        self_calculated_score_val if _level != FearGreedLevel.NOT_AVAILABLE else None
-    )
-
-    level, composite_score = compute_composite_fear_greed(
-        vix_value, cnn_score, self_calc
-    )
-
-    logger.info(
-        "Fear & Greed — composite=%d（%s）cnn=%s self=%s vix=%s",
-        composite_score,
-        level.value,
-        cnn_score,
-        self_calc,
-        vix_value,
-    )
-
-    return {
-        "composite_score": composite_score,
-        "composite_level": level.value,
-        "self_calculated_score": self_calc,
-        "components": components,
-        "vix": vix_data,
-        "cnn": cnn_data,
-        "fetched_at": datetime.now(UTC).isoformat(),
-    }
-
-
-def _is_fear_greed_error(result) -> bool:
-    """判斷 Fear & Greed 結果是否為失敗回應。"""
-    return (
-        isinstance(result, dict)
-        and result.get("composite_level") == FearGreedLevel.NOT_AVAILABLE.value
-    )
-
-
-def get_fear_greed_index() -> dict:
-    """
-    取得恐懼與貪婪指數（VIX + CNN 綜合）。
-    結果透過 L1 + L2 快取（L1: 30 分鐘，L2: 2 小時）。
-    錯誤結果僅寫入 L1，不寫入 L2。
-    """
-    return _cached_fetch(
-        _fear_greed_cache,
-        "composite",
-        DISK_KEY_FEAR_GREED,
-        DISK_FEAR_GREED_TTL,
-        _fetch_fear_greed,
-        is_error=_is_fear_greed_error,
-    )
-
-
-def get_jp_volatility_index() -> dict | None:
-    """
-    Fetch Nikkei VI as JP market fear indicator.
-    Returns {"value": float, "score": int, "level": str, "source": "Nikkei VI"} or None on failure.
-    Uses continuous linear scoring (no cliff effects).
-    """
-    try:
-        hist = _yf_history_short(NIKKEI_VI_TICKER, VIX_HISTORY_PERIOD)
-
-        if hist is None or hist.empty:
-            logger.warning("Nikkei VI 資料為空。")
-            return None
-
-        closes = hist["Close"].dropna().tolist()
-        if not closes:
-            return None
-
-        current = float(closes[-1])
-        score = score_nikkei_vi_linear(current)
-        level = classify_cnn_fear_greed(score).value
-
-        logger.info("Nikkei VI = %.2f（score=%d，等級：%s）", current, score, level)
-        return {
-            "value": round(current, 2),
-            "score": score,
-            "level": level,
-            "source": "Nikkei VI",
-        }
-
-    except Exception as e:
-        logger.warning("Nikkei VI 取得失敗：%s", e)
-        return None
-
-
-def get_tw_volatility_index() -> dict | None:
-    """
-    Calculate TW market fear indicator from ^TWII realized volatility.
-    Fetches 1 month of TAIEX daily closes and computes annualized realized vol.
-    Returns {"value": float, "score": int, "level": str, "source": "TAIEX Realized Vol"} or None on failure.
-    Uses continuous linear scoring (no cliff effects).
-    """
-    try:
-        hist = _yf_history_short(TWII_TICKER, "1mo")
-
-        if hist is None or hist.empty:
-            logger.warning("TAIEX ^TWII 資料為空。")
-            return None
-
-        closes = hist["Close"].dropna()
-        if len(closes) < 15:
-            logger.warning("TAIEX ^TWII 資料不足（%d 筆），需至少 15 筆。", len(closes))
-            return None
-
-        returns = (closes / closes.shift(1)).apply(math.log).dropna()
-        annualized_vol = float(returns.std() * math.sqrt(252) * 100)
-
-        score = score_tw_vol_linear(annualized_vol)
-        level = classify_cnn_fear_greed(score).value
-
-        logger.info(
-            "TAIEX realized vol = %.2f%%（score=%d，等級：%s，source=twii, market=TW）",
-            annualized_vol,
-            score,
-            level,
-        )
-        return {
-            "value": round(annualized_vol, 2),
-            "score": score,
-            "level": level,
-            "source": "TAIEX Realized Vol",
-        }
-
-    except Exception as e:
-        logger.warning("TAIEX realized vol 取得失敗：%s", e)
-        return None
+# (Forex functions are in infrastructure.market_data.forex — imported above)
+# (ETF functions are in infrastructure.market_data.etf — imported above)
+# (Sentiment/VIX functions are in infrastructure.market_data.sentiment — imported above)
+
+_BETA_NOT_AVAILABLE: float = (
+    -999.0
+)  # sentinel: yfinance has no Beta value for this ticker
 
 
 # ===========================================================================
@@ -2994,12 +1625,16 @@ def prewarm_ticker_sector_batch(
     用於 Approach A 前的批次預熱，讓後續逐一查詢可命中快取。
     """
 
-    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{t}") is None]
+    uncached = [
+        ticker for ticker in tickers if _disk_get(f"{DISK_KEY_SECTOR}:{ticker}") is None
+    ]
     if not uncached:
         return
 
     with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_ticker_sector, t): t for t in uncached}
+        futures = {
+            executor.submit(get_ticker_sector, ticker): ticker for ticker in uncached
+        }
         completed, _ = _run_batch_with_timeout(futures, executor, label="sector 預熱")
     for future in completed:
         ticker = completed[future]
@@ -3103,12 +1738,16 @@ def prewarm_ticker_name_batch(
     tickers: list[str], max_workers: int = SCAN_THREAD_POOL_SIZE
 ) -> None:
     """並行預熱多檔股票的公司名稱快取。"""
-    uncached = [t for t in tickers if _disk_get(f"{DISK_KEY_NAME}:{t}") is None]
+    uncached = [
+        ticker for ticker in tickers if _disk_get(f"{DISK_KEY_NAME}:{ticker}") is None
+    ]
     if not uncached:
         return
 
     with _FastShutdownExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(get_ticker_name, t): t for t in uncached}
+        futures = {
+            executor.submit(get_ticker_name, ticker): ticker for ticker in uncached
+        }
         completed, _ = _run_batch_with_timeout(futures, executor, label="name 預熱")
     for future in completed:
         ticker = completed[future]
@@ -3179,7 +1818,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                 .date()
                 .isoformat()
             )
-            hist = yf.download(
+            hist = _yf_download(
                 uncached_tickers,
                 start=report_date,
                 end=end_date,
@@ -3198,14 +1837,19 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                         if col is not None:
                             dropped = col.dropna()
                             rp = float(dropped.iloc[0]) if not dropped.empty else None
-                except Exception:
+                except Exception as exc:
+                    logger.debug("解析 %s 歷史收盤價失敗，設為 None：%s", ticker, exc)
                     rp = None
                 report_prices[ticker] = rp
                 # Persist to disk cache permanently (historical prices are immutable)
                 disk_key = f"{DISK_KEY_PRICE_PAIR}:{report_date}:{ticker}"
                 _disk_set(disk_key, {"report_price": rp}, DISK_PRICE_PAIR_TTL)
-        except Exception:
-            # Leave all uncached tickers with None
+        except Exception as exc:
+            logger.warning(
+                "批次下載 %s 歷史收盤價失敗，所有 report_prices 設為 None：%s",
+                uncached_tickers,
+                exc,
+            )
             for ticker in uncached_tickers:
                 report_prices[ticker] = None
 
@@ -3213,7 +1857,7 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
     current_prices: dict[str, float | None] = dict.fromkeys(tickers)
     try:
         _rate_limiter.wait()
-        current = yf.download(
+        current = _yf_download(
             tickers,
             period="5d",
             auto_adjust=True,
@@ -3231,11 +1875,12 @@ def fetch_price_pair(tickers: list[str], report_date: str) -> dict[str, dict]:
                     if col is not None:
                         dropped = col.dropna()
                         cp = float(dropped.iloc[-1]) if not dropped.empty else None
-            except Exception:
+            except Exception as exc:
+                logger.debug("解析 %s 當前收盤價失敗，設為 None：%s", ticker, exc)
                 cp = None
             current_prices[ticker] = cp
-    except Exception:
-        pass  # leave all current_prices as None
+    except Exception as exc:
+        logger.warning("批次下載當前收盤價失敗，所有 current_prices 設為 None：%s", exc)
 
     for ticker in tickers:
         result[ticker] = {

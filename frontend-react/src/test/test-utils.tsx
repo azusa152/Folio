@@ -1,10 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import {
-  type RenderOptions,
-  render,
-  type RenderResult,
-} from "@testing-library/react"
+import { type RenderOptions, render, type RenderResult } from "@testing-library/react"
 import type { ReactElement, ReactNode } from "react"
 import { MemoryRouter } from "react-router-dom"
 
@@ -29,7 +25,7 @@ export function createTestQueryClient(): QueryClient {
 
 export function renderWithProviders(
   ui: ReactElement,
-  options: ExtendedRenderOptions = {}
+  options: ExtendedRenderOptions = {},
 ): RenderResult & { queryClient: QueryClient } {
   const { route = "/", ...renderOptions } = options
   const queryClient = createTestQueryClient()

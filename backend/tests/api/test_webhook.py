@@ -532,17 +532,11 @@ class TestWebhookUnknownAction:
         # Act
         resp = client.post("/webhook", json={"action": "nonexistent"})
 
-        # Assert
+        # Assert — unknown action is now rejected at schema validation (422)
+        assert resp.status_code == 422
         body = resp.json()
-        assert body["success"] is False
-        supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY.keys()))
-        expected_msg = t(
-            "webhook.unsupported_action",
-            action="nonexistent",
-            supported=supported,
-            lang="zh-TW",
-        )
-        assert body["message"] == expected_msg
+        # FastAPI wraps Pydantic validation errors in {"detail": [...]}
+        assert "detail" in body
 
 
 class TestWebhookResponseContract:

@@ -96,9 +96,7 @@ describe("useTransactions", () => {
       error: undefined,
     })
     const { queryClient, wrapper } = createWrapper()
-    const invalidateSpy = vi
-      .spyOn(queryClient, "invalidateQueries")
-      .mockResolvedValue(undefined)
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue(undefined)
 
     const { result } = renderHook(() => useAddTransaction(), { wrapper })
 
@@ -115,9 +113,7 @@ describe("useTransactions", () => {
   it("invalidates all derived queries on delete transaction success", async () => {
     mockClient.DELETE.mockResolvedValueOnce({ error: undefined })
     const { queryClient, wrapper } = createWrapper()
-    const invalidateSpy = vi
-      .spyOn(queryClient, "invalidateQueries")
-      .mockResolvedValue(undefined)
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue(undefined)
 
     const { result } = renderHook(() => useDeleteTransaction(), { wrapper })
 
@@ -134,9 +130,7 @@ describe("useTransactions", () => {
       error: undefined,
     })
     const { queryClient, wrapper } = createWrapper()
-    const invalidateSpy = vi
-      .spyOn(queryClient, "invalidateQueries")
-      .mockResolvedValue(undefined)
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue(undefined)
 
     const { result } = renderHook(() => useImportTransactions(), { wrapper })
 

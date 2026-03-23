@@ -235,12 +235,19 @@ def send_dividend_alerts(
     if not target_events:
         return {"sent": False, "count": 0}
 
+    from application.formatters import format_stock_display, resolve_display_names
+
+    event_tickers = [event.ticker for event in target_events]
+    names = resolve_display_names(event_tickers, session)
+
     lines = [t("dividend.notification_header", lang=lang), ""]
     lines.extend(
         t(
             "dividend.notification_line",
             lang=lang,
-            ticker=event.ticker,
+            ticker=format_stock_display(
+                names.get(event.ticker.strip().upper()), event.ticker
+            ),
             amount=round(event.amount_per_share, 6),
             ex_date=event.ex_dividend_date.isoformat(),
         )

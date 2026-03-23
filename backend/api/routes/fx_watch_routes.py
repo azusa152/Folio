@@ -54,7 +54,7 @@ _force_refresh_tracker: dict[str, float] = {}
 # ---------------------------------------------------------------------------
 
 
-def _enforce_force_refresh_cooldown(request: Request) -> None:
+def _enforce_force_refresh_cooldown(request: Request, lang: str) -> None:
     """Throttle expensive force-refresh calls per client IP."""
     client_ip = request.client.host if request.client else "unknown"
     now = monotonic()
@@ -71,9 +71,10 @@ def _enforce_force_refresh_cooldown(request: Request) -> None:
                     status_code=429,
                     detail={
                         "error_code": "FX_WATCH_REFRESH_COOLDOWN",
-                        "detail": (
-                            "Force refresh is cooling down. "
-                            "Please retry after the retry_after_seconds window."
+                        "detail": t(
+                            "fx_watch.error.refresh_cooldown",
+                            lang=lang,
+                            retry_after_seconds=retry_after,
                         ),
                         "retry_after_seconds": retry_after,
                     },
@@ -331,11 +332,11 @@ def check_fx_watch_alerts(
     - total_watches: 啟用中的配置數量
     - results: 分析結果列表（含配置 ID、貨幣對、分析結果）
     """
+    lang = get_user_language(session)
     if force_refresh:
-        _enforce_force_refresh_cooldown(request)
+        _enforce_force_refresh_cooldown(request, lang)
         refresh_fx_data()
     results = check_fx_watches(session, user_id=user_id)
-    lang = get_user_language(session)
     return FXWatchCheckResponse(
         checked_at=datetime.now(UTC).isoformat(),
         total_watches=len(results),

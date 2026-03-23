@@ -1,7 +1,7 @@
 import threading
 import time
 
-from infrastructure.cache import SWRCache
+from infrastructure.common.cache import SWRCache
 
 
 def test_swr_cache_returns_miss_for_unknown_key() -> None:

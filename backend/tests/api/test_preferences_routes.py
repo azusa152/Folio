@@ -1,5 +1,7 @@
 """Tests for user preferences routes (GET/PUT /settings/preferences)."""
 
+from application.errors import ApplicationError
+
 
 class TestGetPreferences:
     """Tests for GET /settings/preferences."""
@@ -65,6 +67,27 @@ class TestUpdatePreferences:
 
         # Assert
         assert resp.status_code == 422
+
+    def test_update_preferences_should_map_application_error(self, client, monkeypatch):
+        from api.routes import preferences_routes
+
+        def _raise_app_error(_session, _payload):
+            raise ApplicationError(
+                error_code="PREFERENCES_WRITE_FAILED",
+                message_key="common.generic_error",
+                status_hint="internal",
+            )
+
+        monkeypatch.setattr(
+            preferences_routes.preferences_service,
+            "update_preferences",
+            _raise_app_error,
+        )
+        resp = client.put("/settings/preferences", json={"privacy_mode": True})
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert detail["error_code"] == "PREFERENCES_WRITE_FAILED"
 
 
 class TestNotificationPreferences:
@@ -146,6 +169,49 @@ class TestNotificationPreferences:
         assert resp.status_code == 200
         notif = resp.json()["notification_preferences"]
         assert notif["weekly_digest"] is False  # Still disabled
+
+
+class TestDefaultDisplayCurrency:
+    """Tests for default_display_currency in /settings/preferences."""
+
+    def test_get_should_return_default_usd_when_no_record(self, client):
+        resp = client.get("/settings/preferences")
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "USD"
+
+    def test_update_should_persist_display_currency(self, client):
+        resp = client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "JPY"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "JPY"
+
+        get_resp = client.get("/settings/preferences")
+        assert get_resp.json()["default_display_currency"] == "JPY"
+
+    def test_update_without_currency_should_preserve_existing(self, client):
+        client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "TWD"},
+        )
+
+        resp = client.put("/settings/preferences", json={"privacy_mode": True})
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "TWD"
+
+    def test_update_should_accept_any_currency_string(self, client):
+        # No server-side enum validation — any string is accepted.
+        resp = client.put(
+            "/settings/preferences",
+            json={"privacy_mode": False, "default_display_currency": "SGD"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["default_display_currency"] == "SGD"
 
 
 class TestNotificationRateLimits:

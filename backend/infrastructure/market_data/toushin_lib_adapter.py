@@ -13,7 +13,7 @@ import time
 
 import httpx
 
-from config import settings
+from infrastructure.common import config as settings
 from logging_config import get_logger
 
 logger = get_logger(__name__)

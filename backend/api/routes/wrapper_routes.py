@@ -1,6 +1,8 @@
 """Tax wrapper quota routes."""
 
+import contextlib
 import tempfile
+from collections.abc import Generator
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -49,17 +51,51 @@ from domain.constants import (
     DEFAULT_LANGUAGE,
     DEFAULT_USER_ID,
     ERROR_INVALID_INPUT,
+    MAX_UPLOAD_BYTES,
     NISA_RESTORATION_POLICY,
 )
 from i18n import t
 from infrastructure.database import get_session
+from logging_config import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(tags=["wrapper"])
 _CONTRIBUTION_WRAPPERS = {"nisa_tsumitate", "nisa_growth"}
 
 
 def _error_detail(error_code: str, message_key: str) -> dict[str, str]:
     return {"error_code": error_code, "detail": t(message_key, lang=DEFAULT_LANGUAGE)}
+
+
+@contextlib.contextmanager
+def _eligibility_error_guard(
+    error_code: str,
+    i18n_key: str,
+    wrapper: str,
+    action: str,
+) -> Generator[None, None, None]:
+    """Translate httpx/ValueError/Exception into structured HTTPException responses."""
+    try:
+        yield
+    except httpx.HTTPError as exc:
+        logger.exception("Eligible-asset %s failed for wrapper=%r", action, wrapper)
+        raise HTTPException(
+            status_code=502, detail=_error_detail(error_code, i18n_key)
+        ) from exc
+    except ValueError as exc:
+        logger.exception(
+            "Eligible-asset %s validation failed for wrapper=%r", action, wrapper
+        )
+        raise HTTPException(
+            status_code=422, detail=_error_detail(error_code, i18n_key)
+        ) from exc
+    except Exception as exc:
+        logger.exception(
+            "Unexpected error during eligible-asset %s for wrapper=%r", action, wrapper
+        )
+        raise HTTPException(
+            status_code=500, detail=_error_detail(error_code, i18n_key)
+        ) from exc
 
 
 @router.get("/wrappers/quota", response_model=AllQuotasResponse)
@@ -256,29 +292,24 @@ def refresh_eligible_assets_endpoint(
     session: Session = Depends(get_session),
 ):
     normalized_wrapper = wrapper.strip().lower()
-    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+    if normalized_wrapper not in _CONTRIBUTION_WRAPPERS:
         raise HTTPException(
             status_code=422,
             detail=_error_detail(
                 ERROR_INVALID_INPUT, "eligibility.refresh_unsupported_wrapper"
             ),
         )
-    try:
+    # TODO(tech-debt): migrate to ApplicationError flow once
+    # sync_wrapper_from_official_source raises ApplicationError instead of bare
+    # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
+    #     raise to_http_exception(exc, lang=lang) from exc
+    with _eligibility_error_guard(
+        "ELIGIBILITY_REFRESH_FAILED",
+        "eligibility.refresh_failed",
+        normalized_wrapper,
+        "refresh",
+    ):
         stats = sync_wrapper_from_official_source(session, normalized_wrapper)
-    except (ValueError, httpx.HTTPError):
-        raise HTTPException(
-            status_code=422,
-            detail=_error_detail(
-                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
-            ),
-        ) from None
-    except Exception:
-        raise HTTPException(
-            status_code=422,
-            detail=_error_detail(
-                "ELIGIBILITY_REFRESH_FAILED", "eligibility.refresh_failed"
-            ),
-        ) from None
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)
     return {
         "wrapper": normalized_wrapper,
@@ -298,7 +329,7 @@ async def upload_eligible_assets(
     session: Session = Depends(get_session),
 ):
     normalized_wrapper = wrapper.strip().lower()
-    if normalized_wrapper not in {"nisa_tsumitate", "nisa_growth"}:
+    if normalized_wrapper not in _CONTRIBUTION_WRAPPERS:
         raise HTTPException(
             status_code=422,
             detail=_error_detail(
@@ -314,7 +345,7 @@ async def upload_eligible_assets(
             ),
         )
     content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
+    if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
             detail=_error_detail(
@@ -324,8 +355,17 @@ async def upload_eligible_assets(
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
+    # TODO(tech-debt): migrate to ApplicationError flow once
+    # refresh_eligible_assets raises ApplicationError instead of bare
+    # ValueError / httpx.HTTPError. Then replace with: except ApplicationError as exc:
+    #     raise to_http_exception(exc, lang=lang) from exc
     try:
-        try:
+        with _eligibility_error_guard(
+            "ELIGIBILITY_UPLOAD_FAILED",
+            "eligibility.upload_failed",
+            normalized_wrapper,
+            "upload",
+        ):
             stats = refresh_eligible_assets(
                 session=session,
                 wrapper=normalized_wrapper,
@@ -333,20 +373,6 @@ async def upload_eligible_assets(
                 source="manual_upload",
                 autocommit=True,
             )
-        except (ValueError, httpx.HTTPError):
-            raise HTTPException(
-                status_code=422,
-                detail=_error_detail(
-                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
-                ),
-            ) from None
-        except Exception:
-            raise HTTPException(
-                status_code=422,
-                detail=_error_detail(
-                    "ELIGIBILITY_UPLOAD_FAILED", "eligibility.upload_failed"
-                ),
-            ) from None
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     metadata = get_eligible_assets_metadata(session, normalized_wrapper)
@@ -402,11 +428,12 @@ def sync_nav_endpoint():
         pre_refresh_status["error"] = str(exc)
     try:
         result = sync_mutual_fund_navs()
-    except Exception:
+    except Exception as exc:
+        logger.exception("NAV sync failed")
         raise HTTPException(
-            status_code=422,
+            status_code=500,
             detail=_error_detail("NAV_SYNC_FAILED", "nav_sync.failed"),
-        ) from None
+        ) from exc
     invalidate_enriched_cache()
     return {**result, "pre_refresh": pre_refresh_status}
 

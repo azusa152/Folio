@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { CategoryTabs } from "../CategoryTabs"
-import type { RadarStock } from "@/api/types/radar"
+import { makeRadarStock } from "./fixtures"
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -24,17 +24,13 @@ vi.mock("../ArchiveTab", () => ({
 
 describe("CategoryTabs", () => {
   it("renders Crypto tab when crypto stocks exist", () => {
-    const cryptoStock = {
+    const cryptoStock = makeRadarStock({
       ticker: "BTC-USD",
       category: "Crypto",
       current_thesis: "monitor btc",
-      current_tags: [],
-      display_order: 0,
       last_scan_signal: "NORMAL",
       signal_since: null,
-      is_active: true,
-      is_etf: false,
-    } as unknown as RadarStock
+    })
 
     render(
       <CategoryTabs

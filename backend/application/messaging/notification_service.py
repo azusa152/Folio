@@ -13,11 +13,12 @@ from application.formatters import (
     format_fear_greed_short,
     format_guru_filing_digest,
     format_resonance_alert,
+    format_stock_display,
     format_weekly_digest_html,
+    resolve_display_names,
 )
 from domain.analysis import compute_signal_duration
 from domain.constants import (
-    DATA_DIR,
     DRIFT_THRESHOLD_PCT,
     NOTIFICATION_TYPE_GURU_ALERTS,
     STOCK_CATEGORIES,
@@ -26,6 +27,7 @@ from domain.constants import (
 from domain.enums import CATEGORY_LABEL, HoldingAction, ScanSignal
 from i18n import get_user_language, t
 from infrastructure import repositories as repo
+from infrastructure.common.config import DATA_DIR
 from infrastructure.market_data import get_fear_greed_index
 from infrastructure.notification import (
     is_notification_enabled,
@@ -87,72 +89,20 @@ def _format_health_line(score: float, normal: int, total: int, lang: str) -> str
 # ===========================================================================
 
 
-def send_weekly_digest(session: Session) -> dict:
+def _collect_portfolio_wow(
+    session: Session, lang: str
+) -> tuple[str | None, list[dict], dict]:
+    """Fetch rebalance data, compute WoW delta, persist state.
+
+    Returns (portfolio_value_line, holdings_detail, categories).
     """
-    發送每週 Telegram 摘要（僅限持有部位）：
-    - 投資組合總值 + 週漲跌幅（WoW）
-    - 投資組合健康分數
-    - 恐懼貪婪指數
-    - 本週漲跌幅前三名
-    - 持有股票的非 NORMAL 訊號
-    - 過去 7 天持有股票的訊號變化
-    - 配置偏移
-    """
-    logger.info("開始生成每週摘要...")
-    lang = get_user_language(session)
-
-    all_stocks = repo.find_active_stocks(session)
-    total = len(all_stocks)
-    if total == 0:
-        message = (
-            t("notification.weekly_digest_title", lang=lang)
-            + "\n"
-            + t("notification.no_stocks", lang=lang)
-        )
-        send_telegram_message_dual(message, session)
-        return {"message": t("notification.no_stocks", lang=lang)}
-
-    # --- 目前非 NORMAL 股票 ---
-    non_normal_stocks = [
-        s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value
-    ]
-    normal_count = total - len(non_normal_stocks)
-    health_score = round(normal_count / total * 100, 1)
-
-    # --- 過去 7 天的訊號變化（含轉換方向）---
-    now_ts = datetime.now(UTC)
-    seven_days_ago = now_ts - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
-    recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
-    signal_changes: dict[str, int] = {}
-    signal_transitions: dict[str, tuple[str, str]] = {}  # ticker → (earliest, latest)
-    prev_signals: dict[str, str] = {}
-    for log in reversed(recent_logs):
-        tk = log.stock_ticker
-        if tk in prev_signals and prev_signals[tk] != log.signal:
-            signal_changes[tk] = signal_changes.get(tk, 0) + 1
-            if tk not in signal_transitions:
-                signal_transitions[tk] = (prev_signals[tk], log.signal)
-            else:
-                signal_transitions[tk] = (signal_transitions[tk][0], log.signal)
-        prev_signals[tk] = log.signal
-
-    # --- 恐懼貪婪指數 ---
-    fg = get_fear_greed_index()
-    fg_label = format_fear_greed_label(
-        fg.get("composite_level", "N/A"), fg.get("composite_score", 50), lang=lang
-    )
-    vix_val = fg.get("vix", {}).get("value")
-    vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
-
-    # --- 投資組合總值 + WoW ---
-    # Lazy import to avoid circular dependency: notification_service ↔ rebalance_service.
     portfolio_value_line: str | None = None
-    current_total: float | None = None
-    prev_total: float | None = None
-    display_currency = "USD"
     holdings_detail: list[dict] = []
     categories: dict = {}
+    display_currency = "USD"
+    current_total: float | None = None
     try:
+        # Lazy import to avoid circular dependency: notification_service ↔ rebalance_service.
         from application.portfolio.rebalance_service import calculate_rebalance
 
         rebalance = calculate_rebalance(session)
@@ -189,6 +139,110 @@ def send_weekly_digest(session: Session) -> dict:
         wow_state["last_total_value"] = current_total
         _save_wow_state(wow_state)
 
+    return portfolio_value_line, holdings_detail, categories
+
+
+def _build_top_movers_lines(holdings_detail: list[dict]) -> list[str]:
+    """Return formatted top-3 gainer / loser lines from holdings detail."""
+    if not holdings_detail:
+        return []
+    valid = [h for h in holdings_detail if h.get("change_pct") is not None]
+    gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
+    losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
+    lines: list[str] = []
+    gainer_parts = [
+        f"  ▲ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
+        for h in gainers
+        if h["change_pct"] > 0
+    ]
+    loser_parts = [
+        f"  ▼ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
+        for h in losers
+        if h["change_pct"] < 0
+    ]
+    if gainer_parts:
+        lines.append("  ".join(gainer_parts))
+    if loser_parts:
+        lines.append("  ".join(loser_parts))
+    return lines
+
+
+def _build_drift_lines(categories: dict, lang: str) -> list[str]:
+    """Return formatted allocation-drift lines for categories exceeding the threshold."""
+    lines: list[str] = []
+    for cat, data in categories.items():
+        drift = data.get("drift_pct", 0.0)
+        if abs(drift) >= DRIFT_THRESHOLD_PCT:
+            cat_label = CATEGORY_LABEL.get(cat, cat)
+            key = (
+                "notification.drift_item_over"
+                if drift > 0
+                else "notification.drift_item_under"
+            )
+            lines.append(t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}"))
+    return lines
+
+
+def send_weekly_digest(session: Session) -> dict:
+    """
+    發送每週 Telegram 摘要（僅限持有部位）：
+    - 投資組合總值 + 週漲跌幅（WoW）
+    - 投資組合健康分數
+    - 恐懼貪婪指數
+    - 本週漲跌幅前三名
+    - 持有股票的非 NORMAL 訊號
+    - 過去 7 天持有股票的訊號變化
+    - 配置偏移
+    """
+    logger.info("開始生成每週摘要...")
+    lang = get_user_language(session)
+
+    all_stocks = repo.find_active_stocks(session)
+    total = len(all_stocks)
+    if total == 0:
+        message = (
+            t("notification.weekly_digest_title", lang=lang)
+            + "\n"
+            + t("notification.no_stocks", lang=lang)
+        )
+        send_telegram_message_dual(message, session)
+        return {"message": t("notification.no_stocks", lang=lang)}
+
+    non_normal_stocks = [
+        s for s in all_stocks if s.last_scan_signal != ScanSignal.NORMAL.value
+    ]
+    normal_count = total - len(non_normal_stocks)
+    health_score = round(normal_count / total * 100, 1)
+
+    # --- 過去 7 天的訊號變化（含轉換方向）---
+    now_ts = datetime.now(UTC)
+    seven_days_ago = now_ts - timedelta(days=WEEKLY_DIGEST_LOOKBACK_DAYS)
+    recent_logs = repo.find_scan_logs_since(session, seven_days_ago)
+    signal_changes: dict[str, int] = {}
+    signal_transitions: dict[str, tuple[str, str]] = {}
+    prev_signals: dict[str, str] = {}
+    for log in reversed(recent_logs):
+        tk = log.stock_ticker
+        if tk in prev_signals and prev_signals[tk] != log.signal:
+            signal_changes[tk] = signal_changes.get(tk, 0) + 1
+            if tk not in signal_transitions:
+                signal_transitions[tk] = (prev_signals[tk], log.signal)
+            else:
+                signal_transitions[tk] = (signal_transitions[tk][0], log.signal)
+        prev_signals[tk] = log.signal
+
+    # --- 恐懼貪婪指數 ---
+    fg = get_fear_greed_index()
+    fg_label = format_fear_greed_label(
+        fg.get("composite_level", "N/A"), fg.get("composite_score", 50), lang=lang
+    )
+    vix_val = fg.get("vix", {}).get("value")
+    vix_text = f"VIX={vix_val}" if vix_val is not None else "VIX=N/A"
+
+    portfolio_value_line, holdings_detail, categories = _collect_portfolio_wow(
+        session, lang
+    )
+
     # --- Scope signals to owned stocks only ---
     # When rebalance is unavailable, holdings_detail is empty and owned_tickers
     # will be an empty set — the filter is skipped and the digest falls back to
@@ -210,43 +264,12 @@ def send_weekly_digest(session: Session) -> dict:
             normal_count = owned_normal
             total = owned_total
 
-    # --- 本週漲跌幅前三名 ---
-    top_movers_lines: list[str] = []
-    if holdings_detail:
-        valid = [h for h in holdings_detail if h.get("change_pct") is not None]
-        gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
-        losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
-        gainer_parts = [
-            f"  ▲ {h['ticker']} {h['change_pct']:+.1f}%"
-            for h in gainers
-            if h["change_pct"] > 0
-        ]
-        loser_parts = [
-            f"  ▼ {h['ticker']} {h['change_pct']:+.1f}%"
-            for h in losers
-            if h["change_pct"] < 0
-        ]
-        if gainer_parts:
-            top_movers_lines.append("  ".join(gainer_parts))
-        if loser_parts:
-            top_movers_lines.append("  ".join(loser_parts))
+    # Resolve display names once for all tickers appearing in abnormal/signal sections
+    digest_tickers: set[str] = {s.ticker for s in non_normal_stocks} | set(
+        signal_changes.keys()
+    )
+    name_map = resolve_display_names(digest_tickers, session)
 
-    # --- 配置偏移 ---
-    drift_lines: list[str] = []
-    for cat, data in categories.items():
-        drift = data.get("drift_pct", 0.0)
-        if abs(drift) >= DRIFT_THRESHOLD_PCT:
-            cat_label = CATEGORY_LABEL.get(cat, cat)
-            key = (
-                "notification.drift_item_over"
-                if drift > 0
-                else "notification.drift_item_under"
-            )
-            drift_lines.append(
-                t(key, lang=lang, cat=cat_label, pct=f"{abs(drift):.1f}")
-            )
-
-    # --- 組合訊息 ---
     non_normal_dicts: list[dict] = []
     for s in non_normal_stocks:
         duration_days, is_new = compute_signal_duration(s.signal_since, now_ts)
@@ -267,12 +290,13 @@ def send_weekly_digest(session: Session) -> dict:
         fear_greed_line=t(
             "notification.fear_greed", lang=lang, label=fg_label, vix=vix_text
         ),
-        top_movers_lines=top_movers_lines,
+        top_movers_lines=_build_top_movers_lines(holdings_detail),
         non_normal=non_normal_dicts,
         signal_changes=signal_changes,
         signal_transitions=signal_transitions,
-        drift_lines=drift_lines,
+        drift_lines=_build_drift_lines(categories, lang),
         all_normal_line=t("notification.all_normal", lang=lang),
+        name_map=name_map,
     )
 
     if is_notification_enabled(session, "weekly_digest"):
@@ -312,6 +336,10 @@ def get_portfolio_summary(session: Session) -> str:
 
     non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
+
+    # Resolve display names for all watchlist tickers once upfront
+    all_tickers = [s.ticker for s in stocks]
+    stock_names = resolve_display_names(all_tickers, session)
 
     # 恐懼貪婪指數
     fg = get_fear_greed_index()
@@ -356,6 +384,17 @@ def get_portfolio_summary(session: Session) -> str:
             else:
                 lines.append(f"💰 {display_currency} {current_total:,.0f}")
             lines.append("")
+        # Augment stock_names with any holding-only tickers (positions that exist
+        # in Holding but are not on the active Stock watchlist). These can appear
+        # in resonance overlap results, which union watchlist ∪ holding tickers.
+        if holdings_detail:
+            missing = [
+                h["ticker"]
+                for h in holdings_detail
+                if h["ticker"].strip().upper() not in stock_names
+            ]
+            if missing:
+                stock_names.update(resolve_display_names(missing, session))
     except Exception as exc:
         logger.warning("portfolio_summary: 無法取得再平衡資料：%s", exc)
 
@@ -364,7 +403,13 @@ def get_portfolio_summary(session: Session) -> str:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
-            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+            displays = ", ".join(
+                format_stock_display(
+                    stock_names.get(s.ticker.strip().upper()), s.ticker
+                )
+                for s in group
+            )
+            lines.append(f"[{label}] {displays}")
     # Safety net: never drop unexpected categories from summary output.
     seen_categories = set(STOCK_CATEGORIES)
     extra_categories = sorted(
@@ -374,13 +419,22 @@ def get_portfolio_summary(session: Session) -> str:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
-            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+            displays = ", ".join(
+                format_stock_display(
+                    stock_names.get(s.ticker.strip().upper()), s.ticker
+                )
+                for s in group
+            )
+            lines.append(f"[{label}] {displays}")
 
     # --- 目前非 NORMAL 股票 ---
     if non_normal:
         lines += ["", t("notification.portfolio_summary_abnormal", lang=lang)]
         for s in non_normal:
-            lines.append(f"  {s.ticker} -> {s.last_scan_signal}")
+            display = format_stock_display(
+                stock_names.get(s.ticker.strip().upper()), s.ticker
+            )
+            lines.append(f"  {display} -> {s.last_scan_signal}")
     else:
         lines += ["", t("notification.portfolio_summary_normal", lang=lang)]
 
@@ -390,12 +444,12 @@ def get_portfolio_summary(session: Session) -> str:
         gainers = sorted(valid, key=lambda h: h["change_pct"], reverse=True)[:3]
         losers = sorted(valid, key=lambda h: h["change_pct"])[:3]
         gainer_parts = [
-            f"▲ {h['ticker']} {h['change_pct']:+.1f}%"
+            f"▲ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
             for h in gainers
             if h["change_pct"] > 0
         ]
         loser_parts = [
-            f"▼ {h['ticker']} {h['change_pct']:+.1f}%"
+            f"▼ {format_stock_display(h.get('name'), h['ticker'])} {h['change_pct']:+.1f}%"
             for h in losers
             if h["change_pct"] < 0
         ]
@@ -429,12 +483,15 @@ def get_portfolio_summary(session: Session) -> str:
         from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
+        # stock_names covers watchlist tickers and is augmented above with
+        # holding-only tickers, so all resonance overlap tickers are resolved.
         smart_lines = [
             format_resonance_alert(
                 holding["ticker"],
                 entry["guru_display_name"],
                 holding["action"],
                 lang=lang,
+                display_name=stock_names.get(holding["ticker"].strip().upper()),
             )
             for entry in resonance
             for holding in entry["holdings"]
@@ -525,6 +582,15 @@ def send_resonance_alerts(session: Session) -> dict:
 
     resonance = compute_portfolio_resonance(session)
 
+    # Collect all alert tickers upfront for a single batch name resolution
+    alert_tickers: set[str] = {
+        holding["ticker"]
+        for entry in resonance
+        for holding in entry["holdings"]
+        if holding["action"] in _ALERT_ACTIONS
+    }
+    resonance_names = resolve_display_names(alert_tickers, session)
+
     alert_lines: list[str] = []
     sent_alerts: list[dict] = []
 
@@ -536,7 +602,13 @@ def send_resonance_alerts(session: Session) -> dict:
             ticker = holding["ticker"]
             action = holding["action"]
             alert_lines.append(
-                format_resonance_alert(ticker, guru_name, action, lang=lang)
+                format_resonance_alert(
+                    ticker,
+                    guru_name,
+                    action,
+                    lang=lang,
+                    display_name=resonance_names.get(ticker.strip().upper()),
+                )
             )
             sent_alerts.append(
                 {"ticker": ticker, "guru_name": guru_name, "action": action}

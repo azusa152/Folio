@@ -59,12 +59,16 @@ export function AddGuruForm({ onSuccess }: Props) {
     <div className="space-y-4 max-w-md">
       <div>
         <h2 className="text-base font-semibold">{t("smart_money.add_guru.title")}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">{t("smart_money.add_guru.description")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {t("smart_money.add_guru.description")}
+        </p>
       </div>
 
       <div className="space-y-3">
         <div className="space-y-1">
-          <label htmlFor="guru-name" className="text-xs font-medium">{t("smart_money.add_guru.name_label")}</label>
+          <label htmlFor="guru-name" className="text-xs font-medium">
+            {t("smart_money.add_guru.name_label")}
+          </label>
           <Input
             id="guru-name"
             value={name}
@@ -75,7 +79,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="guru-cik" className="text-xs font-medium">{t("smart_money.add_guru.cik_label")}</label>
+          <label htmlFor="guru-cik" className="text-xs font-medium">
+            {t("smart_money.add_guru.cik_label")}
+          </label>
           <Input
             id="guru-cik"
             value={cik}
@@ -86,7 +92,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="guru-display" className="text-xs font-medium">{t("smart_money.add_guru.display_label")}</label>
+          <label htmlFor="guru-display" className="text-xs font-medium">
+            {t("smart_money.add_guru.display_label")}
+          </label>
           <Input
             id="guru-display"
             value={displayName}
@@ -97,7 +105,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="guru-style" className="text-xs font-medium">{t("smart_money.add_guru.style_label")}</label>
+          <label htmlFor="guru-style" className="text-xs font-medium">
+            {t("smart_money.add_guru.style_label")}
+          </label>
           <select
             id="guru-style"
             value={style}
@@ -114,7 +124,9 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="guru-tier" className="text-xs font-medium">{t("smart_money.add_guru.tier_label")}</label>
+          <label htmlFor="guru-tier" className="text-xs font-medium">
+            {t("smart_money.add_guru.tier_label")}
+          </label>
           <select
             id="guru-tier"
             value={tier}
@@ -129,17 +141,11 @@ export function AddGuruForm({ onSuccess }: Props) {
         </div>
       </div>
 
-      <Button
-        onClick={handleSubmit}
-        disabled={addMutation.isPending}
-        className="w-full"
-      >
+      <Button onClick={handleSubmit} disabled={addMutation.isPending} className="w-full">
         {t("smart_money.add_guru.submit_button")}
       </Button>
 
-      {feedback && (
-        <p className="text-xs text-destructive">{feedback}</p>
-      )}
+      {feedback && <p className="text-xs text-destructive">{feedback}</p>}
     </div>
   )
 }

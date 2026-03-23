@@ -6,7 +6,7 @@ Application — Pricing Service。
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from sqlmodel import Session
@@ -17,19 +17,40 @@ from infrastructure.market_data import get_crypto_price, get_technical_signals
 from infrastructure.repositories import get_latest_nav
 
 
-def build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
+class PricingHolding(Protocol):
+    """Structural interface required by the pricing service.
+
+    Any SQLModel or dataclass that exposes these three attributes satisfies
+    this Protocol without needing an explicit inheritance declaration.
+
+    Not decorated with ``@runtime_checkable`` — use it for static type
+    annotations only; ``isinstance(x, PricingHolding)`` will raise TypeError.
+    """
+
+    category: StockCategory
+    is_cash: bool
+    ticker: str
+
+
+def build_nav_cache(
+    session: Session, holdings: list[PricingHolding]
+) -> dict[str, dict]:
     """Pre-fetch latest NAV for all Mutual_Fund holdings.
 
     Returns a mapping of ticker → {nav, nav_previous}.
     """
     cache: dict[str, dict] = {}
-    for h in holdings:
-        cat = h.category.value if hasattr(h.category, "value") else str(h.category)
-        if cat != StockCategory.MUTUAL_FUND.value or h.ticker in cache:
+    for holding in holdings:
+        cat = (
+            holding.category.value
+            if hasattr(holding.category, "value")
+            else str(holding.category)
+        )
+        if cat != StockCategory.MUTUAL_FUND.value or holding.ticker in cache:
             continue
-        nav_row = get_latest_nav(session, h.ticker)
+        nav_row = get_latest_nav(session, holding.ticker)
         if nav_row:
-            cache[h.ticker] = {
+            cache[holding.ticker] = {
                 "nav": nav_row.nav,
                 "nav_previous": nav_row.nav_previous,
             }
@@ -37,7 +58,7 @@ def build_nav_cache(session: Session, holdings: list) -> dict[str, dict]:
 
 
 def resolve_holding_price(
-    h: object,
+    holding: PricingHolding,
     nav_cache: dict[str, dict],
 ) -> float | None:
     """Resolve current market price for a holding based on its category.
@@ -45,22 +66,68 @@ def resolve_holding_price(
     Returns the raw price (not FX-adjusted).  Returns None if the price is
     unavailable (caller should fall back to cost_basis).
     """
-    cat = h.category.value if hasattr(h.category, "value") else str(h.category)  # type: ignore[attr-defined]
-    if h.is_cash:  # type: ignore[attr-defined]
-        return 1.0
-    if h.category == StockCategory.CRYPTO:  # type: ignore[attr-defined]
+    price, _, _ = resolve_holding_price_with_prev(holding, nav_cache)
+    return price
+
+
+def resolve_holding_price_with_prev(
+    holding: PricingHolding,
+    nav_cache: dict[str, dict],
+) -> tuple[float | None, float | None, bool]:
+    """Resolve current and previous-close price for a holding.
+
+    Returns (price, previous_close, has_prev_close):
+    - price:           raw current price (not FX-adjusted); None → use cost_basis
+    - previous_close:  prior-day price; None when unavailable
+    - has_prev_close:  True when a reliable prev baseline exists (including cost-basis cases)
+    """
+    cat = (
+        holding.category.value
+        if hasattr(holding.category, "value")
+        else str(holding.category)
+    )
+
+    if holding.is_cash:
+        return 1.0, None, True
+
+    if holding.category == StockCategory.CRYPTO:
         crypto_data = get_crypto_price(
-            getattr(h, "coingecko_id", None),
-            h.ticker,  # type: ignore[attr-defined]
+            getattr(holding, "coingecko_id", None),
+            holding.ticker,
         )
-        p = crypto_data.get("price_usd") if crypto_data else None
-        return float(p) if isinstance(p, (int, float)) else None
+        price = crypto_data.get("price_usd") if crypto_data else None
+        change_24h_pct = crypto_data.get("change_24h_pct") if crypto_data else None
+        price_f: float | None = (
+            float(price) if isinstance(price, (int, float)) else None
+        )
+        previous_close: float | None = None
+        if (
+            price_f is not None
+            and isinstance(change_24h_pct, (int, float))
+            and (1 + change_24h_pct / 100) != 0
+        ):
+            previous_close = price_f / (1 + change_24h_pct / 100)
+        return price_f, previous_close, previous_close is not None
+
     if cat == StockCategory.MUTUAL_FUND.value:
-        nav_data = nav_cache.get(h.ticker)  # type: ignore[attr-defined]
-        p = nav_data.get("nav") if nav_data else None
-        return float(p) if isinstance(p, (int, float)) else None
+        nav_data = nav_cache.get(holding.ticker)
+        nav = nav_data.get("nav") if nav_data else None
+        nav_prev = nav_data.get("nav_previous") if nav_data else None
+        nav_f: float | None = float(nav) if isinstance(nav, (int, float)) else None
+        nav_prev_f: float | None = (
+            float(nav_prev) if isinstance(nav_prev, (int, float)) else None
+        )
+        return nav_f, nav_prev_f, nav_prev_f is not None
+
     if cat in SKIP_PRICE_FETCH_CATEGORIES:
-        return None
-    signals = get_technical_signals(h.ticker)  # type: ignore[attr-defined]
-    p = signals.get("price") if signals else None
-    return float(p) if isinstance(p, (int, float)) else None
+        # No live price; caller uses cost_basis for both current and previous MV.
+        return None, None, True
+
+    signals = get_technical_signals(holding.ticker)
+    price_s = signals.get("price") if signals else None
+    prev_s = signals.get("previous_close") if signals else None
+    price_sf: float | None = (
+        float(price_s) if isinstance(price_s, (int, float)) else None
+    )
+    prev_sf: float | None = float(prev_s) if isinstance(prev_s, (int, float)) else None
+    return price_sf, prev_sf, prev_sf is not None

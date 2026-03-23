@@ -34,6 +34,7 @@
 #    make check-constants  Verify backend/frontend constant sync
 #    make check-i18n       Verify backend/frontend locale key parity
 #    make check-agent-doc-tokens Verify AI agent doc token budgets
+#    make check-agent-docs     Verify AGENTS.md cross-references are intact
 #    make check-ci         Verify make ci covers all GitHub CI pipeline jobs
 #
 #  Setup:
@@ -52,12 +53,19 @@
 #    make restart-all      Restart all services (down + up, no rebuild)
 #    make rebuild          Rebuild images and restart all services
 #    make logs             Tail backend logs
+#    make pin-images       Print current SHA256 digests for pinned base images (rotate monthly)
 #
 #  Database:
+#    make seed-demo        Seed representative demo data (watchlist + portfolio) into Docker DB
 #    make migrate-ledger   Run ledger migration (backfill opening balances)
 #    make migrate-ledger-dry Dry-run ledger migration
 #    make purge-legacy     Purge orphaned/zero-qty legacy data + drop net worth tables
 #    make purge-legacy-dry Dry-run purge (preview without commit)
+#
+#  Demo Mode (isolated — real data is never touched):
+#    make demo             Start isolated demo on ports 3001/8001 (separate DB, auto-seeded)
+#    make demo-down        Stop demo instance and remove its data volume
+#    make demo-reset       Wipe and re-seed demo data (containers stay running)
 #
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
@@ -74,6 +82,9 @@
 # ---------------------------------------------------------------------------
 BACKEND_DIR  := backend
 FRONTEND_DIR := frontend-react
+
+DEMO_PROJECT := folio-demo
+DEMO_COMPOSE := COMPOSE_PROJECT_NAME=$(DEMO_PROJECT) docker compose -f docker-compose.demo.yml
 
 PYTHON ?= $(BACKEND_DIR)/.venv/bin/python
 RUFF   ?= $(BACKEND_DIR)/.venv/bin/ruff
@@ -148,33 +159,37 @@ backend-dev: .venv-check ## Start backend with hot-reload (local development)
 	cd $(BACKEND_DIR) && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 backend-lint: .venv-check ## Ruff check + format --check (backend only)
-	$(RUFF) check --fix $(BACKEND_DIR)/
+	$(RUFF) check $(BACKEND_DIR)/
 	$(RUFF) format --check $(BACKEND_DIR)/
 
 backend-test: .venv-check ## Run pytest with coverage (in-memory SQLite, backend only)
-	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -v --tb=short \
-		-n auto --durations=20 \
-		--cov --cov-config=$(BACKEND_DIR)/pyproject.toml --cov-report=term-missing --cov-fail-under=85
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
+		uv run pytest -v \
+		--cov --cov-report=term-missing --cov-fail-under=85
 
-backend-test-quick: .venv-check ## Fast test run — no coverage, for local iteration
-	LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
-		$(PYTHON) -m pytest $(BACKEND_DIR)/tests/ -q --tb=short \
-		-n auto
+backend-test-quick: .venv-check ## Fast test run — no coverage, skips @pytest.mark.slow tests
+	cd $(BACKEND_DIR) && LOG_DIR=/tmp/folio_test_logs DATABASE_URL=sqlite:// \
+		uv run pytest -q -m "not slow"
 
 backend-format: .venv-check ## Ruff format — rewrite files in place (backend only)
 	$(RUFF) format $(BACKEND_DIR)/
 
-backend-typecheck: .venv-check ## pyright static type check (basic mode, advisory)
+backend-typecheck: .venv-check ## pyright static type check (hard gate — mirrors CI)
 	cd $(BACKEND_DIR) && uv run pyright .
 
 # ---------------------------------------------------------------------------
 #  Frontend (granular)
 # ---------------------------------------------------------------------------
-.PHONY: frontend-lint frontend-typecheck frontend-dev frontend-build frontend-security
+.PHONY: frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-dev frontend-build frontend-security
 
 frontend-lint: .node-check ## ESLint (frontend only)
 	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-format: .node-check ## Prettier format — rewrite files in place (frontend only)
+	cd $(FRONTEND_DIR) && npm run format
+
+frontend-format-check: .node-check ## Prettier format check — CI gate (frontend only)
+	cd $(FRONTEND_DIR) && npm run format:check
 
 frontend-typecheck: .node-check ## TypeScript type check (frontend only)
 	cd $(FRONTEND_DIR) && npm run typecheck
@@ -191,7 +206,7 @@ frontend-security: .node-check ## npm audit — frontend high-severity vulnerabi
 # ---------------------------------------------------------------------------
 #  Fullstack / Composite
 # ---------------------------------------------------------------------------
-.PHONY: dev lint test format ci ci-quick clean frontend-test frontend-typecheck
+.PHONY: dev lint test format ci ci-quick clean pin-images frontend-test frontend-typecheck
 .PHONY: _ci-fast _ci-heavy _ci-network
 
 dev: .venv-check .node-check ## Start backend + frontend dev servers in one terminal
@@ -209,11 +224,11 @@ frontend-test: .node-check ## Run frontend tests with coverage (Vitest)
 
 test: backend-test frontend-test ## Test entire project (backend + frontend)
 
-format: backend-format ## Format entire project (backend code)
+format: backend-format frontend-format ## Format entire project (backend + frontend)
 
 # Phase group targets for parallel CI execution.
 # Parsed by scripts/check_ci_completeness.py to verify all CI jobs are covered.
-_ci-fast: backend-lint frontend-lint check-constants check-i18n check-agent-doc-tokens check-api-spec
+_ci-fast: backend-lint frontend-lint frontend-format-check check-constants check-i18n check-agent-doc-tokens check-agent-docs check-api-spec
 _ci-heavy: backend-test frontend-test frontend-build backend-typecheck
 _ci-network: frontend-security backend-security
 
@@ -239,6 +254,19 @@ clean: ## Remove build caches (.pytest_cache, .ruff_cache, dist, node_modules/.c
 	rm -rf $(BACKEND_DIR)/.pytest_cache $(BACKEND_DIR)/.ruff_cache
 	rm -rf .pytest_cache .ruff_cache
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/node_modules/.cache
+
+pin-images: ## Print current SHA256 digests for all pinned base images (run monthly or after a CVE)
+	@echo "=== Current manifest-list digests (copy into Dockerfiles / docker-compose.yml) ==="
+	@echo -n "backend/Dockerfile     python:3.12-slim  -> "
+	@docker buildx imagetools inspect python:3.12-slim 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "frontend-react/        node:20-alpine    -> "
+	@docker buildx imagetools inspect node:20-alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "frontend-react/        nginx:alpine      -> "
+	@docker buildx imagetools inspect nginx:alpine 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo -n "docker-compose.yml     alpine:3.19       -> "
+	@docker buildx imagetools inspect alpine:3.19 2>/dev/null | grep -m1 'Digest:' | awk '{print $$2}'
+	@echo ""
+	@echo "After updating digests, run: make rebuild"
 
 # ---------------------------------------------------------------------------
 #  API Codegen
@@ -274,7 +302,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
+.PHONY: backup restore seed-demo migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible demo demo-down demo-reset
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -294,6 +322,9 @@ restore: ## Restore database (use FILE=backups/radar-xxx.db or defaults to lates
 		cp /backup/$$(basename $$file) /data/radar.db; \
 	echo "Restored from $$file"
 
+seed-demo: ## Seed representative demo data (watchlist + portfolio) into the running Docker DB
+	docker compose exec backend uv run --frozen --no-dev python -m scripts.seed_demo
+
 migrate-ledger: ## Run ledger migration (backfill opening balances; runs inside Docker)
 	docker compose exec backend uv run --frozen --no-dev python -m scripts.migrate_ledger
 
@@ -309,10 +340,37 @@ purge-legacy-dry: ## Dry-run purge (preview without commit; runs inside Docker)
 refresh-eligible: ## Refresh NISA eligible assets from official sources (runs inside Docker)
 	docker compose exec backend uv run --frozen --no-dev python -m scripts.refresh_eligible_assets --wrapper all
 
+demo: ## Start isolated demo on ports 3001/8001 (separate DB, auto-seeded, real data untouched)
+	@echo "=== Starting demo instance (ports 3001 / 8001) ==="
+	$(DEMO_COMPOSE) up -d --build
+	@echo "Waiting for backend to become healthy..."
+	@timeout=60; elapsed=0; \
+	while ! $(DEMO_COMPOSE) exec backend curl -sf http://localhost:8000/health > /dev/null 2>&1; do \
+		sleep 2; elapsed=$$((elapsed + 2)); \
+		if [ $$elapsed -ge $$timeout ]; then echo "Error: demo backend did not start in time"; exit 1; fi; \
+	done
+	$(DEMO_COMPOSE) exec backend uv run --frozen --no-dev python -m scripts.seed_demo
+	@echo ""
+	@echo "=== Demo running ==="
+	@echo "  Frontend : http://localhost:3001"
+	@echo "  Backend  : http://localhost:8001"
+	@echo "  Your real instance on :3000 / :8000 is untouched."
+	@echo "  Run 'make demo-down' when finished."
+
+demo-down: ## Stop demo instance and remove its data volume
+	@echo "=== Stopping demo instance ==="
+	$(DEMO_COMPOSE) down -v
+	@echo "Demo stopped and demo-data volume removed."
+
+demo-reset: ## Wipe and re-seed demo data (keeps containers running)
+	@echo "=== Resetting demo data ==="
+	$(DEMO_COMPOSE) exec backend uv run --frozen --no-dev python -m scripts.seed_demo --reset
+	@echo "Demo data reset complete."
+
 # ---------------------------------------------------------------------------
 #  Utilities
 # ---------------------------------------------------------------------------
-.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-makefile-db-targets backend-security check-ci
+.PHONY: generate-key security help check-constants check-api-spec check-i18n check-agent-doc-tokens check-agent-docs check-makefile-db-targets backend-security check-ci
 
 check-constants: .venv-check ## Check backend/frontend constant sync
 	$(PYTHON) scripts/check_constant_sync.py
@@ -322,6 +380,9 @@ check-i18n: .venv-check ## Check locale key parity (backend + frontend locale fi
 
 check-agent-doc-tokens: ## Check AI agent doc token budgets (stdlib-only, no venv needed)
 	python3 scripts/check_agent_doc_tokens.py
+
+check-agent-docs: ## Verify AGENTS.md cross-references are present in both docs files
+	bash scripts/check_agent_docs.sh
 
 check-makefile-db-targets: ## Ensure DB maintenance make targets execute in Docker
 	python3 scripts/check_makefile_db_targets.py

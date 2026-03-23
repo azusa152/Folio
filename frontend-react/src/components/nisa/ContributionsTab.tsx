@@ -28,10 +28,7 @@ export function ContributionsTab() {
 
   const summary = useMemo(() => {
     const items = query.data?.items ?? []
-    const byWrapper: Record<
-      string,
-      { netLedgerAmount: number; contributionAmount: number }
-    > = {
+    const byWrapper: Record<string, { netLedgerAmount: number; contributionAmount: number }> = {
       nisa_tsumitate: { netLedgerAmount: 0, contributionAmount: 0 },
       nisa_growth: { netLedgerAmount: 0, contributionAmount: 0 },
     }
@@ -130,9 +127,7 @@ export function ContributionsTab() {
             </p>
             <p className="text-xs text-muted-foreground">
               {t("nisa.contributions.summary_contribution_only_label", {
-                amount: Math.round(
-                  summary.nisa_growth?.contributionAmount ?? 0,
-                ).toLocaleString(),
+                amount: Math.round(summary.nisa_growth?.contributionAmount ?? 0).toLocaleString(),
               })}
             </p>
           </CardContent>
@@ -182,16 +177,12 @@ export function ContributionsTab() {
             ) : query.data?.items.length ? (
               query.data.items.map((item) => (
                 <tr key={item.id} className="border-t border-border">
-                  <td className="px-3 py-2">
-                    {formatDateOnly(item.effective_date)}
-                  </td>
+                  <td className="px-3 py-2">{formatDateOnly(item.effective_date)}</td>
                   <td className="px-3 py-2">
                     <Badge variant="outline">{t(`wrapper.${item.tax_wrapper}`)}</Badge>
                   </td>
                   <td className="px-3 py-2">{entryTypeLabel(item.entry_type, t)}</td>
-                  <td className="px-3 py-2">
-                    {Math.round(item.amount).toLocaleString()}
-                  </td>
+                  <td className="px-3 py-2">{Math.round(item.amount).toLocaleString()}</td>
                   <td className="px-3 py-2 text-muted-foreground">{item.note || "—"}</td>
                 </tr>
               ))

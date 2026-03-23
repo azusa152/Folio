@@ -18,7 +18,6 @@ def _quota(
 
 def test_all_to_nisa_growth_when_eligible_and_quota():
     suggestions = suggest_purchase_routing(
-        ticker="7203.T",
         total_amount=100_000,
         quotas={
             "nisa_growth": _quota(200_000, 300_000, 5_000_000, 2_000_000),
@@ -33,7 +32,6 @@ def test_all_to_nisa_growth_when_eligible_and_quota():
 
 def test_split_nisa_and_tokutei_when_quota_partial():
     suggestions = suggest_purchase_routing(
-        ticker="AAPL",
         total_amount=150_000,
         quotas={
             "nisa_growth": _quota(50_000, 50_000, 50_000, 50_000),
@@ -48,7 +46,6 @@ def test_split_nisa_and_tokutei_when_quota_partial():
 
 def test_tokutei_only_when_not_eligible():
     suggestions = suggest_purchase_routing(
-        ticker="AAPL",
         total_amount=100_000,
         quotas={"nisa_growth": _quota(200_000, 200_000, 200_000, 200_000)},
         eligibility={"nisa_growth": False, "nisa_tsumitate": False, "ideco": False},
@@ -60,7 +57,6 @@ def test_tokutei_only_when_not_eligible():
 
 def test_tsumitate_preferred_when_growth_not_eligible():
     suggestions = suggest_purchase_routing(
-        ticker="03311187",
         total_amount=80_000,
         quotas={
             "nisa_growth": _quota(100_000, 100_000, 100_000, 100_000),
@@ -74,7 +70,6 @@ def test_tsumitate_preferred_when_growth_not_eligible():
 
 def test_ideco_routing():
     suggestions = suggest_purchase_routing(
-        ticker="EPI",
         total_amount=90_000,
         quotas={"ideco": _quota(100_000, 100_000, 100_000, None)},
         eligibility={"nisa_growth": False, "nisa_tsumitate": False, "ideco": True},

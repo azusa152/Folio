@@ -10,6 +10,7 @@ from domain.core.entities import (  # noqa: F401
     DriftAcknowledgment,
     EligibleAsset,
     EligibleAssetSyncState,
+    FundSectorWeight,
     FXWatchConfig,
     Guru,
     GuruFiling,

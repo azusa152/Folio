@@ -26,8 +26,18 @@ from api.schemas import (
     WebhookResponse,
 )
 from application.guru.resonance_service import invalidate_resonance_cache
+from application.messaging.notification_service import get_portfolio_summary
+from application.messaging.webhook_service import handle_webhook
 from application.portfolio.nav_sync_service import sync_single_fund_nav
-from application.services import (
+from application.scan.scan_service import (
+    create_price_alert,
+    delete_price_alert,
+    get_latest_scan_logs,
+    get_scan_history,
+    list_price_alerts,
+)
+from application.stock import stock_service
+from application.stock.stock_service import (
     CategoryUnchangedError,
     StockAlreadyActiveError,
     StockAlreadyExistsError,
@@ -36,23 +46,17 @@ from application.services import (
     create_stock,
     deactivate_stock,
     export_stocks,
+    get_enriched_stocks,
     get_moat_for_ticker,
-    get_portfolio_summary,
     get_removal_history,
-    handle_webhook,
     import_stocks,
+    invalidate_enriched_cache,
     list_active_stocks,
     list_removed_stocks,
     reactivate_stock,
     update_display_order,
     update_stock_category,
 )
-from application.stock import stock_service
-from application.stock.stock_service import (
-    get_enriched_stocks,
-    invalidate_enriched_cache,
-)
-from domain.analysis import compute_bias_percentile, detect_rogue_wave
 from domain.constants import (
     ERROR_CATEGORY_UNCHANGED,
     ERROR_INTERNAL_ERROR,
@@ -64,6 +68,7 @@ from domain.constants import (
     GENERIC_VALIDATION_ERROR,
     GENERIC_WEBHOOK_ERROR,
     LATEST_SCAN_LOGS_DEFAULT_LIMIT,
+    MAX_IMPORT_ROWS,
     SCAN_HISTORY_DEFAULT_LIMIT,
 )
 from domain.enums import StockCategory
@@ -165,18 +170,7 @@ def get_signals_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """取得指定股票的技術訊號（含快取）。"""
-    ticker_upper = ticker.upper()
-    signals = stock_service.get_signals_for_ticker(session, ticker_upper) or {}
-    if signals and "error" not in signals:
-        bias = signals.get("bias")
-        volume_ratio = signals.get("volume_ratio")
-        dist = signals.get("bias_distribution")
-        bias_percentile: float | None = None
-        if dist and bias is not None:
-            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
-        signals["bias_percentile"] = bias_percentile
-        signals["is_rogue_wave"] = detect_rogue_wave(bias_percentile, volume_ratio)
-    return signals
+    return stock_service.get_enriched_signals_for_ticker(session, ticker.upper())
 
 
 @router.get(
@@ -355,8 +349,6 @@ def get_scan_history_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得指定股票的掃描歷史。"""
-    from application.services import get_scan_history
-
     try:
         return get_scan_history(session, ticker, limit)
     except StockNotFoundError as e:
@@ -372,8 +364,6 @@ def get_all_scan_history_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得最近掃描紀錄。"""
-    from application.services import get_latest_scan_logs
-
     return get_latest_scan_logs(session, limit)
 
 
@@ -388,8 +378,6 @@ def create_price_alert_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """建立價格警報。"""
-    from application.services import create_price_alert
-
     try:
         return create_price_alert(
             session,
@@ -411,8 +399,6 @@ def get_price_alerts_route(
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """取得指定股票的價格警報列表。"""
-    from application.services import list_price_alerts
-
     return list_price_alerts(session, ticker)
 
 
@@ -424,8 +410,6 @@ def delete_price_alert_route(
     session: Session = Depends(get_session),
 ) -> dict:
     """刪除價格警報。"""
-    from application.services import delete_price_alert
-
     return delete_price_alert(session, alert_id)
 
 
@@ -461,7 +445,7 @@ def import_stocks_route(
     - ticker 長度限制 20 字元
     - thesis 長度限制 5000 字元
     """
-    if len(payload) > 1000:
+    if len(payload) > MAX_IMPORT_ROWS:
         raise HTTPException(
             status_code=400,
             detail={

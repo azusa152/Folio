@@ -44,8 +44,14 @@ describe("useCommandListScrollFix", () => {
 
     act(() => {
       result.current.onTouchStart(touchStart as unknown as TouchEvent<HTMLElement>)
-      result.current.onTouchMove({ ...touchMoveDown, currentTarget: target } as unknown as TouchEvent<HTMLElement>)
-      result.current.onTouchMove({ ...touchMoveUp, currentTarget: target } as unknown as TouchEvent<HTMLElement>)
+      result.current.onTouchMove({
+        ...touchMoveDown,
+        currentTarget: target,
+      } as unknown as TouchEvent<HTMLElement>)
+      result.current.onTouchMove({
+        ...touchMoveUp,
+        currentTarget: target,
+      } as unknown as TouchEvent<HTMLElement>)
     })
 
     expect(touchMoveDown.stopPropagation).toHaveBeenCalled()

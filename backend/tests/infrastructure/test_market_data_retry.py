@@ -9,50 +9,42 @@ Covers:
 - Non-network errors (e.g., ValueError) are NOT retried.
 """
 
-import os
-import tempfile
 import time
+from unittest.mock import MagicMock, patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+import pytest
+from cachetools import TTLCache
+from curl_cffi.curl import CurlError
+from tenacity import stop_after_attempt, wait_none
 
 import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_retry"
-)
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-import pytest  # noqa: E402
-from cachetools import TTLCache  # noqa: E402
-from curl_cffi.curl import CurlError  # noqa: E402
-from tenacity import stop_after_attempt, wait_none  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
-    _ETF_NOT_FOUND_SENTINEL,
-    _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+from infrastructure.market_data._market_data_shared import (
     _cached_fetch,
     _clear_fg_component_failure,
-    _etf_holdings_cache,
-    _fetch_etf_top_holdings,
-    _fetch_fg_component_history_safe,
     _get_session,
     _is_error_dict,
     _is_fg_component_in_cooldown,
-    _is_moat_error,
     _is_transient_yf_error,
     _is_yf_info_error,
     _mark_fg_component_failure,
     _yf_info,
     _yf_retry,
+)
+from infrastructure.market_data.etf import (
+    _ETF_NOT_FOUND_SENTINEL,
+    _ETF_SECTOR_WEIGHTS_NOT_FOUND,
+    _etf_holdings_cache,
+    _fetch_etf_top_holdings,
     get_etf_sector_weights,
     get_etf_top_holdings,
+)
+from infrastructure.market_data.market_data import (
+    _is_moat_error,
     get_exchange_rates,
     prewarm_signals_batch,
 )
+from infrastructure.market_data.sentiment import _fetch_fg_component_history_safe
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -82,9 +74,12 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get", return_value=None
+                "infrastructure.market_data._market_data_shared._disk_get",
+                return_value=None,
             ),
-            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data._market_data_shared._disk_set"
+            ) as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -112,9 +107,10 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get", return_value=None
+                "infrastructure.market_data._market_data_shared._disk_get",
+                return_value=None,
             ),
-            patch("infrastructure.market_data.market_data._disk_set"),
+            patch("infrastructure.market_data._market_data_shared._disk_set"),
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -138,9 +134,12 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get", return_value=None
+                "infrastructure.market_data._market_data_shared._disk_get",
+                return_value=None,
             ),
-            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data._market_data_shared._disk_set"
+            ) as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=success_result)
 
@@ -172,9 +171,12 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get", return_value=None
+                "infrastructure.market_data._market_data_shared._disk_get",
+                return_value=None,
             ),
-            patch("infrastructure.market_data.market_data._disk_set") as mock_disk_set,
+            patch(
+                "infrastructure.market_data._market_data_shared._disk_set"
+            ) as mock_disk_set,
         ):
             fetcher = MagicMock(return_value=error_result)
 
@@ -212,7 +214,8 @@ class TestCachedFetchErrorSkip:
         fetcher = MagicMock()
 
         with patch(
-            "infrastructure.market_data.market_data._disk_get", return_value=disk_result
+            "infrastructure.market_data._market_data_shared._disk_get",
+            return_value=disk_result,
         ):
             # Act
             result = _cached_fetch(
@@ -240,13 +243,13 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get",
+                "infrastructure.market_data._market_data_shared._disk_get",
                 return_value=stale_error,
             ),
             patch(
-                "infrastructure.market_data.market_data._disk_cache"
+                "infrastructure.market_data._market_data_shared._disk_cache"
             ) as mock_disk_cache,
-            patch("infrastructure.market_data.market_data._disk_set"),
+            patch("infrastructure.market_data._market_data_shared._disk_set"),
         ):
             result = _cached_fetch(
                 l1,
@@ -275,13 +278,13 @@ class TestCachedFetchErrorSkip:
 
         with (
             patch(
-                "infrastructure.market_data.market_data._disk_get",
+                "infrastructure.market_data._market_data_shared._disk_get",
                 return_value=deserialized_sentinel,
             ),
             patch(
-                "infrastructure.market_data.market_data._disk_cache"
+                "infrastructure.market_data._market_data_shared._disk_cache"
             ) as mock_disk_cache,
-            patch("infrastructure.market_data.market_data._disk_set"),
+            patch("infrastructure.market_data._market_data_shared._disk_set"),
         ):
             result = _cached_fetch(
                 l1,
@@ -338,7 +341,9 @@ class TestIsYfInfoError:
 class TestYfInfoCacheWiring:
     """_yf_info must use _cached_fetch with error-aware callback."""
 
-    @patch("infrastructure.market_data.market_data._cached_fetch", return_value={})
+    @patch(
+        "infrastructure.market_data._market_data_shared._cached_fetch", return_value={}
+    )
     def test_yf_info_should_pass_is_error_callback(self, mock_cached_fetch):
         _yf_info("AAPL")
         is_error_cb = mock_cached_fetch.call_args.kwargs["is_error"]
@@ -488,7 +493,7 @@ class TestSessionTimeoutConfig:
 
     def test_get_session_should_set_connect_and_read_timeouts(self):
         with patch(
-            "infrastructure.market_data.market_data.cffi_requests.Session"
+            "infrastructure.market_data._market_data_shared.cffi_requests.Session"
         ) as mock_session:
             _get_session()
 
@@ -514,7 +519,10 @@ class TestBatchTimeoutGuard:
             return {"price": 100.0}
 
         with (
-            patch("infrastructure.market_data.market_data.PREWARM_BATCH_TIMEOUT", 0.01),
+            patch(
+                "infrastructure.market_data._market_data_shared.PREWARM_BATCH_TIMEOUT",
+                0.01,
+            ),
             patch(
                 "infrastructure.market_data.market_data.get_technical_signals",
                 side_effect=_slow_fetch,
@@ -536,9 +544,12 @@ class TestBatchTimeoutGuard:
             return 0.5
 
         with (
-            patch("infrastructure.market_data.market_data.PREWARM_BATCH_TIMEOUT", 0.01),
             patch(
-                "infrastructure.market_data.market_data.get_exchange_rate",
+                "infrastructure.market_data._market_data_shared.PREWARM_BATCH_TIMEOUT",
+                0.01,
+            ),
+            patch(
+                "infrastructure.market_data.forex.get_exchange_rate",
                 side_effect=_slow_rate,
             ),
         ):
@@ -605,7 +616,7 @@ class TestFgComponentFailureCooldown:
             is False
         )
 
-    @patch("infrastructure.market_data.market_data._fetch_fg_component_history")
+    @patch("infrastructure.market_data.sentiment._fetch_fg_component_history")
     def test_fetch_fg_component_safe_should_skip_when_in_cooldown(self, mock_fetch):
         ticker = "XLP"
         _mark_fg_component_failure(ticker)
@@ -614,7 +625,7 @@ class TestFgComponentFailureCooldown:
         assert result is None
         mock_fetch.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._fetch_fg_component_history")
+    @patch("infrastructure.market_data.sentiment._fetch_fg_component_history")
     def test_fetch_fg_component_safe_should_clear_failure_marker_on_success(
         self, mock_fetch
     ):
@@ -623,7 +634,8 @@ class TestFgComponentFailureCooldown:
         mock_fetch.return_value = [100.0, 101.0]
 
         with patch(
-            "infrastructure.market_data.market_data.time.monotonic", return_value=300.0
+            "infrastructure.market_data._market_data_shared.time.monotonic",
+            return_value=300.0,
         ):
             result = _fetch_fg_component_history_safe(ticker)
 
@@ -636,7 +648,7 @@ class TestEtfCacheErrorHandling:
 
     def test_get_etf_top_holdings_should_pass_is_error_callback(self):
         with patch(
-            "infrastructure.market_data.market_data._cached_fetch",
+            "infrastructure.market_data.etf._cached_fetch",
             return_value=_ETF_NOT_FOUND_SENTINEL,
         ) as mock_cached_fetch:
             get_etf_top_holdings("VTI")
@@ -649,7 +661,7 @@ class TestEtfCacheErrorHandling:
 
     def test_get_etf_sector_weights_should_pass_is_error_callback(self):
         with patch(
-            "infrastructure.market_data.market_data._cached_fetch",
+            "infrastructure.market_data.etf._cached_fetch",
             return_value=_ETF_SECTOR_WEIGHTS_NOT_FOUND,
         ) as mock_cached_fetch:
             get_etf_sector_weights("VTI")
@@ -664,12 +676,10 @@ class TestEtfCacheErrorHandling:
         _etf_holdings_cache["VTI"] = _ETF_NOT_FOUND_SENTINEL
         with (
             patch(
-                "infrastructure.market_data.market_data._cached_fetch",
+                "infrastructure.market_data.etf._cached_fetch",
                 return_value=_ETF_NOT_FOUND_SENTINEL,
             ),
-            patch(
-                "infrastructure.market_data.market_data._disk_cache"
-            ) as mock_disk_cache,
+            patch("infrastructure.market_data.etf._disk_cache") as mock_disk_cache,
         ):
             get_etf_top_holdings("VTI", is_known_etf=True)
 
@@ -679,11 +689,11 @@ class TestEtfCacheErrorHandling:
     def test_get_etf_top_holdings_should_not_short_circuit_for_known_etf(self):
         with (
             patch(
-                "infrastructure.market_data.market_data._yf_info_cache.get",
+                "infrastructure.market_data.etf._yf_info_cache.get",
                 return_value={"quoteType": "EQUITY"},
             ),
             patch(
-                "infrastructure.market_data.market_data._cached_fetch",
+                "infrastructure.market_data.etf._cached_fetch",
                 return_value=[{"symbol": "AAPL", "weight": 0.1}],
             ) as mock_cached_fetch,
         ):
@@ -695,11 +705,11 @@ class TestEtfCacheErrorHandling:
     def test_get_etf_sector_weights_should_not_short_circuit_for_known_etf(self):
         with (
             patch(
-                "infrastructure.market_data.market_data._yf_info_cache.get",
+                "infrastructure.market_data.etf._yf_info_cache.get",
                 return_value={"quoteType": "EQUITY"},
             ),
             patch(
-                "infrastructure.market_data.market_data._cached_fetch",
+                "infrastructure.market_data.etf._cached_fetch",
                 return_value={"Technology": 0.3},
             ) as mock_cached_fetch,
         ):
@@ -732,7 +742,7 @@ class TestEtfHoldingsRetry:
             stop=stop_after_attempt(2), wait=wait_none()
         )
         with patch(
-            "infrastructure.market_data.market_data._yf_ticker_obj",
+            "infrastructure.market_data.etf._yf_ticker_obj",
             side_effect=[_TickerEmpty(), _TickerOk()],
         ) as mock_ticker_obj:
             result = retried_fn("VTI")
@@ -743,7 +753,7 @@ class TestEtfHoldingsRetry:
 
     def test_get_etf_top_holdings_should_return_none_when_retry_exhausted(self):
         with patch(
-            "infrastructure.market_data.market_data._yf_ticker_obj",
+            "infrastructure.market_data.etf._yf_ticker_obj",
             side_effect=OSError("temporary network error"),
         ):
             result = get_etf_top_holdings("VTI")

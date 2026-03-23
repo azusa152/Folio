@@ -30,7 +30,7 @@ def _seed_active_account(db_session: Session, name: str = "Test Account") -> Acc
 class TestRebalancePortfolioChange:
     """Tests for portfolio-level daily change calculation."""
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -102,7 +102,7 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change"] == pytest.approx(100.0, rel=0.01)
         assert result["total_value_change_pct"] == pytest.approx(9.09, rel=0.01)
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -180,7 +180,8 @@ class TestRebalancePortfolioChange:
         assert holding_detail["total_gain_value"] == pytest.approx(150.0, rel=0.01)
         assert holding_detail["total_gain_pct"] == pytest.approx(20.0, rel=0.01)
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @pytest.mark.slow
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -284,7 +285,7 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change_pct"] == pytest.approx(0.0, rel=0.01)
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -388,7 +389,7 @@ class TestRebalancePortfolioChange:
         assert nvda_holding["total_gain_pct"] == pytest.approx(20.0, rel=0.01)
         assert aapl_holding["total_gain_pct"] == pytest.approx(13.33, rel=0.01)
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.are_all_signals_in_l1")
@@ -448,7 +449,7 @@ class TestRebalancePortfolioChange:
         mock_l1_all_warm.assert_called_once_with(["NVDA"])
         mock_prewarm.assert_not_called()
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -503,7 +504,7 @@ class TestRebalancePortfolioChange:
         assert result["total_value_change"] == pytest.approx(0.0, rel=0.01)
         assert result["total_value_change_pct"] is None
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -611,7 +612,7 @@ class TestRebalancePortfolioChange:
 class TestRebalanceAdviceTranslation:
     """Application-layer step 5.5: advice must be list[str], not list[dict]."""
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -681,7 +682,7 @@ class TestRebalanceAdviceTranslation:
         )
         assert any("No rebalancing needed" in a for a in advice)
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -761,7 +762,7 @@ class TestRebalanceAdviceTranslation:
 
 
 class TestRebalanceCacheRefresh:
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")
@@ -822,7 +823,8 @@ class TestRebalanceCacheRefresh:
 class TestMutualFundHoldingValuation:
     """Mutual_Fund holdings must use cost_basis, never call get_technical_signals."""
 
-    @patch("application.portfolio.rebalance_service.get_technical_signals")
+    @pytest.mark.slow
+    @patch("application.portfolio.pricing_service.get_technical_signals")
     @patch("application.portfolio.rebalance_service.get_exchange_rates")
     @patch("application.portfolio.rebalance_service.prewarm_signals_batch")
     @patch("application.portfolio.rebalance_service.prewarm_etf_holdings_batch")

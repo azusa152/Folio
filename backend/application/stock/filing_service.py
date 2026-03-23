@@ -422,7 +422,10 @@ def enrich_holdings_with_performance(
 
     try:
         price_map = fetch_price_pair(tickers, report_date)
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "fetch_price_pair 失敗，price_change_pct 將全部設為 None：%s", exc
+        )
         price_map = {}
 
     for h in holdings:

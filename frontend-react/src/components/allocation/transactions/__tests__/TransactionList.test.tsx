@@ -10,10 +10,18 @@ vi.mock("react-i18next", () => ({
       if (key === "common.quantity_unit.shares" && options?.quantity != null) {
         return `${String(options.quantity)} shares`
       }
-      if (key === "common.quantity_unit.crypto" && options?.quantity != null && options?.ticker != null) {
+      if (
+        key === "common.quantity_unit.crypto" &&
+        options?.quantity != null &&
+        options?.ticker != null
+      ) {
         return `${String(options.quantity)} ${String(options.ticker)}`
       }
-      if (key === "common.quantity_unit.currency" && options?.quantity != null && options?.ticker != null) {
+      if (
+        key === "common.quantity_unit.currency" &&
+        options?.quantity != null &&
+        options?.ticker != null
+      ) {
         return `${String(options.quantity)} ${String(options.ticker)}`
       }
       return key

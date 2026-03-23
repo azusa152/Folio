@@ -4,7 +4,6 @@ Domain — 資料庫實體 (SQLModel Tables)。
 """
 
 import json as _json
-import logging
 from datetime import UTC, date, datetime
 
 from pydantic import field_validator
@@ -13,14 +12,16 @@ from sqlalchemy.types import TypeDecorator
 from sqlmodel import Column, Field, SQLModel, String
 
 from domain.constants import (
+    DEFAULT_DISPLAY_CURRENCY,
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
     DEFAULT_NOTIFICATION_RATE_LIMITS,
     DEFAULT_USER_ID,
 )
 from domain.enums import HoldingAction, ScanSignal, StockCategory, TransactionType
+from logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _normalize_stock_category(value: object) -> StockCategory:
@@ -474,6 +475,27 @@ class EligibleAsset(SQLModel, table=True):
     )
 
 
+class FundSectorWeight(SQLModel, table=True):
+    """投資信託・ファンドの行業板塊権重（手動・シード・プロキシ ETF 由来）。"""
+
+    __table_args__ = (
+        Index("uq_fund_sector_weight", "fund_code", "sector", unique=True),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    fund_code: str = Field(index=True, description="ファンドコード（= ticker）")
+    sector: str = Field(description="GICS セクター名（例: Technology）")
+    weight: float = Field(description="比重（0.0〜1.0）")
+    source: str = Field(
+        default="manual",
+        description="データソース（manual / proxy_etf / seed）",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="更新日時",
+    )
+
+
 class MutualFundNav(SQLModel, table=True):
     """投資信託の日次基準価額（NAV）キャッシュ。"""
 
@@ -531,6 +553,9 @@ class UserPreferences(SQLModel, table=True):
     terminology_mode: str = Field(
         default="simplified",
         description="術語顯示模式：simplified（簡化）或 expert（專業）",
+    )
+    default_display_currency: str = Field(
+        default=DEFAULT_DISPLAY_CURRENCY, description="預設顯示貨幣（如 USD、JPY）"
     )
     notification_preferences: str = Field(
         default=_json.dumps(DEFAULT_NOTIFICATION_PREFERENCES),

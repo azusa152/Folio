@@ -43,9 +43,6 @@ vi.mock("../DrawdownChart", () => ({
 vi.mock("../RiskMetricsCards", () => ({
   RiskMetricsCards: () => <div data-testid="risk-metrics" />,
 }))
-vi.mock("../DriftChart", () => ({
-  DriftChart: () => <div data-testid="drift-chart" />,
-}))
 vi.mock("../XRayOverlap", () => ({
   XRayOverlap: () => <div data-testid="xray" />,
 }))

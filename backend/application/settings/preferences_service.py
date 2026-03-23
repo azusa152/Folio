@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.errors import ApplicationError
 from domain.constants import (
+    DEFAULT_DISPLAY_CURRENCY,
     DEFAULT_LANGUAGE,
     DEFAULT_NOTIFICATION_PREFERENCES,
     DEFAULT_NOTIFICATION_RATE_LIMITS,
@@ -21,7 +21,6 @@ from domain.constants import (
     GENERIC_PREFERENCES_ERROR,
 )
 from domain.entities import UserPreferences
-from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
 
@@ -36,6 +35,7 @@ def get_preferences(session: Session) -> dict:
             "language": DEFAULT_LANGUAGE,
             "privacy_mode": False,
             "terminology_mode": "simplified",
+            "default_display_currency": DEFAULT_DISPLAY_CURRENCY,
             "notification_preferences": DEFAULT_NOTIFICATION_PREFERENCES,
             "notification_rate_limits": DEFAULT_NOTIFICATION_RATE_LIMITS,
         }
@@ -43,13 +43,14 @@ def get_preferences(session: Session) -> dict:
         "language": prefs.language,
         "privacy_mode": prefs.privacy_mode,
         "terminology_mode": prefs.terminology_mode,
+        "default_display_currency": prefs.default_display_currency,
         "notification_preferences": prefs.get_notification_prefs(),
         "notification_rate_limits": prefs.get_notification_rate_limits(),
     }
 
 
-def update_preferences(session: Session, payload: dict, lang: str) -> dict:
-    """Update user preferences (upsert). Raises HTTPException on failure."""
+def update_preferences(session: Session, payload: dict) -> dict:
+    """Update user preferences (upsert). Raises ApplicationError on failure."""
     try:
         prefs = repo.find_user_preferences(session)
         if prefs:
@@ -58,6 +59,8 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
             prefs.privacy_mode = payload["privacy_mode"]
             if payload.get("terminology_mode") is not None:
                 prefs.terminology_mode = payload["terminology_mode"]
+            if payload.get("default_display_currency") is not None:
+                prefs.default_display_currency = payload["default_display_currency"]
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
             if payload.get("notification_rate_limits") is not None:
@@ -68,6 +71,8 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
                 language=payload.get("language") or DEFAULT_LANGUAGE,
                 privacy_mode=payload["privacy_mode"],
                 terminology_mode=payload.get("terminology_mode", "simplified"),
+                default_display_currency=payload.get("default_display_currency")
+                or DEFAULT_DISPLAY_CURRENCY,
             )
             if payload.get("notification_preferences") is not None:
                 prefs.set_notification_prefs(payload["notification_preferences"])
@@ -78,25 +83,23 @@ def update_preferences(session: Session, payload: dict, lang: str) -> dict:
         session.commit()
         session.refresh(prefs)
         logger.info(
-            "使用者偏好已更新：language=%s, privacy_mode=%s",
+            "使用者偏好已更新：language=%s, privacy_mode=%s, default_display_currency=%s",
             prefs.language,
             prefs.privacy_mode,
+            prefs.default_display_currency,
         )
         return {
             "language": prefs.language,
             "privacy_mode": prefs.privacy_mode,
             "terminology_mode": prefs.terminology_mode,
+            "default_display_currency": prefs.default_display_currency,
             "notification_preferences": prefs.get_notification_prefs(),
             "notification_rate_limits": prefs.get_notification_rate_limits(),
         }
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error("使用者偏好更新失敗：%s", e, exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error_code": ERROR_PREFERENCES_UPDATE_FAILED,
-                "detail": t(GENERIC_PREFERENCES_ERROR, lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_PREFERENCES_UPDATE_FAILED,
+            message_key=GENERIC_PREFERENCES_ERROR,
+            status_hint="internal",
         ) from e

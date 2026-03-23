@@ -107,7 +107,9 @@ describe("GuruStatusCards", () => {
   })
 
   it("does not render concentration or turnover when both are null", () => {
-    render(<GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: null, turnover_pct: null })]} />)
+    render(
+      <GuruStatusCards gurus={[makeGuru({ top5_concentration_pct: null, turnover_pct: null })]} />,
+    )
     expect(screen.queryByText("smart_money.metric.concentration")).not.toBeInTheDocument()
     expect(screen.queryByText("smart_money.metric.turnover")).not.toBeInTheDocument()
   })

@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { useTerminology } from "@/hooks/useTerminology"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsPrivate, maskMoney } from "@/hooks/usePrivacyMode"
 import { CATEGORY_ICON_SHORT } from "@/lib/constants"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { getDisplayName } from "@/lib/stock-display"
 import type { RebalanceResponse, HoldingDetail } from "@/api/types/dashboard"
 
 const TOP_LIMIT = 10
@@ -61,19 +63,40 @@ function aggregateHoldingsByTicker(holdings: HoldingDetail[]): HoldingDetail[] {
   })
 }
 
-function ChangeCell({ value, category, change24hLabel }: { value?: number | null; category: string; change24hLabel: string }) {
+function ChangeCell({
+  value,
+  category,
+  change24hLabel,
+}: {
+  value?: number | null
+  category: string
+  change24hLabel: string
+}) {
   if (value == null) return <td className="text-right px-3 py-2 text-sm">N/A</td>
   const isPos = value >= 0
   const isCrypto = category === "Crypto"
   return (
-    <td className={`text-right px-3 py-2 text-sm font-medium ${isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-      {isPos ? "▲" : "▼"}{Math.abs(value).toFixed(2)}%
-      {isCrypto ? <span className="ml-1 text-[10px] text-muted-foreground">({change24hLabel})</span> : null}
+    <td
+      className={`text-right px-3 py-2 text-sm font-medium ${isPos ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+    >
+      {isPos ? "▲" : "▼"}
+      {Math.abs(value).toFixed(2)}%
+      {isCrypto ? (
+        <span className="ml-1 text-[10px] text-muted-foreground">({change24hLabel})</span>
+      ) : null}
     </td>
   )
 }
 
-function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: HoldingDetail; isPrivate: boolean; displayCurrency: string }) {
+function ReturnCells({
+  holding,
+  isPrivate,
+  displayCurrency,
+}: {
+  holding: HoldingDetail
+  isPrivate: boolean
+  displayCurrency: string
+}) {
   const { cost_total, market_value } = holding
   if (!cost_total || cost_total <= 0) {
     return (
@@ -90,10 +113,13 @@ function ReturnCells({ holding, isPrivate, displayCurrency }: { holding: Holding
   return (
     <>
       <td className={`text-right px-3 py-2 text-sm font-medium ${colorClass}`}>
-        {isPos ? "▲" : "▼"}{Math.abs(returnPct).toFixed(1)}%
+        {isPos ? "▲" : "▼"}
+        {Math.abs(returnPct).toFixed(1)}%
       </td>
       <td className={`text-right px-3 py-2 text-sm ${colorClass}`}>
-        {isPrivate ? "***" : `${isPos ? "+" : "-"}${maskMoney(Math.abs(gainLoss), displayCurrency, 0)}`}
+        {isPrivate
+          ? "***"
+          : `${isPos ? "+" : "-"}${maskMoney(Math.abs(gainLoss), displayCurrency, 0)}`}
       </td>
     </>
   )
@@ -111,7 +137,12 @@ export function TopHoldings({ rebalance }: Props) {
       <Card>
         <CardContent className="p-6">
           <p className="text-sm text-muted-foreground">{t("dashboard.no_holdings_data")}</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={() => navigate("/allocation")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-3"
+            onClick={() => navigate("/allocation")}
+          >
             {t("dashboard.button_add_holdings")}
           </Button>
         </CardContent>
@@ -138,31 +169,67 @@ export function TopHoldings({ rebalance }: Props) {
                 <th className="text-left px-3 py-2">{t("dashboard.holdings_table.ticker")}</th>
                 <th className="text-left px-3 py-2">{t("dashboard.holdings_table.category")}</th>
                 <th className="text-right px-3 py-2">{t("dashboard.holdings_table.weight")}</th>
-                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.market_value")}</th>
-                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.daily_change")}</th>
-                <th className="text-right px-3 py-2">{t("dashboard.holdings_table.total_return")}</th>
-                <th className="text-right px-3 py-2">{term("unrealized_pl", t("dashboard.holdings_table.gain_loss"))}</th>
+                <th className="text-right px-3 py-2">
+                  {t("dashboard.holdings_table.market_value")}
+                </th>
+                <th className="text-right px-3 py-2">
+                  {t("dashboard.holdings_table.daily_change")}
+                </th>
+                <th className="text-right px-3 py-2">
+                  {t("dashboard.holdings_table.total_return")}
+                </th>
+                <th className="text-right px-3 py-2">
+                  {term("unrealized_pl", t("dashboard.holdings_table.gain_loss"))}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {top.map((h) => (
-                <tr key={h.ticker} className="border-t border-border/50 hover:bg-muted/30">
-                  <td className="px-3 py-2 font-semibold">{h.ticker}</td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {CATEGORY_ICON_SHORT[h.category] ?? ""} {t(`config.category.${h.category.toLowerCase()}`, h.category)}
-                  </td>
-                  <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
-                  <td className="text-right px-3 py-2">
-                    {maskMoney(h.market_value, displayCurrency)}
-                  </td>
-                  <ChangeCell
-                    value={h.change_pct}
-                    category={h.category}
-                    change24hLabel={t("allocation.crypto.change_24h_short")}
-                  />
-                  <ReturnCells holding={h} isPrivate={isPrivate} displayCurrency={displayCurrency} />
-                </tr>
-              ))}
+              {top.map((h) => {
+                const displayName = getDisplayName(h.name)
+                return (
+                  <tr key={h.ticker} className="border-t border-border/50 hover:bg-muted/30">
+                    <td className="px-3 py-2">
+                      {displayName ? (
+                        <div className="flex flex-col leading-tight min-w-0">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate font-semibold text-sm max-w-[140px] block">
+                                  {displayName}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent sideOffset={4} className="max-w-60 text-xs">
+                                {displayName}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span className="text-[10px] text-muted-foreground">{h.ticker}</span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold">{h.ticker}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {CATEGORY_ICON_SHORT[h.category] ?? ""}{" "}
+                      {t(`config.category.${h.category.toLowerCase()}`, h.category)}
+                    </td>
+                    <td className="text-right px-3 py-2">{h.weight_pct.toFixed(1)}%</td>
+                    <td className="text-right px-3 py-2">
+                      {maskMoney(h.market_value, displayCurrency)}
+                    </td>
+                    <ChangeCell
+                      value={h.change_pct}
+                      category={h.category}
+                      change24hLabel={t("allocation.crypto.change_24h_short")}
+                    />
+                    <ReturnCells
+                      holding={h}
+                      isPrivate={isPrivate}
+                      displayCurrency={displayCurrency}
+                    />
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

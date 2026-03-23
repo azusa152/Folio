@@ -115,7 +115,12 @@ export function GuruStatusCards({ gurus }: Props) {
                 size="sm"
                 variant="outline"
                 className="w-full text-xs mt-1"
-                onClick={() => syncMutation.mutate(guru.id, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
+                onClick={() =>
+                  syncMutation.mutate(guru.id, {
+                    onError: (err: unknown) =>
+                      toast.error(getErrorMessage(err) || t("common.error")),
+                  })
+                }
                 disabled={syncMutation.isPending}
               >
                 {syncing ? t("smart_money.sidebar.syncing") : t("smart_money.overview.sync_button")}

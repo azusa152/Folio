@@ -6,14 +6,10 @@ Infrastructure — SEC EDGAR API 適配器。
 含 tenacity 重試機制，針對暫時性網路錯誤自動指數退避重試。
 """
 
-import contextlib
 import os
 import re
-import threading
-import time
 import xml.etree.ElementTree as ET
 
-import diskcache
 import httpx
 from cachetools import TTLCache
 from tenacity import (
@@ -24,8 +20,6 @@ from tenacity import (
 )
 
 from domain.constants import (
-    DISK_CACHE_DIR,
-    DISK_CACHE_SIZE_LIMIT,
     DISK_GURU_FILING_TTL,
     DISK_KEY_GURU_FILING,
     GURU_FILING_CACHE_MAXSIZE,
@@ -39,6 +33,9 @@ from domain.constants import (
     YFINANCE_RETRY_WAIT_MAX,
     YFINANCE_RETRY_WAIT_MIN,
 )
+from infrastructure.common.config import DISK_CACHE_DIR, DISK_CACHE_SIZE_LIMIT
+from infrastructure.common.disk_cache import DiskCache
+from infrastructure.common.rate_limiter import RateLimiter
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -64,26 +61,7 @@ _edgar_retry = retry(
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-
-
-class _EdgarRateLimiter:
-    """Thread-safe rate limiter for SEC EDGAR (10 req/sec)."""
-
-    def __init__(self, calls_per_second: float = SEC_EDGAR_RATE_LIMIT_CPS) -> None:
-        self._min_interval = 1.0 / calls_per_second
-        self._lock = threading.Lock()
-        self._last_call = 0.0
-
-    def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_call
-            if elapsed < self._min_interval:
-                time.sleep(self._min_interval - elapsed)
-            self._last_call = time.monotonic()
-
-
-_rate_limiter = _EdgarRateLimiter()
+_rate_limiter = RateLimiter(calls_per_second=SEC_EDGAR_RATE_LIMIT_CPS)
 
 # ---------------------------------------------------------------------------
 # L1 Memory Cache (quarterly data — long TTL)
@@ -95,19 +73,15 @@ _filing_cache: TTLCache = TTLCache(
 # ---------------------------------------------------------------------------
 # L2 Disk Cache
 # ---------------------------------------------------------------------------
-_disk_cache = diskcache.Cache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
+_disk_cache = DiskCache(DISK_CACHE_DIR, size_limit=DISK_CACHE_SIZE_LIMIT)
 
 
 def _disk_get(key: str):
-    try:
-        return _disk_cache.get(key)
-    except Exception:
-        return None
+    return _disk_cache.get(key)
 
 
 def _disk_set(key: str, value, ttl: int) -> None:
-    with contextlib.suppress(Exception):
-        _disk_cache.set(key, value, expire=ttl)
+    _disk_cache.set(key, value, ttl)
 
 
 # ---------------------------------------------------------------------------

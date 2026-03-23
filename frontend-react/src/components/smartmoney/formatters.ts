@@ -17,9 +17,9 @@ export const SMART_MONEY_STALE_DAYS = 120
 
 export function isStale(reportDate: string | null | undefined): boolean {
   if (!reportDate) return true
-  const d = new Date(reportDate)
+  const parsedDate = new Date(reportDate)
   const now = new Date()
-  const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+  const diffDays = (now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24)
   return diffDays > SMART_MONEY_STALE_DAYS
 }
 

@@ -8,9 +8,7 @@ export function ConsensusStocks({ items }: { items: ConsensusStockItem[] }) {
 
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        {t("smart_money.overview.consensus_empty")}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("smart_money.overview.consensus_empty")}</p>
     )
   }
 
@@ -52,9 +50,7 @@ export function ConsensusStocks({ items }: { items: ConsensusStockItem[] }) {
                 <span className="ml-1">
                   <ActionBadge action={g.action} />
                 </span>
-                {g.weight_pct != null && (
-                  <span className="ml-1">{g.weight_pct.toFixed(1)}%</span>
-                )}
+                {g.weight_pct != null && <span className="ml-1">{g.weight_pct.toFixed(1)}%</span>}
               </span>
             ))}
           </div>

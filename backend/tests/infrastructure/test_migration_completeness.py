@@ -8,34 +8,20 @@ entity but the corresponding ALTER TABLE migration is forgotten, causing
 production databases (with persistent radar.db) to crash on INSERT.
 """
 
-import inspect
-import os
 import re
-import tempfile
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
-
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_migration"
-)
-
-from sqlalchemy import (  # noqa: E402
+from sqlalchemy import (
     Column,
     MetaData,
     Table,
     create_engine,
     text,
 )
-from sqlalchemy import inspect as sa_inspect  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.pool import StaticPool
+from sqlmodel import SQLModel
 
-import domain.entities  # noqa: E402 — register all entity models
-from infrastructure.database import _run_migrations  # noqa: E402
+from infrastructure.database import _MIGRATIONS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -46,15 +32,15 @@ _ALTER_TABLE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_SQL_STRING_PATTERN = re.compile(
-    r'"((?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s[^"]+)"',
+_SQL_INTEREST_PATTERN = re.compile(
+    r"^(?:ALTER TABLE|UPDATE|CREATE TABLE|CREATE(?: UNIQUE)? INDEX)\s",
+    re.IGNORECASE,
 )
 
 
 def _extract_migration_sql() -> list[str]:
-    """Extract SQL statement strings from _run_migrations() source code."""
-    source = inspect.getsource(_run_migrations)
-    sqls = _SQL_STRING_PATTERN.findall(source)
+    """Return SQL strings from the _MIGRATIONS constant."""
+    sqls = [sql for sql in _MIGRATIONS if _SQL_INTEREST_PATTERN.match(sql)]
     assert sqls, (
         "Failed to extract any migration SQL from _run_migrations(). "
         "Has the function format changed?"

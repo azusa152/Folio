@@ -10,7 +10,8 @@
     "allocation": "个人资产配置",
     "nisa": "NISA",
     "fx_watch": "外汇总览",
-    "smart_money": "大师足迹"
+    "smart_money": "大师足迹",
+    "settings": "设置"
   },
   "common": {
     "refresh": "🔄 重新整理",
@@ -44,6 +45,7 @@
     "error_render": "发生错误",
     "retry": "重试",
     "offline_banner": "当前离线中，数据可能不是最新。",
+    "demo_banner": "演示模式 — 以下为示例数据，您的真实数据不受影响。",
     "last_updated_relative": "上次更新 {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} 股",
@@ -89,11 +91,10 @@
       "moat": "🏰 护城河 (Moat)",
       "growth": "🚀 成长梦想 (Growth)",
       "etf": "📈 ETF",
-      "mutual_fund": "📚 共同基金 (Mutual Fund)",
+      "mutual_fund": "🧺 公募基金",
       "bond": "🛡️ 债券 (Bond)",
       "crypto": "₿ 加密货币 (Crypto)",
-      "cash": "💵 现金 (Cash)",
-      "mutual_fund": "🧺 公募基金"
+      "cash": "💵 现金 (Cash)"
     },
     "category_desc": {
       "trend_setter": "以大型 ETF 与龙头股为主，跟踪资金流与消费趋势。",
@@ -276,6 +277,9 @@
     "button_add_holdings": "🧾 记录交易",
     "market_sentiment": "市场情绪",
     "total_market_value": "总市值",
+    "updating": "更新中...",
+    "as_of": "截至 {{datetime}}",
+    "fetching_market_data": "正在获取最新市场数据...",
     "health_score": "健康分数",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目标 vs 实际配置",
@@ -951,10 +955,16 @@
     },
     "charts": {
       "title": "目标 vs 实际配置",
-      "toggle_pie": "饼图",
-      "toggle_treemap": "树状图",
       "target": "目标",
-      "actual": "实际"
+      "actual": "实际",
+      "other": "其他",
+      "category": "类别",
+      "drift_label": "偏差",
+      "value": "市值",
+      "on_target": "符合目标",
+      "over": "超配",
+      "under": "低配",
+      "other_tooltip": "组合占比低于1%的类别"
     },
     "drift": {
       "title": "配置偏移",
@@ -964,6 +974,7 @@
     },
     "col": {
       "ticker": "代号",
+      "holding": "名称",
       "account": "账户",
       "category": "类别",
       "qty": "数量",
@@ -2413,5 +2424,36 @@
     "split_purchase": "拆分买入",
     "split_success": "已创建 {{count}} 笔拆分买入交易",
     "split_rollback_failed": "拆分买入部分失败，且自动回滚未能完全完成。"
+  },
+  "settings": {
+    "page_title": "设置",
+    "page_subtitle": "在这里统一管理应用、投资组合与通知偏好。",
+    "tab_general": "常规",
+    "tab_portfolio": "投资组合",
+    "tab_notifications": "通知",
+    "section_appearance": "外观",
+    "section_language": "语言与地区",
+    "section_privacy": "隐私",
+    "section_currency": "货币",
+    "goto_settings": "前往设置",
+    "goto_settings_hint": "设置已移至独立页面，请使用设置页面管理您的偏好。",
+    "language_label": "显示语言",
+    "language_hint": "选择整个应用程序使用的语言。",
+    "theme_label": "主题",
+    "theme_hint": "选择应用程序的外观。「系统」会跟随您的设备设置。",
+    "theme_light": "浅色",
+    "theme_dark": "深色",
+    "privacy_label": "隐私模式",
+    "privacy_hint": "在所有页面隐藏金额数字——在分享屏幕时非常实用。",
+    "terminology_label": "术语显示风格",
+    "terminology_hint": "「简化」使用日常用语；「专业」使用标准金融术语。",
+    "default_currency_label": "默认显示货币",
+    "default_currency_hint": "应用程序中所有金额将默认以此货币显示。",
+    "home_currency_label": "本国货币",
+    "home_currency_hint": "您的本国货币，用于计算外汇敞口与风险。",
+    "portfolio_section_title": "投资组合",
+    "notifications_section_title": "通知",
+    "telegram_section_title": "Telegram 通知",
+    "alerts_section_title": "通知偏好"
   }
 }

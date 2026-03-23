@@ -194,6 +194,58 @@ class TestRebalanceResponse:
         assert len(details) == 2
         assert {row["account_id"] for row in details} == {account_a, account_b}
 
+    def test_holdings_detail_should_include_name_field(self, client):
+        """holdings_detail rows expose a name field (may be None when not cached)."""
+        from unittest.mock import patch
+
+        _seed_equity_holding(client, ticker="AAPL")
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        with patch(
+            "application.portfolio.rebalance_service.get_ticker_name_cached",
+            return_value="Apple Inc.",
+        ):
+            rebalance_resp = client.get("/rebalance")
+
+        assert rebalance_resp.status_code == 200
+        detail = next(
+            (
+                r
+                for r in rebalance_resp.json()["holdings_detail"]
+                if r["ticker"] == "AAPL"
+            ),
+            None,
+        )
+        assert detail is not None
+        assert "name" in detail
+        assert detail["name"] == "Apple Inc."
+
+    def test_holdings_detail_name_is_none_when_not_cached(self, client):
+        """holdings_detail name field is None when name is not in cache."""
+        from unittest.mock import patch
+
+        _seed_equity_holding(client, ticker="AAPL")
+        client.post("/profiles", json=_PROFILE_PAYLOAD)
+
+        with patch(
+            "application.portfolio.rebalance_service.get_ticker_name_cached",
+            return_value=None,
+        ):
+            rebalance_resp = client.get("/rebalance")
+
+        assert rebalance_resp.status_code == 200
+        detail = next(
+            (
+                r
+                for r in rebalance_resp.json()["holdings_detail"]
+                if r["ticker"] == "AAPL"
+            ),
+            None,
+        )
+        assert detail is not None
+        assert "name" in detail
+        assert detail["name"] is None
+
     def test_should_hide_tiny_float_residue_positions_in_holdings_and_rebalance(
         self, client
     ):

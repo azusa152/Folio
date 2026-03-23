@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   PersonaTemplate,
   AllocRebalanceResponse,
@@ -36,7 +37,7 @@ export function useTemplates() {
     queryFn: async () => {
       const { data, error } = await client.GET("/personas/templates")
       if (error) throw error
-      return data as unknown as PersonaTemplate[]
+      return fromApiData<PersonaTemplate[]>(data)
     },
     staleTime: 24 * 60 * 60 * 1000,
   })
@@ -50,7 +51,7 @@ export function useAllocRebalance(displayCurrency: string, enabled = true) {
         params: { query: { display_currency: displayCurrency } },
       })
       if (error) throw error
-      return data as unknown as AllocRebalanceResponse
+      return fromApiData<AllocRebalanceResponse>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -65,7 +66,7 @@ export function useCurrencyExposure(enabled = true, homeCurrency?: string) {
         params: { query: { home_currency: homeCurrency } },
       })
       if (error) throw error
-      return data as unknown as CurrencyExposureResponse
+      return fromApiData<CurrencyExposureResponse>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -80,7 +81,7 @@ export function useStressTest(dropPct: number, currency: string, enabled = true)
         params: { query: { scenario_drop_pct: dropPct, display_currency: currency } },
       })
       if (error) throw error
-      return data as unknown as StressTestResponse
+      return fromApiData<StressTestResponse>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -93,7 +94,7 @@ export function useTelegramSettings() {
     queryFn: async () => {
       const { data, error } = await client.GET("/settings/telegram")
       if (error) throw error
-      return data as unknown as TelegramSettings
+      return fromApiData<TelegramSettings>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -105,7 +106,7 @@ export function usePreferences() {
     queryFn: async () => {
       const { data, error } = await client.GET("/settings/preferences")
       if (error) throw error
-      return data as unknown as AllocPreferencesResponse
+      return fromApiData<AllocPreferencesResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -121,7 +122,7 @@ export function useCreateProfile() {
     mutationFn: async (payload: CreateProfileRequest) => {
       const { data, error } = await client.POST("/profiles", { body: payload })
       if (error) throw error
-      return data as unknown as ProfileResponse
+      return fromApiData<ProfileResponse>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] })
@@ -138,7 +139,7 @@ export function useUpdateProfile() {
         body: payload,
       })
       if (error) throw error
-      return data as unknown as ProfileResponse
+      return fromApiData<ProfileResponse>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] })
@@ -152,7 +153,7 @@ export function useWithdraw() {
     mutationFn: async (payload: WithdrawRequest) => {
       const { data, error } = await client.POST("/withdraw", { body: payload })
       if (error) throw error
-      return data as unknown as WithdrawResponse
+      return fromApiData<WithdrawResponse>(data)
     },
   })
 }
@@ -183,7 +184,7 @@ export function useSaveTelegram() {
     mutationFn: async (payload: SaveTelegramRequest) => {
       const { data, error } = await client.PUT("/settings/telegram", { body: payload })
       if (error) throw error
-      return data as unknown as TelegramSettings
+      return fromApiData<TelegramSettings>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings", "telegram"] })
@@ -217,7 +218,7 @@ export function useSavePreferences() {
     mutationFn: async (payload: SavePreferencesRequest) => {
       const { data, error } = await client.PUT("/settings/preferences", { body: payload })
       if (error) throw error
-      return data as unknown as AllocPreferencesResponse
+      return fromApiData<AllocPreferencesResponse>(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings", "preferences"] })
@@ -225,9 +226,7 @@ export function useSavePreferences() {
   })
 }
 
-function invalidateStockSplitDerivedQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
+function invalidateStockSplitDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
   ;[
     ["stock-splits", "pending"],
     ["transactions"],
@@ -240,9 +239,7 @@ function invalidateStockSplitDerivedQueries(
   })
 }
 
-function invalidateDividendDerivedQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
+function invalidateDividendDerivedQueries(queryClient: ReturnType<typeof useQueryClient>) {
   ;[
     ["dividends", "pending"],
     ["transactions"],
@@ -261,7 +258,7 @@ export function usePendingStockSplits(enabled = true) {
     queryFn: async () => {
       const { data, error } = await client.GET("/stock-splits/pending")
       if (error) throw error
-      return data as unknown as StockSplitEvent[]
+      return fromApiData<StockSplitEvent[]>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -274,7 +271,7 @@ export function useCheckStockSplits() {
     mutationFn: async () => {
       const { data, error } = await client.POST("/stock-splits/check")
       if (error) throw error
-      return data as unknown as StockSplitCheckResponse
+      return fromApiData<StockSplitCheckResponse>(data)
     },
     onSuccess: () => {
       invalidateStockSplitDerivedQueries(queryClient)
@@ -290,7 +287,7 @@ export function useApplyStockSplit() {
         params: { path: { event_id: eventId } },
       })
       if (error) throw error
-      return data as unknown as StockSplitApplyResponse
+      return fromApiData<StockSplitApplyResponse>(data)
     },
     onSuccess: () => {
       invalidateStockSplitDerivedQueries(queryClient)
@@ -306,7 +303,7 @@ export function useDismissStockSplit() {
         params: { path: { event_id: eventId } },
       })
       if (error) throw error
-      return data as unknown as StockSplitDismissResponse
+      return fromApiData<StockSplitDismissResponse>(data)
     },
     onSuccess: () => {
       invalidateStockSplitDerivedQueries(queryClient)
@@ -320,7 +317,7 @@ export function useApplyAllStockSplits() {
     mutationFn: async () => {
       const { data, error } = await client.POST("/stock-splits/apply-all")
       if (error) throw error
-      return data as unknown as StockSplitApplyAllResponse
+      return fromApiData<StockSplitApplyAllResponse>(data)
     },
     onSuccess: () => {
       invalidateStockSplitDerivedQueries(queryClient)
@@ -334,7 +331,7 @@ export function usePendingDividends(enabled = true) {
     queryFn: async () => {
       const { data, error } = await client.GET("/dividends/pending")
       if (error) throw error
-      return data as unknown as DividendEvent[]
+      return fromApiData<DividendEvent[]>(data)
     },
     staleTime: 60 * 1000,
     enabled,
@@ -347,7 +344,7 @@ export function useCheckDividends() {
     mutationFn: async () => {
       const { data, error } = await client.POST("/dividends/check")
       if (error) throw error
-      return data as unknown as DividendCheckResponse
+      return fromApiData<DividendCheckResponse>(data)
     },
     onSuccess: () => {
       invalidateDividendDerivedQueries(queryClient)
@@ -363,7 +360,7 @@ export function useApplyDividend() {
         params: { path: { event_id: eventId } },
       })
       if (error) throw error
-      return data as unknown as DividendApplyResponse
+      return fromApiData<DividendApplyResponse>(data)
     },
     onSuccess: () => {
       invalidateDividendDerivedQueries(queryClient)
@@ -379,7 +376,7 @@ export function useDismissDividend() {
         params: { path: { event_id: eventId } },
       })
       if (error) throw error
-      return data as unknown as DividendDismissResponse
+      return fromApiData<DividendDismissResponse>(data)
     },
     onSuccess: () => {
       invalidateDividendDerivedQueries(queryClient)
@@ -393,7 +390,7 @@ export function useApplyAllDividends() {
     mutationFn: async () => {
       const { data, error } = await client.POST("/dividends/apply-all")
       if (error) throw error
-      return data as unknown as DividendApplyAllResponse
+      return fromApiData<DividendApplyAllResponse>(data)
     },
     onSuccess: () => {
       invalidateDividendDerivedQueries(queryClient)

@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlmodel import Session, select
 
+from domain.constants import BENCHMARK_TICKERS
 from domain.entities import PortfolioSnapshot
 from logging_config import get_logger
 
@@ -59,7 +60,6 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
     # Fetch multiple benchmark index prices
     from infrastructure.market_data import get_technical_signals
 
-    benchmark_tickers = ["^GSPC", "VT", "^N225", "^TWII"]
     benchmark_prices: dict[str, float | None] = {}
 
     def _fetch_benchmark_price(ticker: str) -> tuple[str, float | None]:
@@ -71,9 +71,10 @@ def take_daily_snapshot(session: Session) -> PortfolioSnapshot:
             logger.warning("無法取得基準指數 %s 價格：%s", ticker, exc)
             return ticker, None
 
-    with ThreadPoolExecutor(max_workers=len(benchmark_tickers)) as executor:
+    with ThreadPoolExecutor(max_workers=len(BENCHMARK_TICKERS)) as executor:
         futures = {
-            executor.submit(_fetch_benchmark_price, t): t for t in benchmark_tickers
+            executor.submit(_fetch_benchmark_price, ticker): ticker
+            for ticker in BENCHMARK_TICKERS
         }
         for future in as_completed(futures):
             ticker, price = future.result()
@@ -155,14 +156,14 @@ def backfill_benchmark_values(session: Session) -> int:
 
     from infrastructure.market_data import get_benchmark_close_history
 
-    benchmark_tickers = ["^GSPC", "VT", "^N225", "^TWII"]
-
     all_snapshots = list(
         session.exec(
             select(PortfolioSnapshot).order_by(PortfolioSnapshot.snapshot_date)
         ).all()
     )
-    snapshots = [s for s in all_snapshots if _needs_backfill(s.benchmark_values)]
+    snapshots = [
+        snap for snap in all_snapshots if _needs_backfill(snap.benchmark_values)
+    ]
     if not snapshots:
         logger.info("無需補填基準指數資料。")
         return 0
@@ -177,7 +178,7 @@ def backfill_benchmark_values(session: Session) -> int:
     )
 
     price_history: dict[str, pd.Series | None] = {}
-    for ticker in benchmark_tickers:
+    for ticker in BENCHMARK_TICKERS:
         series = get_benchmark_close_history(ticker, min_date, max_date)
         price_history[ticker] = series
         logger.info(
@@ -191,7 +192,7 @@ def backfill_benchmark_values(session: Session) -> int:
         snap_date = snap.snapshot_date
         prices: dict[str, float | None] = {}
 
-        for ticker in benchmark_tickers:
+        for ticker in BENCHMARK_TICKERS:
             series = price_history.get(ticker)
             if series is None or len(series) == 0:
                 prices[ticker] = None

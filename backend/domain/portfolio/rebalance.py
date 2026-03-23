@@ -4,11 +4,18 @@ Domain — 再平衡計算（純函式，無副作用）。
 可獨立單元測試，不依賴框架或 I/O。
 """
 
+from typing import Any, TypedDict
+
 from domain.constants import (
     CATEGORY_ICON,
     DRIFT_THRESHOLD_PCT,
     XRAY_SINGLE_STOCK_WARN_PCT,
 )
+
+
+class RebalanceAdvice(TypedDict):
+    key: str
+    params: dict[str, Any]
 
 
 def calculate_rebalance(
@@ -28,7 +35,7 @@ def calculate_rebalance(
         {
             "total_value": float,
             "categories": {cat: {"target_pct", "current_pct", "drift_pct", "market_value"}},
-            "advice": [str, ...],
+            "advice": [{"key": str, "params": dict}, ...],
         }
     """
     total_value = sum(category_values.values())
@@ -43,7 +50,7 @@ def calculate_rebalance(
         set(list(target_config.keys()) + list(category_values.keys()))
     )
     categories_result: dict[str, dict] = {}
-    advice: list[str] = []
+    advice: list[RebalanceAdvice] = []
 
     for cat in all_categories:
         target_pct = target_config.get(cat, 0.0)

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 import os
 
-logger = logging.getLogger(__name__)
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def assert_docker_runtime() -> None:

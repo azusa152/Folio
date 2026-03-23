@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
 import type {
   BackfillStatusResponse,
   BacktestDetailResponse,
@@ -12,7 +13,7 @@ export function useBacktestSummary() {
     queryFn: async () => {
       const { data, error } = await client.GET("/backtest/summary")
       if (error) throw error
-      return data as unknown as BacktestSummaryResponse
+      return fromApiData<BacktestSummaryResponse>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -26,7 +27,7 @@ export function useBacktestDetail(signal: string, limit = 50, enabled = true) {
         params: { path: { signal }, query: { limit } },
       })
       if (error) throw error
-      return data as unknown as BacktestDetailResponse
+      return fromApiData<BacktestDetailResponse>(data)
     },
     enabled: enabled && !!signal,
     staleTime: 5 * 60 * 1000,
@@ -39,7 +40,7 @@ export function useBackfillStatus() {
     queryFn: async () => {
       const { data, error } = await client.GET("/backtest/backfill-status")
       if (error) throw error
-      return data as unknown as BackfillStatusResponse
+      return fromApiData<BackfillStatusResponse>(data)
     },
     staleTime: 3000,
     // Keep polling so the UI can detect the transition from idle -> backfilling

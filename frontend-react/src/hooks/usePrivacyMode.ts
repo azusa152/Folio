@@ -32,11 +32,7 @@ export function useIsPrivate(): boolean {
 export function maskMoney(value: number, currency = "USD", fractionDigits?: number): string {
   if (usePrivacyMode.getState().isPrivate) return "***"
   const digits =
-    fractionDigits != null
-      ? fractionDigits
-      : currency === "JPY" || currency === "TWD"
-        ? 0
-        : 2
+    fractionDigits != null ? fractionDigits : currency === "JPY" || currency === "TWD" ? 0 : 2
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,

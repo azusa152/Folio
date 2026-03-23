@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { StockCard } from "../StockCard"
-import type { RadarStock, RadarEnrichedStock } from "@/api/types/radar"
+import { makeRadarEnrichedStock, makeRadarStock } from "./fixtures"
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -26,50 +26,42 @@ vi.mock("@/components/radar/SparklineHeader", () => ({
   SparklineHeader: () => <div data-testid="sparkline-header" />,
 }))
 
-const MF_STOCK: RadarStock = {
+const MF_STOCK = makeRadarStock({
   ticker: "01311143",
   category: "Mutual_Fund",
   current_thesis: "eMAXIS Slim S&P500",
-  current_tags: [],
-  display_order: 0,
   last_scan_signal: "NORMAL",
   signal_since: null,
-  is_active: true,
-  is_etf: false,
-} as RadarStock
+})
 
-const MF_ENRICHMENT_WITH_NAME: RadarEnrichedStock = {
+const MF_ENRICHMENT_WITH_NAME = makeRadarEnrichedStock({
   ticker: "01311143",
   computed_signal: "NORMAL",
   fund_name: "eMAXIS Slim S&P500",
   nav_date: "2026-03-17",
-} as unknown as RadarEnrichedStock
+})
 
-const MF_ENRICHMENT_NO_NAME: RadarEnrichedStock = {
+const MF_ENRICHMENT_NO_NAME = makeRadarEnrichedStock({
   ticker: "01311143",
   computed_signal: "NORMAL",
   fund_name: null,
-} as unknown as RadarEnrichedStock
+})
 
-const REGULAR_STOCK: RadarStock = {
+const REGULAR_STOCK = makeRadarStock({
   ticker: "AAPL",
   category: "Moat",
   current_thesis: "iPhone ecosystem",
-  current_tags: [],
-  display_order: 0,
   last_scan_signal: "NORMAL",
   signal_since: null,
-  is_active: true,
-  is_etf: false,
-} as RadarStock
+})
 
-const REGULAR_ENRICHMENT: RadarEnrichedStock = {
+const REGULAR_ENRICHMENT = makeRadarEnrichedStock({
   ticker: "AAPL",
   computed_signal: "NORMAL",
   name: "Apple Inc.",
   exchange: "NMS",
   fund_name: undefined,
-} as unknown as RadarEnrichedStock
+})
 
 describe("StockCardHeader — company/fund name display", () => {
   it("shows fund name as primary label when fund_name is available", () => {
@@ -102,9 +94,11 @@ describe("StockCardHeader — company/fund name display", () => {
     render(
       <StockCard
         stock={REGULAR_STOCK}
-        enrichment={
-          { ...REGULAR_ENRICHMENT, fund_name: "some fund", name: undefined } as RadarEnrichedStock
-        }
+        enrichment={makeRadarEnrichedStock({
+          ...REGULAR_ENRICHMENT,
+          fund_name: "some fund",
+          name: undefined,
+        })}
         index={0}
       />,
     )

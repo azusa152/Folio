@@ -60,6 +60,15 @@ export function formatRelativeTime(seconds: number, locale?: string): string {
   return rtf.format(-days, "day")
 }
 
+/** Return today's date as an ISO-8601 string (YYYY-MM-DD) in local time. */
+export function todayISO(): string {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 /** Safely extract a human-readable message from an unknown error value. */
 export function getErrorMessage(err: unknown): string {
   if (err == null) return ""

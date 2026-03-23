@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from api.schemas import MessageResponse, ThesisCreateRequest
-from application.services import StockNotFoundError, add_thesis, get_thesis_history
+from application.stock.stock_service import (
+    StockNotFoundError,
+    add_thesis,
+    get_thesis_history,
+)
 from domain.constants import ERROR_STOCK_NOT_FOUND
 from infrastructure.database import get_session
 

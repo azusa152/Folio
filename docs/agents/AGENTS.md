@@ -1,5 +1,9 @@
 # Folio
 
+> **Audience:** External AI agents calling Folio's webhook API.
+> For contributor/coding-assistant context (architecture, commands, key paths),
+> see [`AGENTS.md`](../../AGENTS.md) at the repo root.
+
 Self-hosted investment tracking. Backend: `http://localhost:8000`.
 
 ## Rules

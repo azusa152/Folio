@@ -97,6 +97,7 @@ def calculate_stress_test(
         holdings_breakdown.append(
             {
                 "ticker": holding["ticker"],
+                "name": holding.get("name"),
                 "category": holding.get("category", "Unknown"),
                 "beta": round(beta, 2),
                 "market_value": round(market_value, 2),

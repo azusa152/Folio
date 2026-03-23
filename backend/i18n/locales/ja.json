@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  急落警報  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 株価が急変動 — 落ち着くまで様子見",
     "signal_new_badge": "[NEW]",
     "signal_transition": "前シグナル：{from_signal} → {to_signal}",
-    "resolved_detail": "{ticker}（前 {signal}、{days}日間）"
+    "resolved_detail": "{ticker}（前 {signal}、{days}日間）",
+    "resolved_detail_no_duration": "{ticker}（前 {signal}）"
   },
   "notification": {
     "change_label": "変化",
@@ -211,7 +212,8 @@
     "advice_zero": "⚠️ 保有総額がゼロのため、配分計算ができません。",
     "advice_over": "{icon} {category} は {drift}% 超過配分です。一部売却を検討してください。",
     "advice_under": "{icon} {category} は {drift}% 不足配分です。追加購入を検討してください。",
-    "advice_ok": "✅ 全カテゴリが目標範囲内です。リバランス不要。"
+    "advice_ok": "✅ 全カテゴリが目標範囲内です。リバランス不要。",
+    "snapshot_fallback_notice": "⏳ 最後に保存したポートフォリオの数値を表示しています。リアルタイムデータをバックグラウンドで読み込んでいます。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外貨両替タイミングアラート</b>\n\n",
@@ -246,7 +248,10 @@
     "rea_consec_disabled": "📊 {consec} 日連続上昇中、ただし {high_days} 日高値未達",
     "rea_no_signal": "📊 直近高値未達、連続上昇は {consec} 日のみ",
     "rea_disabled": "📊 高値接近または連続上昇のいずれかのアラートを有効にしてください",
-    "rea_no_data": "📊 この通貨ペアの履歴データが不足しています"
+    "rea_no_data": "📊 この通貨ペアの履歴データが不足しています",
+    "error": {
+      "refresh_cooldown": "強制更新はクールダウン中です。{retry_after_seconds} 秒後に再試行してください。"
+    }
   },
   "stress_test": {
     "no_holdings": "保有なし",
@@ -390,7 +395,9 @@
     "heatmap_filing_delay_note": "⚠️ 13F 保有データの基準日は {report_date} です。公開には最低 45 日の遅延があり、現在の実際の保有を反映しない場合があります。",
     "backtest_disclaimer": "これは仮想シミュレーションであり、実際の運用成績ではありません。申告日の終値で買付、売買コスト 0、四半期内のポジション変更なしを前提としています。13F は米国株ロングのみを対象とし、ショート、オプション、米国外保有は含まれません。過去の成績は将来の成果を保証しません。",
     "backtest_not_enough_filings": "バックテストには最低 2 件の申告データが必要です。先に 13F 同期または履歴バックフィルを実行してください。",
-    "backtest_benchmark_data_missing": "ベンチマーク価格データを一時的に取得できません。しばらくしてから再試行してください。"
+    "backtest_benchmark_data_missing": "ベンチマーク価格データを一時的に取得できません。しばらくしてから再試行してください。",
+    "error_not_found": "グル {guru_id} が見つかりません",
+    "deactivated": "グル {guru_id} を無効化しました"
   },
   "fx": {
     "period_1d": "1日",
@@ -417,6 +424,10 @@
   "analytics": {
     "date_range_both_required": "start と end は両方指定してください",
     "date_range_invalid_order": "start は end より前の日付にしてください"
+  },
+  "snapshot": {
+    "date_range_required": "start と end は両方指定してください",
+    "date_range_start_after_end": "start は end より前の日付にしてください"
   },
   "wrapper": {
     "tokutei": "特定口座",

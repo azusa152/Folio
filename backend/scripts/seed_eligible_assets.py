@@ -17,13 +17,13 @@ For local-only execution (e.g. debugging against a local DB), set:
 from __future__ import annotations
 
 import argparse
-import logging
 
 from sqlmodel import Session
 
+from logging_config import get_logger
 from scripts import assert_docker_runtime
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def run(

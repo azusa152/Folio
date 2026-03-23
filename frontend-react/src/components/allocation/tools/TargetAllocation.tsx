@@ -29,8 +29,11 @@ export function TargetAllocation() {
   // This ensures sliders show the correct saved values even when the component mounts
   // after the profile query has already resolved (e.g. inside a lazy TabsContent).
   const profileSliders = useMemo(
-    () => (profile?.config ? mergeConfig(profile.config) : Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0]))),
-    [profile]
+    () =>
+      profile?.config
+        ? mergeConfig(profile.config)
+        : Object.fromEntries(STOCK_CATEGORIES.map((c) => [c, 0])),
+    [profile],
   )
 
   // User edits override the profile base. null = no pending edits, show profileSliders.
@@ -68,8 +71,8 @@ export function TargetAllocation() {
             setUserSliders(null)
           },
           onError: (err: unknown) => {
-          toast.error(getErrorMessage(err) || t("common.error"))
-        },
+            toast.error(getErrorMessage(err) || t("common.error"))
+          },
         },
       )
     } else {
@@ -92,7 +95,9 @@ export function TargetAllocation() {
       {/* Template selector */}
       {templates && templates.length > 0 && (
         <div className="space-y-1">
-          <label htmlFor="target-template" className="text-xs font-medium">{t("allocation.target.template_label")}</label>
+          <label htmlFor="target-template" className="text-xs font-medium">
+            {t("allocation.target.template_label")}
+          </label>
           <select
             id="target-template"
             value={selectedTemplate}
@@ -101,7 +106,9 @@ export function TargetAllocation() {
           >
             <option value="">— {t("allocation.target.template_placeholder")} —</option>
             {templates.map((tmpl) => (
-              <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+              <option key={tmpl.id} value={tmpl.id}>
+                {tmpl.name}
+              </option>
             ))}
           </select>
           {selectedTemplate && (
@@ -119,7 +126,9 @@ export function TargetAllocation() {
           return (
             <div key={cat} className="space-y-1">
               <div className="flex items-center justify-between">
-                <label htmlFor={sliderId} className="text-xs font-medium">{t(`config.category.${cat.toLowerCase()}`)}</label>
+                <label htmlFor={sliderId} className="text-xs font-medium">
+                  {t(`config.category.${cat.toLowerCase()}`)}
+                </label>
                 <span className="text-xs font-semibold">{sliders[cat] ?? 0}%</span>
               </div>
               <input
@@ -140,13 +149,18 @@ export function TargetAllocation() {
         })}
 
         {/* Sum validation */}
-        <div className={`text-xs font-semibold ${Math.abs(remaining) < 0.01 ? FINANCE_TEXT.gain : FINANCE_TEXT.warning}`}>
-          {t("allocation.target.sum_label")}: {total.toFixed(0)}% ({remaining >= 0 ? "+" : ""}{remaining.toFixed(0)}% {t("allocation.target.remaining")})
+        <div
+          className={`text-xs font-semibold ${Math.abs(remaining) < 0.01 ? FINANCE_TEXT.gain : FINANCE_TEXT.warning}`}
+        >
+          {t("allocation.target.sum_label")}: {total.toFixed(0)}% ({remaining >= 0 ? "+" : ""}
+          {remaining.toFixed(0)}% {t("allocation.target.remaining")})
         </div>
 
         <Button
           onClick={handleSave}
-          disabled={createMutation.isPending || updateMutation.isPending || Math.abs(remaining) > 0.5}
+          disabled={
+            createMutation.isPending || updateMutation.isPending || Math.abs(remaining) > 0.5
+          }
           size="sm"
         >
           {t("allocation.target.save_button")}

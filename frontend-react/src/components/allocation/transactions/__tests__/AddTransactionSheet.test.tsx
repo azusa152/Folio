@@ -3,7 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AddTransactionSheet } from "../AddTransactionSheet"
 
-const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState, wrapperState, accountState } = vi.hoisted(() => ({
+const {
+  mockMutate,
+  toastSuccessMock,
+  toastErrorMock,
+  toastInfoMock,
+  radarState,
+  wrapperState,
+  accountState,
+} = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -13,7 +21,12 @@ const { mockMutate, toastSuccessMock, toastErrorMock, toastInfoMock, radarState,
     isLoading: false,
   },
   wrapperState: {
-    eligibleItems: [] as Array<{ ticker: string; fund_name: string; asset_type?: string; trust_fee_pct?: number }>,
+    eligibleItems: [] as Array<{
+      ticker: string
+      fund_name: string
+      asset_type?: string
+      trust_fee_pct?: number
+    }>,
     eligibility: undefined as
       | {
           ticker: string
@@ -100,7 +113,10 @@ vi.mock("@/api/hooks/useAccounts", () => ({
 vi.mock("@/api/hooks/useWrappers", () => ({
   useWrapperEligibility: () => ({ data: wrapperState.eligibility, isLoading: false }),
   useSuggestRouting: () => ({ data: undefined, isLoading: false }),
-  useEligibleAssets: (_wrapper: string | null | undefined, options?: { assetType?: string; enabled?: boolean }) => {
+  useEligibleAssets: (
+    _wrapper: string | null | undefined,
+    options?: { assetType?: string; enabled?: boolean },
+  ) => {
     const enabled = options?.enabled !== false
     const items = enabled
       ? options?.assetType
@@ -128,7 +144,9 @@ describe("AddTransactionSheet", () => {
     wrapperState.eligibleItems = []
     wrapperState.eligibility = undefined
     wrapperState.quota = undefined
-    accountState.accounts = [{ id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" }]
+    accountState.accounts = [
+      { id: 7, name: "IB Main", broker: "Interactive Brokers", tax_wrapper: "tokutei" },
+    ]
     accountState.balances = [{ currency: "USD", balance: 500 }]
     accountState.sellablePositionsError = false
     accountState.sellablePositions = []
@@ -147,9 +165,13 @@ describe("AddTransactionSheet", () => {
     )
 
     fireEvent.change(screen.getByLabelText("transactions.form.account"), { target: { value: "7" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "2" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "2" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "20" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "20" },
+    })
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.show_more" }))
     fireEvent.change(screen.getByLabelText("transactions.form.fx_rate"), { target: { value: "0" } })
@@ -169,12 +191,18 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "2" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "2" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "3" } })
     expect(screen.getByDisplayValue("6")).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "8" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "4" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "8" },
+    })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "4" },
+    })
     expect(screen.getByDisplayValue("8")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.use_auto_total" }))
@@ -190,7 +218,9 @@ describe("AddTransactionSheet", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.show_more" }))
-    const holdingSelect = screen.getByLabelText("transactions.form.holding_link") as HTMLSelectElement
+    const holdingSelect = screen.getByLabelText(
+      "transactions.form.holding_link",
+    ) as HTMLSelectElement
     expect(holdingSelect.value).toBe("1")
   })
 
@@ -215,7 +245,9 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    expect(screen.getByRole("option", { name: "transactions.form.account_required" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("option", { name: "transactions.form.account_required" }),
+    ).toBeInTheDocument()
   })
 
   it("shows insufficient balance helper and can switch to deposit", () => {
@@ -236,9 +268,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "20" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "20" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "20" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
@@ -271,9 +307,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "600" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "600" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "600" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
@@ -288,9 +328,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "600" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "600" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "600" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
@@ -307,10 +351,16 @@ describe("AddTransactionSheet", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.show_more" }))
-    fireEvent.change(screen.getByLabelText("transactions.form.currency"), { target: { value: "EUR" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.currency"), {
+      target: { value: "EUR" },
+    })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "10" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(screen.getByText("transactions.form.insufficient_balance")).toBeInTheDocument()
@@ -340,13 +390,17 @@ describe("AddTransactionSheet", () => {
 
     expect(screen.getByLabelText("transactions.form.thesis")).toBeInTheDocument()
     expect(screen.getByLabelText("transactions.form.category")).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText("transactions.form.ticker"), { target: { value: "NVDA" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.ticker"), {
+      target: { value: "NVDA" },
+    })
     expect(screen.queryByLabelText("transactions.form.thesis")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("transactions.form.category")).not.toBeInTheDocument()
   })
 
   it("forces category to Mutual_Fund for tsumitate accounts", () => {
-    accountState.accounts = [{ id: 7, name: "IB NISA", broker: "SBI", tax_wrapper: "nisa_tsumitate" }]
+    accountState.accounts = [
+      { id: 7, name: "IB NISA", broker: "SBI", tax_wrapper: "nisa_tsumitate" },
+    ]
     const queryClient = new QueryClient()
     render(
       <QueryClientProvider client={queryClient}>
@@ -376,9 +430,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "10" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(mockMutate).toHaveBeenCalled()
@@ -410,7 +468,9 @@ describe("AddTransactionSheet", () => {
   })
 
   it("keeps displaying selected tsumitate fund name and ticker in the trigger", () => {
-    accountState.accounts = [{ id: 7, name: "Tsumitate", broker: "SBI", tax_wrapper: "nisa_tsumitate" }]
+    accountState.accounts = [
+      { id: 7, name: "Tsumitate", broker: "SBI", tax_wrapper: "nisa_tsumitate" },
+    ]
     accountState.balances = [{ currency: "JPY", balance: 500_000 }]
     wrapperState.eligibleItems = [
       {
@@ -432,7 +492,9 @@ describe("AddTransactionSheet", () => {
     fireEvent.click(screen.getByText("野村インデックスファンド・JPX日経400"))
 
     expect(screen.getByText("野村インデックスファンド・JPX日経400")).toBeInTheDocument()
-    expect(screen.getByText("01311143 · eligibility.nisa_trust_fee_label: 0.198%")).toBeInTheDocument()
+    expect(
+      screen.getByText("01311143 · eligibility.nisa_trust_fee_label: 0.198%"),
+    ).toBeInTheDocument()
     expect(screen.queryByText("eligibility.nisa_picker_placeholder")).not.toBeInTheDocument()
   })
 
@@ -453,7 +515,12 @@ describe("AddTransactionSheet", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     wrapperState.eligibleItems = [
       { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
-      { ticker: "03311187", fund_name: "eMAXIS Slim 米国株式", asset_type: "mutual_fund", trust_fee_pct: 0.0814 },
+      {
+        ticker: "03311187",
+        fund_name: "eMAXIS Slim 米国株式",
+        asset_type: "mutual_fund",
+        trust_fee_pct: 0.0814,
+      },
     ]
     const queryClient = new QueryClient()
     render(
@@ -463,14 +530,21 @@ describe("AddTransactionSheet", () => {
     )
 
     expect(screen.getByRole("button", { name: "nisa.eligible.asset_type.etf" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "nisa.eligible.asset_type.mutual_fund" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "nisa.eligible.asset_type.mutual_fund" }),
+    ).toBeInTheDocument()
   })
 
   it("narrows growth nisa picker results after selecting asset type", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     wrapperState.eligibleItems = [
       { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
-      { ticker: "03311187", fund_name: "eMAXIS Slim 米国株式", asset_type: "mutual_fund", trust_fee_pct: 0.0814 },
+      {
+        ticker: "03311187",
+        fund_name: "eMAXIS Slim 米国株式",
+        asset_type: "mutual_fund",
+        trust_fee_pct: 0.0814,
+      },
     ]
     const queryClient = new QueryClient()
     render(
@@ -488,7 +562,9 @@ describe("AddTransactionSheet", () => {
 
   it("falls back to ticker input when growth nisa listed filter is selected (stock)", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
-    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+    ]
     const queryClient = new QueryClient()
     render(
       <QueryClientProvider client={queryClient}>
@@ -558,7 +634,9 @@ describe("AddTransactionSheet", () => {
 
   it("falls back to ticker input when growth nisa listed filter is selected (reit)", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
-    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+    ]
     const queryClient = new QueryClient()
     render(
       <QueryClientProvider client={queryClient}>
@@ -600,7 +678,9 @@ describe("AddTransactionSheet", () => {
   it("falls back to free-text for reit when no curated reit data exists", () => {
     accountState.accounts = [{ id: 7, name: "Growth", broker: "SBI", tax_wrapper: "nisa_growth" }]
     // Only ETF data — no REIT entries
-    wrapperState.eligibleItems = [{ ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" }]
+    wrapperState.eligibleItems = [
+      { ticker: "2558.T", fund_name: "MAXIS 米国株式", asset_type: "etf" },
+    ]
     const queryClient = new QueryClient()
     render(
       <QueryClientProvider client={queryClient}>
@@ -806,7 +886,9 @@ describe("AddTransactionSheet", () => {
     fireEvent.click(sellPickerTrigger)
     fireEvent.click(screen.getByText("Apple Inc."))
     fireEvent.click(screen.getByRole("button", { name: "transactions.sell_picker.max" }))
-    expect((screen.getByLabelText("transactions.form.quantity") as HTMLInputElement).value).toBe("5")
+    expect((screen.getByLabelText("transactions.form.quantity") as HTMLInputElement).value).toBe(
+      "5",
+    )
   })
 
   it("shows cost_basis value source label when price is based on cost", () => {
@@ -889,7 +971,6 @@ describe("AddTransactionSheet", () => {
     expect(screen.queryByText("transactions.sell_picker.value_source_live")).not.toBeInTheDocument()
   })
 
-
   it("submits default category for new-to-radar ticker", () => {
     const queryClient = new QueryClient()
     render(
@@ -898,9 +979,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "10" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(mockMutate).toHaveBeenCalled()
@@ -919,9 +1004,13 @@ describe("AddTransactionSheet", () => {
     fireEvent.click(screen.getByLabelText("transactions.form.category"))
     fireEvent.click(screen.getByText("config.category.moat"))
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "10" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(mockMutate).toHaveBeenCalled()
@@ -940,9 +1029,13 @@ describe("AddTransactionSheet", () => {
       </QueryClientProvider>,
     )
 
-    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), { target: { value: "1" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.quantity"), {
+      target: { value: "1" },
+    })
     fireEvent.change(screen.getByLabelText("transactions.form.price"), { target: { value: "10" } })
-    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("transactions.form.total_amount"), {
+      target: { value: "10" },
+    })
     fireEvent.click(screen.getByRole("button", { name: "transactions.form.submit" }))
 
     expect(toastInfoMock).toHaveBeenCalledWith("holding.auto_radar")

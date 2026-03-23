@@ -173,6 +173,12 @@ def prewarm_all_caches() -> None:
 
     elapsed = time.monotonic() - start
     logger.info("快取預熱完成，耗時 %.1f 秒。", elapsed)
+
+    # 在設定就緒旗標之前先預熱再平衡快取。
+    # 此時 signals/sector/ETF 快取均已就緒，因此計算應在數秒內完成，
+    # 確保首次前端請求命中暖快取而非觸發冷啟動計算。
+    _prewarm_phase("rebalance", _prewarm_rebalance)
+
     _set_prewarm_ready(True)
     _prewarm_phase("scanlog_backfill", _run_scanlog_backfill)
     _start_periodic_refresh_loop()
@@ -428,6 +434,31 @@ def _prewarm_ticker_metadata(tickers: list[str]) -> None:
     """預熱 ticker metadata（company name / exchange）磁碟快取。"""
     prewarm_ticker_name_batch(tickers)
     prewarm_ticker_exchange_batch(tickers)
+
+
+def _prewarm_rebalance() -> None:
+    """在訊號/板塊快取就緒後預熱再平衡快取。
+
+    同時預熱使用者偏好幣別（若與 USD 不同），確保首次 GET /rebalance
+    請求無論使用者選擇哪種幣別都能命中暖快取。
+    """
+    from application.portfolio.rebalance_service import calculate_rebalance
+    from application.settings.preferences_service import get_preferences
+    from domain.constants import DEFAULT_DISPLAY_CURRENCY
+
+    with Session(engine) as session:
+        # force_refresh=True bypasses the snapshot fast-path so the full
+        # computation runs synchronously here, not in a background thread.
+        # This guarantees the cache is populated before _set_prewarm_ready(True).
+        calculate_rebalance(session, "USD", force_refresh=True)
+
+        prefs = get_preferences(session)
+        user_currency: str = (
+            prefs.get("default_display_currency") or DEFAULT_DISPLAY_CURRENCY
+        )
+        if user_currency != "USD":
+            logger.info("再平衡預熱：補充使用者幣別 %s", user_currency)
+            calculate_rebalance(session, user_currency, force_refresh=True)
 
 
 def _prewarm_etf_sector_weights(tickers: list[str]) -> None:

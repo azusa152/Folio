@@ -1,3 +1,6 @@
+# Dependencies
+node_modules/
+
 # Log files
 logs/
 
@@ -27,6 +30,7 @@ __pycache__/
 .coverage*
 htmlcov/
 coverage/
+coverage.json
 
 # IDE
 .vscode/*

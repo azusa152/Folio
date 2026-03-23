@@ -24,7 +24,9 @@ export function HealthScore({ score, level, calculatedAt }: Props) {
         <p className="text-xs text-muted-foreground">{t("allocation.health.title")}</p>
         <div className="flex items-baseline gap-2">
           <span className={`text-3xl font-bold ${scoreColor(level)}`}>{score}</span>
-          <span className={`text-sm font-medium ${scoreColor(level)}`}>{t(`allocation.health.level_${level}`, { defaultValue: level })}</span>
+          <span className={`text-sm font-medium ${scoreColor(level)}`}>
+            {t(`allocation.health.level_${level}`, { defaultValue: level })}
+          </span>
         </div>
       </div>
       {ts && (

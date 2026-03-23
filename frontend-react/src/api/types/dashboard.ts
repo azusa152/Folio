@@ -27,7 +27,11 @@ export type TwrResponse = components["schemas"]["TwrResponse"]
 export type InsightResponse = components["schemas"]["InsightResponse"]
 
 // GreatMindsResponse: gurus field is list[dict] in backend → properly typed via hand-written types
-export type { GreatMindsResponse, GreatMindsEntryResponse, GreatMindsGuruDetail } from "./smartMoney"
+export type {
+  GreatMindsResponse,
+  GreatMindsEntryResponse,
+  GreatMindsGuruDetail,
+} from "./smartMoney"
 export type LastScanResponse = components["schemas"]["LastScanResponse"]
 
 // Holding (mapped from HoldingResponse)
@@ -55,6 +59,8 @@ export interface EarningsInfo {
 // GET /stocks/enriched returns list[dict] — no Pydantic response_model
 export interface EnrichedStock {
   ticker: string
+  name?: string | null
+  fund_name?: string | null
   category?: StockCategory
   last_scan_signal?: ScanSignal
   computed_signal?: ScanSignal

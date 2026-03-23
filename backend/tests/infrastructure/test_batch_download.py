@@ -12,25 +12,12 @@ Covers:
 - prime_signals_cache_batch returns count of primed tickers
 """
 
-import os
-import tempfile
+from unittest.mock import patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+from cachetools import TTLCache
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_batch"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-from cachetools import TTLCache  # noqa: E402
-
-from infrastructure.market_data import (  # noqa: E402
+from infrastructure.market_data import (
     are_all_signals_in_l1,
     batch_download_history,
     batch_download_history_extended,

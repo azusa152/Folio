@@ -37,7 +37,9 @@ function MetricChip({
 }) {
   if (value == null) return null
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${color ?? "border-border text-foreground"}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${color ?? "border-border text-foreground"}`}
+    >
       {label}: {value}
     </span>
   )
@@ -56,7 +58,9 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
       >
         <span className="inline-flex items-center gap-1">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")}
+          />
           {t("radar.stock_card.history")}
         </span>
       </button>
@@ -74,7 +78,9 @@ function ThesisHistorySection({ ticker }: { ticker: string }) {
                 </p>
                 <p className="mt-0.5">{entry.content}</p>
                 {entry.tags.length > 0 && (
-                  <p className="mt-0.5 text-muted-foreground">{entry.tags.map((tag) => `#${tag}`).join(" ")}</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {entry.tags.map((tag) => `#${tag}`).join(" ")}
+                  </p>
                 )}
               </div>
             ))
@@ -146,7 +152,9 @@ export const StockCardInsights = memo(function StockCardInsights({
         {!isCrypto && !isMutualFund && (
           <div className="flex flex-wrap gap-1.5 text-xs">
             <MetricChip
-              label={<GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>}
+              label={
+                <GlossaryTerm termKey={GLOSSARY_KEYS.rsi}>{t("utils.signals.rsi")}</GlossaryTerm>
+              }
               value={rsi != null ? rsi.toFixed(1) : null}
               color={
                 rsi != null && rsi < 35
@@ -157,7 +165,9 @@ export const StockCardInsights = memo(function StockCardInsights({
               }
             />
             <MetricChip
-              label={<GlossaryTerm termKey={GLOSSARY_KEYS.bias}>{t("utils.signals.bias")}</GlossaryTerm>}
+              label={
+                <GlossaryTerm termKey={GLOSSARY_KEYS.bias}>{t("utils.signals.bias")}</GlossaryTerm>
+              }
               value={bias != null ? `${bias.toFixed(1)}%` : null}
               color={
                 bias != null && bias > 20
@@ -181,29 +191,35 @@ export const StockCardInsights = memo(function StockCardInsights({
         )}
 
         {signalDescription && (
-          <p className="text-xs italic text-muted-foreground">
-            {signalDescription}
-          </p>
+          <p className="text-xs italic text-muted-foreground">{signalDescription}</p>
         )}
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {sig?.price != null && (
-            <span>{t("utils.signals.price")}: {currency.symbol}{formatPrice(sig.price as number, currency.code)}</span>
+            <span>
+              {t("utils.signals.price")}: {currency.symbol}
+              {formatPrice(sig.price as number, currency.code)}
+            </span>
           )}
           {!isCrypto && !isMutualFund && sig?.ma200 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma200}>{t("utils.signals.ma200")}</GlossaryTerm>:{" "}
-              {currency.symbol}{formatPrice(sig.ma200 as number, currency.code)}
+              {currency.symbol}
+              {formatPrice(sig.ma200 as number, currency.code)}
             </span>
           )}
           {!isCrypto && !isMutualFund && sig?.ma60 != null && (
             <span>
               <GlossaryTerm termKey={GLOSSARY_KEYS.ma60}>{t("utils.signals.ma60")}</GlossaryTerm>:{" "}
-              {currency.symbol}{formatPrice(sig.ma60 as number, currency.code)}
+              {currency.symbol}
+              {formatPrice(sig.ma60 as number, currency.code)}
             </span>
           )}
           {isCrypto && changePct != null && (
-            <span>{t("allocation.crypto.change_24h_short")}: {changePct >= 0 ? "+" : "-"}{Math.abs(changePct).toFixed(2)}%</span>
+            <span>
+              {t("allocation.crypto.change_24h_short")}: {changePct >= 0 ? "+" : "-"}
+              {Math.abs(changePct).toFixed(2)}%
+            </span>
           )}
         </div>
 
@@ -260,14 +276,15 @@ export const StockCardInsights = memo(function StockCardInsights({
         <SectionHeading>{t("radar.stock_card.section_portfolio")}</SectionHeading>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span>
-            {CATEGORY_ICON_SHORT[stock.category] ?? ""} {stock.category.replace("_", " ")} · {marketLabel}
+            {CATEGORY_ICON_SHORT[stock.category] ?? ""} {stock.category.replace("_", " ")} ·{" "}
+            {marketLabel}
           </span>
           {marketCap != null && (
-            <span>{t("radar.stock_card.fundamentals.market_cap_short")}: {formatMarketCap(marketCap)}</span>
+            <span>
+              {t("radar.stock_card.fundamentals.market_cap_short")}: {formatMarketCap(marketCap)}
+            </span>
           )}
-          {isHeld && (
-            <span className="text-primary font-medium">{t("radar.stock_card.held")}</span>
-          )}
+          {isHeld && <span className="text-primary font-medium">{t("radar.stock_card.held")}</span>}
         </div>
         {resonance && resonance.length > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -278,15 +295,18 @@ export const StockCardInsights = memo(function StockCardInsights({
           <p className="text-xs text-muted-foreground">
             📅 {t("radar.stock_card.earnings")}: {enrichment.earnings.next_earnings_date}
             {enrichment.earnings.days_until != null && enrichment.earnings.days_until <= 14 && (
-              <span className={`ml-1 ${FINANCE_TEXT.warning}`}>({enrichment.earnings.days_until}d)</span>
+              <span className={`ml-1 ${FINANCE_TEXT.warning}`}>
+                ({enrichment.earnings.days_until}d)
+              </span>
             )}
           </p>
         )}
-        {!SKIP_DIVIDEND_CATEGORIES.has(stock.category) && enrichment?.dividend?.dividend_yield != null && (
-          <p className="text-xs text-muted-foreground">
-            💰 {t("radar.stock_card.dividend")}: {enrichment.dividend.dividend_yield.toFixed(2)}%
-          </p>
-        )}
+        {!SKIP_DIVIDEND_CATEGORIES.has(stock.category) &&
+          enrichment?.dividend?.dividend_yield != null && (
+            <p className="text-xs text-muted-foreground">
+              💰 {t("radar.stock_card.dividend")}: {enrichment.dividend.dividend_yield.toFixed(2)}%
+            </p>
+          )}
       </div>
     </div>
   )

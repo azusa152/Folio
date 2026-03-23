@@ -37,11 +37,21 @@ export function StockSplitAlert({ enabled = true }: StockSplitAlertProps) {
       <div className="mt-1 space-y-1">
         {rows.map((row) => (
           <p key={row.account_id} className="text-xs text-muted-foreground font-mono">
-            {row.account_name && <span className="font-medium font-sans">{row.account_name}: </span>}
-            {formatQty(row.before_qty)} → <span className="text-green-600 dark:text-green-400">{formatQty(row.after_qty)}</span>
+            {row.account_name && (
+              <span className="font-medium font-sans">{row.account_name}: </span>
+            )}
+            {formatQty(row.before_qty)} →{" "}
+            <span className="text-green-600 dark:text-green-400">{formatQty(row.after_qty)}</span>
             {t("allocation.stock_split.preview_shares")}
             {row.before_cost_basis != null && row.after_cost_basis != null && (
-              <> · {row.before_cost_basis.toFixed(2)} → <span className="text-green-600 dark:text-green-400">{row.after_cost_basis.toFixed(2)}</span>{t("allocation.stock_split.preview_cost")}</>
+              <>
+                {" "}
+                · {row.before_cost_basis.toFixed(2)} →{" "}
+                <span className="text-green-600 dark:text-green-400">
+                  {row.after_cost_basis.toFixed(2)}
+                </span>
+                {t("allocation.stock_split.preview_cost")}
+              </>
             )}
           </p>
         ))}
@@ -52,9 +62,7 @@ export function StockSplitAlert({ enabled = true }: StockSplitAlertProps) {
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: (result) => {
-        toast.success(
-          t("allocation.stock_split.check_success", { count: result.detected }),
-        )
+        toast.success(t("allocation.stock_split.check_success", { count: result.detected }))
       },
       onError: (err: unknown) => {
         toast.error(getErrorMessage(err) || t("common.error"))
@@ -68,9 +76,7 @@ export function StockSplitAlert({ enabled = true }: StockSplitAlertProps) {
     return (
       <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
         <p className="text-xs font-medium">{t("allocation.stock_split.none_title")}</p>
-        <p className="text-xs text-muted-foreground">
-          {t("allocation.stock_split.none_caption")}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("allocation.stock_split.none_caption")}</p>
         <Button
           size="sm"
           variant="outline"
@@ -88,9 +94,7 @@ export function StockSplitAlert({ enabled = true }: StockSplitAlertProps) {
     <div className="rounded-md border border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
       <div className="space-y-1">
         <p className="text-sm font-semibold">{t("allocation.stock_split.title")}</p>
-        <p className="text-xs text-muted-foreground">
-          {t("allocation.stock_split.caption")}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("allocation.stock_split.caption")}</p>
       </div>
 
       {isLoading ? (
@@ -98,7 +102,10 @@ export function StockSplitAlert({ enabled = true }: StockSplitAlertProps) {
       ) : (
         <div className="space-y-2">
           {pending.map((event) => (
-            <div key={event.id} className="rounded border border-border/60 bg-background/60 p-2 space-y-2">
+            <div
+              key={event.id}
+              className="rounded border border-border/60 bg-background/60 p-2 space-y-2"
+            >
               <p className="text-xs font-medium">
                 {t("allocation.stock_split.item_title", {
                   ticker: event.ticker,

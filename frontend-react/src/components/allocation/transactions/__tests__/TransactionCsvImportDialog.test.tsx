@@ -93,12 +93,15 @@ describe("TransactionCsvImportDialog", () => {
     renderDialog()
     expect(screen.getByText("transactions.import.title")).toBeInTheDocument()
     expect(screen.getByText("transactions.import.step_select")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "transactions.import.download_template" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "transactions.import.download_template" }),
+    ).toBeInTheDocument()
     expect(screen.getByText("transactions.import.download_template_hint")).toBeInTheDocument()
   })
 
   it("downloads template with expected filename when clicked", () => {
-    const originalCreateObjectURL = (URL as { createObjectURL?: (obj: Blob) => string }).createObjectURL
+    const originalCreateObjectURL = (URL as { createObjectURL?: (obj: Blob) => string })
+      .createObjectURL
     const originalRevokeObjectURL = (URL as { revokeObjectURL?: (url: string) => void })
       .revokeObjectURL
     const createObjectURLMock = vi.fn(() => "blob:template-url")
@@ -117,14 +120,16 @@ describe("TransactionCsvImportDialog", () => {
     const anchorClick = vi.fn()
     const capturedAnchorRef: { current: HTMLAnchorElement | null } = { current: null }
 
-    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
-      const element = originalCreateElement(tagName) as HTMLElement
-      if (tagName.toLowerCase() === "a") {
-        capturedAnchorRef.current = element as HTMLAnchorElement
-        capturedAnchorRef.current.click = anchorClick
-      }
-      return element
-    })
+    const createElementSpy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName: string) => {
+        const element = originalCreateElement(tagName) as HTMLElement
+        if (tagName.toLowerCase() === "a") {
+          capturedAnchorRef.current = element as HTMLAnchorElement
+          capturedAnchorRef.current.click = anchorClick
+        }
+        return element
+      })
 
     renderDialog()
     fireEvent.click(screen.getByRole("button", { name: "transactions.import.download_template" }))
@@ -263,9 +268,7 @@ describe("TransactionCsvImportDialog", () => {
       expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
     )
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "transactions.import.confirm_import:1" }),
-    )
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.confirm_import:1" }))
 
     expect(mutateMock).toHaveBeenCalledTimes(1)
     const [payload] = mutateMock.mock.calls[0]
@@ -303,22 +306,16 @@ describe("TransactionCsvImportDialog", () => {
     const accountSelect = screen.getByLabelText("transactions.import.account")
     fireEvent.change(accountSelect, { target: { value: "1" } })
 
-    fireEvent.click(
-      screen.getByRole("radio", { name: "transactions.import.mode_replace_account" }),
-    )
+    fireEvent.click(screen.getByRole("radio", { name: "transactions.import.mode_replace_account" }))
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.import.next" }))
     await waitFor(() =>
       expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
     )
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "transactions.import.confirm_import:1" }),
-    )
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.confirm_import:1" }))
     expect(mutateMock).not.toHaveBeenCalled()
-    expect(
-      screen.getByText("transactions.import.confirm_destructive_required"),
-    ).toBeInTheDocument()
+    expect(screen.getByText("transactions.import.confirm_destructive_required")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "transactions.import.back" }))
     await waitFor(() =>
@@ -330,9 +327,7 @@ describe("TransactionCsvImportDialog", () => {
       expect(screen.getByText("transactions.import.step_preview")).toBeInTheDocument(),
     )
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "transactions.import.confirm_import:1" }),
-    )
+    fireEvent.click(screen.getByRole("button", { name: "transactions.import.confirm_import:1" }))
 
     expect(mutateMock).toHaveBeenCalledTimes(1)
     const [payload] = mutateMock.mock.calls[0]
@@ -343,9 +338,7 @@ describe("TransactionCsvImportDialog", () => {
   it("disables import when all rows have errors", async () => {
     parseTransactionCSVMock.mockResolvedValue({
       headers: ["date", "type", "ticker", "qty", "total", "currency"],
-      rows: [
-        { date: "", type: "INVALID", ticker: "", qty: "0", total: "0", currency: "XX" },
-      ],
+      rows: [{ date: "", type: "INVALID", ticker: "", qty: "0", total: "0", currency: "XX" }],
       warnings: [],
     })
 

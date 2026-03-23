@@ -37,7 +37,11 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
   if (rest.length > 0) {
     const otherValue = rest.reduce((sum, s) => sum + s.value, 0)
     const otherPct = rest.reduce((sum, s) => sum + s.equity_pct, 0)
-    chartData.push({ name: t("allocation.sector_standalone.other"), value: otherValue, pct: otherPct })
+    chartData.push({
+      name: t("allocation.sector_standalone.other"),
+      value: otherValue,
+      pct: otherPct,
+    })
   }
 
   return (
@@ -66,7 +70,11 @@ export function SectorAllocationCard({ sectorExposure }: Props) {
             </Pie>
             <Tooltip
               contentStyle={theme.tooltipStyle}
-              formatter={(_v: number | undefined, _name: unknown, props: { payload?: { pct?: number; name?: string } }) => [
+              formatter={(
+                _v: number | undefined,
+                _name: unknown,
+                props: { payload?: { pct?: number; name?: string } },
+              ) => [
                 `${typeof props.payload?.pct === "number" ? props.payload.pct.toFixed(1) : ""}%`,
                 props.payload?.name ?? "",
               ]}

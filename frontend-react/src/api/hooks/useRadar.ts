@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import client from "@/api/client"
+import { fromApiData } from "@/api/lib/fromApi"
+import { assertRadarEnrichedStocks, assertPricePoints, assertMoatAnalysis } from "@/api/lib/guards"
 import type {
   RadarStock,
   RemovedStock,
@@ -31,7 +33,7 @@ export function useRadarStocks() {
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks")
       if (error) throw error
-      return data as unknown as RadarStock[]
+      return fromApiData<RadarStock[]>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -43,7 +45,7 @@ export function useRadarEnrichedStocks() {
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks/enriched")
       if (error) throw error
-      return data as unknown as RadarEnrichedStock[]
+      return assertRadarEnrichedStocks(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -55,7 +57,7 @@ export function useRemovedStocks() {
     queryFn: async () => {
       const { data, error } = await client.GET("/stocks/removed")
       if (error) throw error
-      return data as unknown as RemovedStock[]
+      return fromApiData<RemovedStock[]>(data)
     },
     staleTime: 5 * 60 * 1000,
   })
@@ -67,7 +69,7 @@ export function useScanStatus() {
     queryFn: async () => {
       const { data, error } = await client.GET("/scan/status")
       if (error) throw error
-      return data as unknown as ScanStatusResponse
+      return fromApiData<ScanStatusResponse>(data)
     },
     staleTime: 0,
     refetchInterval: (query) => (query.state.data?.is_running ? 5_000 : 60_000),
@@ -81,7 +83,7 @@ export function useResonance() {
     queryFn: async () => {
       const { data, error } = await client.GET("/resonance")
       if (error) throw error
-      const response = data as unknown as ResonanceResponse
+      const response = fromApiData<ResonanceResponse>(data)
       // Invert guru-centric response into ticker→gurus map for O(1) card lookup
       const acc: ResonanceMap = {}
       for (const entry of response.results) {
@@ -111,7 +113,7 @@ export function useThesisHistory(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return data as unknown as ThesisLog[]
+      return fromApiData<ThesisLog[]>(data)
     },
     enabled,
     staleTime: 0,
@@ -127,7 +129,7 @@ export function useRemovalHistory(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return data as unknown as RemovalLog[]
+      return fromApiData<RemovalLog[]>(data)
     },
     enabled,
     staleTime: 0,
@@ -176,7 +178,7 @@ export function usePriceHistory(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return data as unknown as PricePoint[]
+      return assertPricePoints(data)
     },
     enabled,
     staleTime: 5 * 60 * 1000,
@@ -191,7 +193,7 @@ export function useMoatAnalysis(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return data as unknown as MoatAnalysis
+      return assertMoatAnalysis(data)
     },
     enabled,
     staleTime: 60 * 60 * 1000,
@@ -206,7 +208,7 @@ export function useFundamentals(ticker: string, enabled: boolean) {
         params: { path: { ticker } },
       })
       if (error) throw error
-      return data as unknown as FundamentalsResponse
+      return fromApiData<FundamentalsResponse>(data)
     },
     enabled,
     staleTime: 5 * 60 * 1000,

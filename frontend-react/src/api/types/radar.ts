@@ -68,7 +68,14 @@ export interface RadarFundamentals {
 type _EnrichedBase = Partial<
   Omit<
     components["schemas"]["EnrichedStockResponse"],
-    "ticker" | "signals" | "earnings" | "dividend" | "fundamentals" | "last_scan_signal" | "computed_signal" | "category"
+    | "ticker"
+    | "signals"
+    | "earnings"
+    | "dividend"
+    | "fundamentals"
+    | "last_scan_signal"
+    | "computed_signal"
+    | "category"
   >
 >
 

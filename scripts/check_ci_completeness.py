@@ -35,18 +35,21 @@ KNOWN_JOB_MAP: dict[str, str] = {
     "typecheck": "backend-typecheck",
     "api-spec": "check-api-spec",
     "frontend-lint": "frontend-lint",
+    "frontend-format": "frontend-format-check",
     "frontend-build": "frontend-build",
     "frontend-test": "frontend-test",
     "frontend-security": "frontend-security",
     "constant-sync": "check-constants",
     "locale-parity": "check-i18n",
     "agent-doc-tokens": "check-agent-doc-tokens",
+    "agent-docs": "check-agent-docs",
     "security": "backend-security",
 }
 
 # Infrastructure-only jobs — path filtering, meta-checks, etc.
 # These have no meaningful local equivalent and do not need a make target.
-SKIP_JOBS: set[str] = {"changes", "ci-completeness", "ci-gate"}
+# docker-build: requires Docker daemon; validated in CI only (use `make rebuild` locally).
+SKIP_JOBS: set[str] = {"changes", "ci-completeness", "ci-gate", "docker-build"}
 
 # ---------------------------------------------------------------------------
 # Helpers

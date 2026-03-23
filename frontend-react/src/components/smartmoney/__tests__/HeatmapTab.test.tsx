@@ -37,7 +37,10 @@ vi.mock("recharts", () => {
     const groups = data ?? []
     const leaves = groups.flatMap((group) => group.children ?? [])
     const firstLeaf = leaves[0] ?? null
-    const CellRenderer = content ? (content as unknown as { type?: React.ComponentType<Record<string, unknown>> }).type : null
+    // justified: accessing Recharts Treemap internals not in public types
+    const CellRenderer = content
+      ? (content as unknown as { type?: React.ComponentType<Record<string, unknown>> }).type
+      : null
 
     return (
       <TreemapLeafContext.Provider value={firstLeaf}>
@@ -138,7 +141,9 @@ describe("HeatmapTab", () => {
     })
 
     render(<HeatmapTab enabled />)
-    expect(screen.getByText("smart_money.heatmap.uniform_action_hint:smart_money.action.new_position")).toBeInTheDocument()
+    expect(
+      screen.getByText("smart_money.heatmap.uniform_action_hint:smart_money.action.new_position"),
+    ).toBeInTheDocument()
   })
 
   it("uses actionColor data and renders tooltip content", () => {

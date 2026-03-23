@@ -2,11 +2,7 @@ import { Info } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTerminology } from "@/hooks/useTerminology"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { RiskMetrics } from "@/api/hooks/useAnalytics"
 
 interface Props {
@@ -14,7 +10,10 @@ interface Props {
   isLoading?: boolean
 }
 
-function ratingColor(value: number | null | undefined, thresholds: { good: number; moderate: number }): string {
+function ratingColor(
+  value: number | null | undefined,
+  thresholds: { good: number; moderate: number },
+): string {
   if (value == null) return "text-muted-foreground"
   if (value >= thresholds.good) return "text-green-500"
   if (value >= thresholds.moderate) return "text-yellow-500"

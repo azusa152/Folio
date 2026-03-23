@@ -2,10 +2,14 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { ChevronDown, ChevronUp, SendHorizonal } from "lucide-react"
+import { ChevronDown, ChevronUp, SendHorizontal } from "lucide-react"
 import { getNextMarketOpenInfo, isMarketOpen } from "@/lib/format"
 import { FINANCE_TEXT } from "@/lib/colors"
-import { DISPLAY_CURRENCIES } from "@/lib/constants"
+import {
+  DISPLAY_CURRENCIES,
+  SCAN_STALE_SECONDS_MARKET_CLOSED,
+  SCAN_STALE_SECONDS_MARKET_OPEN,
+} from "@/lib/constants"
 import { formatLocalTime, formatRelativeTime, getErrorMessage } from "@/lib/utils"
 import {
   useStocks,
@@ -25,6 +29,7 @@ import { useAccountSummary } from "@/api/hooks/useAccounts"
 import { useScanCompletionEffect } from "@/api/hooks/useRadar"
 import { useTriggerDigest } from "@/api/hooks/useAllocation"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { useDefaultCurrency } from "@/hooks/useDefaultCurrency"
 import {
   Select,
   SelectContent,
@@ -53,7 +58,11 @@ import { InsightCard } from "@/components/common/InsightCard"
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const [displayCurrency, setDisplayCurrency] = useState("USD")
+  const { defaultDisplayCurrency } = useDefaultCurrency()
+  // currencyOverride is set when the user manually changes the per-page selector.
+  // When null, the page reads the user's server-persisted default (reactive via Zustand).
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null)
+  const displayCurrency = currencyOverride ?? defaultDisplayCurrency
   const [showAdvanced, setShowAdvanced] = useLocalStorage("dashboard_advanced", false)
   const digestMutation = useTriggerDigest()
   const [nowEpochSeconds, setNowEpochSeconds] = useState(() => Math.floor(Date.now() / 1000))
@@ -95,7 +104,10 @@ export default function Dashboard() {
     isFetching: rebalanceFetching,
     isError: rebalanceError,
   } = useRebalance(displayCurrency)
-  const { data: insights, isLoading: insightsLoading } = useInsights(displayCurrency, !stocksLoading)
+  const { data: insights, isLoading: insightsLoading } = useInsights(
+    displayCurrency,
+    !stocksLoading,
+  )
 
   // Heavy yfinance queries — gated behind stocksLoading so the fast DB-only
   // requests above can claim FastAPI threadpool workers first.
@@ -117,7 +129,11 @@ export default function Dashboard() {
 
   const heroLoading = stocksLoading
   const heroError = stocksError
+  // heroRefreshing: background refetch after initial load (rebalance or F&G), used for card-level spinner
   const heroRefreshing = (rebalanceFetching && !rebalanceLoading) || fearGreedFetching
+  // isValueRefreshing: true only when rebalance itself is re-fetching — drives the
+  // "Updating..." badge next to Total Market Value (not F&G refetch which is unrelated).
+  const isValueRefreshing = rebalanceFetching && !rebalanceLoading
   const partialDataWarning = rebalanceError || (showAdvanced && fearGreedError)
 
   if (!heroLoading && heroError) {
@@ -175,24 +191,21 @@ export default function Dashboard() {
   }
 
   // Timestamps
-  const priceTs = rebalance?.calculated_at
-    ? formatLocalTime(rebalance.calculated_at)
-    : null
-  const scanTs = lastScan?.last_scanned_at
-    ? formatLocalTime(lastScan.last_scanned_at)
-    : null
-  const scanAgeSeconds = lastScan?.epoch
-    ? Math.max(0, nowEpochSeconds - lastScan.epoch)
-    : null
+  const priceTs = rebalance?.calculated_at ? formatLocalTime(rebalance.calculated_at) : null
+  const scanTs = lastScan?.last_scanned_at ? formatLocalTime(lastScan.last_scanned_at) : null
+  const scanAgeSeconds = lastScan?.epoch ? Math.max(0, nowEpochSeconds - lastScan.epoch) : null
   const usMarketOpen = isMarketOpen("US")
   const nextUsOpenInfo = !usMarketOpen ? getNextMarketOpenInfo("US") : null
-  const staleScanThresholdSeconds = usMarketOpen ? 30 * 60 : 2 * 60 * 60
+  const staleScanThresholdSeconds = usMarketOpen
+    ? SCAN_STALE_SECONDS_MARKET_OPEN
+    : SCAN_STALE_SECONDS_MARKET_CLOSED
   const isScanStale = scanAgeSeconds !== null && scanAgeSeconds > staleScanThresholdSeconds
-  const scanStaleSuffix = isScanStale && scanAgeSeconds !== null
-    ? t("dashboard.scan_stale_suffix", {
-        relative: formatRelativeTime(scanAgeSeconds, i18n.language),
-      })
-    : null
+  const scanStaleSuffix =
+    isScanStale && scanAgeSeconds !== null
+      ? t("dashboard.scan_stale_suffix", {
+          relative: formatRelativeTime(scanAgeSeconds, i18n.language),
+        })
+      : null
 
   return (
     <div className="p-3 sm:p-6 space-y-6">
@@ -207,10 +220,10 @@ export default function Dashboard() {
           disabled={digestMutation.isPending}
           title={t("dashboard.digest_tooltip")}
         >
-          <SendHorizonal className="w-3.5 h-3.5" />
+          <SendHorizontal className="w-3.5 h-3.5" />
           {t("dashboard.digest_tooltip")}
         </Button>
-        <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+        <Select value={displayCurrency} onValueChange={setCurrencyOverride}>
           <SelectTrigger className="w-28 text-xs min-h-[44px]">
             <SelectValue />
           </SelectTrigger>
@@ -228,7 +241,11 @@ export default function Dashboard() {
           className="text-xs gap-1.5 min-h-[44px]"
           onClick={() => setShowAdvanced(!showAdvanced)}
         >
-          {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {showAdvanced ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
           {showAdvanced ? t("dashboard.hide_advanced") : t("dashboard.show_advanced")}
         </Button>
       </div>
@@ -274,13 +291,13 @@ export default function Dashboard() {
       )}
 
       {partialDataWarning && (
-        <p className={`text-xs -mt-2 ${FINANCE_TEXT.warning}`}>
-          {t("common.error_backend")}
-        </p>
+        <p className={`text-xs -mt-2 ${FINANCE_TEXT.warning}`}>{t("common.error_backend")}</p>
       )}
 
       {/* ── Market Pulse ── */}
-      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_market_pulse")}</h2>
+      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">
+        {t("dashboard.section_market_pulse")}
+      </h2>
 
       <PortfolioPulse
         rebalance={rebalance}
@@ -293,17 +310,47 @@ export default function Dashboard() {
         holdings={holdings ?? []}
         isLoading={heroLoading}
         isRefreshing={heroRefreshing}
+        isRebalanceLoading={rebalanceLoading}
+        isValueRefreshing={isValueRefreshing}
       />
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
-        <InsightCard insights={insights ?? []} maxVisible={3} isLoading={stocksLoading || insightsLoading} />
+      <LazySection
+        fallback={
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        }
+      >
+        <InsightCard
+          insights={insights ?? []}
+          maxVisible={3}
+          isLoading={stocksLoading || insightsLoading}
+        />
       </LazySection>
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-20 w-full" /></CardContent></Card>}>
+      <LazySection
+        fallback={
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        }
+      >
         <HoldingBreakdown rebalance={rebalance} isLoading={heroLoading} />
       </LazySection>
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+      <LazySection
+        fallback={
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
+        }
+      >
         <SignalAlerts
           stocks={stocks ?? []}
           enrichedStocks={enrichedStocks ?? []}
@@ -313,7 +360,9 @@ export default function Dashboard() {
       </LazySection>
 
       {/* ── Portfolio Overview ── */}
-      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_portfolio_overview")}</h2>
+      <h2 className="text-xs uppercase tracking-wide text-muted-foreground">
+        {t("dashboard.section_portfolio_overview")}
+      </h2>
 
       <AccountsOverview
         accountSummary={accountSummary ?? []}
@@ -323,24 +372,50 @@ export default function Dashboard() {
         isError={accountSummaryError}
       />
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+      <LazySection
+        fallback={
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <Skeleton className="h-[200px] w-full" />
+            </CardContent>
+          </Card>
+        }
+      >
         <AllocationGlance rebalance={rebalance} profile={profile} isLoading={heroLoading} />
       </LazySection>
 
       {showAdvanced && (
-        <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-[200px] w-full" /></CardContent></Card>}>
+        <LazySection
+          fallback={
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <Skeleton className="h-[200px] w-full" />
+              </CardContent>
+            </Card>
+          }
+        >
           <SectorAllocationCard sectorExposure={rebalance?.sector_exposure ?? []} />
         </LazySection>
       )}
 
-      <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>}>
+      <LazySection
+        fallback={
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+        }
+      >
         <TopHoldings rebalance={rebalance} />
       </LazySection>
 
       {showAdvanced && (
         <>
           {/* ── Deep Dive ── */}
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.section_deep_dive")}</h2>
+          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t("dashboard.section_deep_dive")}
+          </h2>
 
           <StockHeatmap enrichedStocks={enrichedStocks ?? []} isLoading={enrichedLoading} />
 
@@ -348,7 +423,15 @@ export default function Dashboard() {
 
           <DividendIncome rebalance={rebalance} enrichedStocks={enrichedStocks ?? []} />
 
-          <LazySection fallback={<Card><CardContent className="p-4 sm:p-6"><Skeleton className="h-24 w-full" /></CardContent></Card>}>
+          <LazySection
+            fallback={
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            }
+          >
             <ResonanceSummary greatMinds={greatMinds} isLoading={greatMindsLoading} />
           </LazySection>
         </>

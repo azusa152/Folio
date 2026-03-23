@@ -59,13 +59,17 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
             <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-3">
               <div>
                 <p className="text-2xl font-bold">{greatMinds.total_count}</p>
-                <p className="text-xs text-muted-foreground">{t("dashboard.resonance.overlap_count")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.resonance.overlap_count")}
+                </p>
               </div>
               <div>
                 <p className="text-2xl font-bold">
                   {new Set(greatMinds.stocks.flatMap((s) => s.gurus.map((g) => g.guru_id))).size}
                 </p>
-                <p className="text-xs text-muted-foreground">{t("dashboard.resonance.gurus_with_overlap")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.resonance.gurus_with_overlap")}
+                </p>
               </div>
               <div>
                 <p className="text-lg font-bold">
@@ -73,7 +77,9 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
                     ? `${greatMinds.stocks[0].ticker} ×${greatMinds.stocks[0].guru_count}`
                     : "—"}
                 </p>
-                <p className="text-xs text-muted-foreground">{t("dashboard.resonance.strongest_signal")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.resonance.strongest_signal")}
+                </p>
               </div>
             </div>
 
@@ -84,7 +90,12 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
             >
               <span className="inline-flex items-center gap-1">
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", expanded && "rotate-180")} />
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform duration-200",
+                    expanded && "rotate-180",
+                  )}
+                />
                 {t("dashboard.resonance.details_expander")}
               </span>
             </button>
@@ -100,12 +111,14 @@ export function ResonanceSummary({ greatMinds, isLoading }: Props) {
                       {stock.gurus.map((g) => {
                         const icon = HOLDING_ACTION_ICONS[g.action] ?? "⚪"
                         const label = getActionLabel(g.action)
-                        const weight = g.weight_pct != null && g.action !== "SOLD_OUT"
-                          ? ` ${g.weight_pct.toFixed(1)}%`
-                          : ""
+                        const weight =
+                          g.weight_pct != null && g.action !== "SOLD_OUT"
+                            ? ` ${g.weight_pct.toFixed(1)}%`
+                            : ""
                         return (
                           <p key={g.guru_display_name} className="text-xs text-muted-foreground">
-                            {g.guru_display_name} {icon} {label}{weight}
+                            {g.guru_display_name} {icon} {label}
+                            {weight}
                           </p>
                         )
                       })}

@@ -1,12 +1,7 @@
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { EligibilityCheckResponse } from "@/api/types/wrapper"
 
 interface Props {
@@ -30,7 +25,10 @@ export function EligibilityBadge({ result, loading = false }: Props) {
 
   if (result.eligible) {
     return (
-      <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-[11px]">
+      <Badge
+        variant="outline"
+        className="gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-[11px]"
+      >
         <CheckCircle2 className="h-3 w-3" />
         {t("eligibility.eligible")}
       </Badge>

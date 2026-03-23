@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,46 @@ from infrastructure import repositories as repo
 
 if TYPE_CHECKING:
     from sqlmodel import Session
+
+
+@dataclass
+class WrapperLedgerEntry:
+    """Shared parameter bag for contribution and restoration ledger mutations."""
+
+    user_id: str
+    wrapper: str
+    amount: float
+    fiscal_year: int
+    transaction_id: int | None
+    effective_date: date
+    entry_type: str
+    note: str = ""
+    autocommit: bool = True
+
+
+def _record_ledger_entry(
+    session: Session,
+    entry_params: WrapperLedgerEntry,
+) -> ContributionLedgerEntry | None:
+    """Create a ledger entry after an idempotency check; returns None if already present."""
+    if entry_params.transaction_id is not None:
+        existing = repo.find_ledger_entry_by_transaction_and_type(
+            session, entry_params.transaction_id, entry_params.entry_type
+        )
+        if existing is not None:
+            return None
+    entry = ContributionLedgerEntry(
+        user_id=entry_params.user_id,
+        tax_wrapper=entry_params.wrapper,
+        entry_type=entry_params.entry_type,
+        fiscal_year=entry_params.fiscal_year,
+        amount=float(entry_params.amount),
+        transaction_id=entry_params.transaction_id,
+        effective_date=entry_params.effective_date,
+        note=entry_params.note,
+        created_at=datetime.now(UTC),
+    )
+    return repo.create_ledger_entry(session, entry, autocommit=entry_params.autocommit)
 
 
 def get_ledger_entries(session: Session, user_id: str) -> list[ContributionLedgerEntry]:
@@ -88,24 +129,20 @@ def record_contribution(
     autocommit: bool = True,
 ) -> ContributionLedgerEntry | None:
     """Record one contribution ledger entry (idempotent by transaction id)."""
-    if transaction_id is not None:
-        existing = repo.find_ledger_entry_by_transaction_and_type(
-            session, transaction_id, "CONTRIBUTION"
-        )
-        if existing is not None:
-            return None
-    entry = ContributionLedgerEntry(
-        user_id=user_id,
-        tax_wrapper=wrapper,
-        entry_type="CONTRIBUTION",
-        fiscal_year=fiscal_year,
-        amount=float(amount),
-        transaction_id=transaction_id,
-        effective_date=effective_date,
-        note=note,
-        created_at=datetime.now(UTC),
+    return _record_ledger_entry(
+        session,
+        WrapperLedgerEntry(
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=float(amount),
+            fiscal_year=fiscal_year,
+            transaction_id=transaction_id,
+            effective_date=effective_date,
+            entry_type="CONTRIBUTION",
+            note=note,
+            autocommit=autocommit,
+        ),
     )
-    return repo.create_ledger_entry(session, entry, autocommit=autocommit)
 
 
 def record_restoration(
@@ -121,24 +158,20 @@ def record_restoration(
     autocommit: bool = True,
 ) -> ContributionLedgerEntry | None:
     """Record one restoration entry using configured policy (idempotent)."""
-    if transaction_id is not None:
-        existing = repo.find_ledger_entry_by_transaction_and_type(
-            session, transaction_id, "RESTORATION"
-        )
-        if existing is not None:
-            return None
-    entry = ContributionLedgerEntry(
-        user_id=user_id,
-        tax_wrapper=wrapper,
-        entry_type="RESTORATION",
-        fiscal_year=fiscal_year,
-        amount=-abs(float(amount)),
-        transaction_id=transaction_id,
-        effective_date=compute_restoration_effective_date(sell_date),
-        note=note,
-        created_at=datetime.now(UTC),
+    return _record_ledger_entry(
+        session,
+        WrapperLedgerEntry(
+            user_id=user_id,
+            wrapper=wrapper,
+            amount=-abs(float(amount)),
+            fiscal_year=fiscal_year,
+            transaction_id=transaction_id,
+            effective_date=compute_restoration_effective_date(sell_date),
+            entry_type="RESTORATION",
+            note=note,
+            autocommit=autocommit,
+        ),
     )
-    return repo.create_ledger_entry(session, entry, autocommit=autocommit)
 
 
 def get_restoration_forecast(session: Session, user_id: str) -> dict:

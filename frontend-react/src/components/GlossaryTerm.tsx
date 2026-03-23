@@ -25,11 +25,7 @@ export function GlossaryTerm({ termKey, children, className }: GlossaryTermProps
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            type="button"
-            className={className ?? TRIGGER_CLASS}
-            aria-label={definition}
-          >
+          <button type="button" className={className ?? TRIGGER_CLASS} aria-label={definition}>
             {children}
           </button>
         </TooltipTrigger>

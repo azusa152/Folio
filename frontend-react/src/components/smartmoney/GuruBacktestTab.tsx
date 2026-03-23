@@ -16,18 +16,9 @@ import { useGuruBacktest } from "@/api/hooks/useSmartMoney"
 import type { Guru } from "@/api/types/smartMoney"
 import { cn, getErrorMessage } from "@/lib/utils"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
-import {
-  GURU_BACKTEST_BENCHMARK_OPTIONS,
-  GURU_BACKTEST_QUARTER_OPTIONS,
-} from "@/lib/constants"
+import { GURU_BACKTEST_BENCHMARK_OPTIONS, GURU_BACKTEST_QUARTER_OPTIONS } from "@/lib/constants"
 
-export function GuruBacktestTab({
-  gurus,
-  enabled,
-}: {
-  gurus: Guru[]
-  enabled?: boolean
-}) {
+export function GuruBacktestTab({ gurus, enabled }: { gurus: Guru[]; enabled?: boolean }) {
   const { t } = useTranslation()
   const [sopOpen, setSopOpen] = useState(false)
   const [selectedGuruId, setSelectedGuruId] = useState<number | null>(gurus[0]?.id ?? null)
@@ -65,7 +56,9 @@ export function GuruBacktestTab({
 
   return (
     <div className="space-y-4">
-      <div className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
+      <div
+        className={`rounded-md border p-3 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}
+      >
         {t("smart_money.backtest.disclaimer")}
       </div>
 
@@ -76,7 +69,12 @@ export function GuruBacktestTab({
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.backtest.sop_title")}</span>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -136,10 +134,7 @@ export function GuruBacktestTab({
           </select>
         </label>
 
-        <Button
-          onClick={() => setRunTriggered(true)}
-          className="h-9"
-        >
+        <Button onClick={() => setRunTriggered(true)} className="h-9">
           {t("smart_money.backtest.run")}
         </Button>
       </div>
@@ -157,9 +152,7 @@ export function GuruBacktestTab({
       )}
 
       {isError && (
-        <p className="text-sm text-destructive">
-          {errMsg || t("smart_money.backtest.error")}
-        </p>
+        <p className="text-sm text-destructive">{errMsg || t("smart_money.backtest.error")}</p>
       )}
 
       {data && !isLoading && (
@@ -171,7 +164,9 @@ export function GuruBacktestTab({
             </div>
             <div className="rounded-md border p-3">
               <p className="text-muted-foreground">{t("smart_money.backtest.benchmark_return")}</p>
-              <p className="text-base font-semibold">{data.cumulative_benchmark_return.toFixed(2)}%</p>
+              <p className="text-base font-semibold">
+                {data.cumulative_benchmark_return.toFixed(2)}%
+              </p>
             </div>
             <div className="rounded-md border p-3">
               <p className="text-muted-foreground">{t("smart_money.backtest.alpha")}</p>
@@ -188,14 +183,26 @@ export function GuruBacktestTab({
                 <Tooltip
                   formatter={(value: number | string | undefined) => {
                     const numeric =
-                      typeof value === "number"
-                        ? value
-                        : Number.parseFloat(String(value ?? 0))
+                      typeof value === "number" ? value : Number.parseFloat(String(value ?? 0))
                     return `${numeric.toFixed(2)}%`
                   }}
                 />
-                <Line type="monotone" dataKey="clone" name={t("smart_money.backtest.clone_line")} stroke="#22c55e" dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="benchmark" name={t("smart_money.backtest.benchmark_line")} stroke="#3b82f6" dot={false} strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="clone"
+                  name={t("smart_money.backtest.clone_line")}
+                  stroke="#22c55e"
+                  dot={false}
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="benchmark"
+                  name={t("smart_money.backtest.benchmark_line")}
+                  stroke="#3b82f6"
+                  dot={false}
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -204,10 +211,18 @@ export function GuruBacktestTab({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left py-2 px-2">{t("smart_money.backtest.col.report_date")}</th>
-                  <th className="text-left py-2 px-2">{t("smart_money.backtest.col.filing_date")}</th>
-                  <th className="text-right py-2 px-2">{t("smart_money.backtest.col.clone_return")}</th>
-                  <th className="text-right py-2 px-2">{t("smart_money.backtest.col.benchmark_return")}</th>
+                  <th className="text-left py-2 px-2">
+                    {t("smart_money.backtest.col.report_date")}
+                  </th>
+                  <th className="text-left py-2 px-2">
+                    {t("smart_money.backtest.col.filing_date")}
+                  </th>
+                  <th className="text-right py-2 px-2">
+                    {t("smart_money.backtest.col.clone_return")}
+                  </th>
+                  <th className="text-right py-2 px-2">
+                    {t("smart_money.backtest.col.benchmark_return")}
+                  </th>
                   <th className="text-right py-2 px-2">{t("smart_money.backtest.col.alpha")}</th>
                   <th className="text-right py-2 px-2">{t("smart_money.backtest.col.holdings")}</th>
                 </tr>
@@ -220,8 +235,12 @@ export function GuruBacktestTab({
                   >
                     <td className="py-1.5 px-2">{quarter.report_date}</td>
                     <td className="py-1.5 px-2">{quarter.filing_date}</td>
-                    <td className="py-1.5 px-2 text-right">{quarter.clone_return_pct.toFixed(2)}%</td>
-                    <td className="py-1.5 px-2 text-right">{quarter.benchmark_return_pct.toFixed(2)}%</td>
+                    <td className="py-1.5 px-2 text-right">
+                      {quarter.clone_return_pct.toFixed(2)}%
+                    </td>
+                    <td className="py-1.5 px-2 text-right">
+                      {quarter.benchmark_return_pct.toFixed(2)}%
+                    </td>
                     <td className="py-1.5 px-2 text-right">{quarter.alpha_pct.toFixed(2)}%</td>
                     <td className="py-1.5 px-2 text-right">{quarter.holdings_count}</td>
                   </tr>

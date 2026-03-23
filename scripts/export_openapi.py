@@ -22,10 +22,12 @@ _tmp_cache.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
-# Patch DISK_CACHE_DIR in constants before any module imports it
-import domain.constants as _constants  # noqa: E402
+# Patch DISK_CACHE_DIR in the infrastructure config module before any module
+# imports it.  domain.constants is a backward-compat shim; the infrastructure
+# adapters now read DISK_CACHE_DIR from infrastructure.common.config directly.
+import infrastructure.common.config as _infra_config  # noqa: E402
 
-_constants.DISK_CACHE_DIR = str(_tmp_cache)
+_infra_config.DISK_CACHE_DIR = str(_tmp_cache)
 
 from main import app  # noqa: E402
 

@@ -31,12 +31,14 @@ describe("SignalAlerts", () => {
     render(<SignalAlerts stocks={stocks} enrichedStocks={[]} signalActivity={[]} />)
 
     expect(
-      screen.getAllByText((_, element) => element?.textContent?.includes("config.category.trend_setter") ?? false)
-        .length,
+      screen.getAllByText(
+        (_, element) => element?.textContent?.includes("config.category.trend_setter") ?? false,
+      ).length,
     ).toBeGreaterThan(0)
     expect(
-      screen.getAllByText((_, element) => element?.textContent?.includes("config.category.unknown_bucket") ?? false)
-        .length,
+      screen.getAllByText(
+        (_, element) => element?.textContent?.includes("config.category.unknown_bucket") ?? false,
+      ).length,
     ).toBeGreaterThan(0)
   })
 })

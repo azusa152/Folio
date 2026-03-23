@@ -14,7 +14,6 @@ import { AssetClassDonut } from "./AssetClassDonut"
 import { DrawdownChart } from "./DrawdownChart"
 import { RiskMetricsCards } from "./RiskMetricsCards"
 import { ANALYTICS_TIMEFRAMES, type AnalyticsTimeframe } from "./timeframe"
-import { DriftChart } from "./DriftChart"
 import { HoldingsTable } from "../holdings/HoldingsTable"
 import { XRayOverlap } from "./XRayOverlap"
 import { SectorHeatmap } from "./SectorHeatmap"
@@ -49,22 +48,23 @@ function filterHoldingsByDrill(
   }
 }
 
-export function RebalanceAnalysis({
-  displayCurrency,
-  privacyMode,
-  enabled,
-}: Props) {
+export function RebalanceAnalysis({ displayCurrency, privacyMode, enabled }: Props) {
   const { t } = useTranslation()
   const { term } = useTerminology()
   const { data, isLoading, isFetching } = useAllocRebalance(displayCurrency, enabled)
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>(365)
   const [drill, setDrill] = useState<{ source: DrillSource; value: string } | null>(null)
 
-  const drillHandlers = useMemo(() => ({
-    category: (v: string | null) => setDrill(v ? { source: "category" as const, value: v } : null),
-    geo: (v: string | null) => setDrill(v ? { source: "geo" as const, value: v } : null),
-    asset_class: (v: string | null) => setDrill(v ? { source: "asset_class" as const, value: v } : null),
-  }), [])
+  const drillHandlers = useMemo(
+    () => ({
+      category: (v: string | null) =>
+        setDrill(v ? { source: "category" as const, value: v } : null),
+      geo: (v: string | null) => setDrill(v ? { source: "geo" as const, value: v } : null),
+      asset_class: (v: string | null) =>
+        setDrill(v ? { source: "asset_class" as const, value: v } : null),
+    }),
+    [],
+  )
   const analyticsRange = useMemo(() => {
     if (analyticsTimeframe === 0) return { start: undefined, end: undefined }
 
@@ -80,20 +80,12 @@ export function RebalanceAnalysis({
     data: drawdownData,
     isLoading: drawdownLoading,
     isError: drawdownError,
-  } = useDrawdown(
-    analyticsRange.start,
-    analyticsRange.end,
-    enabled,
-  )
+  } = useDrawdown(analyticsRange.start, analyticsRange.end, enabled)
   const {
     data: riskData,
     isLoading: riskLoading,
     isError: riskError,
-  } = useRiskMetrics(
-    analyticsRange.start,
-    analyticsRange.end,
-    enabled,
-  )
+  } = useRiskMetrics(analyticsRange.start, analyticsRange.end, enabled)
 
   if (isLoading) {
     return (
@@ -127,10 +119,14 @@ export function RebalanceAnalysis({
       {/* Rebalance advice */}
       {data.advice && data.advice.length > 0 && (
         <section className="space-y-1">
-          <p className="text-sm font-semibold">{term("rebalance", t("allocation.health.advice_title"))}</p>
+          <p className="text-sm font-semibold">
+            {term("rebalance", t("allocation.health.advice_title"))}
+          </p>
           <ul className="space-y-1">
             {data.advice.map((a) => (
-              <li key={a} className="text-xs text-muted-foreground">• {a}</li>
+              <li key={a} className="text-xs text-muted-foreground">
+                • {a}
+              </li>
             ))}
           </ul>
         </section>
@@ -206,11 +202,6 @@ export function RebalanceAnalysis({
         </>
       )}
 
-      {/* Drift chart */}
-      <DriftChart categories={data.categories} />
-
-      <hr className="border-border" />
-
       {/* Holdings detail table */}
       <HoldingsTable
         holdings={data.holdings_detail}
@@ -232,9 +223,7 @@ export function RebalanceAnalysis({
       <hr className="border-border" />
 
       {/* Sector heatmap */}
-      {data.sector_exposure && (
-        <SectorHeatmap data={data.sector_exposure} />
-      )}
+      {data.sector_exposure && <SectorHeatmap data={data.sector_exposure} />}
 
       <hr className="border-border" />
 

@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from domain.entities import Stock
 from domain.enums import StockCategory
 
@@ -323,6 +325,7 @@ class TestGetSummary:
 class TestPriceHistoryRoute:
     """Tests for GET /ticker/{ticker}/price-history."""
 
+    @pytest.mark.slow
     def test_price_history_should_return_nav_data_for_mutual_fund(self, client):
         """Mutual_Fund stocks return NAV history from DB, not yfinance."""
         client.post(
@@ -334,7 +337,9 @@ class TestPriceHistoryRoute:
             },
         )
 
-        with patch("application.stock.stock_service._get_price_history") as mock_ph:
+        with patch(
+            "application.stock.stock_enrichment_service._get_price_history"
+        ) as mock_ph:
             resp = client.get("/ticker/01311143/price-history")
 
         assert resp.status_code == 200
@@ -441,7 +446,9 @@ class TestSignalsRoute:
             )
             s.commit()
 
-        with patch("application.stock.stock_service.get_technical_signals") as mock_yf:
+        with patch(
+            "application.stock.stock_enrichment_service.get_technical_signals"
+        ) as mock_yf:
             resp = client.get("/ticker/0131310B/signals")
 
         assert resp.status_code == 200
@@ -489,7 +496,9 @@ class TestFundamentalsRoute:
             },
         )
 
-        with patch("application.stock.stock_service.get_fundamentals") as mock_yf:
+        with patch(
+            "application.stock.stock_enrichment_service.get_fundamentals"
+        ) as mock_yf:
             resp = client.get("/ticker/01313139/fundamentals")
 
         assert resp.status_code == 200

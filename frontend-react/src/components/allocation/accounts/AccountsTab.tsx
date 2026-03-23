@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Download, Info, Upload } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { downloadCsvFromApi } from "@/lib/downloadCsv"
 import {
   useAccounts,
   useAccountPositions,
@@ -15,24 +16,18 @@ import { TransactionList } from "@/components/allocation/transactions/Transactio
 import { TransactionCsvImportDialog } from "@/components/allocation/transactions/TransactionCsvImportDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTransactions } from "@/api/hooks/useTransactions"
 import {
   ACCOUNT_TYPES,
   isTaxWrapperType,
   TAX_WRAPPER_ICONS,
-  TAX_WRAPPER_TYPES,
   type TaxWrapperType,
 } from "@/lib/constants"
 import { formatPrice, formatQuantity, getQuantityUnitKey } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
+import { AccountFormPanel } from "./AccountFormPanel"
 
 interface Props {
   enabled: boolean
@@ -42,11 +37,7 @@ interface Props {
 
 type AccountDetailView = "positions" | "transactions" | "summary"
 
-export function AccountsTab({
-  enabled,
-  onDepositToAccount,
-  onRecordTransaction,
-}: Props) {
+export function AccountsTab({ enabled, onDepositToAccount, onRecordTransaction }: Props) {
   const { t } = useTranslation()
   const { data: accounts, isLoading } = useAccounts(enabled)
   const { data: accountSummary } = useAccountSummary(enabled)
@@ -75,7 +66,10 @@ export function AccountsTab({
     [accounts],
   )
   const summaryByAccountId = useMemo(() => {
-    const map = new Map<number, { holdings_count: number; cash_balances: Array<{ currency: string; balance: number }> }>()
+    const map = new Map<
+      number,
+      { holdings_count: number; cash_balances: Array<{ currency: string; balance: number }> }
+    >()
     for (const item of accountSummary ?? []) {
       if (item.account?.id == null) continue
       map.set(item.account.id, {
@@ -101,17 +95,16 @@ export function AccountsTab({
     selectedAccount?.id ?? null,
     enabled && selectedAccount != null,
   )
-  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } = useAccountTransactions(
-    selectedAccount?.id ?? null,
-    enabled && selectedAccount != null,
-  )
+  const { data: selectedAccountTransactions, isLoading: isTransactionsLoading } =
+    useAccountTransactions(selectedAccount?.id ?? null, enabled && selectedAccount != null)
   const { data: allTransactions } = useTransactions({ enabled, limit: 1 })
-  const effectiveExportScope = exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
+  const effectiveExportScope =
+    exportScope === "selected" && selectedAccount?.id != null ? "selected" : "all"
   const selectedScopeHasTransactions = (selectedAccountTransactions?.length ?? 0) > 0
   const allScopeHasTransactions = (allTransactions?.length ?? 0) > 0
-  const exportDisabled = exportingCsv || (effectiveExportScope === "selected"
-    ? !selectedScopeHasTransactions
-    : !allScopeHasTransactions)
+  const exportDisabled =
+    exportingCsv ||
+    (effectiveExportScope === "selected" ? !selectedScopeHasTransactions : !allScopeHasTransactions)
 
   const resetForm = () => {
     setEditingId(null)
@@ -149,11 +142,7 @@ export function AccountsTab({
         ? (account.account_type as (typeof ACCOUNT_TYPES)[number])
         : "other",
     )
-    setTaxWrapper(
-      isTaxWrapperType(account.tax_wrapper)
-        ? account.tax_wrapper
-        : null,
-    )
+    setTaxWrapper(isTaxWrapperType(account.tax_wrapper) ? account.tax_wrapper : null)
     setCurrency(account.currency || "USD")
     setMarket(account.market || "")
     setInstitution(account.institution || "")
@@ -187,7 +176,8 @@ export function AccountsTab({
             action: onDepositToAccount
               ? {
                   label: t("accounts.quick_deposit"),
-                  onClick: () => onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
+                  onClick: () =>
+                    onDepositToAccount(createdAccount.id, createdAccount.currency || "USD"),
                 }
               : undefined,
           })
@@ -219,31 +209,15 @@ export function AccountsTab({
   const handleExportCsv = async () => {
     setExportingCsv(true)
     try {
-      const headers: HeadersInit = {}
-      const apiKey = import.meta.env.VITE_API_KEY
-      if (apiKey) headers["X-API-Key"] = apiKey
-
-      const params = new URLSearchParams()
+      const params: Record<string, string> = {}
       if (effectiveExportScope === "selected" && selectedAccount?.id != null) {
-        params.set("account_id", String(selectedAccount.id))
+        params["account_id"] = String(selectedAccount.id)
       }
-      const requestUrl = params.toString()
-        ? `/api/transactions/export-csv?${params.toString()}`
-        : "/api/transactions/export-csv"
-      const response = await fetch(requestUrl, {
-        headers,
-      })
-      if (!response.ok) throw new Error(response.statusText)
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      const contentDisposition = response.headers.get("Content-Disposition") || ""
-      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
-      link.download = filenameMatch?.[1] || "transactions.csv"
-      link.href = url
-      link.click()
-      URL.revokeObjectURL(url)
+      await downloadCsvFromApi(
+        "/api/transactions/export-csv",
+        Object.keys(params).length ? params : undefined,
+        "transactions.csv",
+      )
     } catch {
       toast.error(t("transactions.export_error"))
     } finally {
@@ -296,106 +270,31 @@ export function AccountsTab({
       </div>
 
       {formOpen ? (
-        <div className="rounded-md border border-border p-3 space-y-3">
-          <p className="text-xs font-semibold">
-            {editingId == null ? t("accounts.form.create_title") : t("accounts.form.edit_title")}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Input
-              aria-label={t("accounts.form.name")}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("accounts.form.name")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.broker")}
-              value={broker}
-              onChange={(event) => setBroker(event.target.value)}
-              placeholder={t("accounts.form.broker")}
-              className="text-xs"
-            />
-            <select
-              aria-label={t("accounts.form.account_type")}
-              value={accountType}
-              onChange={(event) => setAccountType(event.target.value as (typeof ACCOUNT_TYPES)[number])}
-              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-            >
-              {ACCOUNT_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {t(`config.account_type.${value}`)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("wrapper.select_wrapper")}
-              value={taxWrapper ?? ""}
-              onChange={(event) => {
-                const value = event.target.value
-                setTaxWrapper(
-                  isTaxWrapperType(value)
-                    ? value
-                    : null,
-                )
-              }}
-              className="w-full text-xs border border-border rounded px-2 py-1.5 bg-background"
-            >
-              <option value="">{t("wrapper.no_wrapper")}</option>
-              {TAX_WRAPPER_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {TAX_WRAPPER_ICONS[value]} {t(`wrapper.${value}`)}
-                </option>
-              ))}
-            </select>
-            <Input
-              aria-label={t("accounts.form.currency")}
-              value={currency}
-              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-              placeholder={t("accounts.form.currency")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.market")}
-              value={market}
-              onChange={(event) => setMarket(event.target.value.toUpperCase())}
-              placeholder={t("accounts.form.market")}
-              className="text-xs"
-            />
-            <Input
-              aria-label={t("accounts.form.institution")}
-              value={institution}
-              onChange={(event) => setInstitution(event.target.value)}
-              placeholder={t("accounts.form.institution")}
-              className="text-xs sm:col-span-2"
-            />
-            <Input
-              aria-label={t("accounts.form.note")}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={t("accounts.form.note")}
-              className="text-xs sm:col-span-2"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={submit}
-              disabled={createAccount.isPending || updateAccount.isPending}
-            >
-              {t("accounts.form.save")}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFormOpen(false)
-                resetForm()
-              }}
-            >
-              {t("common.cancel")}
-            </Button>
-          </div>
-        </div>
+        <AccountFormPanel
+          editingId={editingId}
+          name={name}
+          broker={broker}
+          accountType={accountType}
+          taxWrapper={taxWrapper}
+          currency={currency}
+          market={market}
+          institution={institution}
+          note={note}
+          isSaving={createAccount.isPending || updateAccount.isPending}
+          onNameChange={setName}
+          onBrokerChange={setBroker}
+          onAccountTypeChange={setAccountType}
+          onTaxWrapperChange={setTaxWrapper}
+          onCurrencyChange={setCurrency}
+          onMarketChange={setMarket}
+          onInstitutionChange={setInstitution}
+          onNoteChange={setNote}
+          onSubmit={submit}
+          onCancel={() => {
+            setFormOpen(false)
+            resetForm()
+          }}
+        />
       ) : null}
 
       {isLoading ? <p className="text-xs text-muted-foreground">{t("common.loading")}</p> : null}
@@ -412,9 +311,7 @@ export function AccountsTab({
           <div
             key={account.id}
             className={`rounded-md border p-3 transition-colors ${
-              activeAccountId === account.id
-                ? "border-primary bg-primary/5"
-                : "border-border"
+              activeAccountId === account.id ? "border-primary bg-primary/5" : "border-border"
             }`}
           >
             <div className="flex items-center justify-between gap-2">
@@ -427,13 +324,13 @@ export function AccountsTab({
                   <p className="text-sm font-semibold">{account.name}</p>
                   {isTaxWrapperType(account.tax_wrapper) ? (
                     <Badge variant="outline" className="text-[11px]">
-                      {TAX_WRAPPER_ICONS[account.tax_wrapper]}{" "}
-                      {t(`wrapper.${account.tax_wrapper}`)}
+                      {TAX_WRAPPER_ICONS[account.tax_wrapper]} {t(`wrapper.${account.tax_wrapper}`)}
                     </Badge>
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {account.broker} · {t(`config.account_type.${account.account_type}`)} · {account.currency}
+                  {account.broker} · {t(`config.account_type.${account.account_type}`)} ·{" "}
+                  {account.currency}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {t("accounts.summary.positions", {
@@ -444,7 +341,10 @@ export function AccountsTab({
                   {t("accounts.summary.cash", {
                     balances:
                       (summaryByAccountId.get(account.id)?.cash_balances ?? [])
-                        .map((item) => `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`)
+                        .map(
+                          (item) =>
+                            `${item.currency} ${item.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                        )
                         .join(" / ") || t("accounts.summary.no_cash"),
                   })}
                 </p>
@@ -470,7 +370,12 @@ export function AccountsTab({
                     {t("transactions.record_button")}
                   </Button>
                 ) : null}
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(account)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={() => openEdit(account)}
+                >
                   {t("common.edit")}
                 </Button>
                 <Button
@@ -480,7 +385,8 @@ export function AccountsTab({
                   onClick={() => {
                     deactivateAccount.mutate(account.id, {
                       onSuccess: () => toast.success(t("accounts.toast.deactivated")),
-                      onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+                      onError: (err: unknown) =>
+                        toast.error(getErrorMessage(err) || t("common.error")),
                     })
                   }}
                 >
@@ -505,11 +411,15 @@ export function AccountsTab({
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)} · {selectedAccount.currency}
+              {selectedAccount.broker} · {t(`config.account_type.${selectedAccount.account_type}`)}{" "}
+              · {selectedAccount.currency}
             </p>
           </div>
 
-          <Tabs value={detailView} onValueChange={(value) => setDetailView(value as AccountDetailView)}>
+          <Tabs
+            value={detailView}
+            onValueChange={(value) => setDetailView(value as AccountDetailView)}
+          >
             <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
               <TabsTrigger value="positions" className="min-h-[44px]">
                 {t("accounts.detail.positions")}
@@ -527,7 +437,9 @@ export function AccountsTab({
                 <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
               ) : (selectedAccountPositions?.length ?? 0) === 0 ? (
                 <div className="rounded-md border border-dashed border-border bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">{t("accounts.detail.empty_positions")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("accounts.detail.empty_positions")}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -536,7 +448,9 @@ export function AccountsTab({
                       <tr className="text-muted-foreground border-b border-border">
                         <th className="text-left py-1.5 pr-2">{t("transactions.table.ticker")}</th>
                         <th className="text-left py-1.5 pr-2">{t("accounts.detail.category")}</th>
-                        <th className="text-right py-1.5 pr-2">{t("transactions.table.quantity")}</th>
+                        <th className="text-right py-1.5 pr-2">
+                          {t("transactions.table.quantity")}
+                        </th>
                         <th className="text-right py-1.5 pr-2">
                           <div className="inline-flex items-center justify-end gap-1">
                             <span>{t("accounts.detail.cost_basis")}</span>
@@ -549,7 +463,9 @@ export function AccountsTab({
                                   />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p className="max-w-[220px]">{t("allocation.col.cost_tooltip")}</p>
+                                  <p className="max-w-[220px]">
+                                    {t("allocation.col.cost_tooltip")}
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -587,7 +503,10 @@ export function AccountsTab({
                             <td className="py-1.5 pr-2 text-right">{quantityText}</td>
                             <td className="py-1.5 pr-2 text-right">
                               {position.cost_basis != null
-                                ? formatPrice(position.cost_basis, position.currency || selectedAccount.currency)
+                                ? formatPrice(
+                                    position.cost_basis,
+                                    position.currency || selectedAccount.currency,
+                                  )
                                 : "—"}
                             </td>
                             <td className="py-1.5 pr-2">{position.currency}</td>

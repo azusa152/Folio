@@ -26,12 +26,14 @@ os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ.setdefault("FERNET_KEY", "cq9mXfFwGAnyN0iKCYd6aQmmgJ7PzCxBdIXPSjThEL4=")
 
 # Patch disk cache dir and data dir before any infrastructure imports
-import domain.constants
+import infrastructure.common.config
 
-domain.constants.DISK_CACHE_DIR = os.path.join(
+infrastructure.common.config.DISK_CACHE_DIR = os.path.join(
     tempfile.gettempdir(), "folio_test_cache"
 )
-domain.constants.DATA_DIR = os.path.join(tempfile.gettempdir(), "folio_test_data")
+infrastructure.common.config.DATA_DIR = os.path.join(
+    tempfile.gettempdir(), "folio_test_data"
+)
 
 from collections.abc import Generator  # noqa: E402
 from unittest.mock import patch  # noqa: E402
@@ -197,12 +199,12 @@ _PATCHES: list[tuple[str, object]] = [
     ("application.scan.backtest_service.get_price_history", []),
     ("application.scan.backfill_service.batch_download_history_extended", {}),
     # rebalance_service
-    ("application.portfolio.rebalance_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.portfolio.pricing_service.get_technical_signals", MOCK_SIGNALS),
     ("application.portfolio.rebalance_service.get_exchange_rates", _MOCK_FX_RATES),
     ("application.portfolio.rebalance_service.get_etf_top_holdings", None),
     ("application.portfolio.rebalance_service.get_etf_sector_weights", None),
-    ("application.portfolio.rebalance_service.get_forex_history", []),
-    ("application.portfolio.rebalance_service.get_forex_history_long", []),
+    ("application.portfolio.fx_exposure_service.get_forex_history", []),
+    ("application.portfolio.fx_exposure_service.get_forex_history_long", []),
     ("application.portfolio.rebalance_service.are_all_signals_in_l1", False),
     ("application.portfolio.rebalance_service.prewarm_signals_batch", {}),
     ("application.portfolio.rebalance_service.prewarm_etf_holdings_batch", {}),
@@ -218,11 +220,11 @@ _PATCHES: list[tuple[str, object]] = [
         MOCK_FEAR_GREED,
     ),
     # stock_service
-    ("application.stock.stock_service.analyze_moat_trend", MOCK_MOAT),
-    ("application.stock.stock_service.get_technical_signals", MOCK_SIGNALS),
-    ("application.stock.stock_service.get_earnings_date", _MOCK_EARNINGS),
-    ("application.stock.stock_service.get_dividend_info", _MOCK_DIVIDEND),
-    ("application.stock.stock_service.get_fundamentals", {"ticker": "NVDA"}),
+    ("application.stock.stock_enrichment_service.analyze_moat_trend", MOCK_MOAT),
+    ("application.stock.stock_enrichment_service.get_technical_signals", MOCK_SIGNALS),
+    ("application.stock.stock_enrichment_service.get_earnings_date", _MOCK_EARNINGS),
+    ("application.stock.stock_enrichment_service.get_dividend_info", _MOCK_DIVIDEND),
+    ("application.stock.stock_enrichment_service.get_fundamentals", {"ticker": "NVDA"}),
     ("application.stock.stock_service.detect_is_etf", False),
     # prewarm_service (prevent background prewarm during tests)
     ("application.scan.prewarm_service.prewarm_all_caches", None),

@@ -17,11 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  CATEGORY_ICON_SHORT,
-  CATEGORY_COLOR_MAP,
-  CATEGORY_COLOR_FALLBACK,
-} from "@/lib/constants"
+import { CATEGORY_ICON_SHORT, CATEGORY_COLOR_MAP, CATEGORY_COLOR_FALLBACK } from "@/lib/constants"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import type { RebalanceResponse, ProfileResponse } from "@/api/types/dashboard"
 
@@ -99,7 +95,9 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
         <div className="space-y-1">
           <div className="grid grid-cols-2 gap-1">
             <div>
-              <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.chart.target")}</p>
+              <p className="text-xs text-center text-muted-foreground mb-1">
+                {t("dashboard.chart.target")}
+              </p>
               <ResponsiveContainer width="100%" height={130}>
                 <PieChart>
                   <Pie
@@ -118,13 +116,18 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
                   </Pie>
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("dashboard.chart.target_pct")]}
+                    formatter={(v: number | undefined) => [
+                      `${v != null ? v.toFixed(1) : ""}%`,
+                      t("dashboard.chart.target_pct"),
+                    ]}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div>
-              <p className="text-xs text-center text-muted-foreground mb-1">{t("dashboard.chart.actual")}</p>
+              <p className="text-xs text-center text-muted-foreground mb-1">
+                {t("dashboard.chart.actual")}
+              </p>
               <ResponsiveContainer width="100%" height={130}>
                 <PieChart>
                   <Pie
@@ -143,7 +146,10 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
                   </Pie>
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(1) : ""}%`, t("dashboard.chart.actual_pct")]}
+                    formatter={(v: number | undefined) => [
+                      `${v != null ? v.toFixed(1) : ""}%`,
+                      t("dashboard.chart.actual_pct"),
+                    ]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -152,8 +158,14 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
           {/* Legend */}
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
             {pieData.map((entry) => (
-              <span key={entry.name} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+              <span
+                key={entry.name}
+                className="flex items-center gap-1 text-xs text-muted-foreground"
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: entry.color }}
+                />
                 {entry.name}
               </span>
             ))}
@@ -162,7 +174,9 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
 
         {/* Drift bar chart */}
         <div>
-          <p className="text-xs text-center text-muted-foreground mb-1">{term("drift", t("dashboard.drift_title"))}</p>
+          <p className="text-xs text-center text-muted-foreground mb-1">
+            {term("drift", t("dashboard.drift_title"))}
+          </p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={driftData} margin={{ top: 14, right: 8, left: -16, bottom: 0 }}>
               <XAxis
@@ -180,7 +194,10 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v: number | undefined) => [`${v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : ""}%`, t("dashboard.chart.drift_yaxis")]}
+                formatter={(v: number | undefined) => [
+                  `${v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : ""}%`,
+                  t("dashboard.chart.drift_yaxis"),
+                ]}
                 labelStyle={{ color: theme.tooltipText }}
                 cursor={{ fill: "rgba(128,128,128,0.08)" }}
               />
@@ -193,7 +210,9 @@ export function AllocationGlance({ rebalance, profile, isLoading = false }: Prop
                 <LabelList
                   dataKey="drift"
                   position="top"
-                  formatter={(v: unknown) => typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : ""}
+                  formatter={(v: unknown) =>
+                    typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : ""
+                  }
                   style={{ fontSize: 9, fill: theme.tickColor }}
                 />
               </Bar>

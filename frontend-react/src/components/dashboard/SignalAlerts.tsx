@@ -12,7 +12,13 @@ import {
 import { getSignalDescription, getSignalLabel } from "@/lib/signal-label"
 import { FINANCE_BADGE } from "@/lib/colors"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { Stock, EnrichedStock, RebalanceResponse, SignalActivityItem } from "@/api/types/dashboard"
+import { resolveDisplayName } from "@/lib/stock-display"
+import type {
+  Stock,
+  EnrichedStock,
+  RebalanceResponse,
+  SignalActivityItem,
+} from "@/api/types/dashboard"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatDuration(t: TFunction<any>, days: number): string {
@@ -25,9 +31,10 @@ interface SignalRowProps {
   stock: Stock
   signal: string
   activity?: SignalActivityItem & { trigger_context?: string | null }
+  displayName?: string | null
 }
 
-function SignalRow({ stock, signal, activity }: SignalRowProps) {
+function SignalRow({ stock, signal, activity, displayName }: SignalRowProps) {
   const { t } = useTranslation()
   const icon = SCAN_SIGNAL_ICONS[signal] ?? "➖"
   const catIcon = CATEGORY_ICON_SHORT[stock.category] ?? ""
@@ -52,27 +59,31 @@ function SignalRow({ stock, signal, activity }: SignalRowProps) {
       ? formatDuration(t, durationDays)
       : null
 
-  const previousSignalLabel = previousSignal
-    ? getSignalLabel(t, previousSignal)
-    : null
+  const previousSignalLabel = previousSignal ? getSignalLabel(t, previousSignal) : null
 
   return (
     <div className="py-1.5">
-      <div className="grid grid-cols-[1.5rem_5rem_auto_auto] gap-2 items-center">
+      <div className="grid grid-cols-[1.5rem_1fr_auto_auto] gap-2 items-center">
         <span>{icon}</span>
-        <span className="font-semibold text-sm">{stock.ticker}</span>
+        {displayName ? (
+          <span className="min-w-0 flex flex-col leading-tight">
+            <span className="truncate font-semibold text-sm">{displayName}</span>
+            <span className="truncate text-[10px] text-muted-foreground">
+              {catIcon} {stock.ticker}
+            </span>
+          </span>
+        ) : (
+          <span className="font-semibold text-sm">{stock.ticker}</span>
+        )}
         <span className="text-xs text-muted-foreground">
-          {catIcon} {t(`config.category.${stock.category.toLowerCase()}`, stock.category)}
+          {!displayName && <>{catIcon} </>}
+          {t(`config.category.${stock.category.toLowerCase()}`, stock.category)}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={signalBadgeClass}
-                  aria-label={signalDescription}
-                >
+                <button type="button" className={signalBadgeClass} aria-label={signalDescription}>
                   {signalLabel}
                 </button>
               </TooltipTrigger>
@@ -118,14 +129,27 @@ interface Props {
   signalActivity?: SignalActivityItem[]
 }
 
-export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, signalActivity = [] }: Props) {
+export function SignalAlerts({
+  stocks = [],
+  enrichedStocks = [],
+  rebalance,
+  signalActivity = [],
+}: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
   const enrichedSignalMap: Record<string, string> = {}
+  const enrichedNameMap: Record<string, string | null> = {}
   for (const es of enrichedStocks) {
     if (es.ticker) {
       enrichedSignalMap[es.ticker] = es.computed_signal ?? es.last_scan_signal ?? "NORMAL"
+      enrichedNameMap[es.ticker] =
+        resolveDisplayName({
+          ticker: es.ticker,
+          name: es.name,
+          fund_name: es.fund_name,
+          category: es.category,
+        }) ?? null
     }
   }
 
@@ -152,7 +176,8 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
       <CardContent>
         {activeStocks.length > 0 && (
           <p className="sr-only" aria-live="polite">
-            {t("dashboard.signal_buy_title")}: {buyStocks.length}. {t("dashboard.signal_risk_title")}: {riskStocks.length}.
+            {t("dashboard.signal_buy_title")}: {buyStocks.length}.{" "}
+            {t("dashboard.signal_risk_title")}: {riskStocks.length}.
           </p>
         )}
         {activeStocks.length === 0 ? (
@@ -168,7 +193,9 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
             }}
           />
         ) : buyStocks.length === 0 && riskStocks.length === 0 ? (
-          <div className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}>
+          <div
+            className={`flex items-center gap-2 rounded-md ${FINANCE_BADGE.gain} px-3 py-2 text-sm`}
+          >
             {t("dashboard.all_signals_normal")}
           </div>
         ) : (
@@ -184,14 +211,13 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
                     stock={s}
                     signal={resolveSignal(s)}
                     activity={activityMap[s.ticker]}
+                    displayName={enrichedNameMap[s.ticker]}
                   />
                 ))}
               </div>
             )}
 
-            {buyStocks.length > 0 && riskStocks.length > 0 && (
-              <hr className="border-border" />
-            )}
+            {buyStocks.length > 0 && riskStocks.length > 0 && <hr className="border-border" />}
 
             {riskStocks.length > 0 && (
               <div>
@@ -204,6 +230,7 @@ export function SignalAlerts({ stocks = [], enrichedStocks = [], rebalance, sign
                     stock={s}
                     signal={resolveSignal(s)}
                     activity={activityMap[s.ticker]}
+                    displayName={enrichedNameMap[s.ticker]}
                   />
                 ))}
 

@@ -25,19 +25,15 @@ describe("transaction-csv-import", () => {
         "transaction_date,transaction_type,ticker,quantity,price,total_amount,currency,fx_rate,fee,note",
       )
       expect(lines).toHaveLength(4)
-      expect(lines[1]).toBe(
-        "2024-01-15,BUY,AAPL,10,150.00,1500.00,USD,,4.99,Example buy",
-      )
-      expect(lines[2]).toBe(
-        "2024-01-15,DEPOSIT,,1,5000.00,5000.00,USD,,0,Initial deposit",
-      )
-      expect(lines[3]).toBe(
-        "2024-01-20,WITHDRAWAL,,1,1200.00,1200.00,USD,,0,Cash withdrawal",
-      )
+      expect(lines[1]).toBe("2024-01-15,BUY,AAPL,10,150.00,1500.00,USD,,4.99,Example buy")
+      expect(lines[2]).toBe("2024-01-15,DEPOSIT,,1,5000.00,5000.00,USD,,0,Initial deposit")
+      expect(lines[3]).toBe("2024-01-20,WITHDRAWAL,,1,1200.00,1200.00,USD,,0,Cash withdrawal")
     })
 
     it("is fully auto-detectable by column mapper", () => {
-      const [headerLine] = generateTransactionCsvTemplate().replace(/^\uFEFF/, "").split("\r\n")
+      const [headerLine] = generateTransactionCsvTemplate()
+        .replace(/^\uFEFF/, "")
+        .split("\r\n")
       const headers = (headerLine ?? "").split(",")
       const mapping = autoDetectTransactionColumns(headers)
 
@@ -181,16 +177,14 @@ describe("transaction-csv-import", () => {
           .transaction_type,
       ).toBe("BUY")
       expect(
-        transformTransactionRow({ ...row("cashin"), type: "cashin" }, baseMapping)
-          .transaction_type,
+        transformTransactionRow({ ...row("cashin"), type: "cashin" }, baseMapping).transaction_type,
       ).toBe("DEPOSIT")
       expect(
         transformTransactionRow({ ...row("cashout"), type: "cashout" }, baseMapping)
           .transaction_type,
       ).toBe("WITHDRAWAL")
       expect(
-        transformTransactionRow({ ...row("cash"), type: "cash" }, baseMapping)
-          .transaction_type,
+        transformTransactionRow({ ...row("cash"), type: "cash" }, baseMapping).transaction_type,
       ).toBe("DEPOSIT")
     })
 
@@ -237,37 +231,29 @@ describe("transaction-csv-import", () => {
 
     it("normalizes ISO date format", () => {
       expect(
-        transformTransactionRow(
-          { ...row("date"), date: "2024-06-15" },
-          baseMapping,
-        ).transaction_date,
+        transformTransactionRow({ ...row("date"), date: "2024-06-15" }, baseMapping)
+          .transaction_date,
       ).toBe("2024-06-15")
     })
 
     it("normalizes slash-separated date format", () => {
       expect(
-        transformTransactionRow(
-        { ...row("date"), date: "2024/06/15" },
-        baseMapping,
-      ).transaction_date,
+        transformTransactionRow({ ...row("date"), date: "2024/06/15" }, baseMapping)
+          .transaction_date,
       ).toBe("2024-06-15")
     })
 
     it("normalizes DD/MM/YYYY HH:MM format", () => {
       expect(
-        transformTransactionRow(
-          { ...row("date-time"), date: "29/04/2025 09:17" },
-          baseMapping,
-        ).transaction_date,
+        transformTransactionRow({ ...row("date-time"), date: "29/04/2025 09:17" }, baseMapping)
+          .transaction_date,
       ).toBe("2025-04-29")
     })
 
     it("normalizes DD/MM/YYYY format", () => {
       expect(
-        transformTransactionRow(
-          { ...row("date"), date: "07/05/2025" },
-          baseMapping,
-        ).transaction_date,
+        transformTransactionRow({ ...row("date"), date: "07/05/2025" }, baseMapping)
+          .transaction_date,
       ).toBe("2025-05-07")
     })
 

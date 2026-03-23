@@ -1,4 +1,3 @@
-# pyright: reportCallIssue=false
 """
 Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史。
 """
@@ -6,11 +5,13 @@ Application — Scan Service：三層漏斗掃描、價格警報、掃描歷史�
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlmodel import Session, select
 
-from application.formatters import format_fear_greed_label
+from application.formatters import format_fear_greed_label, format_stock_display
 from application.scan.backtest_service import invalidate_backtest_cache
 from application.stock.stock_service import _get_stock_or_raise, build_nav_signals
 from domain.analysis import (
@@ -53,6 +54,7 @@ from infrastructure.market_data import (
     get_crypto_price,
     get_fear_greed_index,
     get_technical_signals,
+    get_ticker_name_cached,
     prime_signals_cache_batch,
 )
 from infrastructure.notification import (
@@ -62,6 +64,17 @@ from infrastructure.notification import (
 from logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_SIGNAL_ALERT_KEYS: dict[ScanSignal, str] = {
+    ScanSignal.THESIS_BROKEN: "scan.thesis_broken_alert",
+    ScanSignal.DEEP_VALUE: "scan.deep_value_alert",
+    ScanSignal.OVERSOLD: "scan.oversold_alert",
+    ScanSignal.CONTRARIAN_BUY: "scan.contrarian_buy_alert",
+    ScanSignal.APPROACHING_BUY: "scan.approaching_buy_alert",
+    ScanSignal.OVERHEATED: "scan.overheated_alert",
+    ScanSignal.CAUTION_HIGH: "scan.caution_high_alert",
+    ScanSignal.WEAKENING: "scan.weakening_alert",
+}
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 # Matches metric values in alert strings regardless of surrounding language labels.
@@ -92,27 +105,36 @@ def _insert_volume_qualifier(alert: str, qualifier: str) -> str:
 
 
 # ===========================================================================
-# Scan Service
+# Scan Service — internal types and pipeline steps
 # ===========================================================================
 
 
-def run_scan(session: Session) -> dict:
+@dataclass
+class _ScanContext:
+    """Shared state assembled before the parallel analysis phase."""
+
+    lang: str
+    all_stocks: list[Stock]
+    stock_map: dict[str, Stock]
+    market_sentiment: dict[str, Any]
+    market_status_value: str
+    market_status_details_value: str
+    fear_greed: dict[str, Any]
+    fg_label: str
+    nav_cache: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+def _prepare_scan_context(session: Session) -> _ScanContext:
+    """Load stocks, warm the signal cache, compute market indicators.
+
+    Covers Layers 1 (market sentiment) and NAV pre-fetch.
     """
-    V2 三層漏斗掃描：
-    Layer 1: 市場情緒（風向球跌破 60MA 比例）
-    Layer 2: 護城河趨勢（毛利率 YoY）
-    Layer 3: 技術面訊號（RSI, Bias, Volume Ratio）
-    Decision Engine 產生每檔股票的 signal，並透過 Telegram 通知。
-    """
-    logger.info("三層漏斗掃描啟動...")
     lang = get_user_language(session)
 
-    # === 預先載入所有股票（供 Layer 1 情緒分析與 Layer 2+3 掃描共用） ===
     all_stocks = repo.find_active_stocks(session)
     stock_map: dict[str, Stock] = {s.ticker: s for s in all_stocks}
     logger.info("掃描對象：%d 檔股票。", len(all_stocks))
 
-    # === 批次預取價格歷史並預熱訊號快取（減少個別 yfinance 呼叫） ===
     scan_tickers = [
         s.ticker
         for s in all_stocks
@@ -136,9 +158,7 @@ def run_scan(session: Session) -> dict:
         except Exception as _batch_err:
             logger.warning("批次預熱失敗，回退至個別呼叫：%s", _batch_err)
 
-    # === Layer 1: 市場情緒 ===
     trend_stocks = [s for s in all_stocks if s.category == StockCategory.TREND_SETTER]
-    # ETF 不參與市場情緒計算（VTI/VT 本身就是大盤，會造成循環推理）
     excluded_etfs = [s.ticker for s in trend_stocks if s.is_etf]
     if excluded_etfs:
         logger.info("Layer 1 — 排除 ETF：%s", excluded_etfs)
@@ -152,263 +172,254 @@ def run_scan(session: Session) -> dict:
         "Layer 1 — 市場情緒：%s（%s）", market_status_value, market_status_details_value
     )
 
-    # === Fear & Greed Index（與 Layer 1 並列的市場概況） ===
     fear_greed = get_fear_greed_index()
     fg_level = fear_greed.get("composite_level", "N/A")
     fg_score = fear_greed.get("composite_score", 50)
     fg_label = format_fear_greed_label(fg_level, fg_score, lang=lang)
     logger.info("恐懼貪婪指數：%s（分數：%d）", fg_level, fg_score)
 
-    # === Pre-fetch NAV data for Mutual_Fund stocks ===
-    _nav_cache: dict[str, dict] = {}
+    nav_cache: dict[str, dict] = {}
     for s in all_stocks:
         if s.category == StockCategory.MUTUAL_FUND:
             nav_row = repo.get_latest_nav(session, s.ticker)
             if nav_row:
-                _nav_cache[s.ticker] = build_nav_signals(nav_row)
+                nav_cache[s.ticker] = build_nav_signals(nav_row)
 
-    # === Layer 2 & 3: 逐股分析 + Decision Engine（並行） ===
+    return _ScanContext(
+        lang=lang,
+        all_stocks=all_stocks,
+        stock_map=stock_map,
+        market_sentiment=market_sentiment,
+        market_status_value=market_status_value,
+        market_status_details_value=market_status_details_value,
+        fear_greed=fear_greed,
+        fg_label=fg_label,
+        nav_cache=nav_cache,
+    )
 
-    def _analyze_single_stock(stock: Stock, mkt_status: str) -> dict:
-        """單一股票的分析邏輯（可在 Thread 中執行）。"""
-        ticker = stock.ticker
-        alerts: list[str] = []
 
-        if stock.category.value in SKIP_MOAT_CATEGORIES or stock.is_etf:
-            moat_not_applicable = t(
-                "scan.moat_not_applicable", lang=lang, category=stock.category.value
-            )
-            moat_result = {
-                "ticker": ticker,
-                "moat": MoatStatus.NOT_AVAILABLE.value,
-                "details": moat_not_applicable,
-            }
-        else:
-            moat_result = analyze_moat_trend(ticker)
-        moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
-        moat_details = moat_result.get("details", "")
-
-        # Cash 不取價格；Mutual_Fund 走 NAV；Crypto 走 CoinGecko
-        if stock.category == StockCategory.MUTUAL_FUND:
-            signals = _nav_cache.get(ticker)
-        elif stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
-            signals = None
-        elif stock.category == StockCategory.CRYPTO:
-            crypto_data = get_crypto_price(stock.coingecko_id, ticker)
-            crypto_price = (
-                crypto_data.get("price_usd")
-                if crypto_data
-                and isinstance(crypto_data.get("price_usd"), (int, float))
-                else None
-            )
-            signals = {
-                "price": crypto_price,
-                "rsi": None,
-                "bias": None,
-                "bias_200": None,
-                "volume_ratio": None,
-            }
-        else:
-            signals = get_technical_signals(ticker)
-        rsi: float | None = None
-        bias: float | None = None
-        bias_200: float | None = None
-        volume_ratio: float | None = None
-        price: float | None = None
-        if signals and "error" not in signals:
-            rsi = signals.get("rsi")
-            bias = signals.get("bias")
-            bias_200 = signals.get("bias_200")
-            volume_ratio = signals.get("volume_ratio")
-            price = signals.get("price")
-        elif signals and "error" in signals:
-            alerts.append(signals["error"])
-
-        signal = determine_scan_signal(
-            moat_value,
-            rsi,
-            bias,
-            bias_200,
-            stock.category.value,
-            volume_ratio=volume_ratio,
-            market_status=mkt_status,
+def _fetch_stock_signals(
+    stock: Stock,
+    nav_cache: dict[str, dict],
+) -> dict | None:
+    """Return raw technical signals for *stock* based on its category."""
+    ticker = stock.ticker
+    if stock.category == StockCategory.MUTUAL_FUND:
+        return nav_cache.get(ticker)
+    if stock.category.value in SKIP_PRICE_FETCH_CATEGORIES:
+        return None
+    if stock.category == StockCategory.CRYPTO:
+        crypto_data = get_crypto_price(stock.coingecko_id, ticker)
+        crypto_price = (
+            crypto_data.get("price_usd")
+            if crypto_data and isinstance(crypto_data.get("price_usd"), (int, float))
+            else None
         )
-
-        # === Rogue Wave (瘋狗浪) ===
-        bias_percentile: float | None = None
-        is_rogue_wave = False
-        if bias is not None and stock.category.value not in SKIP_RSI_CATEGORIES:
-            dist = get_bias_distribution(ticker)
-            if dist:
-                bias_percentile = compute_bias_percentile(
-                    bias, dist["historical_biases"]
-                )
-            is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
-            if is_rogue_wave:
-                alerts.append(
-                    t(
-                        "scan.rogue_wave_alert",
-                        lang=lang,
-                        ticker=ticker,
-                        bias=round(bias, 1),
-                        percentile=round(bias_percentile)
-                        if bias_percentile is not None
-                        else "N/A",
-                        vol_ratio=round(volume_ratio, 1)
-                        if volume_ratio is not None
-                        else "N/A",
-                    )
-                )
-
-        if signal == ScanSignal.THESIS_BROKEN:
-            alerts.append(
-                t(
-                    "scan.thesis_broken_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    details=moat_details,
-                )
-            )
-        elif signal == ScanSignal.DEEP_VALUE:
-            alerts.append(
-                t(
-                    "scan.deep_value_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1),
-                )
-            )
-        elif signal == ScanSignal.OVERSOLD:
-            alerts.append(
-                t(
-                    "scan.oversold_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.CONTRARIAN_BUY:
-            alerts.append(
-                t(
-                    "scan.contrarian_buy_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    rsi=round(rsi, 1),
-                    bias=round(bias, 1) if bias is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.APPROACHING_BUY:
-            alerts.append(
-                t(
-                    "scan.approaching_buy_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                    bias=round(bias, 1) if bias is not None else "N/A",
-                    bias_200=round(bias_200, 1) if bias_200 is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.OVERHEATED:
-            alerts.append(
-                t(
-                    "scan.overheated_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.CAUTION_HIGH:
-            alerts.append(
-                t(
-                    "scan.caution_high_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1) if bias is not None else "N/A",
-                    rsi=round(rsi, 1) if rsi is not None else "N/A",
-                )
-            )
-        elif signal == ScanSignal.WEAKENING:
-            alerts.append(
-                t(
-                    "scan.weakening_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    bias=round(bias, 1),
-                    rsi=round(rsi, 1),
-                )
-            )
-
-        # Volume confidence qualifier: insert on the metrics line (line 1) of the last
-        # signal alert. Excluded: NORMAL (no alert), THESIS_BROKEN (fundamental signal).
-        if (
-            alerts
-            and volume_ratio is not None
-            and signal
-            not in (
-                ScanSignal.NORMAL,
-                ScanSignal.THESIS_BROKEN,
-            )
-        ):
-            qualifier: str | None = None
-            if volume_ratio >= VOLUME_SURGE_THRESHOLD:
-                qualifier = t("scan.volume_surge", lang=lang)
-            elif volume_ratio <= VOLUME_THIN_THRESHOLD:
-                qualifier = t("scan.volume_thin", lang=lang)
-            if qualifier:
-                alerts[-1] = _insert_volume_qualifier(alerts[-1], qualifier)
-
-        if moat_value == MoatStatus.STABLE.value and moat_details:
-            alerts.append(
-                t(
-                    "scan.moat_stable_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    details=moat_details,
-                )
-            )
-        if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
-            alerts.append(
-                t(
-                    "scan.moat_unavailable_alert",
-                    lang=lang,
-                    ticker=ticker,
-                    details=moat_details,
-                )
-            )
-
-        logger.info(
-            "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
-            ticker,
-            signal.value,
-            moat_value,
-            rsi,
-            bias,
-            volume_ratio,
-        )
-
         return {
-            "ticker": ticker,
-            "category": stock.category,
-            "signal": signal.value,
-            "alerts": alerts,
-            "moat": moat_value,
-            "bias": bias,
-            "volume_ratio": volume_ratio,
-            "price": price,
-            "rsi": rsi,
-            "market_status": market_status_value,
-            "bias_percentile": bias_percentile,
-            "is_rogue_wave": is_rogue_wave,
+            "price": crypto_price,
+            "rsi": None,
+            "bias": None,
+            "bias_200": None,
+            "volume_ratio": None,
         }
+    return get_technical_signals(ticker)
 
+
+def _build_scan_alerts(
+    ticker: str,
+    lang: str,
+    signal: "ScanSignal",
+    moat_value: str,
+    moat_details: str,
+    rsi: float | None,
+    bias: float | None,
+    bias_200: float | None,
+    volume_ratio: float | None,
+    bias_percentile: float | None,
+    is_rogue_wave: bool,
+    initial_alerts: list[str],
+    name: str | None = None,
+) -> list[str]:
+    """Assemble the human-readable alert lines for a single stock scan result."""
+    display = format_stock_display(name, ticker)
+    alerts = list(initial_alerts)
+
+    if is_rogue_wave:
+        alerts.append(
+            t(
+                "scan.rogue_wave_alert",
+                lang=lang,
+                ticker=display,
+                bias=round(bias, 1),  # type: ignore[arg-type]
+                percentile=round(bias_percentile)
+                if bias_percentile is not None
+                else "N/A",
+                vol_ratio=round(volume_ratio, 1) if volume_ratio is not None else "N/A",
+            )
+        )
+
+    alert_key = _SIGNAL_ALERT_KEYS.get(signal)
+    if alert_key:
+        alerts.append(
+            t(
+                alert_key,
+                lang=lang,
+                ticker=display,
+                details=moat_details,
+                bias=round(bias, 1) if bias is not None else "N/A",
+                rsi=round(rsi, 1) if rsi is not None else "N/A",
+                bias_200=round(bias_200, 1) if bias_200 is not None else "N/A",
+            )
+        )
+
+    # Volume confidence qualifier on last alert (not for NORMAL / THESIS_BROKEN).
+    if (
+        alerts
+        and volume_ratio is not None
+        and signal
+        not in (
+            ScanSignal.NORMAL,
+            ScanSignal.THESIS_BROKEN,
+        )
+    ):
+        qualifier: str | None = None
+        if volume_ratio >= VOLUME_SURGE_THRESHOLD:
+            qualifier = t("scan.volume_surge", lang=lang)
+        elif volume_ratio <= VOLUME_THIN_THRESHOLD:
+            qualifier = t("scan.volume_thin", lang=lang)
+        if qualifier:
+            alerts[-1] = _insert_volume_qualifier(alerts[-1], qualifier)
+
+    if moat_value == MoatStatus.STABLE.value and moat_details:
+        alerts.append(
+            t("scan.moat_stable_alert", lang=lang, ticker=display, details=moat_details)
+        )
+    if moat_value == MoatStatus.NOT_AVAILABLE.value and moat_details:
+        alerts.append(
+            t(
+                "scan.moat_unavailable_alert",
+                lang=lang,
+                ticker=display,
+                details=moat_details,
+            )
+        )
+    return alerts
+
+
+def _analyze_single_stock(
+    stock: Stock,
+    mkt_status: str,
+    lang: str,
+    nav_cache: dict[str, dict],
+) -> dict:
+    """Layer 2 & 3 analysis for one stock (runs inside a thread pool)."""
+    ticker = stock.ticker
+
+    if stock.category.value in SKIP_MOAT_CATEGORIES or stock.is_etf:
+        moat_result = {
+            "ticker": ticker,
+            "moat": MoatStatus.NOT_AVAILABLE.value,
+            "details": t(
+                "scan.moat_not_applicable", lang=lang, category=stock.category.value
+            ),
+        }
+    else:
+        moat_result = analyze_moat_trend(ticker)
+    moat_value = moat_result.get("moat", MoatStatus.NOT_AVAILABLE.value)
+    moat_details = moat_result.get("details", "")
+
+    signals = _fetch_stock_signals(stock, nav_cache)
+
+    rsi: float | None = None
+    bias: float | None = None
+    bias_200: float | None = None
+    volume_ratio: float | None = None
+    price: float | None = None
+    initial_alerts: list[str] = []
+    if signals and "error" not in signals:
+        rsi = signals.get("rsi")
+        bias = signals.get("bias")
+        bias_200 = signals.get("bias_200")
+        volume_ratio = signals.get("volume_ratio")
+        price = signals.get("price")
+    elif signals and "error" in signals:
+        initial_alerts.append(signals["error"])
+
+    signal = determine_scan_signal(
+        moat_value,
+        rsi,
+        bias,
+        bias_200,
+        stock.category.value,
+        volume_ratio=volume_ratio,
+        market_status=mkt_status,
+    )
+
+    bias_percentile: float | None = None
+    is_rogue_wave = False
+    if bias is not None and stock.category.value not in SKIP_RSI_CATEGORIES:
+        dist = get_bias_distribution(ticker)
+        if dist:
+            bias_percentile = compute_bias_percentile(bias, dist["historical_biases"])
+        is_rogue_wave = detect_rogue_wave(bias_percentile, volume_ratio)
+
+    stock_name = get_ticker_name_cached(ticker)
+    alerts = _build_scan_alerts(
+        ticker=ticker,
+        lang=lang,
+        signal=signal,
+        moat_value=moat_value,
+        moat_details=moat_details,
+        rsi=rsi,
+        bias=bias,
+        bias_200=bias_200,
+        volume_ratio=volume_ratio,
+        bias_percentile=bias_percentile,
+        is_rogue_wave=is_rogue_wave,
+        initial_alerts=initial_alerts,
+        name=stock_name,
+    )
+
+    logger.info(
+        "%s → signal=%s, moat=%s, rsi=%s, bias=%s, vol_ratio=%s",
+        ticker,
+        signal.value,
+        moat_value,
+        rsi,
+        bias,
+        volume_ratio,
+    )
+
+    return {
+        "ticker": ticker,
+        "name": stock_name,
+        "category": stock.category,
+        "signal": signal.value,
+        "alerts": alerts,
+        "moat": moat_value,
+        "bias": bias,
+        "volume_ratio": volume_ratio,
+        "price": price,
+        "rsi": rsi,
+        "market_status": mkt_status,
+        "bias_percentile": bias_percentile,
+        "is_rogue_wave": is_rogue_wave,
+    }
+
+
+def _run_parallel_analysis(ctx: _ScanContext) -> list[dict]:
+    """Fan-out per-stock analysis across a thread pool and collect results."""
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=SCAN_THREAD_POOL_SIZE) as executor:
         futures = {
-            executor.submit(_analyze_single_stock, s, market_status_value): s
-            for s in all_stocks
+            executor.submit(
+                _analyze_single_stock,
+                s,
+                ctx.market_status_value,
+                ctx.lang,
+                ctx.nav_cache,
+            ): s
+            for s in ctx.all_stocks
         }
         for future in as_completed(futures):
             try:
@@ -416,51 +427,54 @@ def run_scan(session: Session) -> dict:
             except Exception as exc:
                 stock = futures[future]
                 logger.error("掃描 %s 失敗：%s", stock.ticker, exc, exc_info=True)
+    return results
 
-    # === 持久化掃描紀錄 ===
+
+def _persist_scan_results(
+    session: Session, results: list[dict], ctx: _ScanContext
+) -> None:
+    """Write scan logs for all stocks, then check custom price alerts."""
     for r in results:
         scan_log = ScanLog(
             stock_ticker=r["ticker"],
             signal=r["signal"],
-            market_status=market_status_value,
-            market_status_details=market_status_details_value,
+            market_status=ctx.market_status_value,
+            market_status_details=ctx.market_status_details_value,
             details=json.dumps(r["alerts"], ensure_ascii=False),
         )
         repo.create_scan_log(session, scan_log)
     session.commit()
-
-    # === 檢查自訂價格警報 ===
     try:
-        _check_price_alerts(session, results, lang)
+        _check_price_alerts(session, results, ctx.lang)
     except Exception:
         logger.error("價格警報檢查失敗，繼續掃描差異比對。", exc_info=True)
 
-    # === 差異比對 + 通知 ===
-    category_icon = CATEGORY_ICON
-    now = datetime.now(UTC)
 
-    # 比對每檔股票的 current signal vs last_scan_signal
-    new_or_changed: list[dict] = []  # signal 從 NORMAL→非 NORMAL，或非 NORMAL 類型改變
-    resolved: list[dict] = []  # signal 從非 NORMAL→NORMAL
+def _evaluate_and_notify(
+    session: Session, results: list[dict], ctx: _ScanContext
+) -> None:
+    """Diff current vs previous signals, persist updates, send Telegram summary."""
+    now = datetime.now(UTC)
+    category_icon = CATEGORY_ICON
+
+    new_or_changed: list[dict] = []
+    resolved: list[dict] = []
     signal_updates: dict[str, str] = {}
     signal_since_updates: dict[str, datetime | None] = {}
 
     for r in results:
         ticker = r["ticker"]
         current_signal = r["signal"]
-        stock_obj = stock_map.get(ticker)
+        stock_obj = ctx.stock_map.get(ticker)
         prev_signal = (
             stock_obj.last_scan_signal if stock_obj else ScanSignal.NORMAL.value
         )
 
         signal_updates[ticker] = current_signal
-
         if current_signal == prev_signal:
-            # 訊號不變，若股票物件存在才保留既有 signal_since（避免 None 覆蓋已存在的值）
             if stock_obj is not None:
                 signal_since_updates[ticker] = stock_obj.signal_since
-            continue  # 無變化，不通知
-        # 訊號改變：重設 signal_since 為當下
+            continue
         signal_since_updates[ticker] = now
         if current_signal != ScanSignal.NORMAL.value:
             new_or_changed.append({**r, "_prev_signal": prev_signal})
@@ -473,103 +487,115 @@ def run_scan(session: Session) -> dict:
                 }
             )
 
-    # 持久化所有股票的最新 signal 與 signal_since（不論是否有變化）
     repo.bulk_update_scan_signals(session, signal_updates, signal_since_updates)
 
-    has_changes = bool(new_or_changed) or bool(resolved)
+    if not (new_or_changed or resolved):
+        logger.info("掃描完成，訊號無變化，跳過通知。")
+        return
 
-    if has_changes:
-        logger.warning(
-            "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
-            len(new_or_changed),
-            len(resolved),
-        )
-        header = t(
-            "scan.alert_header",
-            lang=lang,
-            market_status=market_status_value,
-            fg_label=fg_label,
-        )
+    logger.warning(
+        "掃描差異：%d 檔新增/變更，%d 檔已恢復。",
+        len(new_or_changed),
+        len(resolved),
+    )
+    header = t(
+        "scan.alert_header",
+        lang=ctx.lang,
+        market_status=ctx.market_status_value,
+        fg_label=ctx.fg_label,
+    )
+    body_parts: list[str] = []
 
-        # 新增/惡化的股票依類別分組（含時間徽章與轉換脈絡）
-        body_parts: list[str] = []
-        if new_or_changed:
-            grouped: dict[str, list[str]] = {}
-            for r in new_or_changed:
-                cat = r.get("category", DEFAULT_IMPORT_CATEGORY)
-                cat_value = cat.value if hasattr(cat, "value") else str(cat)
-                prev = r.get("_prev_signal", ScanSignal.NORMAL.value)
-                enriched_alerts = list(r["alerts"])
-                # [NEW] badge only when transitioning from NORMAL; type-changes need no badge
-                # (the transition line already carries the context)
-                if prev == ScanSignal.NORMAL.value and enriched_alerts:
-                    badge = t("scan.signal_new_badge", lang=lang)
-                    enriched_alerts[-1] = enriched_alerts[-1] + f"  {badge}"
-                # Append transition context line
-                transition = t(
-                    "scan.signal_transition",
-                    lang=lang,
-                    from_signal=prev,
-                    to_signal=r["signal"],
-                )
-                enriched_alerts.append(f"   {transition}")
-                grouped.setdefault(cat_value, []).extend(enriched_alerts)
+    if new_or_changed:
+        grouped: dict[str, list[str]] = {}
+        for r in new_or_changed:
+            cat = r.get("category", DEFAULT_IMPORT_CATEGORY)
+            cat_value = cat.value if hasattr(cat, "value") else str(cat)
+            prev = r.get("_prev_signal", ScanSignal.NORMAL.value)
+            enriched_alerts = list(r["alerts"])
+            if prev == ScanSignal.NORMAL.value and enriched_alerts:
+                badge = t("scan.signal_new_badge", lang=ctx.lang)
+                enriched_alerts[-1] = enriched_alerts[-1] + f"  {badge}"
+            transition = t(
+                "scan.signal_transition",
+                lang=ctx.lang,
+                from_signal=prev,
+                to_signal=r["signal"],
+            )
+            enriched_alerts.append(f"   {transition}")
+            grouped.setdefault(cat_value, []).extend(enriched_alerts)
 
-            for cat_key in STOCK_CATEGORIES:
-                if cat_key in grouped:
-                    icon = category_icon.get(cat_key, "")
-                    label = CATEGORY_LABEL.get(cat_key, cat_key)
-                    section_header = f"\n{icon} <b>{label}</b>"
-                    section_lines = "\n".join(grouped[cat_key])
-                    body_parts.append(f"{section_header}\n{section_lines}")
-            # Safety net: never drop categories that are not in the configured order.
-            for cat_key in sorted(k for k in grouped if k not in STOCK_CATEGORIES):
+        for cat_key in STOCK_CATEGORIES:
+            if cat_key in grouped:
                 icon = category_icon.get(cat_key, "")
                 label = CATEGORY_LABEL.get(cat_key, cat_key)
-                section_header = f"\n{icon} <b>{label}</b>"
                 section_lines = "\n".join(grouped[cat_key])
-                body_parts.append(f"{section_header}\n{section_lines}")
+                body_parts.append(f"\n{icon} <b>{label}</b>\n{section_lines}")
+        for cat_key in sorted(k for k in grouped if k not in STOCK_CATEGORIES):
+            icon = category_icon.get(cat_key, "")
+            label = CATEGORY_LABEL.get(cat_key, cat_key)
+            section_lines = "\n".join(grouped[cat_key])
+            body_parts.append(f"\n{icon} <b>{label}</b>\n{section_lines}")
 
-        # 恢復正常的股票（含前訊號與持續時間）
-        if resolved:
-            resolved_parts: list[str] = []
-            for r in resolved:
-                ticker_r = r["ticker"]
-                prev = r.get("_prev_signal", "NORMAL")
-                prev_since: datetime | None = r.get("_prev_since")
-                if prev_since is not None:
-                    days = (now - prev_since).days
-                    resolved_parts.append(
-                        t(
-                            "scan.resolved_detail",
-                            lang=lang,
-                            ticker=ticker_r,
-                            signal=prev,
-                            days=days,
-                        )
+    if resolved:
+        resolved_parts: list[str] = []
+        for r in resolved:
+            ticker_r = r["ticker"]
+            display_r = format_stock_display(r.get("name"), ticker_r)
+            prev = r.get("_prev_signal", "NORMAL")
+            prev_since: datetime | None = r.get("_prev_since")
+            if prev_since is not None:
+                days = (now - prev_since).days
+                resolved_parts.append(
+                    t(
+                        "scan.resolved_detail",
+                        lang=ctx.lang,
+                        ticker=display_r,
+                        signal=prev,
+                        days=days,
                     )
-                else:
-                    resolved_parts.append(ticker_r)
-            resolved_section = t(
-                "scan.resolved_section",
-                lang=lang,
-                tickers=", ".join(resolved_parts),
-            )
-            body_parts.append(f"\n{resolved_section}")
+                )
+            else:
+                resolved_parts.append(
+                    t(
+                        "scan.resolved_detail_no_duration",
+                        lang=ctx.lang,
+                        ticker=display_r,
+                        signal=prev,
+                    )
+                )
+        body_parts.append(
+            f"\n{t('scan.resolved_section', lang=ctx.lang, tickers=', '.join(resolved_parts))}"
+        )
 
-        if is_notification_enabled(session, "scan_alerts"):
-            send_telegram_message_dual(header + "\n".join(body_parts), session)
-        else:
-            logger.info("掃描訊號通知已被使用者停用，跳過發送。")
+    if is_notification_enabled(session, "scan_alerts"):
+        send_telegram_message_dual(header + "\n".join(body_parts), session)
     else:
-        logger.info("掃描完成，訊號無變化，跳過通知。")
+        logger.info("掃描訊號通知已被使用者停用，跳過發送。")
 
-    # Backtest summary must be recalculated after new scan logs are persisted.
+
+# ===========================================================================
+# Scan Service — public orchestrator
+# ===========================================================================
+
+
+def run_scan(session: Session) -> dict:
+    """V2 三層漏斗掃描 orchestrator.
+
+    Layer 1: 市場情緒（風向球跌破 60MA 比例）
+    Layer 2: 護城河趨勢（毛利率 YoY）
+    Layer 3: 技術面訊號（RSI, Bias, Volume Ratio）
+    Decision Engine 產生每檔股票的 signal，並透過 Telegram 通知。
+    """
+    logger.info("三層漏斗掃描啟動...")
+    ctx = _prepare_scan_context(session)
+    results = _run_parallel_analysis(ctx)
+    _persist_scan_results(session, results, ctx)
+    _evaluate_and_notify(session, results, ctx)
     invalidate_backtest_cache()
-
     return {
-        "market_status": market_sentiment,
-        "fear_greed": fear_greed,
+        "market_status": ctx.market_sentiment,
+        "fear_greed": ctx.fear_greed,
         "results": results,
     }
 
@@ -625,8 +651,9 @@ def _check_price_alerts(session: Session, results: list[dict], lang: str) -> Non
         alert.last_triggered_at = now
         session.add(alert)
         op_label = "<" if alert.operator == "lt" else ">"
+        display_alert = format_stock_display(r.get("name"), alert.stock_ticker)
         triggered_msgs.append(
-            f"🔔 {alert.stock_ticker} {alert.metric}={metric_value} "
+            f"🔔 {display_alert} {alert.metric}={metric_value} "
             f"{op_label} {alert.threshold}"
         )
 

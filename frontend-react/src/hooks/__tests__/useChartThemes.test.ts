@@ -85,9 +85,7 @@ describe("useRechartsTheme", () => {
   it("tooltipStyle backgroundColor matches tooltipBg", () => {
     useTheme.setState({ theme: "dark" })
     const { result } = renderHook(() => useRechartsTheme())
-    expect(result.current.tooltipStyle.backgroundColor).toBe(
-      result.current.tooltipBg,
-    )
+    expect(result.current.tooltipStyle.backgroundColor).toBe(result.current.tooltipBg)
   })
 
   it("tooltipStyle color matches tooltipText", () => {

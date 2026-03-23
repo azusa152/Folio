@@ -55,7 +55,11 @@ export function AssetLocationViz({
 
   const score = taxEfficiencyScore ?? 0
   const scoreMessage =
-    score >= 80 ? t("location.score_optimal") : score >= 50 ? t("location.score_good") : t("location.score_needs_work")
+    score >= 80
+      ? t("location.score_optimal")
+      : score >= 50
+        ? t("location.score_good")
+        : t("location.score_needs_work")
 
   return (
     <section className="space-y-4">
@@ -80,13 +84,18 @@ export function AssetLocationViz({
           {allocations.map((allocation) => (
             <div key={allocation.wrapper} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span>{t(`wrapper.${allocation.wrapper}`, { defaultValue: allocation.wrapper })}</span>
+                <span>
+                  {t(`wrapper.${allocation.wrapper}`, { defaultValue: allocation.wrapper })}
+                </span>
                 <span>{Math.round(allocation.total).toLocaleString()}</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex">
                 {Object.entries(allocation.categories).map(([category, amount]) => {
                   const widthPct = allocation.total > 0 ? (amount / allocation.total) * 100 : 0
-                  const bgColor = CATEGORY_COLOR_MAP[category] ?? TAX_WRAPPER_COLOR_MAP[allocation.wrapper] ?? CATEGORY_COLOR_FALLBACK
+                  const bgColor =
+                    CATEGORY_COLOR_MAP[category] ??
+                    TAX_WRAPPER_COLOR_MAP[allocation.wrapper] ??
+                    CATEGORY_COLOR_FALLBACK
                   return (
                     <div
                       key={`${allocation.wrapper}-${category}`}
@@ -108,13 +117,20 @@ export function AssetLocationViz({
           </CardHeader>
           <CardContent className="space-y-2">
             {placementSuggestions.map((suggestion) => (
-              <div key={`${suggestion.ticker}-${suggestion.from_wrapper}-${suggestion.to_wrapper}`} className="rounded-md border border-border p-2 space-y-1">
+              <div
+                key={`${suggestion.ticker}-${suggestion.from_wrapper}-${suggestion.to_wrapper}`}
+                className="rounded-md border border-border p-2 space-y-1"
+              >
                 <p className="text-xs font-medium">
                   {t(suggestion.reason, {
                     amount: Math.round(suggestion.amount).toLocaleString(),
                     category: suggestion.category,
-                    from: t(`wrapper.${suggestion.from_wrapper}`, { defaultValue: suggestion.from_wrapper }),
-                    to: t(`wrapper.${suggestion.to_wrapper}`, { defaultValue: suggestion.to_wrapper }),
+                    from: t(`wrapper.${suggestion.from_wrapper}`, {
+                      defaultValue: suggestion.from_wrapper,
+                    }),
+                    to: t(`wrapper.${suggestion.to_wrapper}`, {
+                      defaultValue: suggestion.to_wrapper,
+                    }),
                     defaultValue: `${suggestion.ticker}`,
                   })}
                 </p>
@@ -139,9 +155,18 @@ export function AssetLocationViz({
             <CardTitle className="text-sm">{t("location.tax_savings")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-xs text-muted-foreground">
-            <p>{t("location.tax_savings")}: {Math.round(taxSavingsEstimate.total_annual).toLocaleString()}</p>
-            <p>{t("location.projected_10yr")}: {Math.round(taxSavingsEstimate.projected_10yr).toLocaleString()}</p>
-            <p>{t("location.projected_20yr")}: {Math.round(taxSavingsEstimate.projected_20yr).toLocaleString()}</p>
+            <p>
+              {t("location.tax_savings")}:{" "}
+              {Math.round(taxSavingsEstimate.total_annual).toLocaleString()}
+            </p>
+            <p>
+              {t("location.projected_10yr")}:{" "}
+              {Math.round(taxSavingsEstimate.projected_10yr).toLocaleString()}
+            </p>
+            <p>
+              {t("location.projected_20yr")}:{" "}
+              {Math.round(taxSavingsEstimate.projected_20yr).toLocaleString()}
+            </p>
           </CardContent>
         </Card>
       )}

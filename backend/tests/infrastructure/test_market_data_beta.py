@@ -9,24 +9,11 @@ Covers:
 - Sentinel value caching prevents repeated yfinance calls for unavailable Beta.
 """
 
-import os
-import tempfile
+from unittest.mock import patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+from cachetools import TTLCache
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_beta"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-from cachetools import TTLCache  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _BETA_NOT_AVAILABLE,
     _fetch_beta_from_yf,
     get_stock_beta,
@@ -143,8 +130,8 @@ class TestGetStockBeta:
         assert result is None
         mock_cached_fetch.assert_called_once()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_cache_sentinel_in_l1_and_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -169,8 +156,8 @@ class TestGetStockBeta:
             call_args = mock_disk_set.call_args
             assert call_args[0][1] == _BETA_NOT_AVAILABLE  # value argument
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_cache_success_beta_in_l1_and_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -192,7 +179,7 @@ class TestGetStockBeta:
             call_args = mock_disk_set.call_args
             assert call_args[0][1] == 1.45
 
-    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
@@ -208,8 +195,8 @@ class TestGetStockBeta:
             mock_fetch.assert_not_called()
             mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_promote_l2_to_l1_without_fetching(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -232,7 +219,7 @@ class TestGetStockBeta:
             # Assert — disk_set not called (already in L2)
             mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_convert_l2_sentinel_to_none(self, mock_fetch, mock_disk_get):
         # Arrange — L2 contains sentinel
@@ -333,8 +320,8 @@ class TestPrewarmBetaBatch:
 class TestBetaSentinelCaching:
     """Verify that sentinel values are properly cached to avoid repeated fetches."""
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_not_refetch_when_sentinel_in_l1(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -355,8 +342,8 @@ class TestBetaSentinelCaching:
             mock_fetch.assert_not_called()
             mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_beta_from_yf")
     def test_should_not_refetch_when_sentinel_in_l2(
         self, mock_fetch, mock_disk_set, mock_disk_get

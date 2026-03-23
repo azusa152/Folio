@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { TopHoldings } from "../TopHoldings"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
-import type { RebalanceResponse } from "@/api/types/dashboard"
+import { makeRebalanceResponse } from "./fixtures"
 
 vi.mock("@/hooks/useTerminology", () => ({
   useTerminology: () => ({
@@ -12,10 +12,9 @@ vi.mock("@/hooks/useTerminology", () => ({
   }),
 }))
 
-const rebalance: RebalanceResponse = {
+const rebalance = makeRebalanceResponse({
   total_value: 10000,
   display_currency: "USD",
-  advice: [],
   holdings_detail: [
     {
       ticker: "AAPL",
@@ -30,7 +29,7 @@ const rebalance: RebalanceResponse = {
       purchase_fx_rate: null,
     },
   ],
-} as unknown as RebalanceResponse
+})
 
 describe("TopHoldings privacy", () => {
   beforeEach(() => {
@@ -73,8 +72,7 @@ describe("TopHoldings privacy", () => {
   })
 
   it("aggregates duplicate tickers and shows translated category labels", () => {
-    const withDuplicateTicker = {
-      ...rebalance,
+    const withDuplicateTicker = makeRebalanceResponse({
       holdings_detail: [
         {
           ticker: "VTI",
@@ -101,7 +99,7 @@ describe("TopHoldings privacy", () => {
           purchase_fx_rate: null,
         },
       ],
-    } as unknown as RebalanceResponse
+    })
 
     render(
       <MemoryRouter>

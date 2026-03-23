@@ -17,6 +17,7 @@ from domain.constants import (
     ERROR_INVALID_INPUT,
     ERROR_TRANSACTION_NOT_FOUND,
     GENERIC_VALIDATION_ERROR,
+    MAX_IMPORT_ROWS,
 )
 from domain.core.entities import Transaction
 from domain.enums import StockCategory, TransactionType
@@ -178,7 +179,7 @@ def import_transactions(
     account_id: int | None = None,
     mode: Literal["append", "replace_account"] = "append",
 ) -> dict:
-    if len(data) > 1000:
+    if len(data) > MAX_IMPORT_ROWS:
         raise HTTPException(
             status_code=400,
             detail={
@@ -339,10 +340,6 @@ def cleanup_account_transactions(session: Session, account_id: int, lang: str) -
     return repo.delete_transactions_by_account(session, account_id)
 
 
-def _replace_account_transactions(session: Session, account_id: int, lang: str) -> int:
-    return cleanup_account_transactions(session, account_id, lang)
-
-
 def _replace_account_and_import(
     *,
     session: Session,
@@ -350,7 +347,7 @@ def _replace_account_and_import(
     lang: str,
     account_id: int,
 ) -> dict:
-    deleted = _replace_account_transactions(session, account_id, lang)
+    deleted = cleanup_account_transactions(session, account_id, lang)
 
     imported = 0
     for item in data:

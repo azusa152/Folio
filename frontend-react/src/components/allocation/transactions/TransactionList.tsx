@@ -6,11 +6,7 @@ import { Button } from "@/components/ui/button"
 import type { AccountResponse } from "@/api/types/account"
 import { useDeleteTransaction } from "@/api/hooks/useTransactions"
 import type { TransactionResponse } from "@/api/types/transaction"
-import {
-  formatCurrency,
-  formatQuantity,
-  getTransactionQuantityUnitKey,
-} from "@/lib/format"
+import { formatCurrency, formatQuantity, getTransactionQuantityUnitKey } from "@/lib/format"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -84,10 +80,15 @@ export function TransactionList({ transactions, accounts, isLoading }: Props) {
                 <td className="py-1.5 pr-2 whitespace-nowrap">{transaction.transaction_date}</td>
                 <td className="py-1.5 pr-2 font-medium">{transaction.ticker}</td>
                 <td className="py-1.5 pr-2">
-                  {transaction.account_id != null ? accountMap.get(transaction.account_id) ?? "—" : "—"}
+                  {transaction.account_id != null
+                    ? (accountMap.get(transaction.account_id) ?? "—")
+                    : "—"}
                 </td>
                 <td className="py-1.5 pr-2">
-                  <Badge variant="secondary" className={typeBadgeClass(transaction.transaction_type)}>
+                  <Badge
+                    variant="secondary"
+                    className={typeBadgeClass(transaction.transaction_type)}
+                  >
                     {t(`transactions.type.${transaction.transaction_type.toLowerCase()}`)}
                   </Badge>
                 </td>

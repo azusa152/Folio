@@ -4,7 +4,7 @@ API — Notification / Telegram / Preferences / Persona / Snapshot / Webhook Sch
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Telegram Settings Schemas
@@ -38,6 +38,7 @@ class PreferencesRequest(BaseModel):
     language: str | None = None
     privacy_mode: bool
     terminology_mode: Literal["simplified", "expert"] | None = None
+    default_display_currency: str | None = None
     notification_preferences: dict[str, bool] | None = None
     notification_rate_limits: dict[str, dict[str, int]] | None = None
 
@@ -48,6 +49,7 @@ class PreferencesResponse(BaseModel):
     language: str
     privacy_mode: bool
     terminology_mode: Literal["simplified", "expert"] = "simplified"
+    default_display_currency: str = "USD"
     notification_preferences: dict[str, bool]
     notification_rate_limits: dict[str, dict[str, int]]
 
@@ -134,10 +136,20 @@ class TwrResponse(BaseModel):
 class WebhookRequest(BaseModel):
     """POST /webhook 請求 Body — 統一入口供 AI agent 使用。"""
 
-    action: str  # "help", "summary", "dashboard", "signals", "analyze", ...
+    action: str
     ticker: str | None = None
     params: dict = Field(default_factory=dict)
     format: Literal["concise", "detailed"] | None = None
+
+    @field_validator("action")
+    @classmethod
+    def _validate_action(cls, v: str) -> str:
+        from domain.constants import WEBHOOK_ACTION_REGISTRY
+
+        if v not in WEBHOOK_ACTION_REGISTRY:
+            supported = ", ".join(sorted(WEBHOOK_ACTION_REGISTRY))
+            raise ValueError(f"Unknown action {v!r}. Supported actions: {supported}")
+        return v
 
 
 class WebhookResponse(BaseModel):

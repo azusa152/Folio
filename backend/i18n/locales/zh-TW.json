@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  突然暴跌  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 價格劇烈波動 — 等市場冷靜再說",
     "signal_new_badge": "[NEW]",
     "signal_transition": "原訊號：{from_signal} → {to_signal}",
-    "resolved_detail": "{ticker}（原 {signal}，持續 {days} 天）"
+    "resolved_detail": "{ticker}（原 {signal}，持續 {days} 天）",
+    "resolved_detail_no_duration": "{ticker}（原 {signal}）"
   },
   "notification": {
     "change_label": "變化",
@@ -211,7 +212,8 @@
     "advice_zero": "⚠️ 持倉總市值為零，無法計算配置。",
     "advice_over": "{icon} {category} 超配 {drift}%，考慮減碼。",
     "advice_under": "{icon} {category} 低配 {drift}%，考慮加碼。",
-    "advice_ok": "✅ 各分類配置均在目標範圍內，無需調整。"
+    "advice_ok": "✅ 各分類配置均在目標範圍內，無需調整。",
+    "snapshot_fallback_notice": "⏳ 顯示上次儲存的投資組合數值，即時資料正在背景載入中。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外匯換匯時機警報</b>\n\n",
@@ -246,7 +248,10 @@
     "rea_consec_disabled": "📊 連續上漲 {consec} 日，但匯率尚未達 {high_days} 日高點附近",
     "rea_no_signal": "📊 匯率未達近期高點，且連續上漲僅 {consec} 日",
     "rea_disabled": "📊 請啟用近期高點或連續上漲其中一項警報條件",
-    "rea_no_data": "📊 此貨幣對歷史資料不足"
+    "rea_no_data": "📊 此貨幣對歷史資料不足",
+    "error": {
+      "refresh_cooldown": "強制刷新冷卻中，請於 {retry_after_seconds} 秒後再試。"
+    }
   },
   "stress_test": {
     "no_holdings": "無持倉",
@@ -390,7 +395,9 @@
     "heatmap_filing_delay_note": "⚠️ 13F 持倉基準日為 {report_date}。申報資料至少有 45 天延遲，可能已不代表目前實際持倉。",
     "backtest_disclaimer": "此為假設性模擬，非實際投資績效。假設以申報日收盤價買入、交易成本為 0，且季中不調整部位。13F 僅涵蓋美股多頭部位，不包含放空、選擇權與非美國持倉。過去績效不代表未來報酬。",
     "backtest_not_enough_filings": "回測至少需要 2 筆申報資料。請先同步或回填大師 13F 歷史資料。",
-    "backtest_benchmark_data_missing": "基準價格資料暫時不可用，請稍後再試。"
+    "backtest_benchmark_data_missing": "基準價格資料暫時不可用，請稍後再試。",
+    "error_not_found": "找不到大師 {guru_id}",
+    "deactivated": "大師 {guru_id} 已停用"
   },
   "fx": {
     "period_1d": "單日",
@@ -417,6 +424,10 @@
   "analytics": {
     "date_range_both_required": "start 與 end 必須同時提供",
     "date_range_invalid_order": "start 不得晚於 end"
+  },
+  "snapshot": {
+    "date_range_required": "start 與 end 必須同時提供",
+    "date_range_start_after_end": "start 不得晚於 end"
   },
   "wrapper": {
     "tokutei": "特定口座（課稅）",

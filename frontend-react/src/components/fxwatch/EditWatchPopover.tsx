@@ -5,7 +5,13 @@ import { useUpdateFxWatch } from "@/api/hooks/useFxWatch"
 import type { FxWatch } from "@/api/types/fxWatch"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getErrorMessage } from "@/lib/utils"
 
 interface Props {
@@ -49,7 +55,10 @@ export function EditWatchPopover({ watch }: Props) {
       return
     }
     const parsedTargetRate = targetRateInput.trim() ? Number(targetRateInput) : null
-    if (parsedTargetRate !== null && (!Number.isFinite(parsedTargetRate) || parsedTargetRate <= 0)) {
+    if (
+      parsedTargetRate !== null &&
+      (!Number.isFinite(parsedTargetRate) || parsedTargetRate <= 0)
+    ) {
       setFeedback(t("fx_watch.form.error_target_rate"))
       return
     }
@@ -57,8 +66,7 @@ export function EditWatchPopover({ watch }: Props) {
       setFeedback(t("fx_watch.form.error_target_direction"))
       return
     }
-    const normalizedTargetDirection =
-      parsedTargetRate === null ? null : targetDirection || null
+    const normalizedTargetDirection = parsedTargetRate === null ? null : targetDirection || null
     update.mutate(
       {
         id: watch.id,
@@ -157,7 +165,10 @@ export function EditWatchPopover({ watch }: Props) {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor={`edit-target-rate-${watch.id}`} className="text-xs text-muted-foreground">
+            <label
+              htmlFor={`edit-target-rate-${watch.id}`}
+              className="text-xs text-muted-foreground"
+            >
               {t("fx_watch.form.target_rate")}
             </label>
             <input
@@ -171,7 +182,9 @@ export function EditWatchPopover({ watch }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">{t("fx_watch.form.target_direction")}</label>
+            <label className="text-xs text-muted-foreground">
+              {t("fx_watch.form.target_direction")}
+            </label>
             <Select
               value={targetDirection || undefined}
               onValueChange={(v: "above" | "below") => setTargetDirection(v)}
@@ -192,7 +205,12 @@ export function EditWatchPopover({ watch }: Props) {
         </div>
 
         <div>
-          <label htmlFor={`edit-watch-reminder-hours-${watch.id}`} className="text-xs text-muted-foreground">{t("fx_watch.form.reminder_hours")}</label>
+          <label
+            htmlFor={`edit-watch-reminder-hours-${watch.id}`}
+            className="text-xs text-muted-foreground"
+          >
+            {t("fx_watch.form.reminder_hours")}
+          </label>
           <input
             id={`edit-watch-reminder-hours-${watch.id}`}
             type="number"

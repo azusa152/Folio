@@ -9,6 +9,7 @@ import {
 } from "lightweight-charts"
 import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { formatSignedPct } from "@/lib/format"
 import type { FxHistoryPoint } from "@/api/types/fxWatch"
 
 const PERIOD_OPTIONS = [
@@ -85,7 +86,10 @@ export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: t("fx_watch.chart.high_annotation", { days: recentHighDays, high: recentHigh.toFixed(4) }),
+          title: t("fx_watch.chart.high_annotation", {
+            days: recentHighDays,
+            high: recentHigh.toFixed(4),
+          }),
           lineVisible: true,
           axisLabelColor: "#f59e0b",
           axisLabelTextColor: "#fff",
@@ -165,10 +169,7 @@ export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
     return <p className="text-xs text-muted-foreground">{t("fx_watch.chart.insufficient_data")}</p>
   }
 
-  const changePctFormatted =
-    periodChangePct !== null
-      ? `${periodChangePct >= 0 ? "+" : ""}${periodChangePct.toFixed(2)}%`
-      : null
+  const changePctFormatted = periodChangePct !== null ? formatSignedPct(periodChangePct, 2) : null
 
   return (
     <div>
@@ -198,7 +199,12 @@ export function FxChart({ data, recentHighDays, targetRate = null }: Props) {
           </span>
         )}
       </div>
-      <LightweightChartWrapper key={period} height={220} onInit={onInit} ariaLabel={t("accessibility.chart_fx_rate")} />
+      <LightweightChartWrapper
+        key={period}
+        height={220}
+        onInit={onInit}
+        ariaLabel={t("accessibility.chart_fx_rate")}
+      />
     </div>
   )
 }

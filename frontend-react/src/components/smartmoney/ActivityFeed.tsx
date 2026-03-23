@@ -19,17 +19,13 @@ function GuruActivityPopover({
   if (gurus.length === 0) return null
 
   const viewKey =
-    activity === "sold"
-      ? "smart_money.activity.view_sellers"
-      : "smart_money.activity.view_buyers"
+    activity === "sold" ? "smart_money.activity.view_sellers" : "smart_money.activity.view_buyers"
   const ariaKey =
     activity === "sold"
       ? "smart_money.activity.view_sellers_aria"
       : "smart_money.activity.view_buyers_aria"
   const titleKey =
-    activity === "sold"
-      ? "smart_money.activity.sellers_title"
-      : "smart_money.activity.buyers_title"
+    activity === "sold" ? "smart_money.activity.sellers_title" : "smart_money.activity.buyers_title"
 
   return (
     <Popover>
@@ -43,10 +39,11 @@ function GuruActivityPopover({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-60 max-w-[calc(100vw-2rem)] p-3 text-xs space-y-2">
-        <p className="font-medium">
-          {t(titleKey, { ticker })}
-        </p>
-        <ul className="max-h-52 space-y-1 overflow-y-auto pr-1 text-muted-foreground" data-testid="guru-holders-list">
+        <p className="font-medium">{t(titleKey, { ticker })}</p>
+        <ul
+          className="max-h-52 space-y-1 overflow-y-auto pr-1 text-muted-foreground"
+          data-testid="guru-holders-list"
+        >
           {gurus.map((guru) => (
             <li key={guru}>{guru}</li>
           ))}

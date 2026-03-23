@@ -5,7 +5,9 @@ import { SectorAllocationCard } from "../SectorAllocationCard"
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PieChart: ({ children }: { children: ReactNode }) => <div data-testid="sector-pie">{children}</div>,
+  PieChart: ({ children }: { children: ReactNode }) => (
+    <div data-testid="sector-pie">{children}</div>
+  ),
   Pie: () => <div />,
   Cell: () => <div />,
   Tooltip: () => <div />,
@@ -38,9 +40,7 @@ describe("SectorAllocationCard", () => {
   })
 
   it("returns null when sectorExposure is empty", () => {
-    const { container } = render(
-      <SectorAllocationCard sectorExposure={[]} />,
-    )
+    const { container } = render(<SectorAllocationCard sectorExposure={[]} />)
 
     expect(container.innerHTML).toBe("")
   })

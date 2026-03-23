@@ -10,7 +10,7 @@ from sqlmodel import Session
 
 from domain.entities import Guru, GuruFiling, GuruHolding
 from domain.enums import HoldingAction
-from infrastructure.persistence.repositories import _compute_trend
+from infrastructure.persistence.repositories.guru_repo import _compute_trend
 from infrastructure.repositories import (
     find_activity_feed,
     find_all_guru_summaries,

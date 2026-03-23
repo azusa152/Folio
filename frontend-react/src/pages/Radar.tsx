@@ -24,14 +24,25 @@ import type { RadarEnrichedStock } from "@/api/types/radar"
 import { filterStocks, useRadarFilters } from "@/hooks/useRadarFilters"
 import type { StockCategory } from "@/api/types/radar"
 
-const RADAR_TAB_VALUES = ["Trend_Setter", "Moat", "Growth", "Mutual_Fund", "Bond", "Crypto", "archive"] as const
+const RADAR_TAB_VALUES = [
+  "Trend_Setter",
+  "Moat",
+  "Growth",
+  "Mutual_Fund",
+  "Bond",
+  "Crypto",
+  "archive",
+] as const
 
 export default function Radar() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [sopOpen, setSopOpen] = useState(false)
   const [showFullSop, setShowFullSop] = useState(false)
-  const [helpDismissed, setHelpDismissed] = useLocalStorage("radar_first_visit_help_dismissed", false)
+  const [helpDismissed, setHelpDismissed] = useLocalStorage(
+    "radar_first_visit_help_dismissed",
+    false,
+  )
   const [filterOpen, setFilterOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const {
@@ -57,7 +68,9 @@ export default function Radar() {
 
   const isScanning = scanStatus?.is_running ?? false
   const categoryParam = searchParams.get("category")
-  const activeCategory = RADAR_TAB_VALUES.includes(categoryParam as (typeof RADAR_TAB_VALUES)[number])
+  const activeCategory = RADAR_TAB_VALUES.includes(
+    categoryParam as (typeof RADAR_TAB_VALUES)[number],
+  )
     ? (categoryParam as (typeof RADAR_TAB_VALUES)[number])
     : "Trend_Setter"
 
@@ -139,9 +152,7 @@ export default function Radar() {
     )
   }
 
-  const scanTs = lastScan?.last_scanned_at
-    ? formatLocalTime(lastScan.last_scanned_at)
-    : null
+  const scanTs = lastScan?.last_scanned_at ? formatLocalTime(lastScan.last_scanned_at) : null
 
   const setActiveCategory = (category: StockCategory | "archive") => {
     setSearchParams((prev) => {
@@ -162,11 +173,20 @@ export default function Radar() {
         </div>
         <div className="flex items-center gap-2">
           {isScanning && (
-            <span aria-live="polite" role="status" className={`text-xs ${FINANCE_TEXT.warning} animate-pulse`}>
+            <span
+              aria-live="polite"
+              role="status"
+              className={`text-xs ${FINANCE_TEXT.warning} animate-pulse`}
+            >
               {t("radar.scan.running")}
             </span>
           )}
-          <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => setDrawerOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={() => setDrawerOpen(true)}
+          >
             {t("radar.panel_header")}
           </Button>
         </div>
@@ -200,7 +220,12 @@ export default function Radar() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("radar.sop.learn_more_title")}</span>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -211,11 +236,7 @@ export default function Radar() {
               <li>{t("radar.first_visit.step_3")}</li>
             </ol>
             <div className="mt-3">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowFullSop((v) => !v)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setShowFullSop((v) => !v)}>
                 {showFullSop ? t("radar.sop.hide_full") : t("radar.sop.show_full")}
               </Button>
             </div>
@@ -224,15 +245,9 @@ export default function Radar() {
                 <div className="mt-3 prose prose-sm dark:prose-invert max-w-none text-xs text-muted-foreground whitespace-pre-wrap">
                   {t("radar.sop.content")}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {t("radar.fundamentals_note")}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("radar.pwa_note")}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("radar.filter.note")}
-                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("radar.fundamentals_note")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("radar.pwa_note")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("radar.filter.note")}</p>
               </>
             )}
           </div>
@@ -257,12 +272,13 @@ export default function Radar() {
 
       {/* Data freshness */}
       <p className="text-xs text-muted-foreground -mt-2">
-        {scanTs
-          ? t("radar.last_scan_time", { time: scanTs })
-          : t("radar.no_scan_yet")}
+        {scanTs ? t("radar.last_scan_time", { time: scanTs }) : t("radar.no_scan_yet")}
         {" · "}
         {activeFilterCount > 0
-          ? t("radar.filter.showing_filtered", { filtered: filteredActiveCount, total: totalActiveCount })
+          ? t("radar.filter.showing_filtered", {
+              filtered: filteredActiveCount,
+              total: totalActiveCount,
+            })
           : t("radar.loading.success", { count: totalActiveCount })}
       </p>
 

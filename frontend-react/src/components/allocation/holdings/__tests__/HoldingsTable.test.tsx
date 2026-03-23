@@ -91,13 +91,7 @@ describe("HoldingsTable", () => {
   it("renders translated category key for holdings rows", () => {
     termMock.mockImplementation((_: string, fallback: string) => fallback)
     render(
-      <HoldingsTable
-        holdings={[
-          buildHolding({}),
-        ]}
-        privacyMode={false}
-        displayCurrency="USD"
-      />,
+      <HoldingsTable holdings={[buildHolding({})]} privacyMode={false} displayCurrency="USD" />,
     )
 
     expect(screen.getByText("allocation.col.account")).toBeInTheDocument()
@@ -169,16 +163,16 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    expect(screen.getByText("+USD 25.00")).toBeInTheDocument()
+    expect(screen.getByText("+$25.00")).toBeInTheDocument()
     expect(screen.getByText("+2.86%")).toBeInTheDocument()
-    expect(screen.getByText("+USD 150.00")).toBeInTheDocument()
+    expect(screen.getByText("+$150.00")).toBeInTheDocument()
     expect(screen.getByText("+20.00%")).toBeInTheDocument()
 
     expect(screen.getByText("allocation.holdings.total_row")).toBeInTheDocument()
     expect(screen.getByText("USD 1200.00")).toBeInTheDocument()
-    expect(screen.getByText("+USD 10.00")).toBeInTheDocument()
+    expect(screen.getByText("+$10.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.today: +0.84%")).toBeInTheDocument()
-    expect(screen.getByText("+USD 100.00")).toBeInTheDocument()
+    expect(screen.getByText("+$100.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.total_return: +9.09%")).toBeInTheDocument()
   })
 
@@ -202,9 +196,9 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    const tickerButtons = screen.getAllByRole("button", { name: "allocation.col.ticker" })
+    const tickerButtons = screen.getAllByRole("button", { name: "allocation.col.holding" })
     await user.click(tickerButtons[0])
-    const tickerHeader = screen.getByRole("columnheader", { name: "allocation.col.ticker" })
+    const tickerHeader = screen.getByRole("columnheader", { name: "allocation.col.holding" })
     expect(tickerHeader).toHaveAttribute("aria-sort", "ascending")
 
     const tickerCells = screen
@@ -240,7 +234,7 @@ describe("HoldingsTable", () => {
       />,
     )
 
-    expect(screen.getByText("+USD 5.00")).toBeInTheDocument()
+    expect(screen.getByText("+$5.00")).toBeInTheDocument()
     expect(screen.getByText("allocation.col.today: +0.50%")).toBeInTheDocument()
   })
 

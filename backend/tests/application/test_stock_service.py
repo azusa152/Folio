@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 STOCK_MODULE = "application.stock.stock_service"
+ENRICHMENT_MODULE = "application.stock.stock_enrichment_service"
 
 
 class TestGetSignalsForTicker:
@@ -20,8 +21,10 @@ class TestGetSignalsForTicker:
         mock_signals = {"rsi": 55.0, "bias": 10.0}
         mock_dist = {"historical_biases": [1.0, 2.0], "count": 2}
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
-            patch(f"{STOCK_MODULE}.get_bias_distribution", return_value=mock_dist),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution", return_value=mock_dist),
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
@@ -33,8 +36,8 @@ class TestGetSignalsForTicker:
 
     def test_returns_signals_unchanged_when_signals_none(self, db_session) -> None:
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_bias_distribution") as mock_dist,
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution") as mock_dist,
         ):
             from application.stock.stock_service import get_signals_for_ticker
 
@@ -65,7 +68,7 @@ class TestGetSignalsForTicker:
         )
         db_session.commit()
 
-        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+        with patch(f"{ENRICHMENT_MODULE}.get_technical_signals") as mock_yf:
             from application.stock.stock_service import get_signals_for_ticker
 
             result = get_signals_for_ticker(db_session, "0131310B")
@@ -80,13 +83,119 @@ class TestGetSignalsForTicker:
 
         save_stock(db_session, Stock(ticker="CASH_JPY", category="Cash"))
 
-        with patch(f"{STOCK_MODULE}.get_technical_signals") as mock_yf:
+        with patch(f"{ENRICHMENT_MODULE}.get_technical_signals") as mock_yf:
             from application.stock.stock_service import get_signals_for_ticker
 
             result = get_signals_for_ticker(db_session, "CASH_JPY")
 
         mock_yf.assert_not_called()
         assert result == {}
+
+
+class TestGetEnrichedSignalsForTicker:
+    """Unit tests for get_enriched_signals_for_ticker.
+
+    The function adds bias_percentile and is_rogue_wave to the raw signals
+    returned by get_signals_for_ticker.  Infrastructure calls are mocked.
+    """
+
+    def test_adds_bias_percentile_and_rogue_wave_when_signals_present(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # ROGUE_WAVE_MIN_HISTORY_DAYS = 200; must provide at least that many points
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 55.0, "volume_ratio": 0.5}
+        with (
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert "bias_percentile" in result
+        assert isinstance(result["bias_percentile"], float)
+        assert "is_rogue_wave" in result
+        assert isinstance(result["is_rogue_wave"], bool)
+
+    def test_sets_is_rogue_wave_true_at_extreme_bias_and_volume(
+        self, db_session
+    ) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # 250 points; bias=249 → rank 249/250 = 99.6th percentile ≥ 95; volume_ratio ≥ 1.5
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 249.0, "volume_ratio": 2.0}
+        with (
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result["is_rogue_wave"] is True
+
+    def test_sets_is_rogue_wave_false_when_volume_ratio_low(self, db_session) -> None:
+        from domain.entities import Stock
+        from infrastructure.repositories import save_stock
+
+        save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
+        # Extreme bias percentile but volume below threshold → not rogue wave
+        historical_biases = list(range(250))
+        mock_dist = {"historical_biases": historical_biases}
+        mock_signals = {"bias": 249.0, "volume_ratio": 0.5}
+        with (
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution", return_value=mock_dist),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result["is_rogue_wave"] is False
+
+    def test_returns_empty_dict_when_signals_none(self, db_session) -> None:
+        with (
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution"),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        assert result == {}
+
+    def test_returns_signals_unchanged_when_error_key_present(self, db_session) -> None:
+        mock_signals = {"error": "timeout"}
+        with (
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_bias_distribution"),
+        ):
+            from application.stock.stock_service import get_enriched_signals_for_ticker
+
+            result = get_enriched_signals_for_ticker(db_session, "AAPL")
+
+        # Enrichment must not be applied; error key must be preserved
+        assert result.get("error") == "timeout"
+        assert "bias_percentile" not in result
+        assert "is_rogue_wave" not in result
 
 
 class TestGetPriceHistoryForTicker:
@@ -96,7 +205,9 @@ class TestGetPriceHistoryForTicker:
 
         save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
         mock_history = [{"date": "2024-01-01", "close": 100.0}]
-        with patch(f"{STOCK_MODULE}._get_price_history", return_value=mock_history):
+        with patch(
+            f"{ENRICHMENT_MODULE}._get_price_history", return_value=mock_history
+        ):
             from application.stock.stock_service import get_price_history_for_ticker
 
             result = get_price_history_for_ticker(db_session, "AAPL")
@@ -104,7 +215,7 @@ class TestGetPriceHistoryForTicker:
         assert result == mock_history
 
     def test_returns_empty_for_unknown_ticker(self, db_session) -> None:
-        with patch(f"{STOCK_MODULE}._get_price_history", return_value=None):
+        with patch(f"{ENRICHMENT_MODULE}._get_price_history", return_value=None):
             from application.stock.stock_service import get_price_history_for_ticker
 
             result = get_price_history_for_ticker(db_session, "UNKNOWN")
@@ -120,7 +231,9 @@ class TestGetEarningsForTicker:
         save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
 
         mock_earnings = {"next_earnings_date": "2025-04-30"}
-        with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings):
+        with patch(
+            f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=mock_earnings
+        ):
             from application.stock.stock_service import get_earnings_for_ticker
 
             result = get_earnings_for_ticker(db_session, "AAPL")
@@ -133,7 +246,7 @@ class TestGetEarningsForTicker:
 
         save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
 
-        with patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None):
+        with patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None):
             from application.stock.stock_service import get_earnings_for_ticker
 
             result = get_earnings_for_ticker(db_session, "AAPL")
@@ -146,7 +259,7 @@ class TestGetEarningsForTicker:
 
         save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
 
-        with patch(f"{STOCK_MODULE}.get_earnings_date") as mock_yf:
+        with patch(f"{ENRICHMENT_MODULE}.get_earnings_date") as mock_yf:
             from application.stock.stock_service import get_earnings_for_ticker
 
             result = get_earnings_for_ticker(db_session, "01313139")
@@ -163,7 +276,7 @@ class TestGetDividendForTicker:
         save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
 
         mock_div = {"yield": 0.5, "amount": 0.25}
-        with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_div):
+        with patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=mock_div):
             from application.stock.stock_service import get_dividend_for_ticker
 
             result = get_dividend_for_ticker(db_session, "AAPL")
@@ -176,7 +289,7 @@ class TestGetDividendForTicker:
 
         save_stock(db_session, Stock(ticker="AAPL", category="Moat"))
 
-        with patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None):
+        with patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None):
             from application.stock.stock_service import get_dividend_for_ticker
 
             result = get_dividend_for_ticker(db_session, "AAPL")
@@ -189,7 +302,7 @@ class TestGetDividendForTicker:
 
         save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
 
-        with patch(f"{STOCK_MODULE}.get_dividend_info") as mock_yf:
+        with patch(f"{ENRICHMENT_MODULE}.get_dividend_info") as mock_yf:
             from application.stock.stock_service import get_dividend_for_ticker
 
             result = get_dividend_for_ticker(db_session, "01313139")
@@ -206,7 +319,7 @@ class TestGetFundamentalsForTicker:
         save_stock(db_session, Stock(ticker="AAPL", category="Growth"))
 
         payload = {"ticker": "AAPL", "trailing_pe": 22.3}
-        with patch(f"{STOCK_MODULE}.get_fundamentals", return_value=payload):
+        with patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=payload):
             from application.stock.stock_service import get_fundamentals_for_ticker
 
             result = get_fundamentals_for_ticker(db_session, "AAPL")
@@ -219,7 +332,7 @@ class TestGetFundamentalsForTicker:
 
         save_stock(db_session, Stock(ticker="01313139", category="Mutual_Fund"))
 
-        with patch(f"{STOCK_MODULE}.get_fundamentals") as mock_yf:
+        with patch(f"{ENRICHMENT_MODULE}.get_fundamentals") as mock_yf:
             from application.stock.stock_service import get_fundamentals_for_ticker
 
             result = get_fundamentals_for_ticker(db_session, "01313139")
@@ -686,7 +799,7 @@ class TestGetMoatForTicker:
 
         save_stock(db_session, Stock(ticker="TLT", category=StockCategory.BOND))
 
-        with patch(f"{STOCK_MODULE}.analyze_moat_trend") as mock_analyze:
+        with patch(f"{ENRICHMENT_MODULE}.analyze_moat_trend") as mock_analyze:
             from application.stock.stock_service import get_moat_for_ticker
 
             result = get_moat_for_ticker(db_session, "TLT")
@@ -702,7 +815,7 @@ class TestGetMoatForTicker:
 
         save_stock(db_session, Stock(ticker="CASH1", category=StockCategory.CASH))
 
-        with patch(f"{STOCK_MODULE}.analyze_moat_trend") as mock_analyze:
+        with patch(f"{ENRICHMENT_MODULE}.analyze_moat_trend") as mock_analyze:
             from application.stock.stock_service import get_moat_for_ticker
 
             result = get_moat_for_ticker(db_session, "CASH1")
@@ -718,7 +831,7 @@ class TestGetMoatForTicker:
         save_stock(db_session, Stock(ticker="AAPL", category=StockCategory.MOAT))
         mock_moat = {"ticker": "AAPL", "moat": "護城河穩固", "yoy_change": 2.1}
 
-        with patch(f"{STOCK_MODULE}.analyze_moat_trend", return_value=mock_moat):
+        with patch(f"{ENRICHMENT_MODULE}.analyze_moat_trend", return_value=mock_moat):
             from application.stock.stock_service import get_moat_for_ticker
 
             result = get_moat_for_ticker(db_session, "AAPL")
@@ -729,7 +842,7 @@ class TestGetMoatForTicker:
         """Stock not in DB should still call analyze_moat_trend (no category to skip)."""
         mock_moat = {"ticker": "UNKNOWN", "moat": "N/A"}
 
-        with patch(f"{STOCK_MODULE}.analyze_moat_trend", return_value=mock_moat):
+        with patch(f"{ENRICHMENT_MODULE}.analyze_moat_trend", return_value=mock_moat):
             from application.stock.stock_service import get_moat_for_ticker
 
             result = get_moat_for_ticker(db_session, "UNKNOWN")
@@ -762,11 +875,15 @@ class TestGetEnrichedStocks:
         mock_fundamentals = {"market_cap": 123456789, "trailing_pe": 18.2}
 
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=mock_earnings),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=mock_dividend),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=mock_fundamentals),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=mock_earnings),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=mock_dividend),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=mock_fundamentals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -792,16 +909,16 @@ class TestGetEnrichedStocks:
 
         with (
             patch(
-                f"{STOCK_MODULE}.get_technical_signals",
+                f"{ENRICHMENT_MODULE}.get_technical_signals",
                 side_effect=[
                     {"rsi": 50.0, "bias": 1.0, "price": 100.0},
                     {"rsi": 60.0, "bias": 2.0, "price": 110.0},
                 ],
             ) as mock_signals,
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -823,14 +940,21 @@ class TestGetEnrichedStocks:
         mock_signals = {"rsi": 55.0, "bias": 3.0, "price": 195.0, "change_pct": 1.2}
 
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_name_cached", return_value="Apple Inc."),
-            patch(f"{STOCK_MODULE}.get_ticker_exchange_cached", return_value="NMS"),
             patch(
-                f"{STOCK_MODULE}.get_ticker_sector_cached", return_value="Technology"
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_ticker_name_cached", return_value="Apple Inc."
+            ),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_ticker_exchange_cached", return_value="NMS"
+            ),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_ticker_sector_cached",
+                return_value="Technology",
             ),
         ):
             from application.stock.stock_service import get_enriched_stocks
@@ -855,11 +979,11 @@ class TestGetEnrichedStocks:
         save_stock(db_session, Stock(ticker="NOCACHE", category=StockCategory.GROWTH))
 
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -883,11 +1007,13 @@ class TestGetEnrichedStocks:
         mock_signals = {"rsi": 50.0, "bias": 2.0}
 
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=mock_signals),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(
+                f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=mock_signals
+            ),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -905,11 +1031,11 @@ class TestGetEnrichedStocks:
         save_stock(db_session, Stock(ticker="CASH_A", category=StockCategory.CASH))
 
         with (
-            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -935,13 +1061,13 @@ class TestGetEnrichedStocks:
         )
 
         with (
-            patch(f"{STOCK_MODULE}.engine", test_engine),
-            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
-            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.engine", test_engine),
+            patch(f"{ENRICHMENT_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -979,13 +1105,13 @@ class TestGetEnrichedStocks:
         db_session.commit()
 
         with (
-            patch(f"{STOCK_MODULE}.engine", test_engine),
-            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.engine", test_engine),
+            patch(f"{ENRICHMENT_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -1023,13 +1149,13 @@ class TestGetEnrichedStocks:
         db_session.commit()
 
         with (
-            patch(f"{STOCK_MODULE}.engine", test_engine),
-            patch(f"{STOCK_MODULE}.sync_single_fund_nav", return_value=False),
-            patch(f"{STOCK_MODULE}.get_technical_signals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.engine", test_engine),
+            patch(f"{ENRICHMENT_MODULE}.sync_single_fund_nav", return_value=False),
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             from application.stock.stock_service import get_enriched_stocks
 
@@ -1052,13 +1178,13 @@ class TestGetEnrichedStocks:
         )
 
         with (
-            patch(f"{STOCK_MODULE}.engine", test_engine),
-            patch(f"{STOCK_MODULE}.sync_single_fund_nav") as mock_sync,
-            patch(f"{STOCK_MODULE}.get_technical_signals") as mock_signals,
-            patch(f"{STOCK_MODULE}.get_earnings_date", return_value=None),
-            patch(f"{STOCK_MODULE}.get_dividend_info", return_value=None),
-            patch(f"{STOCK_MODULE}.get_fundamentals", return_value=None),
-            patch(f"{STOCK_MODULE}.get_ticker_sector_cached", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.engine", test_engine),
+            patch(f"{ENRICHMENT_MODULE}.sync_single_fund_nav") as mock_sync,
+            patch(f"{ENRICHMENT_MODULE}.get_technical_signals") as mock_signals,
+            patch(f"{ENRICHMENT_MODULE}.get_earnings_date", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_dividend_info", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_fundamentals", return_value=None),
+            patch(f"{ENRICHMENT_MODULE}.get_ticker_sector_cached", return_value=None),
         ):
             mock_sync.return_value = False
             from application.stock.stock_service import get_enriched_stocks
@@ -1130,7 +1256,7 @@ class TestResolveStockCategoryFallback:
     def test_returns_category_from_holding_when_stock_not_found(
         self, db_session
     ) -> None:
-        from application.stock.stock_service import _resolve_stock_category
+        from application.stock.stock_enrichment_service import _resolve_stock_category
         from domain.constants import DEFAULT_USER_ID
         from domain.entities import Holding
         from domain.enums import StockCategory
@@ -1153,7 +1279,7 @@ class TestResolveStockCategoryFallback:
         assert result == "Mutual_Fund"
 
     def test_prefers_stock_table_over_holding(self, db_session) -> None:
-        from application.stock.stock_service import _resolve_stock_category
+        from application.stock.stock_enrichment_service import _resolve_stock_category
         from domain.constants import DEFAULT_USER_ID
         from domain.entities import Holding, Stock
         from domain.enums import StockCategory
@@ -1186,7 +1312,7 @@ class TestResolveStockCategoryFallback:
         assert result == "Growth"
 
     def test_returns_none_when_ticker_not_found_anywhere(self, db_session) -> None:
-        from application.stock.stock_service import _resolve_stock_category
+        from application.stock.stock_enrichment_service import _resolve_stock_category
 
         result = _resolve_stock_category(db_session, "UNKNOWN_TICKER")
 

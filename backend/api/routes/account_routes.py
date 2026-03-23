@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
+from api.error_mapping import to_http_exception
 from api.schemas import MessageResponse
 from api.schemas.account import (
     AccountCashBalanceItem,
@@ -13,6 +14,7 @@ from api.schemas.account import (
 )
 from api.schemas.portfolio import HoldingResponse, SellablePositionsResponse
 from api.schemas.transaction import TransactionResponse
+from application.errors import ApplicationError
 from application.portfolio.account_service import (
     create_account,
     get_account_cash_balances,
@@ -43,7 +45,10 @@ def get_accounts(
 @router.post("/accounts", response_model=AccountResponse, status_code=201)
 def add_account(body: AccountRequest, session: Session = Depends(get_session)):
     lang = get_user_language(session)
-    return create_account(session, body.model_dump(), lang)
+    try:
+        return create_account(session, body.model_dump(), lang)
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
 
 
 @router.get("/accounts/summary", response_model=list[AccountSummaryItem])
@@ -60,7 +65,10 @@ def get_account_cash_balance_list(
     session: Session = Depends(get_session),
 ):
     lang = get_user_language(session)
-    return get_account_cash_balances(session, account_id, lang)
+    try:
+        return get_account_cash_balances(session, account_id, lang)
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
 
 
 @router.get(
@@ -117,13 +125,19 @@ def edit_account(
     session: Session = Depends(get_session),
 ):
     lang = get_user_language(session)
-    return update_account(
-        session, account_id, body.model_dump(exclude_unset=True), lang
-    )
+    try:
+        return update_account(
+            session, account_id, body.model_dump(exclude_unset=True), lang
+        )
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
 
 
 @router.delete("/accounts/{account_id}", response_model=MessageResponse)
 def deactivate_account_route(account_id: int, session: Session = Depends(get_session)):
     lang = get_user_language(session)
-    remove_account(session, account_id, lang)
+    try:
+        remove_account(session, account_id, lang)
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc
     return MessageResponse(message=t("account.deactivated", lang=lang))

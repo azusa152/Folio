@@ -340,8 +340,63 @@ class TestGetStressTestSchemaValidation:
         if len(data["holdings_breakdown"]) > 0:
             holding = data["holdings_breakdown"][0]
             assert "ticker" in holding
+            assert "name" in holding  # name field for display (may be None)
             assert "category" in holding
             assert "beta" in holding
             assert "market_value" in holding
             assert "expected_drop_pct" in holding
             assert "expected_loss" in holding
+
+    @patch("api.routes.holding_routes.calculate_stress_test")
+    def test_holdings_breakdown_name_field_is_returned_when_present(
+        self, mock_service, client: TestClient
+    ):
+        """holdings_breakdown.name is included in response when the service provides it."""
+        result_with_names = {
+            **MOCK_STRESS_TEST_RESULT,
+            "holdings_breakdown": [
+                {
+                    "ticker": "NVDA",
+                    "name": "NVIDIA Corporation",
+                    "category": "Growth",
+                    "beta": 1.8,
+                    "market_value": 50000.0,
+                    "expected_drop_pct": -36.0,
+                    "expected_loss": -18000.0,
+                }
+            ],
+        }
+        mock_service.return_value = result_with_names
+
+        response = client.get("/stress-test")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["holdings_breakdown"][0]["name"] == "NVIDIA Corporation"
+
+    @patch("api.routes.holding_routes.calculate_stress_test")
+    def test_holdings_breakdown_name_field_is_null_when_not_available(
+        self, mock_service, client: TestClient
+    ):
+        """holdings_breakdown.name is null when no name is cached."""
+        result_no_name = {
+            **MOCK_STRESS_TEST_RESULT,
+            "holdings_breakdown": [
+                {
+                    "ticker": "UNKNOWN",
+                    "name": None,
+                    "category": "Growth",
+                    "beta": 1.0,
+                    "market_value": 10000.0,
+                    "expected_drop_pct": -20.0,
+                    "expected_loss": -2000.0,
+                }
+            ],
+        }
+        mock_service.return_value = result_no_name
+
+        response = client.get("/stress-test")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["holdings_breakdown"][0]["name"] is None

@@ -2,7 +2,16 @@ import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList, ResponsiveContainer } from "recharts"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+} from "recharts"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FINANCE_SURFACE, FINANCE_TEXT } from "@/lib/colors"
@@ -43,11 +52,7 @@ const ACTION_ORDER = ["NEW_POSITION", "SOLD_OUT", "INCREASED", "DECREASED", "UNC
 function PerfCell({ value }: { value: number | null | undefined }) {
   if (value == null) return <span className="text-muted-foreground">—</span>
   return (
-    <span
-      className={
-        value >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss
-      }
-    >
+    <span className={value >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}>
       {value >= 0 ? "+" : ""}
       {value.toFixed(1)}%
     </span>
@@ -84,16 +89,24 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           size="sm"
           variant="outline"
           className="text-xs"
-          onClick={() => syncMutation.mutate(guruId, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
+          onClick={() =>
+            syncMutation.mutate(guruId, {
+              onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+            })
+          }
           disabled={syncMutation.isPending}
         >
           {syncing ? t("smart_money.sidebar.syncing") : t("smart_money.sidebar.sync_button")}
         </Button>
         {syncMutation.isSuccess && syncMutation.variables === guruId && (
-          <span className="text-xs text-muted-foreground">{t("smart_money.sidebar.sync_success")}</span>
+          <span className="text-xs text-muted-foreground">
+            {t("smart_money.sidebar.sync_success")}
+          </span>
         )}
         {syncMutation.isError && syncMutation.variables === guruId && (
-          <span className="text-xs text-destructive">{t("smart_money.sidebar.sync_error", { msg: "" })}</span>
+          <span className="text-xs text-destructive">
+            {t("smart_money.sidebar.sync_error", { msg: "" })}
+          </span>
         )}
       </div>
 
@@ -103,12 +116,16 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           <Skeleton className="h-5 w-3/4" />
         </div>
       ) : !filing ? (
-        <p className="text-sm text-muted-foreground">{t("smart_money.no_filing", { guru: guruName })}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("smart_money.no_filing", { guru: guruName })}
+        </p>
       ) : (
         <>
           {/* Stale warning */}
           {isStale(filing.report_date) && (
-            <div className={`rounded-md border px-3 py-2 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}>
+            <div
+              className={`rounded-md border px-3 py-2 text-xs ${FINANCE_SURFACE.warning} ${FINANCE_TEXT.warning}`}
+            >
               {t("smart_money.lagging_banner", {
                 report_date: filing.report_date ?? "—",
                 filing_date: filing.filing_date ?? "—",
@@ -159,7 +176,12 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                   count: filingsResp.filings.length,
                 })
               : t("smart_money.tab.changes")}
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", historyOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                historyOpen && "rotate-180",
+              )}
+            />
           </button>
           {historyOpen && filingsResp && (
             <div className="space-y-0.5 pl-2 border-l border-border">
@@ -213,55 +235,62 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
           {(() => {
             const grouped = groupByAction(changes)
             return ACTION_ORDER.map((action) => {
-            const items = grouped.get(action)
-            if (!items || items.length === 0) return null
-            return (
-              <div key={action} className="space-y-1">
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: ACTION_COLORS[action] ?? "#9ca3af" }}
-                >
-                  {ACTION_ICONS[action]} {t(`smart_money.action.${action.toLowerCase()}`, { defaultValue: action })}
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-muted-foreground border-b border-border">
-                        <th className="text-left py-0.5 pr-2">{t("smart_money.col.ticker")}</th>
-                        <th className="text-left py-0.5 pr-2">{t("smart_money.col.company")}</th>
-                        <th className="text-right py-0.5 pr-2">{t("smart_money.col.value")}</th>
-                        <th className="text-right py-0.5 pr-2">{t("smart_money.col.shares")}</th>
-                        <th className="text-right py-0.5 pr-2">{t("smart_money.col.change_pct")}</th>
-                        <th className="text-right py-0.5 pr-2">{t("smart_money.col.weight_pct")}</th>
-                        <th className="text-right py-0.5">{t("smart_money.col.perf_since_filing")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((h) => (
-                        <tr key={h.ticker} className="border-b border-border/50">
-                          <td className="py-0.5 pr-2 font-medium">{h.ticker ?? "—"}</td>
-                          <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
-                            {h.company_name}
-                          </td>
-                          <td className="py-0.5 pr-2 text-right">{formatValue(h.value)}</td>
-                          <td className="py-0.5 pr-2 text-right">{formatShares(h.shares)}</td>
-                          <td className="py-0.5 pr-2 text-right">
-                            {h.change_pct != null ? `${h.change_pct.toFixed(1)}%` : "—"}
-                          </td>
-                          <td className="py-0.5 pr-2 text-right">
-                            {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
-                          </td>
-                          <td className="py-0.5 text-right">
-                            <PerfCell value={h.price_change_pct} />
-                          </td>
+              const items = grouped.get(action)
+              if (!items || items.length === 0) return null
+              return (
+                <div key={action} className="space-y-1">
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: ACTION_COLORS[action] ?? "#9ca3af" }}
+                  >
+                    {ACTION_ICONS[action]}{" "}
+                    {t(`smart_money.action.${action.toLowerCase()}`, { defaultValue: action })}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-muted-foreground border-b border-border">
+                          <th className="text-left py-0.5 pr-2">{t("smart_money.col.ticker")}</th>
+                          <th className="text-left py-0.5 pr-2">{t("smart_money.col.company")}</th>
+                          <th className="text-right py-0.5 pr-2">{t("smart_money.col.value")}</th>
+                          <th className="text-right py-0.5 pr-2">{t("smart_money.col.shares")}</th>
+                          <th className="text-right py-0.5 pr-2">
+                            {t("smart_money.col.change_pct")}
+                          </th>
+                          <th className="text-right py-0.5 pr-2">
+                            {t("smart_money.col.weight_pct")}
+                          </th>
+                          <th className="text-right py-0.5">
+                            {t("smart_money.col.perf_since_filing")}
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {items.map((h) => (
+                          <tr key={h.ticker} className="border-b border-border/50">
+                            <td className="py-0.5 pr-2 font-medium">{h.ticker ?? "—"}</td>
+                            <td className="py-0.5 pr-2 text-muted-foreground max-w-[120px] truncate">
+                              {h.company_name}
+                            </td>
+                            <td className="py-0.5 pr-2 text-right">{formatValue(h.value)}</td>
+                            <td className="py-0.5 pr-2 text-right">{formatShares(h.shares)}</td>
+                            <td className="py-0.5 pr-2 text-right">
+                              {h.change_pct != null ? `${h.change_pct.toFixed(1)}%` : "—"}
+                            </td>
+                            <td className="py-0.5 pr-2 text-right">
+                              {h.weight_pct != null ? `${h.weight_pct.toFixed(1)}%` : "—"}
+                            </td>
+                            <td className="py-0.5 text-right">
+                              <PerfCell value={h.price_change_pct} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )
-          })
+              )
+            })
           })()}
         </>
       )}
@@ -290,14 +319,24 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
             const chartH = Math.max(180, topHoldings.length * 22 + 50)
             return (
               <ResponsiveContainer width="100%" height={chartH}>
-                <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 56, left: 8, bottom: 20 }}>
+                <BarChart
+                  data={barData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 56, left: 8, bottom: 20 }}
+                >
                   <XAxis
                     type="number"
                     tick={{ fontSize: 9, fill: theme.tickColor }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => `${v}%`}
-                    label={{ value: t("smart_money.top.weight_axis"), position: "insideBottom", offset: -10, fontSize: 10, fill: theme.tickColor }}
+                    label={{
+                      value: t("smart_money.top.weight_axis"),
+                      position: "insideBottom",
+                      offset: -10,
+                      fontSize: 10,
+                      fill: theme.tickColor,
+                    }}
                   />
                   <YAxis
                     type="category"
@@ -309,7 +348,10 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                   />
                   <Tooltip
                     contentStyle={theme.tooltipStyle}
-                    formatter={(v: number | undefined) => [`${v != null ? v.toFixed(2) : ""}%`, t("smart_money.top.weight_axis")]}
+                    formatter={(v: number | undefined) => [
+                      `${v != null ? v.toFixed(2) : ""}%`,
+                      t("smart_money.top.weight_axis"),
+                    ]}
                     labelStyle={{ color: theme.tooltipText }}
                     cursor={{ fill: "rgba(128,128,128,0.08)" }}
                   />
@@ -320,7 +362,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
                     <LabelList
                       dataKey="weight"
                       position="right"
-                      formatter={(v: unknown) => typeof v === "number" ? `${v.toFixed(1)}%` : ""}
+                      formatter={(v: unknown) => (typeof v === "number" ? `${v.toFixed(1)}%` : "")}
                       style={{ fontSize: 9, fill: theme.tickColor }}
                     />
                   </Bar>
@@ -377,9 +419,7 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
   // -------------------------------------------------------------------------
   // Great Minds section
   // -------------------------------------------------------------------------
-  const guruStocks = greatMinds?.stocks.filter((s) =>
-    s.gurus.some((g) => g.guru_id === guruId),
-  )
+  const guruStocks = greatMinds?.stocks.filter((s) => s.gurus.some((g) => g.guru_id === guruId))
 
   const greatMindsSection = (
     <section className="space-y-2">
@@ -389,7 +429,12 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.great_minds")}
-        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", greatMindsOpen && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+            greatMindsOpen && "rotate-180",
+          )}
+        />
       </button>
       {greatMindsOpen && (
         <>
@@ -437,7 +482,12 @@ export function GuruTab({ guruId, guruName, enabled }: Props) {
         className="flex items-center gap-1 text-sm font-semibold"
       >
         {t("smart_money.tab.qoq")}
-        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", qoqOpen && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+            qoqOpen && "rotate-180",
+          )}
+        />
       </button>
       {qoqOpen &&
         (qoqData ? (

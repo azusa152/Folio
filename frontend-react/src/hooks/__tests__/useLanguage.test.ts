@@ -45,12 +45,7 @@ describe("useLanguage", () => {
 
   it("exposes LANGUAGE_OPTIONS with all 4 supported locales", () => {
     const { result } = renderHook(() => useLanguage())
-    expect(Object.keys(result.current.LANGUAGE_OPTIONS)).toEqual([
-      "zh-TW",
-      "en",
-      "ja",
-      "zh-CN",
-    ])
+    expect(Object.keys(result.current.LANGUAGE_OPTIONS)).toEqual(["zh-TW", "en", "ja", "zh-CN"])
   })
 
   it("returns the current language from i18n", () => {

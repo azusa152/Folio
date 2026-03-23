@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useLocation, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { Download } from "lucide-react"
+import { Download, Settings } from "lucide-react"
 import i18n from "@/lib/i18n"
 import {
   Sidebar,
@@ -25,6 +25,7 @@ import { useLanguage } from "@/hooks/useLanguage"
 import { usePwaInstall } from "@/hooks/use-pwa-install"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
 import { useTheme } from "@/hooks/useTheme"
+import { useDefaultCurrency } from "@/hooks/useDefaultCurrency"
 import { Switch } from "@/components/ui/switch"
 import { usePreferences, useSavePreferences } from "@/api/hooks/useAllocation"
 
@@ -60,16 +61,29 @@ export function AppSidebar() {
   // Use i18n.changeLanguage directly to avoid the write-back API call.
   useEffect(() => {
     if (prefs?.language) {
-      i18n.changeLanguage(prefs.language).catch(() => { /* fail silently */ })
+      i18n.changeLanguage(prefs.language).catch(() => {
+        /* fail silently */
+      })
     }
   }, [prefs?.language])
+
+  // Hydrate default currency store from server preferences
+  useEffect(() => {
+    if (prefs?.default_display_currency) {
+      useDefaultCurrency.getState().setDefaultDisplayCurrency(prefs.default_display_currency)
+    }
+  }, [prefs?.default_display_currency])
 
   function togglePrivacy() {
     toggle()
     const next = !isPrivate
     savePreferences.mutate(
       { privacy_mode: next },
-      { onError: () => { /* fail silently — UI already updated optimistically */ } },
+      {
+        onError: () => {
+          /* fail silently — UI already updated optimistically */
+        },
+      },
     )
   }
 
@@ -85,7 +99,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map(({ path, labelKey, icon }) => (
                 <SidebarMenuItem key={path}>
-                  <SidebarMenuButton asChild isActive={location.pathname === path} className="min-h-[44px]">
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === path}
+                    className="min-h-[44px]"
+                  >
                     <Link to={path}>
                       <span>{icon}</span>
                       <span>{t(labelKey)}</span>
@@ -93,6 +111,18 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/settings"}
+                  className="min-h-[44px]"
+                >
+                  <Link to="/settings">
+                    <Settings className="h-4 w-4" />
+                    <span>{t("nav.settings")}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

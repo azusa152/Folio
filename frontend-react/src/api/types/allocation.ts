@@ -3,7 +3,13 @@ import type { components } from "./generated"
 // ---------------------------------------------------------------------------
 // Re-exported from dashboard (consumed by allocation hooks/components)
 // ---------------------------------------------------------------------------
-export type { StockCategory, CategoryAllocation, HoldingDetail, Holding, ProfileResponse } from "./dashboard"
+export type {
+  StockCategory,
+  CategoryAllocation,
+  HoldingDetail,
+  Holding,
+  ProfileResponse,
+} from "./dashboard"
 
 // ---------------------------------------------------------------------------
 // Generated from backend Pydantic schemas (single source of truth)

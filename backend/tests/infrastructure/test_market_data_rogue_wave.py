@@ -9,25 +9,12 @@ Covers:
 - clear_all_caches: _rogue_wave_cache is included.
 """
 
-import os
-import tempfile
+from unittest.mock import MagicMock, patch
 
-# Set environment variables BEFORE any app imports
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pandas as pd
+from cachetools import TTLCache
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_rogue_wave"
-)
-
-from unittest.mock import MagicMock, patch  # noqa: E402
-
-import pandas as pd  # noqa: E402
-from cachetools import TTLCache  # noqa: E402
-
-from infrastructure.market_data.market_data import (  # noqa: E402
+from infrastructure.market_data.market_data import (
     _fetch_bias_distribution_from_yf,
     _rogue_wave_cache,
     clear_all_caches,
@@ -161,7 +148,7 @@ class TestFetchBiasDistributionFromYf:
 class TestGetBiasDistribution:
     """Verify get_bias_distribution uses _cached_fetch correctly."""
 
-    @patch("infrastructure.market_data.market_data._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_return_l1_cached_without_fetching(self, mock_fetch, mock_disk_get):
         # Arrange — pre-populate L1
@@ -176,8 +163,8 @@ class TestGetBiasDistribution:
         mock_fetch.assert_not_called()
         mock_disk_get.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_promote_l2_to_l1_without_fetching(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -196,8 +183,8 @@ class TestGetBiasDistribution:
         mock_fetch.assert_not_called()
         mock_disk_set.assert_not_called()  # already in L2, no re-write needed
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_write_l1_and_l2_on_cache_miss(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -225,8 +212,8 @@ class TestGetBiasDistribution:
         disk_key_arg = mock_disk_set.call_args[0][0]
         assert "rogue_wave" in disk_key_arg
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_not_write_l2_when_fetcher_returns_empty(
         self, mock_fetch, mock_disk_set, mock_disk_get
@@ -245,8 +232,8 @@ class TestGetBiasDistribution:
         # is_error guard: empty result must NOT be persisted to L2
         mock_disk_set.assert_not_called()
 
-    @patch("infrastructure.market_data.market_data._disk_get")
-    @patch("infrastructure.market_data.market_data._disk_set")
+    @patch("infrastructure.market_data._market_data_shared._disk_get")
+    @patch("infrastructure.market_data._market_data_shared._disk_set")
     @patch("infrastructure.market_data.market_data._fetch_bias_distribution_from_yf")
     def test_should_cache_error_result_in_l1(
         self, mock_fetch, mock_disk_set, mock_disk_get

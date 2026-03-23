@@ -1,5 +1,9 @@
 # Folio Agent Guide
 
+> **Audience:** AI coding assistants and human contributors working on the codebase.
+> For the Folio webhook AI agent behavioral rules (action routing, auth, runtime
+> discovery), see [`docs/agents/AGENTS.md`](docs/agents/AGENTS.md).
+
 Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for watchlists, ledger-driven positions, FX monitoring, and guru 13F analysis.
 
 ## Run And Verify
@@ -12,11 +16,11 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 
 ## Architecture Boundaries
 
-- Layers: `domain` -> `application` -> `infrastructure` -> `api`
+- Layers: `domain` → `application` → `infrastructure` → `api`
 - In `api/routes`, delegate to `application/*` services
 - Do not import `infrastructure/*` directly from `api/*` (except `infrastructure.database`)
 - Keep domain rules inside `domain/*` (no outer-layer imports)
-- Verify with `backend/tests/test_architecture.py` (included in `make ci`)
+- Verified by `backend/tests/test_architecture.py` (included in `make ci`)
 
 ## Key Paths
 
@@ -36,7 +40,9 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Tax wrapper routes: `backend/api/routes/wrapper_routes.py`
 - Tax wrapper schemas: `backend/api/schemas/wrapper.py`
 - Eligible asset seed: `backend/scripts/seed_eligible_assets.py`
-- NAV sync service (periodic + on-demand): `backend/application/portfolio/nav_sync_service.py`
+- Demo mode standalone compose file: `docker-compose.demo.yml` (ports 3001/8001, isolated `demo-data` volume)
+- Demo seed script: `backend/scripts/seed_demo.py` (supports `--reset` to wipe and re-seed)
+- NAV sync service: `backend/application/portfolio/nav_sync_service.py`
 - Toushin adapter: `backend/infrastructure/market_data/toushin_adapter.py`
 - Ledger migration: `backend/scripts/migrate_ledger.py`
 - Domain analytics: `backend/domain/analysis/drawdown.py`, `backend/domain/analysis/risk_metrics.py`
@@ -50,6 +56,7 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - NISA quota is tracked at cost basis (簿價), not market value
 - Use `docs/agents/folio/SKILL.md` for compact action usage
 - Use `docs/agents/folio/reference.md` only when detailed field-level specs are needed
+- Full webhook action table and curl examples: [docs/API.md](docs/API.md#ai-agent-integration-openclaw--webhook)
 
 ## Git And Safety
 

@@ -36,9 +36,7 @@ export default function SmartMoney() {
   const tabsListRef = useRef<HTMLDivElement>(null)
 
   const activeGurus = gurus?.filter((g) => g.is_active) ?? []
-  const filteredGurus = activeGurus.filter(
-    (g) => styleFilter == null || g.style === styleFilter,
-  )
+  const filteredGurus = activeGurus.filter((g) => styleFilter == null || g.style === styleFilter)
   const filteredGuruIds = new Set(filteredGurus.map((g) => String(g.id)))
   const resolvedTab =
     activeTab !== OVERVIEW_TAB &&
@@ -58,9 +56,7 @@ export default function SmartMoney() {
 
   useEffect(() => {
     if (!tabsListRef.current) return
-    const activeEl = tabsListRef.current.querySelector<HTMLElement>(
-      `[data-state="active"]`,
-    )
+    const activeEl = tabsListRef.current.querySelector<HTMLElement>(`[data-state="active"]`)
     activeEl?.scrollIntoView({ inline: "nearest", block: "nearest" })
   }, [resolvedTab])
 
@@ -119,7 +115,9 @@ export default function SmartMoney() {
           <h1 className="text-xl sm:text-2xl font-bold">{t("smart_money.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("smart_money.caption")}</p>
           {updatedAgo ? (
-            <p className="text-xs text-muted-foreground">{t("common.last_updated_relative", { time: updatedAgo })}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("common.last_updated_relative", { time: updatedAgo })}
+            </p>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
@@ -135,7 +133,11 @@ export default function SmartMoney() {
             size="sm"
             variant="outline"
             className="text-xs shrink-0 min-h-[44px]"
-            onClick={() => syncAllMutation.mutate(undefined, { onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")) })}
+            onClick={() =>
+              syncAllMutation.mutate(undefined, {
+                onError: (err: unknown) => toast.error(getErrorMessage(err) || t("common.error")),
+              })
+            }
             disabled={syncAllMutation.isPending || activeGurus.length === 0}
           >
             {syncAllMutation.isPending
@@ -153,7 +155,12 @@ export default function SmartMoney() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("smart_money.sop.title")}</span>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -207,7 +214,9 @@ export default function SmartMoney() {
       <Tabs value={resolvedTab} onValueChange={setActiveTab}>
         <ScrollArea className="w-full">
           <TabsList ref={tabsListRef} className="inline-flex w-max min-h-[44px] gap-1">
-            <TabsTrigger value={OVERVIEW_TAB} className="min-h-[44px]">{t("smart_money.overview.tab")}</TabsTrigger>
+            <TabsTrigger value={OVERVIEW_TAB} className="min-h-[44px]">
+              {t("smart_money.overview.tab")}
+            </TabsTrigger>
             <TabsTrigger value={GRAND_PORTFOLIO_TAB} className="min-h-[44px]">
               {t("smart_money.grand_portfolio.tab")}
             </TabsTrigger>
@@ -218,7 +227,12 @@ export default function SmartMoney() {
               {t("smart_money.backtest.tab")}
             </TabsTrigger>
             {filteredGurus.map((guru) => (
-              <TabsTrigger key={guru.id} value={String(guru.id)} data-guru-tab={String(guru.id)} className="min-h-[44px]">
+              <TabsTrigger
+                key={guru.id}
+                value={String(guru.id)}
+                data-guru-tab={String(guru.id)}
+                className="min-h-[44px]"
+              >
                 {guru.display_name}
               </TabsTrigger>
             ))}
@@ -253,7 +267,11 @@ export default function SmartMoney() {
         {/* Per-guru tabs */}
         {filteredGurus.map((guru) => (
           <TabsContent key={guru.id} value={String(guru.id)} className="mt-4">
-            <GuruTab guruId={guru.id} guruName={guru.display_name} enabled={resolvedTab === String(guru.id)} />
+            <GuruTab
+              guruId={guru.id}
+              guruName={guru.display_name}
+              enabled={resolvedTab === String(guru.id)}
+            />
           </TabsContent>
         ))}
 

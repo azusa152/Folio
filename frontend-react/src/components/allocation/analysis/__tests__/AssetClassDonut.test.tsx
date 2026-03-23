@@ -6,7 +6,9 @@ import { AssetClassDonut } from "../AssetClassDonut"
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PieChart: ({ children }: { children: ReactNode }) => <div data-testid="pie-chart">{children}</div>,
+  PieChart: ({ children }: { children: ReactNode }) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
   Pie: () => <div />,
   Cell: () => <div />,
   Tooltip: () => <div />,
@@ -56,17 +58,13 @@ describe("AssetClassDonut", () => {
   })
 
   it("returns null when all values are zero", () => {
-    const { container } = render(
-      <AssetClassDonut data={{ Equity: 0, Cash: 0 }} />,
-    )
+    const { container } = render(<AssetClassDonut data={{ Equity: 0, Cash: 0 }} />)
 
     expect(container.innerHTML).toBe("")
   })
 
   it("returns null when data is empty", () => {
-    const { container } = render(
-      <AssetClassDonut data={{}} />,
-    )
+    const { container } = render(<AssetClassDonut data={{}} />)
 
     expect(container.innerHTML).toBe("")
   })
@@ -82,5 +80,13 @@ describe("AssetClassDonut", () => {
 
     expect(screen.queryByText("allocation.clear_filter")).not.toBeInTheDocument()
     expect(screen.queryByText("allocation.holdings.title")).not.toBeInTheDocument()
+  })
+
+  it("renders chart without crashing when some asset classes are below 1% threshold", () => {
+    // Equity=99000 (99.99%): visible; Alternatives=10 (0.01%): grouped into Other
+    render(<AssetClassDonut data={{ Equity: 99000, Alternatives: 10 }} />)
+
+    // Chart still renders — Other bucket is added to chartData fed into mocked recharts
+    expect(screen.getByTestId("pie-chart")).toBeInTheDocument()
   })
 })

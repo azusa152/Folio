@@ -58,10 +58,7 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
     }
   }, [defaultAccountId, open])
 
-  const items = useMemo(
-    () => transformTransactionRows(rows, mapping),
-    [rows, mapping],
-  )
+  const items = useMemo(() => transformTransactionRows(rows, mapping), [rows, mapping])
   const errors = useMemo(() => validateTransactionRows(items), [items])
   const hasBlockingErrors = errors.size > 0
   const hasNoRowsToImport = items.length === 0
@@ -359,10 +356,18 @@ export function TransactionCsvImportDialog({ open, onClose, defaultAccountId }: 
                 <table className="w-full text-xs">
                   <thead className="bg-muted/60">
                     <tr>
-                      <th className="px-2 py-2 text-left">{t("transactions.import.mapping_date")}</th>
-                      <th className="px-2 py-2 text-left">{t("transactions.import.mapping_type")}</th>
-                      <th className="px-2 py-2 text-left">{t("transactions.import.mapping_ticker")}</th>
-                      <th className="px-2 py-2 text-left">{t("transactions.import.mapping_total_amount")}</th>
+                      <th className="px-2 py-2 text-left">
+                        {t("transactions.import.mapping_date")}
+                      </th>
+                      <th className="px-2 py-2 text-left">
+                        {t("transactions.import.mapping_type")}
+                      </th>
+                      <th className="px-2 py-2 text-left">
+                        {t("transactions.import.mapping_ticker")}
+                      </th>
+                      <th className="px-2 py-2 text-left">
+                        {t("transactions.import.mapping_total_amount")}
+                      </th>
                       <th className="px-2 py-2 text-left">{t("transactions.import.status")}</th>
                     </tr>
                   </thead>

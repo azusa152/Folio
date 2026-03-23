@@ -21,16 +21,16 @@ Idempotent: skips holdings that already have an OPENING_BALANCE transaction.
 from __future__ import annotations
 
 import argparse
-import logging
 from datetime import date
 from typing import Any
 
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
+from logging_config import get_logger
 from scripts import assert_docker_runtime
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 engine = None
 
 

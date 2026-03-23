@@ -8,7 +8,13 @@ import { FX_WATCH_REFRESH_COOLDOWN_SECONDS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   useFxWatches,
@@ -20,72 +26,20 @@ import {
 } from "@/api/hooks/useFxWatch"
 import { WatchCard } from "@/components/fxwatch/WatchCard"
 import { AddWatchDialog } from "@/components/fxwatch/AddWatchDialog"
+import { SummaryCard } from "@/components/fxwatch/SummaryCard"
+import {
+  computeAbsChangePct,
+  getRetryAfterSeconds,
+  isRateLimitError,
+  type FilterMode,
+  type SortMode,
+} from "@/components/fxwatch/fxWatchUtils"
 import type { FxWatch } from "@/api/types/fxWatch"
 import { useCurrencyExposure, useUpdateProfile } from "@/api/hooks/useAllocation"
 import { CurrencyExposure } from "@/components/allocation/tools/CurrencyExposure"
 import { PortfolioImpactSnapshot } from "@/components/fxwatch/PortfolioImpactSnapshot"
 import { useProfile } from "@/api/hooks/useDashboard"
 import { usePrivacyMode } from "@/hooks/usePrivacyMode"
-
-type SortMode = "alert_first" | "alphabetical" | "volatility"
-type FilterMode = "all" | "active_only"
-
-function isRateLimitError(err: unknown): boolean {
-  if (err == null || typeof err !== "object") return false
-  const obj = err as Record<string, unknown>
-  if (obj.status === 429) return true
-  if (obj.statusCode === 429) return true
-  if (typeof obj.response === "object" && obj.response !== null) {
-    const response = obj.response as Record<string, unknown>
-    if (response.status === 429) return true
-  }
-  return false
-}
-
-function getRetryAfterSeconds(err: unknown): number | null {
-  if (err == null || typeof err !== "object") return null
-  const obj = err as Record<string, unknown>
-
-  const asPositiveInt = (value: unknown): number | null => {
-    const n = typeof value === "string" ? Number.parseInt(value, 10) : Number(value)
-    if (!Number.isFinite(n) || n <= 0) return null
-    return Math.ceil(n)
-  }
-
-  const directRetry = asPositiveInt(obj.retry_after_seconds)
-  if (directRetry !== null) return directRetry
-
-  if (typeof obj.detail === "object" && obj.detail !== null) {
-    const detail = obj.detail as Record<string, unknown>
-    const detailRetry = asPositiveInt(detail.retry_after_seconds)
-    if (detailRetry !== null) return detailRetry
-  }
-
-  if (typeof obj.response === "object" && obj.response !== null) {
-    const response = obj.response as Record<string, unknown>
-    const responseRetry = asPositiveInt(response.retry_after_seconds)
-    if (responseRetry !== null) return responseRetry
-
-    if (typeof response.headers === "object" && response.headers !== null) {
-      const headers = response.headers as Record<string, unknown>
-      const retryAfter =
-        asPositiveInt(headers["retry-after"]) ??
-        asPositiveInt(headers["Retry-After"])
-      if (retryAfter !== null) return retryAfter
-    }
-  }
-
-  return null
-}
-
-/** Returns absolute (unsigned) % change — used for volatility sort. */
-function computeAbsChangePct(history: { close: number }[]): number | null {
-  if (history.length < 2) return null
-  const first = history[0].close
-  const last = history[history.length - 1].close
-  if (first <= 0) return null
-  return Math.abs((last - first) / first) * 100
-}
 
 export default function FxWatch() {
   const { t, i18n } = useTranslation()
@@ -113,7 +67,8 @@ export default function FxWatch() {
   const { data: exposure } = useCurrencyExposure(activeTab !== "watches", effectiveHomeCurrency)
 
   const saveDefaultHomeCurrency = () => {
-    if (!profile || !effectiveHomeCurrency || effectiveHomeCurrency === profile.home_currency) return
+    if (!profile || !effectiveHomeCurrency || effectiveHomeCurrency === profile.home_currency)
+      return
     updateProfileMutation.mutate(
       { id: profile.id, payload: { home_currency: effectiveHomeCurrency } },
       {
@@ -149,7 +104,10 @@ export default function FxWatch() {
   }
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNowEpochSeconds(Math.floor(Date.now() / 1000)), 60_000)
+    const timer = window.setInterval(
+      () => setNowEpochSeconds(Math.floor(Date.now() / 1000)),
+      60_000,
+    )
     return () => window.clearInterval(timer)
   }, [])
 
@@ -193,11 +151,11 @@ export default function FxWatch() {
       ? formatLocalTime(lastAlertTimes.reduce((a, b) => (parseUtc(a) > parseUtc(b) ? a : b)))
       : null
 
-  const checkedAtEpoch = analysisState?.checked_at ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000) : 0
+  const checkedAtEpoch = analysisState?.checked_at
+    ? Math.floor(parseUtc(analysisState.checked_at).getTime() / 1000)
+    : 0
   const ratesUpdatedAgo =
-    checkedAtEpoch > 0
-      ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language)
-      : ""
+    checkedAtEpoch > 0 ? formatRelativeTime(nowEpochSeconds - checkedAtEpoch, i18n.language) : ""
 
   const freshnessAgeSeconds = checkedAtEpoch > 0 ? nowEpochSeconds - checkedAtEpoch : null
   const freshnessDotClass =
@@ -209,7 +167,9 @@ export default function FxWatch() {
           ? "bg-amber-500"
           : "bg-muted-foreground/40"
 
-  const checkedAtLabel = analysisState?.checked_at ? formatLocalTime(analysisState.checked_at) : null
+  const checkedAtLabel = analysisState?.checked_at
+    ? formatLocalTime(analysisState.checked_at)
+    : null
   const handleCheck = () => {
     checkMutation.mutate(undefined, {
       onSuccess: () => toast.success(t("common.success")),
@@ -361,13 +321,21 @@ export default function FxWatch() {
               variant="ghost"
               className="h-7 px-2 text-xs"
               onClick={handleRefreshRates}
-              disabled={refreshMutation.isPending || refreshCooldownRemainingSeconds > 0 || watches.length === 0}
+              disabled={
+                refreshMutation.isPending ||
+                refreshCooldownRemainingSeconds > 0 ||
+                watches.length === 0
+              }
             >
-              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`mr-1 h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`}
+              />
               {refreshMutation.isPending
                 ? t("fx_watch.action.refreshing")
                 : refreshCooldownRemainingSeconds > 0
-                  ? t("fx_watch.action.refresh_cooldown", { seconds: refreshCooldownRemainingSeconds })
+                  ? t("fx_watch.action.refresh_cooldown", {
+                      seconds: refreshCooldownRemainingSeconds,
+                    })
                   : t("fx_watch.action.refresh")}
             </Button>
           </div>
@@ -399,7 +367,10 @@ export default function FxWatch() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "overview" | "watches" | "exposure")}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "overview" | "watches" | "exposure")}
+      >
         <TabsList className="flex-wrap h-auto min-h-[44px] gap-1">
           <TabsTrigger value="overview" className="min-h-[44px]">
             {t("fx_watch.tab.overview")}
@@ -435,9 +406,7 @@ export default function FxWatch() {
               selectedCurrency={effectiveHomeCurrency ?? exposure.home_currency}
               onCurrencyChange={setSelectedCurrencyOverride}
               showSaveDefault={Boolean(
-                profile &&
-                  effectiveHomeCurrency &&
-                  effectiveHomeCurrency !== profile.home_currency,
+                profile && effectiveHomeCurrency && effectiveHomeCurrency !== profile.home_currency,
               )}
               onSaveDefault={saveDefaultHomeCurrency}
               isSavingDefault={updateProfileMutation.isPending}
@@ -524,7 +493,11 @@ export default function FxWatch() {
 
         <TabsContent value="exposure" className="mt-4">
           {profile ? (
-            <CurrencyExposure privacyMode={privacyMode} profile={profile} enabled={activeTab === "exposure"} />
+            <CurrencyExposure
+              privacyMode={privacyMode}
+              profile={profile}
+              enabled={activeTab === "exposure"}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           )}
@@ -532,28 +505,6 @@ export default function FxWatch() {
       </Tabs>
 
       <AddWatchDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
-    </div>
-  )
-}
-
-interface SummaryCardProps {
-  label: string
-  value: string
-  highlight?: boolean
-  small?: boolean
-}
-
-function SummaryCard({ label, value, highlight = false, small = false }: SummaryCardProps) {
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={`${small ? "text-sm font-semibold truncate" : "text-2xl font-bold"} ${
-          highlight ? "text-destructive" : ""
-        }`}
-      >
-        {value}
-      </p>
     </div>
   )
 }

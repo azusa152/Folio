@@ -10,7 +10,8 @@
     "allocation": "資産配分",
     "nisa": "NISA",
     "fx_watch": "FXモニター",
-    "smart_money": "スマートマネー"
+    "smart_money": "スマートマネー",
+    "settings": "設定"
   },
   "common": {
     "refresh": "🔄 更新",
@@ -44,6 +45,7 @@
     "error_render": "エラーが発生しました",
     "retry": "再試行",
     "offline_banner": "オフラインです。データが最新ではない可能性があります。",
+    "demo_banner": "デモモード — これはサンプルデータです。実際のデータは安全です。",
     "last_updated_relative": "最終更新 {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} 株",
@@ -89,11 +91,10 @@
       "moat": "🏰 モート",
       "growth": "🚀 グロース",
       "etf": "📈 ETF",
-      "mutual_fund": "📚 投資信託",
+      "mutual_fund": "🧺 投資信託",
       "bond": "🛡️ 債券",
       "crypto": "₿ 暗号資産",
-      "cash": "💵 現金",
-      "mutual_fund": "🧺 投資信託"
+      "cash": "💵 現金"
     },
     "category_desc": {
       "trend_setter": "大型ETFやメガキャップ中心で、資金フローと消費トレンドを追うカテゴリ。",
@@ -276,6 +277,9 @@
     "button_add_holdings": "🧾 取引を記録",
     "market_sentiment": "市場センチメント",
     "total_market_value": "ポートフォリオ評価額",
+    "updating": "更新中...",
+    "as_of": "{{datetime}} 時点",
+    "fetching_market_data": "最新の市場データを取得中...",
     "health_score": "ヘルススコア",
     "health_delta": "{{normal}}/{{total}} 正常",
     "allocation_title": "🎯 目標 vs 実際の配分",
@@ -951,10 +955,16 @@
     },
     "charts": {
       "title": "目標 vs 実際の配分",
-      "toggle_pie": "円グラフ",
-      "toggle_treemap": "ツリーマップ",
       "target": "目標",
-      "actual": "実際"
+      "actual": "実際",
+      "other": "その他",
+      "category": "カテゴリ",
+      "drift_label": "乖離",
+      "value": "評価額",
+      "on_target": "目標通り",
+      "over": "超過",
+      "under": "不足",
+      "other_tooltip": "ポートフォリオの1%未満のカテゴリ"
     },
     "drift": {
       "title": "配分ドリフト",
@@ -964,6 +974,7 @@
     },
     "col": {
       "ticker": "ティッカー",
+      "holding": "銘柄名",
       "account": "口座",
       "category": "カテゴリ",
       "qty": "数量",
@@ -2413,5 +2424,36 @@
     "split_purchase": "買付を分割して作成",
     "split_success": "分割買付を {{count}} 件作成しました",
     "split_rollback_failed": "分割買付の一部が失敗し、自動ロールバックを完了できませんでした。"
+  },
+  "settings": {
+    "page_title": "設定",
+    "page_subtitle": "アプリ、ポートフォリオ、通知の設定をここでまとめて管理できます。",
+    "tab_general": "一般",
+    "tab_portfolio": "ポートフォリオ",
+    "tab_notifications": "通知",
+    "section_appearance": "外観",
+    "section_language": "言語と地域",
+    "section_privacy": "プライバシー",
+    "section_currency": "通貨",
+    "goto_settings": "設定へ移動",
+    "goto_settings_hint": "設定は専用ページに移動しました。設定ページでお好みを管理してください。",
+    "language_label": "表示言語",
+    "language_hint": "アプリ全体で使用する言語を選択してください。",
+    "theme_label": "テーマ",
+    "theme_hint": "アプリの外観を選択してください。「システム」はデバイスの設定に従います。",
+    "theme_light": "ライト",
+    "theme_dark": "ダーク",
+    "privacy_label": "プライバシーモード",
+    "privacy_hint": "すべてのページで金額を非表示にします。画面を共有する際に便利です。",
+    "terminology_label": "用語スタイル",
+    "terminology_hint": "「簡易」は日常用語を使用し、「専門家」は標準的な金融用語を使用します。",
+    "default_currency_label": "デフォルト表示通貨",
+    "default_currency_hint": "アプリ内のすべての金額はデフォルトでこの通貨で表示されます。",
+    "home_currency_label": "ホーム通貨",
+    "home_currency_hint": "FXエクスポージャーとリスクの計算に使用する自国通貨です。",
+    "portfolio_section_title": "ポートフォリオ",
+    "notifications_section_title": "通知",
+    "telegram_section_title": "Telegram 通知",
+    "alerts_section_title": "通知設定"
   }
 }

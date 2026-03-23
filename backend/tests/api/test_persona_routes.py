@@ -94,6 +94,11 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()["home_currency"] == "JPY"
 
+    def test_should_return_404_when_profile_not_found(self, client: TestClient):
+        resp = client.put("/profiles/99999", json={"name": "Renamed"})
+        assert resp.status_code == 404
+        assert resp.json()["detail"]["error_code"] == "PROFILE_NOT_FOUND"
+
 
 # ---------------------------------------------------------------------------
 # DELETE /profiles/{id}
@@ -112,3 +117,8 @@ class TestDeleteProfile:
         client.delete(f"/profiles/{profile_id}")
         active = client.get("/profiles").json()
         assert active is None
+
+    def test_delete_should_return_404_when_profile_not_found(self, client: TestClient):
+        resp = client.delete("/profiles/99999")
+        assert resp.status_code == 404
+        assert resp.json()["detail"]["error_code"] == "PROFILE_NOT_FOUND"

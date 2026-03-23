@@ -20,23 +20,49 @@ const ETF_UNRESOLVED_SECTOR = "ETF"
 const UNKNOWN_SECTOR = "Unknown"
 
 interface ContentProps {
-  x?: number; y?: number; width?: number; height?: number
-  name?: string; weight_pct?: number; colorIdx?: number
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  name?: string
+  weight_pct?: number
+  colorIdx?: number
 }
 
-function SectorCell({ x = 0, y = 0, width = 0, height = 0, name, weight_pct, colorIdx = 0 }: ContentProps) {
+function SectorCell({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  name,
+  weight_pct,
+  colorIdx = 0,
+}: ContentProps) {
   const fill = SECTOR_COLORS[colorIdx % SECTOR_COLORS.length]
   if (width < 10 || height < 10) return null
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={fill} rx={3} />
       {width > 50 && height > 28 && (
-        <text x={x + width / 2} y={y + height / 2 - 5} textAnchor="middle" fill="#fff" fontSize={10} fontWeight={500}>
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - 5}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={10}
+          fontWeight={500}
+        >
           {name}
         </text>
       )}
       {width > 50 && height > 28 && typeof weight_pct === "number" && (
-        <text x={x + width / 2} y={y + height / 2 + 9} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={9}>
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 9}
+          textAnchor="middle"
+          fill="rgba(255,255,255,0.8)"
+          fontSize={9}
+        >
           {weight_pct.toFixed(1)}%
         </text>
       )}
@@ -58,11 +84,12 @@ export function SectorHeatmap({ data }: Props) {
   }
 
   const chartData = data.map((d, i) => ({
-    name: d.sector === ETF_UNRESOLVED_SECTOR
-      ? t("allocation.sector.etf_unresolved")
-      : d.sector === UNKNOWN_SECTOR
-        ? t("allocation.sector.unknown")
-        : d.sector,
+    name:
+      d.sector === ETF_UNRESOLVED_SECTOR
+        ? t("allocation.sector.etf_unresolved")
+        : d.sector === UNKNOWN_SECTOR
+          ? t("allocation.sector.unknown")
+          : d.sector,
     size: d.value,
     weight_pct: d.equity_pct,
     colorIdx: i,
@@ -90,14 +117,14 @@ export function SectorHeatmap({ data }: Props) {
         )}
       </div>
       <ResponsiveContainer width="100%" height={250}>
-        <Treemap
-          data={chartData}
-          dataKey="size"
-          content={<SectorCell />}
-        >
+        <Treemap data={chartData} dataKey="size" content={<SectorCell />}>
           <Tooltip
             contentStyle={theme.tooltipStyle}
-            formatter={(_v: number | undefined, _name: unknown, props: { payload?: { weight_pct?: number; name?: string } }) => [
+            formatter={(
+              _v: number | undefined,
+              _name: unknown,
+              props: { payload?: { weight_pct?: number; name?: string } },
+            ) => [
               `${typeof props.payload?.weight_pct === "number" ? props.payload.weight_pct.toFixed(1) : ""}%`,
               props.payload?.name ?? "",
             ]}

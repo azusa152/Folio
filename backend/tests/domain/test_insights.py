@@ -24,8 +24,8 @@ class TestGenerateAllocationInsights:
         conc = [i for i in insights if i.key == "insight.high_concentration"]
         assert len(conc) == 1
         assert conc[0].severity == InsightSeverity.WARNING
-        assert conc[0].vars["category"] == "Tech"
-        assert conc[0].vars["weight_pct"] == pytest.approx(83.3, abs=0.1)
+        assert conc[0].template_vars["category"] == "Tech"
+        assert conc[0].template_vars["weight_pct"] == pytest.approx(83.3, abs=0.1)
 
     def test_should_not_warn_when_balanced(self):
         categories = {
@@ -50,7 +50,7 @@ class TestGenerateAllocationInsights:
         drift = [i for i in insights if i.key == "insight.drift_exceeds_threshold"]
         assert len(drift) == 1
         assert drift[0].severity == InsightSeverity.ACTION
-        assert drift[0].vars["category"] == "Tech"
+        assert drift[0].template_vars["category"] == "Tech"
 
     def test_should_flag_drift_pct_key_from_rebalance(self):
         """Rebalance service returns ``drift_pct`` — ensure insights reads it."""
@@ -63,8 +63,8 @@ class TestGenerateAllocationInsights:
         )
         drift = [i for i in insights if i.key == "insight.drift_exceeds_threshold"]
         assert len(drift) == 1
-        assert drift[0].vars["category"] == "Tech"
-        assert drift[0].vars["drift_pct"] == 8.0
+        assert drift[0].template_vars["category"] == "Tech"
+        assert drift[0].template_vars["drift_pct"] == 8.0
 
     def test_should_praise_excellent_health(self):
         insights = generate_allocation_insights(
@@ -110,8 +110,8 @@ class TestGeneratePerformanceInsights:
         )
         out = [i for i in insights if i.key == "insight.outperforming_benchmark"]
         assert len(out) == 1
-        assert out[0].vars["return_pct"] == 15.0
-        assert out[0].vars["alpha_pct"] == 5.0
+        assert out[0].template_vars["return_pct"] == 15.0
+        assert out[0].template_vars["alpha_pct"] == 5.0
 
     def test_should_detect_underperformance(self):
         insights = generate_performance_insights(
@@ -122,7 +122,7 @@ class TestGeneratePerformanceInsights:
         )
         under = [i for i in insights if i.key == "insight.underperforming_benchmark"]
         assert len(under) == 1
-        assert under[0].vars["lag_pct"] == 7.0
+        assert under[0].template_vars["lag_pct"] == 7.0
 
     def test_should_not_generate_benchmark_insight_for_small_alpha(self):
         insights = generate_performance_insights(
@@ -143,7 +143,7 @@ class TestGeneratePerformanceInsights:
         )
         dd = [i for i in insights if i.key == "insight.severe_drawdown"]
         assert len(dd) == 1
-        assert dd[0].vars["drawdown_pct"] == 25.0
+        assert dd[0].template_vars["drawdown_pct"] == 25.0
 
     def test_should_note_moderate_drawdown(self):
         insights = generate_performance_insights(
@@ -210,11 +210,11 @@ class TestInsightDataclass:
     """Tests for the Insight dataclass itself."""
 
     def test_should_be_frozen(self):
-        i = Insight(key="test", severity="info")
+        i = Insight(key="test", severity=InsightSeverity.INFO)
         with pytest.raises(AttributeError):
             i.key = "changed"  # type: ignore[misc]
 
     def test_should_have_default_category(self):
-        i = Insight(key="test", severity="info")
+        i = Insight(key="test", severity=InsightSeverity.INFO)
         assert i.category == "general"
-        assert i.vars == {}
+        assert i.template_vars == {}

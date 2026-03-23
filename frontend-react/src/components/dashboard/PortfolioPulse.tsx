@@ -1,15 +1,14 @@
-import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { AreaSeries, type IChartApi } from "lightweight-charts"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePrivacyMode, maskMoney } from "@/hooks/usePrivacyMode"
 import { useTerminology } from "@/hooks/useTerminology"
-import { LightweightChartWrapper } from "@/components/LightweightChartWrapper"
 import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { InfoPopover } from "./InfoPopover"
 import { getSignalLabel } from "@/lib/signal-label"
 import { FINANCE_TEXT } from "@/lib/colors"
+import { FearGreedGauge, FearGreedComponentBars, SparklineMini } from "./FearGreedIndicators"
+import { FEAR_GREED_BANDS, stripLeadingEmoji } from "./fearGreedUtils"
 import type {
   RebalanceResponse,
   FearGreedResponse,
@@ -19,14 +18,6 @@ import type {
   Stock,
   EnrichedStock,
 } from "@/api/types/dashboard"
-
-const FEAR_GREED_BANDS = [
-  { range: [0, 25] as [number, number], color: "#dc2626", labelKey: "config.fear_greed.extreme_fear", emoji: "😱" },
-  { range: [25, 45] as [number, number], color: "#f97316", labelKey: "config.fear_greed.fear", emoji: "😨" },
-  { range: [45, 55] as [number, number], color: "#eab308", labelKey: "config.fear_greed.neutral", emoji: "😐" },
-  { range: [55, 75] as [number, number], color: "#86efac", labelKey: "config.fear_greed.greed", emoji: "🤑" },
-  { range: [75, 100] as [number, number], color: "#16a34a", labelKey: "config.fear_greed.extreme_greed", emoji: "🤯" },
-]
 
 const LEGACY_SENTIMENT_MAP: Record<string, string> = {
   positive: "bullish",
@@ -60,211 +51,6 @@ function healthScoreColor(pct: number): string {
   return FINANCE_TEXT.loss
 }
 
-function stripLeadingEmoji(label: string): string {
-  return label.replace(/^(?:\p{Extended_Pictographic}|\uFE0F|\u200D)+\s*/u, "").trim()
-}
-
-/** Semi-circle SVG gauge for Fear & Greed (0-100). */
-function FearGreedGauge({ score, level }: { score: number; level: string }) {
-  const { t } = useTranslation()
-  const cx = 100
-  const cy = 100
-  const r = 70
-  const strokeW = 16
-
-  // Arc helper: polar to cartesian on the semicircle (180° to 0°, left to right)
-  function polarToCartesian(angleDeg: number) {
-    const rad = (angleDeg * Math.PI) / 180
-    return {
-      x: cx + r * Math.cos(Math.PI - rad),
-      y: cy - r * Math.sin(Math.PI - rad),
-    }
-  }
-
-  // Draw arc segment from score pct1 to pct2 (0-100) along the semicircle
-  function arcPath(pct1: number, pct2: number) {
-    const a1 = (pct1 / 100) * 180
-    const a2 = (pct2 / 100) * 180
-    const p1 = polarToCartesian(a1)
-    const p2 = polarToCartesian(a2)
-    const largeArc = a2 - a1 > 180 ? 1 : 0
-    return `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${largeArc} 1 ${p2.x} ${p2.y}`
-  }
-
-  // Needle
-  const needleAngleDeg = (score / 100) * 180
-  const needleBase1 = polarToCartesian(needleAngleDeg - 5)
-  const needleBase2 = polarToCartesian(needleAngleDeg + 5)
-  // Tip stays within the arc radius
-  const tipX = cx + (r - strokeW / 2 - 4) * Math.cos(Math.PI - (needleAngleDeg * Math.PI) / 180)
-  const tipY = cy - (r - strokeW / 2 - 4) * Math.sin(Math.PI - (needleAngleDeg * Math.PI) / 180)
-
-  // Label display
-  const clampedScore = Math.max(0, Math.min(100, score))
-  const currentBand = FEAR_GREED_BANDS.find(
-    (band) => clampedScore >= band.range[0] && clampedScore <= band.range[1],
-  )
-  const gaugeTitle = stripLeadingEmoji(currentBand ? t(currentBand.labelKey) : level)
-  const gaugeEmoji = currentBand?.emoji
-
-  return (
-    <svg viewBox="0 0 200 128" className="w-full" style={{ maxHeight: 170 }}>
-      {/* Background arc */}
-      <path
-        d={arcPath(0, 100)}
-        fill="none"
-        stroke="rgba(128,128,128,0.15)"
-        strokeWidth={strokeW}
-        strokeLinecap="butt"
-      />
-
-      {/* Colored band arcs */}
-      {FEAR_GREED_BANDS.map((band) => (
-        <path
-          key={band.labelKey}
-          d={arcPath(band.range[0], band.range[1])}
-          fill="none"
-          stroke={band.color}
-          strokeWidth={strokeW}
-          strokeLinecap="butt"
-          opacity={0.85}
-        />
-      ))}
-
-      {/* Needle */}
-      <polygon
-        points={`${tipX},${tipY} ${needleBase1.x},${needleBase1.y} ${cx},${cy} ${needleBase2.x},${needleBase2.y}`}
-        fill="currentColor"
-        opacity={0.7}
-      />
-      <circle cx={cx} cy={cy} r={5} fill="currentColor" opacity={0.7} />
-
-      {/* Score */}
-      <text x={cx} y={cy - 18} textAnchor="middle" fontSize={22} fontWeight="bold" fill="currentColor">
-        {score}
-      </text>
-      <text x={cx} y={cy - 4} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.6}>
-        /100
-      </text>
-
-      {gaugeEmoji && (
-        <foreignObject x={cx - 14} y={cy + 1} width={28} height={24}>
-          <div className="text-center text-base leading-none">{gaugeEmoji}</div>
-        </foreignObject>
-      )}
-
-      {/* Level label */}
-      <text x={cx} y={cy + 22} textAnchor="middle" fontSize={11} fill="currentColor" opacity={0.75}>
-        {gaugeTitle}
-      </text>
-    </svg>
-  )
-}
-
-function scoreToColor(score: number): string {
-  if (!Number.isFinite(score)) return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
-  const clamped = Math.max(0, Math.min(100, score))
-  for (const band of FEAR_GREED_BANDS) {
-    if (clamped >= band.range[0] && clamped <= band.range[1]) return band.color
-  }
-  return FEAR_GREED_BANDS[FEAR_GREED_BANDS.length - 1].color
-}
-
-interface ComponentBarsProps {
-  components: FearGreedResponse["components"]
-}
-
-function FearGreedComponentBars({ components }: ComponentBarsProps) {
-  const { t } = useTranslation()
-  if (!components || components.length === 0) return null
-
-  return (
-    <div className="mt-2 space-y-1">
-      {components.map((c) => {
-        const score = c.score
-        const label = t(`config.fear_greed.components.${c.name}`, { defaultValue: c.name })
-        const weightPct = Math.round(c.weight * 100)
-        return (
-          <div key={c.name} className="flex items-center gap-2">
-            <span className="w-24 shrink-0 text-right text-[10px] text-muted-foreground leading-none">
-              {label}
-            </span>
-            <div className="relative flex-1 h-2 rounded-full overflow-hidden bg-muted/40">
-              {score != null ? (
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full transition-all"
-                  style={{ width: `${score}%`, backgroundColor: scoreToColor(score) }}
-                />
-              ) : (
-                <div className="absolute left-0 top-0 h-full w-full bg-muted/20" />
-              )}
-            </div>
-            <span className="w-7 shrink-0 text-[10px] text-muted-foreground tabular-nums">
-              {score != null ? score : "–"}
-            </span>
-            <span className="w-7 shrink-0 text-[10px] text-muted-foreground/50 tabular-nums">
-              {weightPct}%
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function SparklineMini({ snapshots }: { snapshots: Snapshot[] }) {
-  const { t } = useTranslation()
-  const { recent, isUp } = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 30)
-    const cutoffStr = cutoff.toISOString().slice(0, 10)
-    const r = snapshots.filter((s) => s.snapshot_date >= cutoffStr)
-    const vals = r.map((s) => s.total_value)
-    return { recent: r, isUp: vals.length >= 2 && vals[vals.length - 1] >= vals[0] }
-  }, [snapshots])
-
-  const onInit = useCallback(
-    (chart: IChartApi) => {
-      chart.applyOptions({
-        crosshair: { vertLine: { visible: false }, horzLine: { visible: false } },
-        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-        timeScale: { visible: false },
-        rightPriceScale: { visible: false },
-        handleScroll: false,
-        handleScale: false,
-      })
-
-      const series = chart.addSeries(AreaSeries, {
-        lineColor: isUp ? "#16a34a" : "#dc2626",
-        topColor: isUp ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
-        bottomColor: "rgba(0,0,0,0)",
-        lineWidth: 1,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      })
-
-      series.setData(
-        recent.map((s) => ({
-          time: s.snapshot_date as `${number}-${number}-${number}`,
-          value: s.total_value,
-        })),
-      )
-    },
-    [recent, isUp],
-  )
-
-  if (recent.length < 2) return null
-
-  return (
-    <LightweightChartWrapper
-      height={60}
-      onInit={onInit}
-      ariaLabel={t("accessibility.chart_portfolio_sparkline")}
-    />
-  )
-}
-
 interface Props {
   rebalance?: RebalanceResponse | null
   fearGreed?: FearGreedResponse | null
@@ -276,6 +62,10 @@ interface Props {
   holdings?: { id: number }[]
   isLoading: boolean
   isRefreshing?: boolean
+  /** True while the rebalance query has no data yet (initial load). */
+  isRebalanceLoading?: boolean
+  /** True while rebalance is background-refreshing — drives the "Updating…" badge on Total Market Value. */
+  isValueRefreshing?: boolean
 }
 
 export function PortfolioPulse({
@@ -289,6 +79,8 @@ export function PortfolioPulse({
   holdings = [],
   isLoading,
   isRefreshing = false,
+  isRebalanceLoading = false,
+  isValueRefreshing = false,
 }: Props) {
   const { t } = useTranslation()
   const isPrivate = usePrivacyMode((s) => s.isPrivate)
@@ -317,10 +109,11 @@ export function PortfolioPulse({
     }
   }
 
-  const { pct: healthPct, normal: normalCnt, total: totalCnt } = computeHealthScore(
-    stocks,
-    enrichedSignalMap,
-  )
+  const {
+    pct: healthPct,
+    normal: normalCnt,
+    total: totalCnt,
+  } = computeHealthScore(stocks, enrichedSignalMap)
 
   const stockCount = stocks.filter((s) => s.is_active).length
   const holdingCount = holdings.length
@@ -337,6 +130,32 @@ export function PortfolioPulse({
   const changePct = rebalance?.total_value_change_pct
   const changeAmt = rebalance?.total_value_change
   const ytdTwr = twr?.twr_pct
+
+  // Staleness: true when showing last-known data while fresh data computes in the background.
+  const isValueStale = rebalance?.source === "snapshot"
+  // When there is no data yet and the query is still in flight, show a skeleton.
+  const isLoadingValue = totalVal == null && isRebalanceLoading
+
+  // "As of" label: prefer snapshot_at (daily date) when available, else calculated_at.
+  const asOfDisplay = (() => {
+    const raw = rebalance?.snapshot_at ?? rebalance?.calculated_at
+    if (!raw) return null
+    try {
+      const d = new Date(raw)
+      // snapshot_at is a date string ("YYYY-MM-DD"); calculated_at is a full ISO datetime.
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      return isDateOnly
+        ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+        : d.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+    } catch {
+      return null
+    }
+  })()
 
   const fgScore = fearGreed?.composite_score ?? lastScan?.fear_greed_score ?? null
   const fgLevel = fearGreed?.composite_level ?? lastScan?.fear_greed_level ?? null
@@ -358,7 +177,11 @@ export function PortfolioPulse({
   const fearGreedTopBottom = (() => {
     const components = fearGreed?.components
     if (!components || components.length === 0) return null
-    const scored = components.filter((c) => c.score != null) as Array<{ name: string; score: number; weight: number }>
+    const scored = components.filter((c) => c.score != null) as Array<{
+      name: string
+      score: number
+      weight: number
+    }>
     if (scored.length === 0) return null
     const sorted = [...scored].sort((a, b) => b.score - a.score)
     const topName = sorted[0].name
@@ -378,38 +201,63 @@ export function PortfolioPulse({
   return (
     <Card>
       {isRefreshing && (
-        <p className="px-6 pt-4 text-xs text-muted-foreground text-right">
-          {t("common.loading")}
-        </p>
+        <p className="px-6 pt-4 text-xs text-muted-foreground text-right">{t("common.loading")}</p>
       )}
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
         {/* Left: Total Portfolio Value — primary KPI, visually dominant */}
         <div className="space-y-1 md:col-span-1">
-          <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
-          {totalVal != null ? (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">{t("dashboard.total_market_value")}</p>
+            {(isValueStale || isValueRefreshing) && !isLoadingValue && (
+              <span className="text-xs text-muted-foreground animate-pulse">
+                {t("dashboard.updating")}
+              </span>
+            )}
+          </div>
+          {isLoadingValue ? (
+            /* Skeleton while rebalance data is in flight (no value yet) */
+            <div className="space-y-2 pt-1">
+              <Skeleton className="h-10 w-44" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          ) : totalVal != null ? (
             <>
-              <p className="text-4xl font-extrabold tabular-nums leading-tight">{maskMoney(totalVal, displayCurrency)}</p>
+              <p
+                className={`text-4xl font-extrabold tabular-nums leading-tight${isValueStale ? " opacity-70" : ""}`}
+              >
+                {maskMoney(totalVal, displayCurrency)}
+              </p>
+              {isValueStale && asOfDisplay && (
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.as_of", { datetime: asOfDisplay })}
+                </p>
+              )}
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 {changePct != null && changeAmt != null && (
-                  <span className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
+                  <span
+                    className={`text-sm ${changePct >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                  >
                     {changePct >= 0 ? "▲" : "▼"}
                     {Math.abs(changePct).toFixed(2)}%
                     {!isPrivate && ` (${maskMoney(Math.abs(changeAmt), displayCurrency)})`}
                   </span>
                 )}
                 {ytdTwr != null && (
-                  <span className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}>
-                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>{term("twr", t("dashboard.ytd_return"))}</GlossaryTerm>{" "}
+                  <span
+                    className={`text-xs ${ytdTwr >= 0 ? FINANCE_TEXT.gain : FINANCE_TEXT.loss}`}
+                  >
+                    <GlossaryTerm termKey={GLOSSARY_KEYS.twr}>
+                      {term("twr", t("dashboard.ytd_return"))}
+                    </GlossaryTerm>{" "}
                     {ytdTwr >= 0 ? "▲" : "▼"}
                     {Math.abs(ytdTwr).toFixed(2)}%
                   </span>
                 )}
               </div>
-              {snapshots.length >= 2 && !isPrivate && (
-                <SparklineMini snapshots={snapshots} />
-              )}
+              {snapshots.length >= 2 && !isPrivate && <SparklineMini snapshots={snapshots} />}
             </>
           ) : (
+            /* No value and not loading: rebalance failed or portfolio is empty */
             <p className="text-2xl font-bold text-muted-foreground">N/A</p>
           )}
         </div>
@@ -418,7 +266,9 @@ export function PortfolioPulse({
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1">
             <p className="text-xs text-muted-foreground">
-              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>{t("dashboard.fear_greed_title")}</GlossaryTerm>
+              <GlossaryTerm termKey={GLOSSARY_KEYS.fearGreed}>
+                {t("dashboard.fear_greed_title")}
+              </GlossaryTerm>
             </p>
             {fearGreed && (
               <InfoPopover align="center">
@@ -456,10 +306,16 @@ export function PortfolioPulse({
               <FearGreedGauge score={fgScore!} level={fgLevel!} />
               <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
                 {FEAR_GREED_BANDS.map((band) => (
-                  <span key={band.labelKey} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span
+                    key={band.labelKey}
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                  >
                     <span className="text-sm leading-none">{band.emoji}</span>
                     <span>{stripLeadingEmoji(t(band.labelKey))}</span>
-                    <span className="h-1 w-4 rounded-full" style={{ backgroundColor: band.color }} />
+                    <span
+                      className="h-1 w-4 rounded-full"
+                      style={{ backgroundColor: band.color }}
+                    />
                   </span>
                 ))}
               </div>
@@ -467,7 +323,8 @@ export function PortfolioPulse({
                 {vixVal != null && (
                   <>
                     VIX={vixVal.toFixed(1)}
-                    {vixChange != null && ` (${vixChange > 0 ? "▲" : "▼"}${Math.abs(vixChange).toFixed(1)})`}
+                    {vixChange != null &&
+                      ` (${vixChange > 0 ? "▲" : "▼"}${Math.abs(vixChange).toFixed(1)})`}
                   </>
                 )}
                 {vixVal != null && " ｜ "}
@@ -487,13 +344,17 @@ export function PortfolioPulse({
           <div>
             <div className="flex items-center gap-1">
               <p className="text-xs text-muted-foreground">
-                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>{t("dashboard.market_sentiment")}</GlossaryTerm>
+                <GlossaryTerm termKey={GLOSSARY_KEYS.marketSentiment}>
+                  {t("dashboard.market_sentiment")}
+                </GlossaryTerm>
               </p>
               <InfoPopover align="end">
                 {lastScan?.market_status_details ? (
                   <p className="text-xs">{lastScan.market_status_details}</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("dashboard.info.sentiment_no_details")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("dashboard.info.sentiment_no_details")}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground whitespace-pre-line">
                   {t("dashboard.info.sentiment_thresholds")}
@@ -505,7 +366,9 @@ export function PortfolioPulse({
           <div>
             <div className="flex items-center gap-1">
               <p className="text-xs text-muted-foreground">
-                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>{t("dashboard.health_score")}</GlossaryTerm>
+                <GlossaryTerm termKey={GLOSSARY_KEYS.healthScore}>
+                  {t("dashboard.health_score")}
+                </GlossaryTerm>
               </p>
               <InfoPopover align="end">
                 {nonNormalStocks.length > 0 ? (
@@ -515,9 +378,7 @@ export function PortfolioPulse({
                       {nonNormalStocks.map(({ ticker, signal }) => (
                         <li key={ticker} className="text-xs flex gap-1.5">
                           <span className="font-medium">{ticker}</span>
-                          <span className="text-muted-foreground">
-                            {getSignalLabel(t, signal)}
-                          </span>
+                          <span className="text-muted-foreground">{getSignalLabel(t, signal)}</span>
                         </li>
                       ))}
                     </ul>

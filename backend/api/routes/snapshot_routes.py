@@ -99,6 +99,7 @@ def list_snapshots(
     - 若提供 `start` / `end`，則改用日期區間查詢（優先）。
     - 結果依日期升冪排列（最舊在前）。
     """
+    lang = get_user_language(session)
     response.headers["Cache-Control"] = (
         "private, max-age=300, stale-while-revalidate=3600"
     )
@@ -106,12 +107,12 @@ def list_snapshots(
         if start is None or end is None:
             raise HTTPException(
                 status_code=422,
-                detail="start 與 end 必須同時提供",
+                detail=t("snapshot.date_range_required", lang=lang),
             )
         if start > end:
             raise HTTPException(
                 status_code=422,
-                detail="start 不得晚於 end",
+                detail=t("snapshot.date_range_start_after_end", lang=lang),
             )
         return [_to_response(s) for s in get_snapshot_range(session, start, end)]
 

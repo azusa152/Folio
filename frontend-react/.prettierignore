@@ -1,0 +1,8 @@
+dist
+dist-ssr
+coverage
+node_modules
+src/api/types/generated.d.ts
+src/api/openapi.json
+# shadcn-generated components — managed by `npx shadcn add/update`, not hand-authored
+src/components/ui/

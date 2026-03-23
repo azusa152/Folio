@@ -54,7 +54,15 @@ interface CellContentProps {
   fill?: string
 }
 
-function HeatCell({ x = 0, y = 0, width = 0, height = 0, name, changePct, fill = HEATMAP_COLORS.neutral }: CellContentProps) {
+function HeatCell({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  name,
+  changePct,
+  fill = HEATMAP_COLORS.neutral,
+}: CellContentProps) {
   if (width < 8 || height < 8) return null
   const showText = width > 36 && height > 22
   const showChange = width > 44 && height > 38 && changePct != null
@@ -85,7 +93,8 @@ function HeatCell({ x = 0, y = 0, width = 0, height = 0, name, changePct, fill =
           fill="rgba(255,255,255,0.85)"
           fontSize={Math.min(10, Math.max(8, width / 7))}
         >
-          {sign}{changePct!.toFixed(2)}%
+          {sign}
+          {changePct!.toFixed(2)}%
         </text>
       )}
     </g>
@@ -122,20 +131,38 @@ function HeatmapTooltip({
     <div style={{ ...theme.tooltipStyle, padding: "8px 12px", minWidth: 140 }}>
       <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{d.ticker}</p>
       {d.sector && (
-        <p style={{ fontSize: 11, color: theme.tooltipText, opacity: 0.7, marginBottom: 2 }}>{d.sector}</p>
+        <p style={{ fontSize: 11, color: theme.tooltipText, opacity: 0.7, marginBottom: 2 }}>
+          {d.sector}
+        </p>
       )}
       {d.price != null && (
         <p style={{ fontSize: 11, marginBottom: 2 }}>
-          {t("dashboard.heatmap_price")}: <strong>{currencySymbol}{d.price.toFixed(2)}</strong>
+          {t("dashboard.heatmap_price")}:{" "}
+          <strong>
+            {currencySymbol}
+            {d.price.toFixed(2)}
+          </strong>
         </p>
       )}
       {d.changePct != null && (
-        <p style={{ fontSize: 11, marginBottom: 2, color: d.changePct >= 0 ? HEATMAP_COLORS.gain : HEATMAP_COLORS.loss }}>
-          {t("dashboard.heatmap_change")}: <strong>{sign}{d.changePct.toFixed(2)}%</strong>
+        <p
+          style={{
+            fontSize: 11,
+            marginBottom: 2,
+            color: d.changePct >= 0 ? HEATMAP_COLORS.gain : HEATMAP_COLORS.loss,
+          }}
+        >
+          {t("dashboard.heatmap_change")}:{" "}
+          <strong>
+            {sign}
+            {d.changePct.toFixed(2)}%
+          </strong>
         </p>
       )}
       {d.rsi != null && (
-        <p style={{ fontSize: 11 }}>RSI: <strong>{d.rsi.toFixed(1)}</strong></p>
+        <p style={{ fontSize: 11 }}>
+          RSI: <strong>{d.rsi.toFixed(1)}</strong>
+        </p>
       )}
     </div>
   )
@@ -160,9 +187,7 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
     )
   }
 
-  const stocks = enrichedStocks.filter(
-    (s) => s.price != null || s.change_pct != null
-  )
+  const stocks = enrichedStocks.filter((s) => s.price != null || s.change_pct != null)
 
   if (!stocks.length) {
     return (
@@ -215,26 +240,31 @@ export function StockHeatmap({ enrichedStocks, isLoading }: Props) {
       <CardContent>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pb-2">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.strongLoss }} />
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: HEATMAP_COLORS.strongLoss }}
+            />
             {t("dashboard.heatmap_legend_strong_loss")}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.neutral }} />
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: HEATMAP_COLORS.neutral }}
+            />
             {t("dashboard.heatmap_legend_neutral")}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: HEATMAP_COLORS.strongGain }} />
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ background: HEATMAP_COLORS.strongGain }}
+            />
             {t("dashboard.heatmap_legend_strong_gain")}
           </span>
           <span className="text-muted-foreground/60">· {t("dashboard.heatmap_grouped_by")}</span>
         </div>
         <div role="img" aria-label={t("accessibility.chart_heatmap")}>
           <ResponsiveContainer width="100%" height={320}>
-            <Treemap
-              data={treeData}
-              dataKey="size"
-              content={<HeatCell />}
-            >
+            <Treemap data={treeData} dataKey="size" content={<HeatCell />}>
               <Tooltip content={<HeatmapTooltip theme={theme} t={t} />} />
             </Treemap>
           </ResponsiveContainer>

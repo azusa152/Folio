@@ -15,9 +15,7 @@ function makeHolding(ticker: string, category: string, weight_pct: number) {
   }
 }
 
-function makeRebalance(
-  holdings: ReturnType<typeof makeHolding>[],
-): Partial<RebalanceResponse> {
+function makeRebalance(holdings: ReturnType<typeof makeHolding>[]): Partial<RebalanceResponse> {
   return { holdings_detail: holdings } as Partial<RebalanceResponse>
 }
 
@@ -36,7 +34,9 @@ describe("HoldingBreakdown", () => {
 
   it("renders skeleton when loading", () => {
     render(<HoldingBreakdown isLoading />)
-    expect(document.querySelectorAll("[class*='animate-pulse'], [data-slot='skeleton']").length).toBeGreaterThan(0)
+    expect(
+      document.querySelectorAll("[class*='animate-pulse'], [data-slot='skeleton']").length,
+    ).toBeGreaterThan(0)
   })
 
   it("renders holdings sorted by weight descending", () => {
@@ -67,9 +67,7 @@ describe("HoldingBreakdown", () => {
   })
 
   it("shows Other bucket and expand button when more than 8 holdings", () => {
-    const holdings = Array.from({ length: 10 }, (_, i) =>
-      makeHolding(`TICK${i}`, "Growth", 10 - i),
-    )
+    const holdings = Array.from({ length: 10 }, (_, i) => makeHolding(`TICK${i}`, "Growth", 10 - i))
     const rebalance = makeRebalance(holdings)
 
     render(<HoldingBreakdown rebalance={rebalance as RebalanceResponse} />)
@@ -80,9 +78,7 @@ describe("HoldingBreakdown", () => {
 
   it("expands to show all individual holdings (no Other) when button clicked", async () => {
     const user = userEvent.setup()
-    const holdings = Array.from({ length: 10 }, (_, i) =>
-      makeHolding(`TICK${i}`, "Growth", 10 - i),
-    )
+    const holdings = Array.from({ length: 10 }, (_, i) => makeHolding(`TICK${i}`, "Growth", 10 - i))
     const rebalance = makeRebalance(holdings)
 
     render(<HoldingBreakdown rebalance={rebalance as RebalanceResponse} />)
@@ -96,9 +92,7 @@ describe("HoldingBreakdown", () => {
 
   it("collapses back to top 8 + Other when toggled again", async () => {
     const user = userEvent.setup()
-    const holdings = Array.from({ length: 10 }, (_, i) =>
-      makeHolding(`TICK${i}`, "Growth", 10 - i),
-    )
+    const holdings = Array.from({ length: 10 }, (_, i) => makeHolding(`TICK${i}`, "Growth", 10 - i))
     const rebalance = makeRebalance(holdings)
 
     render(<HoldingBreakdown rebalance={rebalance as RebalanceResponse} />)
@@ -111,9 +105,7 @@ describe("HoldingBreakdown", () => {
   })
 
   it("does not show expand button when 8 or fewer holdings", () => {
-    const holdings = Array.from({ length: 5 }, (_, i) =>
-      makeHolding(`TICK${i}`, "Growth", 20),
-    )
+    const holdings = Array.from({ length: 5 }, (_, i) => makeHolding(`TICK${i}`, "Growth", 20))
     const rebalance = makeRebalance(holdings)
 
     render(<HoldingBreakdown rebalance={rebalance as RebalanceResponse} />)

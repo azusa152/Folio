@@ -6,7 +6,9 @@ API — 使用者偏好設定路由。
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from api.error_mapping import to_http_exception
 from api.schemas import PreferencesRequest, PreferencesResponse
+from application.errors import ApplicationError
 from application.settings import preferences_service
 from i18n import get_user_language
 from infrastructure.database import get_session
@@ -40,6 +42,9 @@ def update_preferences(
 ) -> PreferencesResponse:
     """更新使用者偏好設定（upsert）。"""
     lang = get_user_language(session)
-    return PreferencesResponse(
-        **preferences_service.update_preferences(session, payload.model_dump(), lang)
-    )
+    try:
+        return PreferencesResponse(
+            **preferences_service.update_preferences(session, payload.model_dump())
+        )
+    except ApplicationError as exc:
+        raise to_http_exception(exc, lang=lang) from exc

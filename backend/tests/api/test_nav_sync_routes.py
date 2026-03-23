@@ -63,7 +63,7 @@ def test_nav_sync_should_return_zeros_when_no_funds(client):
     assert body["pre_refresh"]["success"] is True
 
 
-def test_nav_sync_should_return_422_when_sync_raises(client):
+def test_nav_sync_should_return_500_when_sync_raises(client):
     with (
         patch(
             "api.routes.wrapper_routes.refresh_official_wrappers_best_effort",
@@ -77,7 +77,7 @@ def test_nav_sync_should_return_422_when_sync_raises(client):
     ):
         resp = client.post("/nav/sync")
 
-    assert resp.status_code == 422
+    assert resp.status_code == 500
     detail = resp.json()["detail"]
     assert detail["error_code"] == "NAV_SYNC_FAILED"
 

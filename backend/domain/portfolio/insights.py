@@ -6,6 +6,7 @@ objects from allocation, performance, and risk data.
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from domain.core.constants import (
     INSIGHT_CONCENTRATION_THRESHOLD,
@@ -31,8 +32,8 @@ class Insight:
     """A single natural-language insight about the portfolio."""
 
     key: str
-    severity: str
-    vars: dict = field(default_factory=dict)
+    severity: InsightSeverity
+    template_vars: dict[str, Any] = field(default_factory=dict)
     category: str = "general"
 
 
@@ -60,7 +61,10 @@ def generate_allocation_insights(
                     Insight(
                         key="insight.high_concentration",
                         severity=InsightSeverity.WARNING,
-                        vars={"category": cat, "weight_pct": round(weight * 100, 1)},
+                        template_vars={
+                            "category": cat,
+                            "weight_pct": round(weight * 100, 1),
+                        },
                         category="allocation",
                     )
                 )
@@ -72,7 +76,7 @@ def generate_allocation_insights(
                 Insight(
                     key="insight.drift_exceeds_threshold",
                     severity=InsightSeverity.ACTION,
-                    vars={"category": cat, "drift_pct": round(drift, 1)},
+                    template_vars={"category": cat, "drift_pct": round(drift, 1)},
                     category="allocation",
                 )
             )
@@ -82,7 +86,7 @@ def generate_allocation_insights(
             Insight(
                 key="insight.health_excellent",
                 severity=InsightSeverity.POSITIVE,
-                vars={"score": round(health_score)},
+                template_vars={"score": round(health_score)},
                 category="general",
             )
         )
@@ -91,7 +95,7 @@ def generate_allocation_insights(
             Insight(
                 key="insight.health_needs_attention",
                 severity=InsightSeverity.WARNING,
-                vars={"score": round(health_score)},
+                template_vars={"score": round(health_score)},
                 category="general",
             )
         )
@@ -118,7 +122,7 @@ def generate_performance_insights(
                 Insight(
                     key="insight.outperforming_benchmark",
                     severity=InsightSeverity.POSITIVE,
-                    vars={
+                    template_vars={
                         "return_pct": round(twr * 100, 1),
                         "alpha_pct": round(alpha * 100, 1),
                     },
@@ -130,7 +134,7 @@ def generate_performance_insights(
                 Insight(
                     key="insight.underperforming_benchmark",
                     severity=InsightSeverity.WARNING,
-                    vars={
+                    template_vars={
                         "return_pct": round(twr * 100, 1),
                         "lag_pct": round(abs(alpha) * 100, 1),
                     },
@@ -143,7 +147,7 @@ def generate_performance_insights(
             Insight(
                 key="insight.severe_drawdown",
                 severity=InsightSeverity.WARNING,
-                vars={"drawdown_pct": round(abs(max_drawdown_pct) * 100, 1)},
+                template_vars={"drawdown_pct": round(abs(max_drawdown_pct) * 100, 1)},
                 category="risk",
             )
         )
@@ -152,7 +156,7 @@ def generate_performance_insights(
             Insight(
                 key="insight.moderate_drawdown",
                 severity=InsightSeverity.INFO,
-                vars={"drawdown_pct": round(abs(max_drawdown_pct) * 100, 1)},
+                template_vars={"drawdown_pct": round(abs(max_drawdown_pct) * 100, 1)},
                 category="risk",
             )
         )
@@ -163,7 +167,7 @@ def generate_performance_insights(
                 Insight(
                     key="insight.strong_risk_adjusted",
                     severity=InsightSeverity.POSITIVE,
-                    vars={"sharpe": sharpe},
+                    template_vars={"sharpe": sharpe},
                     category="risk",
                 )
             )
@@ -172,7 +176,7 @@ def generate_performance_insights(
                 Insight(
                     key="insight.negative_risk_adjusted",
                     severity=InsightSeverity.WARNING,
-                    vars={"sharpe": sharpe},
+                    template_vars={"sharpe": sharpe},
                     category="risk",
                 )
             )

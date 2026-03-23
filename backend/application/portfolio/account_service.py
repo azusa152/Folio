@@ -5,11 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException
-
 if TYPE_CHECKING:
     from sqlmodel import Session
 
+from application.errors import ApplicationError
 from application.portfolio.insight_service import invalidate_insight_cache
 from application.portfolio.rebalance_service import invalidate_rebalance_cache
 from application.portfolio.transaction_service import cleanup_account_transactions
@@ -24,7 +23,6 @@ from domain.constants import (
 )
 from domain.entities import Account, Holding
 from domain.enums import StockCategory
-from i18n import t
 from infrastructure import repositories as repo
 from logging_config import get_logger
 
@@ -54,20 +52,18 @@ def _acct_to_dict(acct: Account) -> dict:
     }
 
 
-def _get_account_or_raise(session: Session, account_id: int, lang: str) -> Account:
+def _get_account_or_raise(session: Session, account_id: int) -> Account:
     account = repo.find_account_by_id(session, account_id)
     if account is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ERROR_ACCOUNT_NOT_FOUND,
-                "detail": t("account.not_found", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_ACCOUNT_NOT_FOUND,
+            message_key="account.not_found",
+            status_hint="not_found",
         )
     return account
 
 
-def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
+def _normalize_tax_wrapper(value: str | None) -> str | None:
     """Normalize and validate tax wrapper values for internal callers."""
     if value is None:
         return None
@@ -75,12 +71,10 @@ def _normalize_tax_wrapper(value: str | None, lang: str) -> str | None:
     if not normalized:
         return None
     if normalized not in TAX_WRAPPER_OPTIONS:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error_code": ERROR_INVALID_INPUT,
-                "detail": t("common.validation_error", lang=lang),
-            },
+        raise ApplicationError(
+            error_code=ERROR_INVALID_INPUT,
+            message_key="common.validation_error",
+            status_hint="validation",
         )
     return normalized
 
@@ -113,7 +107,7 @@ def list_accounts(session: Session, include_inactive: bool = False) -> list[dict
 def create_account(session: Session, data: dict, lang: str) -> dict:
     """Create a new account. Returns the created account dict."""
     payload = dict(data)
-    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"), lang)
+    payload["tax_wrapper"] = _normalize_tax_wrapper(payload.get("tax_wrapper"))
     account = Account(**payload)
     session.add(account)
     session.flush()
@@ -171,11 +165,11 @@ def ensure_default_account(session: Session) -> Account:
 
 def update_account(session: Session, account_id: int, data: dict, lang: str) -> dict:
     """Partially update an existing account. Only provided fields are overwritten."""
-    account = _get_account_or_raise(session, account_id, lang)
+    account = _get_account_or_raise(session, account_id)
     normalized_data = dict(data)
     if "tax_wrapper" in normalized_data:
         normalized_data["tax_wrapper"] = _normalize_tax_wrapper(
-            normalized_data.get("tax_wrapper"), lang
+            normalized_data.get("tax_wrapper")
         )
     explicit_market = "market" in normalized_data
     if explicit_market:
@@ -198,7 +192,7 @@ def update_account(session: Session, account_id: int, data: dict, lang: str) -> 
 
 def remove_account(session: Session, account_id: int, lang: str) -> None:
     """Cascade-clean account transactions/holdings, then soft-delete the account."""
-    account = _get_account_or_raise(session, account_id, lang)
+    account = _get_account_or_raise(session, account_id)
     cleanup_account_transactions(session, account_id, lang)
     repo.delete_holdings_by_account(session, account_id)
     repo.deactivate_account(session, account)
@@ -215,9 +209,9 @@ def get_account_summary(session: Session) -> list[dict]:
     account_map: dict[int | None, list] = {a.id: [] for a in accounts}
     account_map[None] = []
 
-    for h in holdings:
-        bucket = h.account_id if h.account_id in account_map else None
-        account_map[bucket].append(h)
+    for holding in holdings:
+        bucket = holding.account_id if holding.account_id in account_map else None
+        account_map[bucket].append(holding)
 
     result = []
     for acct in accounts:
@@ -237,7 +231,7 @@ def get_account_summary(session: Session) -> list[dict]:
             {
                 "account": _acct_to_dict(acct),
                 "holdings_count": len(non_cash_holdings),
-                "tickers": [h.ticker for h in non_cash_holdings],
+                "tickers": [holding.ticker for holding in non_cash_holdings],
                 "cash_balances": [
                     {"currency": currency, "balance": round(balance, 8)}
                     for currency, balance in sorted(cash_balances.items())
@@ -251,7 +245,7 @@ def get_account_summary(session: Session) -> list[dict]:
             {
                 "account": None,
                 "holdings_count": len(unlinked),
-                "tickers": [h.ticker for h in unlinked],
+                "tickers": [holding.ticker for holding in unlinked],
                 "cash_balances": [],
             }
         )
@@ -263,15 +257,15 @@ def get_account_cash_balances(
     session: Session, account_id: int, lang: str
 ) -> list[dict]:
     """Return account cash balances grouped by currency."""
-    _get_account_or_raise(session, account_id, lang)
+    _get_account_or_raise(session, account_id)
     holdings = repo.find_all_holdings(session)
 
     balances: dict[str, float] = {}
-    for h in holdings:
-        if h.account_id != account_id or not h.is_cash:
+    for holding in holdings:
+        if holding.account_id != account_id or not holding.is_cash:
             continue
-        currency = (h.currency or "USD").upper()
-        balances[currency] = balances.get(currency, 0.0) + float(h.quantity)
+        currency = (holding.currency or "USD").upper()
+        balances[currency] = balances.get(currency, 0.0) + float(holding.quantity)
 
     return [
         {"currency": currency, "balance": round(balance, 8)}

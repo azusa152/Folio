@@ -25,6 +25,7 @@ class HealthResponse(BaseModel):
 
     status: str
     service: str
+    demo_mode: bool = False
 
 
 class AcceptedResponse(BaseModel):

@@ -169,16 +169,17 @@ def delete_guru(
     session: Session = Depends(get_session),
 ) -> dict:
     """停用大師（軟刪除，保留歷史申報資料）。"""
+    lang = get_user_language(session)
     success = remove_guru(session, guru_id)
     if not success:
         raise HTTPException(
             status_code=404,
             detail={
                 "error_code": ERROR_GURU_NOT_FOUND,
-                "detail": f"Guru {guru_id} not found",
+                "detail": t("guru.error_not_found", lang=lang, guru_id=guru_id),
             },
         )
-    return {"message": f"Guru {guru_id} deactivated"}
+    return {"message": t("guru.deactivated", lang=lang, guru_id=guru_id)}
 
 
 # ===========================================================================

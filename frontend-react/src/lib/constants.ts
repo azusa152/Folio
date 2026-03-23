@@ -22,6 +22,13 @@ export const CATEGORY_COLOR_MAP: Record<string, string> = {
 
 export const CATEGORY_COLOR_FALLBACK = "#CBD5E1"
 
+/** Minimum portfolio weight (%) below which a category/region/asset-class is grouped into "Other". */
+export const ALLOCATION_SMALL_THRESHOLD = 1.0
+
+/** How old a scan result can be before the UI shows a stale warning. */
+export const SCAN_STALE_SECONDS_MARKET_OPEN = 30 * 60 // 30 min during US market hours
+export const SCAN_STALE_SECONDS_MARKET_CLOSED = 2 * 60 * 60 // 2 h outside market hours
+
 export const SCAN_SIGNAL_ICONS: Record<string, string> = {
   THESIS_BROKEN: "🚨",
   DEEP_VALUE: "💎",
@@ -44,11 +51,7 @@ export const BUY_OPPORTUNITY_SIGNALS = new Set([
   "APPROACHING_BUY",
 ])
 
-export const RISK_WARNING_SIGNALS = new Set([
-  "THESIS_BROKEN",
-  "OVERHEATED",
-  "CAUTION_HIGH",
-])
+export const RISK_WARNING_SIGNALS = new Set(["THESIS_BROKEN", "OVERHEATED", "CAUTION_HIGH"])
 
 export const STOCK_CATEGORIES = [
   "Trend_Setter",
@@ -80,6 +83,7 @@ export const MARKET_TAG_OPTIONS: Record<string, string[]> = {
 export const CASH_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
 
 export const DISPLAY_CURRENCIES = ["USD", "TWD", "JPY", "HKD", "EUR", "GBP", "CNY", "SGD", "THB"]
+export const DEFAULT_HOME_CURRENCY = "TWD"
 
 export const FX_CURRENCY_OPTIONS = ["USD", "TWD", "JPY", "EUR", "GBP", "CNY", "HKD", "SGD", "THB"]
 export const FX_WATCH_REFRESH_COOLDOWN_SECONDS = 30
@@ -184,10 +188,19 @@ export const ASSET_CLASS_COLOR_MAP: Record<string, string> = {
 
 /** Shared chart color palette for pie/bar/treemap charts without category semantics. */
 export const CHART_COLOR_PALETTE = [
-  "#3b82f6", "#22c55e", "#f97316", "#a855f7", "#06b6d4", "#ec4899", "#eab308",
+  "#3b82f6",
+  "#22c55e",
+  "#f97316",
+  "#a855f7",
+  "#06b6d4",
+  "#ec4899",
+  "#eab308",
 ] as const
 
-export const MARKET_HOURS: Record<string, { tz: string; open: string; close: string; lunch?: [string, string] }> = {
+export const MARKET_HOURS: Record<
+  string,
+  { tz: string; open: string; close: string; lunch?: [string, string] }
+> = {
   US: { tz: "America/New_York", open: "09:30", close: "16:00" },
   JP: { tz: "Asia/Tokyo", open: "09:00", close: "15:30", lunch: ["11:30", "12:30"] },
   TW: { tz: "Asia/Taipei", open: "09:00", close: "13:30" },
@@ -195,11 +208,11 @@ export const MARKET_HOURS: Record<string, { tz: string; open: string; close: str
 }
 
 export const GURU_STYLE_CONFIG: Record<string, { color: string }> = {
-  VALUE:          { color: "#2563eb" },
-  GROWTH:         { color: "#16a34a" },
-  MACRO:          { color: "#9333ea" },
-  QUANT:          { color: "#ea580c" },
-  ACTIVIST:       { color: "#dc2626" },
+  VALUE: { color: "#2563eb" },
+  GROWTH: { color: "#16a34a" },
+  MACRO: { color: "#9333ea" },
+  QUANT: { color: "#ea580c" },
+  ACTIVIST: { color: "#dc2626" },
   MULTI_STRATEGY: { color: "#6b7280" },
 }
 
@@ -216,13 +229,13 @@ export const DIVERSIFIED_THRESHOLD = 30
 
 /** Diverging color scale for stock heat map cells (keyed by daily change % bucket). */
 export const HEATMAP_COLORS = {
-  strongGain: "#16a34a",   // >= +3%
-  gain:       "#22c55e",   // >= +1.5%
-  weakGain:   "#4ade80",   // >= +0.3%
-  neutral:    "#6b7280",   // -0.3% to +0.3% (or no data)
-  weakLoss:   "#f87171",   // > -1.5%
-  loss:       "#ef4444",   // > -3%
-  strongLoss: "#dc2626",   // <= -3%
+  strongGain: "#16a34a", // >= +3%
+  gain: "#22c55e", // >= +1.5%
+  weakGain: "#4ade80", // >= +0.3%
+  neutral: "#6b7280", // -0.3% to +0.3% (or no data)
+  weakLoss: "#f87171", // > -1.5%
+  loss: "#ef4444", // > -3%
+  strongLoss: "#dc2626", // <= -3%
 } as const
 
 // Market options: labelKey references config.market.* i18n keys
@@ -246,6 +259,8 @@ export const FUNDAMENTAL_THRESHOLDS: Record<string, ThresholdRule> = {
   operating_margins: { green: [0.15, Infinity], yellow: [0.05, 0.15], red: [0, 0.05] },
   earnings_growth: { green: [0.1, Infinity], yellow: [0, 0.1], red: [-Infinity, 0] },
 }
+
+export const ELIGIBILITY_CHECK_WRAPPERS = new Set(["nisa_tsumitate", "nisa_growth", "ideco"])
 
 export type HealthColor = "green" | "yellow" | "red"
 

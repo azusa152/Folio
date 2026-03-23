@@ -45,26 +45,26 @@ export function inferMarketLabel(
   category?: string,
   exchange?: string | null,
 ): string {
-  const m = inferMarket(ticker, category)
+  const market = inferMarket(ticker, category)
   const exchangeCode = exchange?.trim().toUpperCase()
   const exchangeLabel = exchangeCode ? EXCHANGE_LABEL_MAP[exchangeCode] : undefined
   if (exchangeLabel) {
-    if (m === "JP") return `🇯🇵 ${exchangeLabel}`
-    if (m === "TW") return `🇹🇼 ${exchangeLabel}`
-    if (m === "HK") return `🇭🇰 ${exchangeLabel}`
+    if (market === "JP") return `🇯🇵 ${exchangeLabel}`
+    if (market === "TW") return `🇹🇼 ${exchangeLabel}`
+    if (market === "HK") return `🇭🇰 ${exchangeLabel}`
     return `🇺🇸 ${exchangeLabel}`
   }
-  if (m === "JP") return "🇯🇵 JP"
-  if (m === "TW") return "🇹🇼 TW"
-  if (m === "HK") return "🇭🇰 HK"
+  if (market === "JP") return "🇯🇵 JP"
+  if (market === "TW") return "🇹🇼 TW"
+  if (market === "HK") return "🇭🇰 HK"
   return "🇺🇸 US"
 }
 
 export function inferCurrency(ticker: string, category?: string): { symbol: string; code: string } {
-  const m = inferMarket(ticker, category)
-  if (m === "JP") return { symbol: "¥", code: "JPY" }
-  if (m === "TW") return { symbol: "NT$", code: "TWD" }
-  if (m === "HK") return { symbol: "HK$", code: "HKD" }
+  const market = inferMarket(ticker, category)
+  if (market === "JP") return { symbol: "¥", code: "JPY" }
+  if (market === "TW") return { symbol: "NT$", code: "TWD" }
+  if (market === "HK") return { symbol: "HK$", code: "HKD" }
   return { symbol: "$", code: "USD" }
 }
 

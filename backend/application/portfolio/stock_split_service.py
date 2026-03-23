@@ -259,6 +259,11 @@ def send_split_alerts(
     if not target_events:
         return {"sent": False, "count": 0}
 
+    from application.formatters import format_stock_display, resolve_display_names
+
+    event_tickers = [event.ticker for event in target_events]
+    names = resolve_display_names(event_tickers, session)
+
     lines = [t("stock_split.notification_header", lang=lang), ""]
     for event in target_events:
         ratio_label = _format_ratio_label(event.ratio)
@@ -266,7 +271,9 @@ def send_split_alerts(
             t(
                 "stock_split.notification_line",
                 lang=lang,
-                ticker=event.ticker,
+                ticker=format_stock_display(
+                    names.get(event.ticker.strip().upper()), event.ticker
+                ),
                 ratio=ratio_label,
                 split_date=event.split_date.isoformat(),
             )

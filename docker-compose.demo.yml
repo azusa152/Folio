@@ -1,0 +1,53 @@
+# Standalone demo-mode Compose file.
+#
+# Runs a fully-isolated demo stack alongside the real instance:
+#   - Separate ports (3001 / 8001) — real instance on 3000/8000 keeps running
+#   - Separate named volume (demo-data) — real radar-data is never touched
+#   - FOLIO_DEMO_MODE=1 — backend reports demo mode; frontend shows a banner
+#   - No scanner service — no background jobs during a demo session
+#
+# Always used via DEMO_COMPOSE in Makefile (sets COMPOSE_PROJECT_NAME=folio-demo):
+#   make demo          # build, start, and auto-seed
+#   make demo-reset    # wipe demo DB and re-seed
+#   make demo-down     # stop and remove demo containers + volume
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8001:8000"
+    volumes:
+      - demo-data:/app/data
+      - ./logs:/app/data/logs
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///data/radar.db
+      - FOLIO_API_KEY=${FOLIO_API_KEY:-}
+      - FOLIO_DEMO_MODE=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend-react
+      args:
+        VITE_API_KEY: ${FOLIO_API_KEY:-}
+    ports:
+      - "3001:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  demo-data:

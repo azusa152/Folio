@@ -31,9 +31,7 @@ export function QoQTable({ data }: { data: QoQResponse }) {
   const { t } = useTranslation()
 
   if (!data.items.length) {
-    return (
-      <p className="text-sm text-muted-foreground">{t("smart_money.qoq.no_data")}</p>
-    )
+    return <p className="text-sm text-muted-foreground">{t("smart_money.qoq.no_data")}</p>
   }
 
   const quarterHeaders = data.items[0]?.quarters.map((q) => q.report_date) ?? []
@@ -61,12 +59,12 @@ export function QoQTable({ data }: { data: QoQResponse }) {
                 {item.company_name}
               </td>
               {quarterHeaders.map((qd) => {
-                const q = item.quarters.find((qq) => qq.report_date === qd)
-                return q ? (
+                const quarter = item.quarters.find((qq) => qq.report_date === qd)
+                return quarter ? (
                   <td key={qd} className="py-0.5 pr-2 text-right whitespace-nowrap">
-                    <div>{formatShares(q.shares)}</div>
-                    {q.weight_pct != null && (
-                      <div className="text-muted-foreground">{q.weight_pct.toFixed(1)}%</div>
+                    <div>{formatShares(quarter.shares)}</div>
+                    {quarter.weight_pct != null && (
+                      <div className="text-muted-foreground">{quarter.weight_pct.toFixed(1)}%</div>
                     )}
                   </td>
                 ) : (

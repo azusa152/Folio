@@ -72,7 +72,12 @@ function setupDefaultMocks() {
   mockUseGuruFilings.mockReturnValue({ data: undefined })
   mockUseGuruQoQ.mockReturnValue({ data: undefined })
   mockUseGreatMinds.mockReturnValue({ data: undefined })
-  mockUseSyncGuru.mockReturnValue({ isPending: false, isSuccess: false, isError: false, mutate: vi.fn() })
+  mockUseSyncGuru.mockReturnValue({
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    mutate: vi.fn(),
+  })
 }
 
 // ---------------------------------------------------------------------------

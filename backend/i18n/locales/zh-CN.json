@@ -130,7 +130,8 @@
     "rogue_wave_alert": "🌊 <b>{ticker}</b>  突然暴跌  Bias {bias}% (P{percentile}) · Vol {vol_ratio}x\n   → 价格剧烈波动 — 等市场冷静再说",
     "signal_new_badge": "[NEW]",
     "signal_transition": "原信号：{from_signal} → {to_signal}",
-    "resolved_detail": "{ticker}（原 {signal}，持续 {days} 天）"
+    "resolved_detail": "{ticker}（原 {signal}，持续 {days} 天）",
+    "resolved_detail_no_duration": "{ticker}（原 {signal}）"
   },
   "notification": {
     "change_label": "变化",
@@ -211,7 +212,8 @@
     "advice_zero": "⚠️ 持仓总市值为零，无法计算配置。",
     "advice_over": "{icon} {category} 超配 {drift}%，考虑减仓。",
     "advice_under": "{icon} {category} 低配 {drift}%，考虑加仓。",
-    "advice_ok": "✅ 各分类配置均在目标范围内，无需调整。"
+    "advice_ok": "✅ 各分类配置均在目标范围内，无需调整。",
+    "snapshot_fallback_notice": "⏳ 显示上次保存的投资组合数值，实时数据正在后台加载中。"
   },
   "fx_watch": {
     "alert_header": "💱 <b>外汇换汇时机警报</b>\n\n",
@@ -246,7 +248,10 @@
     "rea_consec_disabled": "📊 连续上涨 {consec} 日，但汇率尚未达 {high_days} 日高点附近",
     "rea_no_signal": "📊 汇率未达近期高点，且连续上涨仅 {consec} 日",
     "rea_disabled": "📊 请启用近期高点或连续上涨其中一项警报条件",
-    "rea_no_data": "📊 此货币对历史数据不足"
+    "rea_no_data": "📊 此货币对历史数据不足",
+    "error": {
+      "refresh_cooldown": "强制刷新冷却中，请于 {retry_after_seconds} 秒后再试。"
+    }
   },
   "stress_test": {
     "no_holdings": "无持仓",
@@ -390,7 +395,9 @@
     "heatmap_filing_delay_note": "⚠️ 13F 持仓基准日为 {report_date}。申报数据至少有 45 天延迟，可能已不代表当前实际持仓。",
     "backtest_disclaimer": "此为假设性模拟，并非真实投资绩效。假设按申报日收盘价买入、交易成本为 0，且季度内不调整仓位。13F 仅覆盖美股多头仓位，不包含做空、期权和非美国持仓。历史表现不代表未来收益。",
     "backtest_not_enough_filings": "回测至少需要 2 条申报数据。请先同步或回填大师 13F 历史数据。",
-    "backtest_benchmark_data_missing": "基准价格数据暂时不可用，请稍后重试。"
+    "backtest_benchmark_data_missing": "基准价格数据暂时不可用，请稍后重试。",
+    "error_not_found": "找不到大师 {guru_id}",
+    "deactivated": "大师 {guru_id} 已停用"
   },
   "fx": {
     "period_1d": "单日",
@@ -417,6 +424,10 @@
   "analytics": {
     "date_range_both_required": "start 与 end 必须同时提供",
     "date_range_invalid_order": "start 不得晚于 end"
+  },
+  "snapshot": {
+    "date_range_required": "start 与 end 必须同时提供",
+    "date_range_start_after_end": "start 不得晚于 end"
   },
   "wrapper": {
     "tokutei": "特定账户（应税）",

@@ -13,16 +13,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import {
-  useBackfillStatus,
-  useBacktestDetail,
-  useBacktestSummary,
-} from "@/api/hooks/useBacktest"
+import { useBackfillStatus, useBacktestDetail, useBacktestSummary } from "@/api/hooks/useBacktest"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GlossaryTerm } from "@/components/GlossaryTerm"
 import { getSignalLabel } from "@/lib/signal-label"
+import { downloadCsvFromApi } from "@/lib/downloadCsv"
 import { FINANCE_BADGE } from "@/lib/colors"
 import { useRechartsTheme } from "@/hooks/useRechartsTheme"
 import { cn, formatLocalTime } from "@/lib/utils"
@@ -50,8 +47,7 @@ export default function Backtest() {
   const isBackfilling = backfillStatus?.is_backfilling ?? false
   const totalStocks = backfillStatus?.total ?? 0
   const completedStocks = backfillStatus?.completed ?? 0
-  const progressPct =
-    totalStocks > 0 ? Math.min((completedStocks / totalStocks) * 100, 100) : 0
+  const progressPct = totalStocks > 0 ? Math.min((completedStocks / totalStocks) * 100, 100) : 0
   const hasSignals = (summary?.signals?.length ?? 0) > 0
   const showBackfillingState = isBackfilling && !hasSignals
   const showEmptyState = !isBackfilling && !hasSignals
@@ -59,20 +55,7 @@ export default function Backtest() {
   const handleExportCsv = async () => {
     setExporting(true)
     try {
-      const headers: HeadersInit = {}
-      const apiKey = import.meta.env.VITE_API_KEY
-      if (apiKey) headers["X-API-Key"] = apiKey
-
-      const response = await fetch("/api/backtest/export-csv", { headers })
-      if (!response.ok) throw new Error(response.statusText)
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = "backtest_signals.csv"
-      link.click()
-      URL.revokeObjectURL(url)
+      await downloadCsvFromApi("/api/backtest/export-csv", undefined, "backtest_signals.csv")
     } catch {
       toast.error(t("common.error"))
     } finally {
@@ -160,7 +143,12 @@ export default function Backtest() {
           className="w-full text-left px-4 py-2 text-sm font-medium min-h-[44px] hover:bg-muted/30 transition-colors flex items-center justify-between"
         >
           <span>{t("backtest.sop.title")}</span>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", sopOpen && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              sopOpen && "rotate-180",
+            )}
+          />
         </button>
         {sopOpen && (
           <div className="px-4 pb-4">
@@ -229,10 +217,8 @@ export default function Backtest() {
                       <span
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase",
-                          signal.confidence === "high" &&
-                            FINANCE_BADGE.gain,
-                          signal.confidence === "medium" &&
-                            FINANCE_BADGE.warning,
+                          signal.confidence === "high" && FINANCE_BADGE.gain,
+                          signal.confidence === "medium" && FINANCE_BADGE.warning,
                           signal.confidence === "low" && "bg-zinc-500/20 text-zinc-300",
                         )}
                       >
@@ -242,19 +228,28 @@ export default function Backtest() {
                   </CardHeader>
                   <CardContent className="space-y-1 text-xs">
                     <p>
-                      <GlossaryTerm termKey="direction">{t("backtest.card.direction")}</GlossaryTerm>: {signal.direction}
+                      <GlossaryTerm termKey="direction">
+                        {t("backtest.card.direction")}
+                      </GlossaryTerm>
+                      : {signal.direction}
                     </p>
                     <p>
-                      <GlossaryTerm termKey="hit_rate">{t("backtest.card.hit_rate", { window: selectedWindow })}</GlossaryTerm>:{" "}
-                      {((metric?.hit_rate ?? 0) * 100).toFixed(1)}%
+                      <GlossaryTerm termKey="hit_rate">
+                        {t("backtest.card.hit_rate", { window: selectedWindow })}
+                      </GlossaryTerm>
+                      : {((metric?.hit_rate ?? 0) * 100).toFixed(1)}%
                     </p>
                     <p>
-                      <GlossaryTerm termKey="avg_return">{t("backtest.card.avg_return", { window: selectedWindow })}</GlossaryTerm>:{" "}
-                      {(metric?.avg_return_pct ?? 0).toFixed(2)}%
+                      <GlossaryTerm termKey="avg_return">
+                        {t("backtest.card.avg_return", { window: selectedWindow })}
+                      </GlossaryTerm>
+                      : {(metric?.avg_return_pct ?? 0).toFixed(2)}%
                     </p>
                     <p>
-                      <GlossaryTerm termKey="samples">{t("backtest.card.samples", { window: selectedWindow })}</GlossaryTerm>:{" "}
-                      {metric?.sample_count ?? 0}
+                      <GlossaryTerm termKey="samples">
+                        {t("backtest.card.samples", { window: selectedWindow })}
+                      </GlossaryTerm>
+                      : {metric?.sample_count ?? 0}
                     </p>
                   </CardContent>
                 </Card>
@@ -265,7 +260,9 @@ export default function Backtest() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <GlossaryTerm termKey="forward_returns">{t("backtest.forward_returns_title")}</GlossaryTerm>
+                <GlossaryTerm termKey="forward_returns">
+                  {t("backtest.forward_returns_title")}
+                </GlossaryTerm>
               </CardTitle>
             </CardHeader>
             <CardContent className="h-[320px]">
@@ -275,9 +272,7 @@ export default function Backtest() {
                   <XAxis
                     dataKey="signal"
                     tick={{ fill: theme.tickColor, fontSize: 11 }}
-                    tickFormatter={(value: string | number) =>
-                      getSignalLabel(t, String(value))
-                    }
+                    tickFormatter={(value: string | number) => getSignalLabel(t, String(value))}
                   />
                   <YAxis tick={{ fill: theme.tickColor, fontSize: 11 }} />
                   <Tooltip
@@ -306,9 +301,7 @@ export default function Backtest() {
                     dataKey="signal"
                     type="category"
                     tick={{ fill: theme.tickColor, fontSize: 11 }}
-                    tickFormatter={(value: string | number) =>
-                      getSignalLabel(t, String(value))
-                    }
+                    tickFormatter={(value: string | number) => getSignalLabel(t, String(value))}
                     width={120}
                   />
                   <Tooltip
@@ -352,11 +345,11 @@ export default function Backtest() {
                   <thead className="bg-muted/30">
                     <tr>
                       <th className="text-left px-3 py-2">{t("backtest.table.ticker")}</th>
+                      <th className="text-left px-3 py-2">{t("backtest.table.signal_date")}</th>
                       <th className="text-left px-3 py-2">
-                        {t("backtest.table.signal_date")}
-                      </th>
-                      <th className="text-left px-3 py-2">
-                        <GlossaryTerm termKey="market_status">{t("backtest.table.market_status")}</GlossaryTerm>
+                        <GlossaryTerm termKey="market_status">
+                          {t("backtest.table.market_status")}
+                        </GlossaryTerm>
                       </th>
                       {WINDOWS.map((days) => (
                         <th key={days} className="text-right px-3 py-2">

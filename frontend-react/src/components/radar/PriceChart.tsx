@@ -100,14 +100,24 @@ export function PriceChart({ data }: Props) {
 
       ma200Series.setData(
         sliced
-          .map((d, i) => ({ time: d.date as `${number}-${number}-${number}`, value: slicedMA200[i] }))
-          .filter((p): p is { time: `${number}-${number}-${number}`; value: number } => p.value != null),
+          .map((d, i) => ({
+            time: d.date as `${number}-${number}-${number}`,
+            value: slicedMA200[i],
+          }))
+          .filter(
+            (p): p is { time: `${number}-${number}-${number}`; value: number } => p.value != null,
+          ),
       )
 
       ma60Series.setData(
         sliced
-          .map((d, i) => ({ time: d.date as `${number}-${number}-${number}`, value: slicedMA60[i] }))
-          .filter((p): p is { time: `${number}-${number}-${number}`; value: number } => p.value != null),
+          .map((d, i) => ({
+            time: d.date as `${number}-${number}-${number}`,
+            value: slicedMA60[i],
+          }))
+          .filter(
+            (p): p is { time: `${number}-${number}-${number}`; value: number } => p.value != null,
+          ),
       )
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +145,12 @@ export function PriceChart({ data }: Props) {
           </button>
         ))}
       </div>
-      <LightweightChartWrapper key={period} height={200} onInit={onInit} ariaLabel={t("accessibility.chart_price_trend")} />
+      <LightweightChartWrapper
+        key={period}
+        height={200}
+        onInit={onInit}
+        ariaLabel={t("accessibility.chart_price_trend")}
+      />
     </div>
   )
 }

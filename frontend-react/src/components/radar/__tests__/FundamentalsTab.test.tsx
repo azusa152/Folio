@@ -9,9 +9,7 @@ vi.mock("@/api/hooks/useRadar", () => ({
 describe("FundamentalsTab", () => {
   it("renders no-data state when fundamentals missing", () => {
     render(<FundamentalsTab ticker="NVDA" fundamentals={undefined} />)
-    expect(
-      screen.getByText("radar.stock_card.fundamentals.no_data"),
-    ).toBeInTheDocument()
+    expect(screen.getByText("radar.stock_card.fundamentals.no_data")).toBeInTheDocument()
   })
 
   it("renders key metrics when fundamentals exist", () => {
@@ -27,9 +25,7 @@ describe("FundamentalsTab", () => {
         }}
       />,
     )
-    expect(
-      screen.getByText("radar.stock_card.fundamentals.trailing_pe"),
-    ).toBeInTheDocument()
+    expect(screen.getByText("radar.stock_card.fundamentals.trailing_pe")).toBeInTheDocument()
     expect(screen.getByText("18.20")).toBeInTheDocument()
     expect(screen.getByText("1B")).toBeInTheDocument()
   })

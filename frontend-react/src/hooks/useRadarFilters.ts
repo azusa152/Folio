@@ -67,7 +67,11 @@ export const FILTER_PRESETS: RadarFilterPreset[] = [
   },
 ]
 
-function inRange(value: number | null | undefined, min: number | null, max: number | null): boolean {
+function inRange(
+  value: number | null | undefined,
+  min: number | null,
+  max: number | null,
+): boolean {
   if (min == null && max == null) return true
   if (value == null) return false
   if (min != null && value < min) return false
@@ -101,7 +105,8 @@ export function filterStocks(
 ): RadarStock[] {
   return stocks.filter((stock) => {
     const enrichment = enrichedMap[stock.ticker]
-    const signal = enrichment?.computed_signal ?? enrichment?.last_scan_signal ?? stock.last_scan_signal
+    const signal =
+      enrichment?.computed_signal ?? enrichment?.last_scan_signal ?? stock.last_scan_signal
     const rsi = enrichment?.rsi ?? enrichment?.signals?.rsi
     const bias = enrichment?.signals?.bias
     const volumeRatio = enrichment?.signals?.volume_ratio
@@ -117,7 +122,11 @@ export function filterStocks(
     if (!inRange(bias, filters.biasMin, filters.biasMax)) return false
     if (!inRange(volumeRatio, filters.volumeRatioMin, filters.volumeRatioMax)) return false
     if (!inRange(trailingPe, filters.peMin, filters.peMax)) return false
-    if (filters.dividendYieldMin != null && (dividendYield == null || dividendYield < filters.dividendYieldMin)) return false
+    if (
+      filters.dividendYieldMin != null &&
+      (dividendYield == null || dividendYield < filters.dividendYieldMin)
+    )
+      return false
     if (filters.marketCapBuckets.length > 0) {
       const bucket = toMarketCapBucket(marketCap)
       if (!bucket || !filters.marketCapBuckets.includes(bucket)) return false
@@ -148,21 +157,28 @@ function countActiveFilters(filters: RadarFilterState): number {
 export function useRadarFilters() {
   const [filters, setFilters] = useState<RadarFilterState>(DEFAULT_RADAR_FILTERS)
 
-  const setFilter = useCallback(<K extends keyof RadarFilterState>(key: K, value: RadarFilterState[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }))
-  }, [])
+  const setFilter = useCallback(
+    <K extends keyof RadarFilterState>(key: K, value: RadarFilterState[K]) => {
+      setFilters((prev) => ({ ...prev, [key]: value }))
+    },
+    [],
+  )
 
   const toggleSignal = useCallback((signal: ScanSignal) => {
     setFilters((prev) => ({
       ...prev,
-      signals: prev.signals.includes(signal) ? prev.signals.filter((s) => s !== signal) : [...prev.signals, signal],
+      signals: prev.signals.includes(signal)
+        ? prev.signals.filter((s) => s !== signal)
+        : [...prev.signals, signal],
     }))
   }, [])
 
   const toggleSector = useCallback((sector: string) => {
     setFilters((prev) => ({
       ...prev,
-      sectors: prev.sectors.includes(sector) ? prev.sectors.filter((s) => s !== sector) : [...prev.sectors, sector],
+      sectors: prev.sectors.includes(sector)
+        ? prev.sectors.filter((s) => s !== sector)
+        : [...prev.sectors, sector],
     }))
   }, [])
 

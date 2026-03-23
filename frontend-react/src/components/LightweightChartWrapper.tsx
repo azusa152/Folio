@@ -1,5 +1,10 @@
 import { useEffect, useRef, useCallback } from "react"
-import { createChart, type IChartApi, type DeepPartial, type ChartOptions } from "lightweight-charts"
+import {
+  createChart,
+  type IChartApi,
+  type DeepPartial,
+  type ChartOptions,
+} from "lightweight-charts"
 import { useLightweightChartTheme } from "@/hooks/useLightweightChartTheme"
 
 interface Props {

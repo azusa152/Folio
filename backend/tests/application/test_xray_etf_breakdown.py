@@ -10,28 +10,18 @@ Covers:
 """
 
 import json
-import os
-import tempfile
+from unittest.mock import patch
 
-os.environ.setdefault("LOG_DIR", os.path.join(tempfile.gettempdir(), "folio_test_logs"))
-os.environ.setdefault("DATABASE_URL", "sqlite://")
+import pytest
+from sqlmodel import Session, select
 
-import domain.constants
-
-domain.constants.DISK_CACHE_DIR = os.path.join(
-    tempfile.gettempdir(), "folio_test_cache_xray_etf"
-)
-
-from unittest.mock import patch  # noqa: E402
-
-import pytest  # noqa: E402
-from sqlmodel import Session, select  # noqa: E402
-
-from application.portfolio.rebalance_service import calculate_rebalance  # noqa: E402
-from domain.entities import Account, Holding, Stock, UserInvestmentProfile  # noqa: E402
-from domain.enums import StockCategory  # noqa: E402
+from application.portfolio.rebalance_service import calculate_rebalance
+from domain.entities import Account, Holding, Stock, UserInvestmentProfile
+from domain.enums import StockCategory
 
 _MODULE = "application.portfolio.rebalance_service"
+_FX_EXPOSURE_MODULE = "application.portfolio.fx_exposure_service"
+_PRICING_MODULE = "application.portfolio.pricing_service"
 
 _MOCK_SIGNALS_BASE = {
     "price": 100.0,
@@ -49,8 +39,8 @@ _BASE_PATCHES = [
     f"{_MODULE}.prewarm_signals_batch",
     f"{_MODULE}.prewarm_etf_holdings_batch",
     f"{_MODULE}.prewarm_etf_sector_weights_batch",
-    f"{_MODULE}.get_forex_history",
-    f"{_MODULE}.get_forex_history_long",
+    f"{_FX_EXPOSURE_MODULE}.get_forex_history",
+    f"{_FX_EXPOSURE_MODULE}.get_forex_history_long",
     f"{_MODULE}.get_etf_sector_weights",
 ]
 
@@ -117,7 +107,8 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @pytest.mark.slow
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_etf_with_holdings_produces_indirect_exposure(
         self,
         mock_signals,
@@ -170,7 +161,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_known_etf_with_failed_holdings_fetch_excluded_from_xray(
         self,
         mock_signals,
@@ -209,7 +200,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_non_etf_stock_with_no_holdings_is_direct_exposure(
         self,
         mock_signals,
@@ -245,6 +236,7 @@ class TestXRayEtfBreakdown:
         assert xray["NVDA"]["direct_weight_pct"] == pytest.approx(100.0, rel=0.01)
         assert xray["NVDA"]["indirect_weight_pct"] == pytest.approx(0.0, abs=0.001)
 
+    @pytest.mark.slow
     def test_non_etf_flagged_stock_can_self_heal_and_decompose(
         self, db_session: Session
     ):
@@ -271,11 +263,14 @@ class TestXRayEtfBreakdown:
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
             patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
             patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_etf_sector_weights", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.detect_is_etf", side_effect=lambda t: t == "0050.TW"),
             patch(f"{_MODULE}.get_etf_top_holdings", side_effect=_holdings_side_effect),
         ):
@@ -294,7 +289,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_xray_coverage_should_exclude_cash_from_denominator(
         self,
         mock_signals,
@@ -344,7 +339,7 @@ class TestXRayEtfBreakdown:
 
     @patch(f"{_MODULE}.get_etf_top_holdings")
     @patch(f"{_MODULE}.get_exchange_rates")
-    @patch(f"{_MODULE}.get_technical_signals")
+    @patch(f"{_PRICING_MODULE}.get_technical_signals")
     def test_mixed_portfolio_etf_and_stock(
         self,
         mock_signals,
@@ -445,10 +440,13 @@ class TestXRayEtfBreakdown:
 
         with (
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.detect_is_etf", return_value=False),
             patch(
                 f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}
@@ -503,10 +501,13 @@ class TestXRayEtfBreakdown:
 
         with (
             patch(f"{_MODULE}.prewarm_signals_batch", return_value=None),
-            patch(f"{_MODULE}.get_forex_history", return_value=None),
-            patch(f"{_MODULE}.get_forex_history_long", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history", return_value=None),
+            patch(f"{_FX_EXPOSURE_MODULE}.get_forex_history_long", return_value=None),
             patch(f"{_MODULE}.get_exchange_rates", return_value={"USD": 1.0}),
-            patch(f"{_MODULE}.get_technical_signals", side_effect=_signals_side_effect),
+            patch(
+                f"{_PRICING_MODULE}.get_technical_signals",
+                side_effect=_signals_side_effect,
+            ),
             patch(f"{_MODULE}.prewarm_etf_holdings_batch", return_value={}),
             patch(f"{_MODULE}.prewarm_etf_sector_weights_batch", return_value={}),
             patch(
@@ -542,7 +543,7 @@ class TestEtfHoldingsSentinelCaching:
         _disk_cache.delete(f"{DISK_KEY_ETF_HOLDINGS}:TEST_SENTINEL_TICKER")
 
         mock_fetch = patch(
-            "infrastructure.market_data.market_data._fetch_etf_top_holdings",
+            "infrastructure.market_data.etf._fetch_etf_top_holdings",
             return_value=None,
         )
         with mock_fetch as m:

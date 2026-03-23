@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
+import { visualizer } from "rollup-plugin-visualizer"
+
+// Run `npm run analyze` to generate dist/stats.html with a bundle size breakdown.
+const isAnalyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
   define: {
@@ -11,6 +15,16 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    ...(isAnalyze
+      ? [
+          visualizer({
+            filename: "dist/stats.html",
+            open: true,
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
     VitePWA({
       // Work around SW terser renderChunk early-exit issue in current toolchain.
       minify: false,

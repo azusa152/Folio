@@ -14,7 +14,7 @@ from application.portfolio.analytics_service import get_risk_metrics
 from application.portfolio.rebalance_service import calculate_rebalance
 from application.portfolio.snapshot_service import get_snapshots
 from domain.analysis.analysis import compute_twr
-from domain.core.constants import DRIFT_THRESHOLD_PCT
+from domain.core.constants import DRIFT_THRESHOLD_PCT, SP500_TICKER
 from domain.portfolio.insights import (
     Insight,
     generate_allocation_insights,
@@ -80,8 +80,8 @@ def get_portfolio_insights(
             last_bm = json.loads(snapshots[-1].benchmark_values or "{}")
         except (json.JSONDecodeError, TypeError):
             first_bm, last_bm = {}, {}
-        sp_first = first_bm.get("^GSPC")
-        sp_last = last_bm.get("^GSPC")
+        sp_first = first_bm.get(SP500_TICKER)
+        sp_last = last_bm.get(SP500_TICKER)
         if sp_first and sp_last and sp_first > 0:
             benchmark_return = (sp_last - sp_first) / sp_first
 
@@ -103,7 +103,7 @@ def get_portfolio_insights(
         {
             "key": i.key,
             "severity": i.severity,
-            "vars": i.vars,
+            "vars": i.template_vars,
             "category": i.category,
         }
         for i in insights
