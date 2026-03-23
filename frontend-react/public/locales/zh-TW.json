@@ -45,6 +45,7 @@
     "error_render": "發生錯誤",
     "retry": "重試",
     "offline_banner": "目前離線中，資料可能不是最新。",
+    "demo_banner": "示範模式 — 以下為展示資料，您的真實資料不受影響。",
     "last_updated_relative": "上次更新 {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} 股",

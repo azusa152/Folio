@@ -45,6 +45,7 @@
     "error_render": "エラーが発生しました",
     "retry": "再試行",
     "offline_banner": "オフラインです。データが最新ではない可能性があります。",
+    "demo_banner": "デモモード — これはサンプルデータです。実際のデータは安全です。",
     "last_updated_relative": "最終更新 {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} 株",

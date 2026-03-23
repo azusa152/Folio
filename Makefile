@@ -62,6 +62,11 @@
 #    make purge-legacy     Purge orphaned/zero-qty legacy data + drop net worth tables
 #    make purge-legacy-dry Dry-run purge (preview without commit)
 #
+#  Demo Mode (isolated — real data is never touched):
+#    make demo             Start isolated demo on ports 3001/8001 (separate DB, auto-seeded)
+#    make demo-down        Stop demo instance and remove its data volume
+#    make demo-reset       Wipe and re-seed demo data (containers stay running)
+#
 #  Utilities:
 #    make generate-key     Generate a secure FOLIO_API_KEY
 #    make security         Security audit (.env, secrets)
@@ -77,6 +82,9 @@
 # ---------------------------------------------------------------------------
 BACKEND_DIR  := backend
 FRONTEND_DIR := frontend-react
+
+DEMO_PROJECT := folio-demo
+DEMO_COMPOSE := COMPOSE_PROJECT_NAME=$(DEMO_PROJECT) docker compose -f docker-compose.demo.yml
 
 PYTHON ?= $(BACKEND_DIR)/.venv/bin/python
 RUFF   ?= $(BACKEND_DIR)/.venv/bin/ruff
@@ -294,7 +302,7 @@ logs: ## Tail backend logs
 # ---------------------------------------------------------------------------
 #  Database
 # ---------------------------------------------------------------------------
-.PHONY: backup restore seed-demo migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible
+.PHONY: backup restore seed-demo migrate-ledger migrate-ledger-dry purge-legacy purge-legacy-dry refresh-eligible demo demo-down demo-reset
 
 backup: ## Backup database to ./backups/
 	@mkdir -p backups
@@ -331,6 +339,33 @@ purge-legacy-dry: ## Dry-run purge (preview without commit; runs inside Docker)
 
 refresh-eligible: ## Refresh NISA eligible assets from official sources (runs inside Docker)
 	docker compose exec backend uv run --frozen --no-dev python -m scripts.refresh_eligible_assets --wrapper all
+
+demo: ## Start isolated demo on ports 3001/8001 (separate DB, auto-seeded, real data untouched)
+	@echo "=== Starting demo instance (ports 3001 / 8001) ==="
+	$(DEMO_COMPOSE) up -d --build
+	@echo "Waiting for backend to become healthy..."
+	@timeout=60; elapsed=0; \
+	while ! $(DEMO_COMPOSE) exec backend curl -sf http://localhost:8000/health > /dev/null 2>&1; do \
+		sleep 2; elapsed=$$((elapsed + 2)); \
+		if [ $$elapsed -ge $$timeout ]; then echo "Error: demo backend did not start in time"; exit 1; fi; \
+	done
+	$(DEMO_COMPOSE) exec backend uv run --frozen --no-dev python -m scripts.seed_demo
+	@echo ""
+	@echo "=== Demo running ==="
+	@echo "  Frontend : http://localhost:3001"
+	@echo "  Backend  : http://localhost:8001"
+	@echo "  Your real instance on :3000 / :8000 is untouched."
+	@echo "  Run 'make demo-down' when finished."
+
+demo-down: ## Stop demo instance and remove its data volume
+	@echo "=== Stopping demo instance ==="
+	$(DEMO_COMPOSE) down -v
+	@echo "Demo stopped and demo-data volume removed."
+
+demo-reset: ## Wipe and re-seed demo data (keeps containers running)
+	@echo "=== Resetting demo data ==="
+	$(DEMO_COMPOSE) exec backend uv run --frozen --no-dev python -m scripts.seed_demo --reset
+	@echo "Demo data reset complete."
 
 # ---------------------------------------------------------------------------
 #  Utilities

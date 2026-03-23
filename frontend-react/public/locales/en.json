@@ -45,6 +45,7 @@
     "error_render": "Something went wrong",
     "retry": "Retry",
     "offline_banner": "You are offline. Data may not be current.",
+    "demo_banner": "Demo Mode — this is sample data. Your real data is safe.",
     "last_updated_relative": "Last updated {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} shares",

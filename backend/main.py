@@ -243,7 +243,11 @@ app.add_middleware(_RequestIdMiddleware)
 @app.get("/health", response_model=HealthResponse, summary="Health check")
 def health_check() -> dict:
     """Health check endpoint - NO auth (Docker healthcheck must access without key)."""
-    return {"status": "ok", "service": "folio-backend"}
+    return {
+        "status": "ok",
+        "service": "folio-backend",
+        "demo_mode": os.getenv("FOLIO_DEMO_MODE", "") == "1",
+    }
 
 
 @app.post(

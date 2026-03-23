@@ -422,6 +422,47 @@ All UI text and Telegram notification messages switch to the selected language.
 
 ---
 
+## Demo Mode
+
+Demo Mode lets you show Folio to a colleague without risking your real portfolio or watchlist data. It runs a completely isolated stack — separate ports, separate database volume, separate Docker project — so your live instance on `:3000` is completely unaffected throughout.
+
+### Start a demo
+
+```bash
+make demo
+```
+
+This builds images (if needed), starts the demo backend on `:8001` and frontend on `:3001`, and seeds the database with representative sample data (watchlist, accounts, holdings, and transactions) automatically.
+
+A blue **Demo Mode** banner is shown at the top of every page so it is always clear which instance your audience is looking at.
+
+### Reset demo data
+
+```bash
+make demo-reset
+```
+
+Wipes all data from the demo database and re-seeds it with the original sample data — useful when you want to start a fresh demo session without restarting containers.
+
+### Stop and remove
+
+```bash
+make demo-down
+```
+
+Stops all demo containers **and removes the `demo-data` volume**, so no sample data lingers. Your production data volume (`radar-data`) is never touched.
+
+### Both instances running side-by-side
+
+| | Production | Demo |
+|---|---|---|
+| Frontend | http://localhost:3000 | http://localhost:3001 |
+| Backend API | http://localhost:8000 | http://localhost:8001 |
+| Database volume | `radar-data` | `demo-data` |
+| Scanner | running | disabled |
+
+---
+
 ## Data Management
 
 ### Upgrade (preserve data)

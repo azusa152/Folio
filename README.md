@@ -76,7 +76,19 @@ docker compose up --build
 | Backend API | http://localhost:8000 |
 | Swagger UI | http://localhost:8000/docs |
 
-### 3. Import your watchlist (optional)
+### 3. Demo mode (optional — isolates sample data from your real data)
+
+Want to show Folio to someone without touching your own portfolio?
+
+```bash
+make demo        # starts on ports 3001 / 8001, seeds sample data automatically
+make demo-reset  # wipe and re-seed demo data at any time
+make demo-down   # stop demo and remove its volume (your data on :3000 is untouched)
+```
+
+A blue "Demo Mode" banner appears in the UI to make it clear which instance is running.
+
+### 4. Import your watchlist (optional)
 
 Upload a JSON file via the Dashboard sidebar, or use the CLI:
 

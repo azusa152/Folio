@@ -7,6 +7,7 @@ import { queryClient } from "./api/queryClient"
 import { AppSidebar } from "./components/layout/AppSidebar"
 import { CommandPalette } from "./components/CommandPalette"
 import { OfflineBanner } from "./components/OfflineBanner"
+import { DemoBanner } from "./components/DemoBanner"
 import { PageShell } from "./components/layout/PageShell"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { TooltipProvider } from "./components/ui/tooltip"
@@ -47,6 +48,7 @@ export default function App() {
                   <SidebarTrigger className="min-h-[44px] min-w-[44px]" />
                   <span className="text-sm font-semibold">📡 Folio</span>
                 </div>
+                <DemoBanner />
                 <OfflineBanner />
                 <Routes>
                   <Route

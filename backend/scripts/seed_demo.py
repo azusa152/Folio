@@ -22,6 +22,7 @@ Makefile shortcut:
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import UTC, date, datetime
 
 from logging_config import get_logger
@@ -249,6 +250,37 @@ _DEMO_TRANSACTIONS: list[tuple] = [
 # ---------------------------------------------------------------------------
 
 
+def _reset(session, *, dry_run: bool = False) -> None:
+    """Delete all user-generated data so the demo database starts clean.
+
+    Refuses to run unless FOLIO_DEMO_MODE=1 to prevent accidental data loss
+    on a production database.
+    """
+    if os.getenv("FOLIO_DEMO_MODE") != "1":
+        raise SystemExit(
+            "ERROR: --reset refused. "
+            "FOLIO_DEMO_MODE is not set to '1'. "
+            "This flag is only safe inside the isolated demo container. "
+            "Use 'make demo-reset' to run it correctly."
+        )
+
+    from sqlmodel import delete
+
+    from domain.core.entities import Account, Holding, Stock, ThesisLog, Transaction
+
+    tables = [Transaction, Holding, Account, ThesisLog, Stock]
+    for model in tables:
+        if not dry_run:
+            session.exec(delete(model))  # type: ignore[call-overload]
+    if not dry_run:
+        session.commit()
+    logger.info(
+        "%sDemo reset: cleared %s",
+        "[DRY RUN] " if dry_run else "",
+        ", ".join(m.__tablename__ for m in tables),  # type: ignore[attr-defined]
+    )
+
+
 def _seed(session, *, dry_run: bool = False) -> dict[str, int]:
     from sqlmodel import select
 
@@ -396,13 +428,15 @@ def _seed(session, *, dry_run: bool = False) -> dict[str, int]:
     return counts
 
 
-def run(*, dry_run: bool = False) -> dict[str, int]:
+def run(*, dry_run: bool = False, reset: bool = False) -> dict[str, int]:
     from sqlmodel import Session
 
     from infrastructure.database import create_db_and_tables, engine
 
     create_db_and_tables()
     with Session(engine) as session:
+        if reset:
+            _reset(session, dry_run=dry_run)
         return _seed(session, dry_run=dry_run)
 
 
@@ -422,9 +456,14 @@ def main(args: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview changes without committing"
     )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Wipe all user data before seeding (safe only in demo mode)",
+    )
     parsed = parser.parse_args(args)
 
-    counts = run(dry_run=parsed.dry_run)
+    counts = run(dry_run=parsed.dry_run, reset=parsed.reset)
     prefix = "[DRY RUN] " if parsed.dry_run else ""
     logger.info(
         "%sDemo seed complete: %d stocks, %d accounts, %d holdings, %d transactions added",

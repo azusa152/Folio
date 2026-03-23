@@ -40,6 +40,8 @@ Folio is a Dockerized investment analysis system (FastAPI + React + SQLite) for 
 - Tax wrapper routes: `backend/api/routes/wrapper_routes.py`
 - Tax wrapper schemas: `backend/api/schemas/wrapper.py`
 - Eligible asset seed: `backend/scripts/seed_eligible_assets.py`
+- Demo mode standalone compose file: `docker-compose.demo.yml` (ports 3001/8001, isolated `demo-data` volume)
+- Demo seed script: `backend/scripts/seed_demo.py` (supports `--reset` to wipe and re-seed)
 - NAV sync service: `backend/application/portfolio/nav_sync_service.py`
 - Toushin adapter: `backend/infrastructure/market_data/toushin_adapter.py`
 - Ledger migration: `backend/scripts/migrate_ledger.py`

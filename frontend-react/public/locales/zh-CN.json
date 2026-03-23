@@ -45,6 +45,7 @@
     "error_render": "发生错误",
     "retry": "重试",
     "offline_banner": "当前离线中，数据可能不是最新。",
+    "demo_banner": "演示模式 — 以下为示例数据，您的真实数据不受影响。",
     "last_updated_relative": "上次更新 {{time}}",
     "quantity_unit": {
       "shares": "{{quantity}} 股",
