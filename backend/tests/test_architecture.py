@@ -120,6 +120,87 @@ class TestApiControllerBoundary:
         )
 
 
+class TestNotificationDisplayNames:
+    """Guard that Telegram/chat notification formatter functions never display
+    bare ticker identifiers directly.  Every stock identifier shown to users
+    must be wrapped in ``format_stock_display`` so that human-readable names
+    appear alongside the raw ticker symbol.
+
+    The test scans ``application/formatters.py`` for functions whose names
+    suggest they build Telegram or chat messages and flags any line that
+    contains a raw ``item['ticker']`` or ``item["ticker"]`` access that is not
+    already guarded by a ``format_stock_display`` or ``resolve_display_names``
+    call within the same function body.
+
+    Known limitations (heuristic-based check):
+    - Guard detection is function-wide text search, not line-scoped: a single
+      mention of ``format_stock_display`` anywhere in the function body (even
+      a comment) satisfies the guard. Precise per-line checking would require
+      full AST dataflow analysis.
+    - Only ``item['ticker']`` / ``item["ticker"]`` subscription access is
+      detected as "bare"; other patterns such as ``item.get("ticker")``,
+      ``s.ticker``, or loop variables are not flagged.
+    """
+
+    _FORMATTERS_PATH = Path(__file__).parent.parent / "application" / "formatters.py"
+
+    # Telegram/chat formatter functions that must not expose bare item['ticker']
+    _NOTIFICATION_FUNC_PREFIXES = (
+        "format_weekly_digest",
+        "format_guru_",
+        "format_resonance_",
+        "format_withdrawal_",
+    )
+
+    def test_no_bare_ticker_in_notification_formatters(self):
+        """Formatter functions must not directly subscript item['ticker'] / item[\"ticker\"]
+        without wrapping the result in format_stock_display."""
+        import re
+
+        source = self._FORMATTERS_PATH.read_text()
+        tree = ast.parse(source)
+
+        # Patterns indicating a bare ticker access going directly into a string
+        bare_patterns = [
+            re.compile(r"""item\[['"]ticker['"]\]"""),
+        ]
+        guard_patterns = [
+            re.compile(r"format_stock_display"),
+            re.compile(r"resolve_display_names"),
+            re.compile(r"_names\.get"),
+            re.compile(r"name_map"),
+        ]
+
+        violations: list[str] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            if not any(
+                node.name.startswith(p) for p in self._NOTIFICATION_FUNC_PREFIXES
+            ):
+                continue
+            lines = source.splitlines()
+            func_source = "\n".join(lines[node.lineno - 1 : node.end_lineno])
+
+            # Skip functions that have no bare pattern at all
+            has_bare = any(p.search(func_source) for p in bare_patterns)
+            if not has_bare:
+                continue
+
+            # If bare pattern exists but NO guard exists, it's a violation
+            has_guard = any(p.search(func_source) for p in guard_patterns)
+            if not has_guard:
+                violations.append(
+                    f"{node.name} (line {node.lineno}): contains bare item['ticker'] "
+                    "without format_stock_display / resolve_display_names guard"
+                )
+
+        assert violations == [], (
+            "Notification formatters must wrap all ticker displays with "
+            "format_stock_display(name, ticker):\n" + "\n".join(violations)
+        )
+
+
 class TestDomainConstantsAllSync:
     """Guard that domain/core/constants.__all__ stays in sync with the module's
     public names.  Prevents the __all__ list from drifting when constants are

@@ -8,6 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from sqlmodel import Session
+
     from domain.withdrawal import WithdrawalPlan
 
 from i18n import t
@@ -32,6 +34,10 @@ def format_stock_display(name: str | None, ticker: str) -> str:
     When a company or fund name is available, returns "Name (TICKER)".
     Falls back to the bare ticker when no name is available.
 
+    All notification paths that display stock identifiers MUST use this
+    function. Use `resolve_display_names(tickers, session)` for batch
+    name resolution before building notification messages.
+
     Examples:
         format_stock_display("Apple Inc.", "AAPL")  → "Apple Inc. (AAPL)"
         format_stock_display(None, "AAPL")           → "AAPL"
@@ -39,6 +45,54 @@ def format_stock_display(name: str | None, ticker: str) -> str:
     if name and name.strip():
         return f"{name.strip()} ({ticker})"
     return ticker
+
+
+def resolve_display_names(
+    tickers: list[str] | set[str],
+    session: Session | None = None,
+) -> dict[str, str]:
+    """Batch-resolve human-readable names for a set of tickers.
+
+    Checks the EligibleAsset fund-name table first (covers mutual funds),
+    then falls back to disk-cached yfinance names for anything remaining.
+
+    All keys in the returned dict are normalized to uppercase so that
+    callers can look up with ``names.get(ticker.strip().upper())`` without
+    worrying about casing mismatches between the fund DB and yfinance cache.
+    Tickers with no resolved name are absent from the result.
+
+    Args:
+        tickers: collection of ticker strings to resolve
+        session: database session (required for mutual-fund name lookup)
+
+    Returns:
+        dict mapping normalized (uppercase) ticker to resolved display name
+    """
+    from infrastructure.market_data.market_data import get_ticker_name_cached
+
+    names: dict[str, str] = {}
+    # Normalize to uppercase and deduplicate so keys are consistent across all
+    # callers. find_fund_names_by_tickers returns uppercase keys; the cache
+    # fallback must use the same casing so .get() lookups never miss.
+    remaining = list({t.strip().upper() for t in tickers if t and t.strip()})
+
+    if session is not None and remaining:
+        from infrastructure.persistence.repositories.eligible_repo import (
+            find_fund_names_by_tickers,
+        )
+
+        fund_names = find_fund_names_by_tickers(session, remaining)
+        for tk, fn in fund_names.items():
+            if fn and fn.strip():
+                names[tk] = fn.strip()  # tk already uppercase from eligible_repo
+
+    for tk in remaining:
+        if tk not in names:
+            cached = get_ticker_name_cached(tk)
+            if cached and cached.strip():
+                names[tk] = cached.strip()
+
+    return names
 
 
 def format_fear_greed_label(level: str, score: int, lang: str = "zh-TW") -> str:
@@ -214,7 +268,8 @@ def format_guru_filing_digest(summaries: list[dict], lang: str = "zh-TW") -> str
             icon = _HOLDING_ACTION_ICON.get(h.get("action", ""), "⚪")
             ticker = h.get("ticker") or h.get("cusip", "")
             weight = h.get("weight_pct") or 0.0
-            parts.append(f"  {icon} {ticker} ({weight:.1f}%)")
+            display = format_stock_display(h.get("company_name"), ticker)
+            parts.append(f"  {icon} {display} ({weight:.1f}%)")
         parts.append("")
 
     parts.append(t("guru.lagging_disclaimer_short", lang=lang))
@@ -234,6 +289,7 @@ def format_weekly_digest_html(
     signal_transitions: dict[str, tuple[str, str]] | None = None,
     drift_lines: list[str],
     all_normal_line: str,
+    name_map: dict[str, str] | None = None,
 ) -> str:
     """
     Assemble the full weekly digest Telegram HTML message from pre-built sections.
@@ -253,10 +309,12 @@ def format_weekly_digest_html(
         signal_transitions: mapping of ticker → (from_signal, to_signal) for the period
         drift_lines: list of formatted drift lines (may be empty)
         all_normal_line: translated "all positions normal" string
+        name_map: optional ticker → display name mapping for stock name resolution
 
     Returns:
         Telegram HTML formatted string (uses <b> tags for section headers)
     """
+    _names = name_map or {}
     parts: list[str] = [f"<b>{title}</b>", ""]
 
     # --- Portfolio value ---
@@ -288,8 +346,10 @@ def format_weekly_digest_html(
             else:
                 badge = ""
             badge_suffix = f" {badge}" if badge else ""
+            ticker = item["ticker"]
+            display = format_stock_display(_names.get(ticker.strip().upper()), ticker)
             parts.append(
-                f"  • {item['ticker']}（{item['cat_label']}）→ {item['signal']}{badge_suffix}"
+                f"  • {display}（{item['cat_label']}）→ {item['signal']}{badge_suffix}"
             )
         parts.append("")
 
@@ -298,13 +358,14 @@ def format_weekly_digest_html(
         parts.append(f"<b>{t('notification.signal_changes', lang=lang)}</b>")
         transitions = signal_transitions or {}
         for tk, count in sorted(signal_changes.items(), key=lambda x: -x[1]):
+            display_tk = format_stock_display(_names.get(tk.strip().upper()), tk)
             if tk in transitions:
                 from_sig, to_sig = transitions[tk]
                 parts.append(
                     t(
                         "notification.signal_change_detail",
                         lang=lang,
-                        ticker=tk,
+                        ticker=display_tk,
                         from_signal=from_sig,
                         to_signal=to_sig,
                         count=count,
@@ -313,7 +374,7 @@ def format_weekly_digest_html(
             else:
                 change_label = t("notification.change_label", lang=lang)
                 times_label = t("notification.times_label", lang=lang)
-                parts.append(f"  • {tk}：{change_label} {count} {times_label}")
+                parts.append(f"  • {display_tk}：{change_label} {count} {times_label}")
         parts.append("")
 
     # --- Allocation drift ---
@@ -334,7 +395,11 @@ def format_weekly_digest_html(
 
 
 def format_resonance_alert(
-    ticker: str, guru_name: str, action: str, lang: str = "zh-TW"
+    ticker: str,
+    guru_name: str,
+    action: str,
+    lang: str = "zh-TW",
+    display_name: str | None = None,
 ) -> str:
     """
     格式化單一共鳴警報：大師對使用者關注清單中的股票進行了操作。
@@ -344,17 +409,20 @@ def format_resonance_alert(
         guru_name: 大師顯示名稱
         action: HoldingAction value（e.g. "NEW_POSITION"）
         lang: 語言代碼
+        display_name: optional resolved company/fund name; when provided the
+                      message shows "Name (TICKER)" instead of the bare ticker
 
     Returns:
         Telegram HTML 格式字串
     """
     icon = _HOLDING_ACTION_ICON.get(action, "⚪")
     action_label = t(f"guru.action_{action.lower()}", lang=lang)
+    display = format_stock_display(display_name, ticker)
     return t(
         "guru.resonance_alert",
         lang=lang,
         icon=icon,
         guru_name=guru_name,
         action=action_label,
-        ticker=ticker,
+        ticker=display,
     )

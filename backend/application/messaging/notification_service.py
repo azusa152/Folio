@@ -15,6 +15,7 @@ from application.formatters import (
     format_resonance_alert,
     format_stock_display,
     format_weekly_digest_html,
+    resolve_display_names,
 )
 from domain.analysis import compute_signal_duration
 from domain.constants import (
@@ -263,6 +264,12 @@ def send_weekly_digest(session: Session) -> dict:
             normal_count = owned_normal
             total = owned_total
 
+    # Resolve display names once for all tickers appearing in abnormal/signal sections
+    digest_tickers: set[str] = {s.ticker for s in non_normal_stocks} | set(
+        signal_changes.keys()
+    )
+    name_map = resolve_display_names(digest_tickers, session)
+
     non_normal_dicts: list[dict] = []
     for s in non_normal_stocks:
         duration_days, is_new = compute_signal_duration(s.signal_since, now_ts)
@@ -289,6 +296,7 @@ def send_weekly_digest(session: Session) -> dict:
         signal_transitions=signal_transitions,
         drift_lines=_build_drift_lines(categories, lang),
         all_normal_line=t("notification.all_normal", lang=lang),
+        name_map=name_map,
     )
 
     if is_notification_enabled(session, "weekly_digest"):
@@ -328,6 +336,10 @@ def get_portfolio_summary(session: Session) -> str:
 
     non_normal = [s for s in stocks if s.last_scan_signal != ScanSignal.NORMAL.value]
     health = round((len(stocks) - len(non_normal)) / len(stocks) * 100, 1)
+
+    # Resolve display names for all watchlist tickers once upfront
+    all_tickers = [s.ticker for s in stocks]
+    stock_names = resolve_display_names(all_tickers, session)
 
     # 恐懼貪婪指數
     fg = get_fear_greed_index()
@@ -372,6 +384,17 @@ def get_portfolio_summary(session: Session) -> str:
             else:
                 lines.append(f"💰 {display_currency} {current_total:,.0f}")
             lines.append("")
+        # Augment stock_names with any holding-only tickers (positions that exist
+        # in Holding but are not on the active Stock watchlist). These can appear
+        # in resonance overlap results, which union watchlist ∪ holding tickers.
+        if holdings_detail:
+            missing = [
+                h["ticker"]
+                for h in holdings_detail
+                if h["ticker"].strip().upper() not in stock_names
+            ]
+            if missing:
+                stock_names.update(resolve_display_names(missing, session))
     except Exception as exc:
         logger.warning("portfolio_summary: 無法取得再平衡資料：%s", exc)
 
@@ -380,7 +403,13 @@ def get_portfolio_summary(session: Session) -> str:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
-            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+            displays = ", ".join(
+                format_stock_display(
+                    stock_names.get(s.ticker.strip().upper()), s.ticker
+                )
+                for s in group
+            )
+            lines.append(f"[{label}] {displays}")
     # Safety net: never drop unexpected categories from summary output.
     seen_categories = set(STOCK_CATEGORIES)
     extra_categories = sorted(
@@ -390,13 +419,22 @@ def get_portfolio_summary(session: Session) -> str:
         group = [s for s in stocks if s.category.value == cat]
         if group:
             label = CATEGORY_LABEL.get(cat, cat)
-            lines.append(f"[{label}] {', '.join(s.ticker for s in group)}")
+            displays = ", ".join(
+                format_stock_display(
+                    stock_names.get(s.ticker.strip().upper()), s.ticker
+                )
+                for s in group
+            )
+            lines.append(f"[{label}] {displays}")
 
     # --- 目前非 NORMAL 股票 ---
     if non_normal:
         lines += ["", t("notification.portfolio_summary_abnormal", lang=lang)]
         for s in non_normal:
-            lines.append(f"  {s.ticker} -> {s.last_scan_signal}")
+            display = format_stock_display(
+                stock_names.get(s.ticker.strip().upper()), s.ticker
+            )
+            lines.append(f"  {display} -> {s.last_scan_signal}")
     else:
         lines += ["", t("notification.portfolio_summary_normal", lang=lang)]
 
@@ -445,12 +483,15 @@ def get_portfolio_summary(session: Session) -> str:
         from application.guru.resonance_service import compute_portfolio_resonance
 
         resonance = compute_portfolio_resonance(session)
+        # stock_names covers watchlist tickers and is augmented above with
+        # holding-only tickers, so all resonance overlap tickers are resolved.
         smart_lines = [
             format_resonance_alert(
                 holding["ticker"],
                 entry["guru_display_name"],
                 holding["action"],
                 lang=lang,
+                display_name=stock_names.get(holding["ticker"].strip().upper()),
             )
             for entry in resonance
             for holding in entry["holdings"]
@@ -541,6 +582,15 @@ def send_resonance_alerts(session: Session) -> dict:
 
     resonance = compute_portfolio_resonance(session)
 
+    # Collect all alert tickers upfront for a single batch name resolution
+    alert_tickers: set[str] = {
+        holding["ticker"]
+        for entry in resonance
+        for holding in entry["holdings"]
+        if holding["action"] in _ALERT_ACTIONS
+    }
+    resonance_names = resolve_display_names(alert_tickers, session)
+
     alert_lines: list[str] = []
     sent_alerts: list[dict] = []
 
@@ -552,7 +602,13 @@ def send_resonance_alerts(session: Session) -> dict:
             ticker = holding["ticker"]
             action = holding["action"]
             alert_lines.append(
-                format_resonance_alert(ticker, guru_name, action, lang=lang)
+                format_resonance_alert(
+                    ticker,
+                    guru_name,
+                    action,
+                    lang=lang,
+                    display_name=resonance_names.get(ticker.strip().upper()),
+                )
             )
             sent_alerts.append(
                 {"ticker": ticker, "guru_name": guru_name, "action": action}

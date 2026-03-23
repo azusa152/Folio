@@ -239,6 +239,9 @@ graph TB
 - `domain/` must not import from any outer layer
 - The only infrastructure import allowed in `api/` is `infrastructure.database` (`get_session`, `engine`)
 
+**Notification display names:**
+All Telegram and chat notifications that display stock identifiers **must** use `format_stock_display(name, ticker)` from `application/formatters.py`. Use `resolve_display_names(tickers, session)` for batch name resolution before building notification messages. Never display a bare ticker symbol (e.g. `"AAPL"`, `"01311143"`) directly to users. This rule is enforced by the `TestNotificationDisplayNames` test in `test_architecture.py`.
+
 Old flat import paths (e.g. `from domain.constants import X`, `from infrastructure.repositories import Y`) are preserved via backward-compatibility shims.
 
 ---

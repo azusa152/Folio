@@ -11,6 +11,7 @@ from typing import Protocol
 
 from sqlmodel import Session, desc, select
 
+from application.formatters import format_stock_display, resolve_display_names
 from application.portfolio.alert_ack_service import (
     ACK_TYPE_XRAY,
     acknowledge_alert,
@@ -793,6 +794,20 @@ def _compute_xray_analysis(
                 }
             xray_map[ticker]["direct"] += market_value
 
+    # Batch-resolve missing names for all symbols in xray_map.
+    # Use .strip() check to also catch whitespace-only names from ETF data.
+    symbols_needing_names = [
+        sym for sym, d in xray_map.items() if not (d.get("name") or "").strip()
+    ]
+    if symbols_needing_names:
+        resolved = resolve_display_names(symbols_needing_names, session)
+        # resolved keys are uppercase; xray_map keys may use original casing,
+        # so look up by normalized key but write back using the original sym.
+        for sym in symbols_needing_names:
+            resolved_name = resolved.get(sym.strip().upper())
+            if resolved_name:
+                xray_map[sym]["name"] = resolved_name
+
     xray_entries = []
     for symbol, data in xray_map.items():
         total_val = data["direct"] + data["indirect"]
@@ -1298,6 +1313,17 @@ def send_xray_warnings(
                 session, alert_type=ACK_TYPE_XRAY, alert_key=ack.alert_key
             )
 
+    # Resolve names for symbols above the threshold before building messages
+    warn_symbols = [
+        str(entry["symbol"])
+        for entry in xray_entries
+        if (
+            entry.get("total_weight_pct", 0.0) > XRAY_SINGLE_STOCK_WARN_PCT
+            and entry.get("indirect_value", 0.0) > 0
+        )
+    ]
+    xray_names = resolve_display_names(warn_symbols, session)
+
     warnings: list[str] = []
     suppressed_symbols: list[str] = []
     for entry in xray_entries:
@@ -1317,10 +1343,13 @@ def send_xray_warnings(
                 continue
             direct_pct = entry.get("direct_weight_pct", 0.0)
             sources = ", ".join(entry.get("indirect_sources", []))
+            symbol_display = format_stock_display(
+                xray_names.get(str(symbol).strip().upper()), str(symbol)
+            )
             msg = t(
                 "rebalance.xray_warning",
                 lang=lang,
-                symbol=symbol,
+                symbol=symbol_display,
                 direct_pct=direct_pct,
                 sources=sources,
                 total_pct=total_pct,
